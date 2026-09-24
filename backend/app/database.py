@@ -3,7 +3,7 @@ import sqlite3
 from datetime import date, datetime, timezone
 from pathlib import Path
 
-DB_PATH = Path(os.getenv("AI_SANA_DB_PATH", Path(__file__).resolve().parents[1] / "ai_sana.db"))
+DB_PATH = Path(os.getenv("SOYLE_DB_PATH", Path(__file__).resolve().parents[1] / "soyle.db"))
 
 def connect() -> sqlite3.Connection:
     connection = sqlite3.connect(DB_PATH, check_same_thread=False)

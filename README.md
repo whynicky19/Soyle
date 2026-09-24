@@ -43,7 +43,7 @@ cd backend
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-export AI_SANA_SECRET_KEY="replace-with-a-long-random-secret"
+export SOYLE_SECRET_KEY="replace-with-a-long-random-secret"
 uvicorn app.main:app --reload --port 8010
 ```
 
@@ -71,7 +71,7 @@ npm run dev
 | Специалист | логин `specialist` | `Specialist123!` |
 | Администратор | логин `admin` | `Admin123!` |
 
-Аккаунты создаются при первом запуске пустой базы `backend/ai_sana.db`. Перед публикацией смените пароли, задайте `AI_SANA_SECRET_KEY`, ограничьте CORS и используйте HTTPS.
+Аккаунты создаются при первом запуске пустой базы `backend/soyle.db`. Перед публикацией смените пароли, задайте `SOYLE_SECRET_KEY`, ограничьте CORS и используйте HTTPS.
 
 ## Приватность
 
