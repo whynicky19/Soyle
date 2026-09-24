@@ -15,12 +15,12 @@ def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 EXERCISES = [
-    ("motor", "Широкая улыбка", "Улыбнись широко и удерживай движение", 1, "smile", "/illustrations/module-articulation.png"),
-    ("motor", "Губы трубочкой", "Вытяни губы вперёд, будто задуваешь свечу", 1, "tube", "/illustrations/module-articulation.png"),
-    ("motor", "Окошко", "Открой рот и удерживай нижнюю челюсть спокойно", 2, "open", "/illustrations/module-articulation.png"),
-    ("motor", "Заборчик", "Покажи зубы в спокойной улыбке", 2, "teeth", "/illustrations/module-articulation.png"),
-    ("motor", "Воздушный шар", "Надуй обе щёки и удерживай воздух", 3, "cheeks", "/illustrations/module-articulation.png"),
-    ("motor", "Чередование", "Сделай улыбку, затем трубочку", 3, "sequence", "/illustrations/module-articulation.png"),
+    ("motor", "Широкая улыбка", "Улыбнись широко и удерживай движение", 1, "smile", "/illustrations/module-articulation-fox.png"),
+    ("motor", "Губы трубочкой", "Вытяни губы вперёд, будто задуваешь свечу", 1, "tube", "/illustrations/module-articulation-fox.png"),
+    ("motor", "Окошко", "Открой рот и удерживай нижнюю челюсть спокойно", 2, "open", "/illustrations/module-articulation-fox.png"),
+    ("motor", "Заборчик", "Покажи зубы в спокойной улыбке", 2, "teeth", "/illustrations/module-articulation-fox.png"),
+    ("motor", "Воздушный шар", "Надуй обе щёки и удерживай воздух", 3, "cheeks", "/illustrations/module-articulation-fox.png"),
+    ("motor", "Чередование", "Сделай улыбку, затем трубочку", 3, "sequence", "/illustrations/module-articulation-fox.png"),
     ("sensory", "Домашние животные", "Послушай слово и выбери животное", 1, "animals", "/illustrations/cat.png"),
     ("sensory", "Еда и напитки", "Найди названный продукт", 1, "food", "/illustrations/apple.png"),
     ("sensory", "Игрушки", "Послушай и выбери нужную игрушку", 1, "toys", "/illustrations/ball.png"),

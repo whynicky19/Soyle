@@ -48,7 +48,7 @@ const modules = [
     title: "Весёлая артикуляция",
     eyebrow: "Моторный модуль",
     description: "Повторяй движения за примером и зажигай звёзды",
-    icon: "/illustrations/module-articulation.png",
+    icon: "/illustrations/module-articulation-fox.png",
     accent: "coral",
     progress: 0,
     time: "5 минут",
@@ -75,7 +75,7 @@ const modules = [
   },
 ];
 const moduleImages: Record<ModuleName, string> = {
-  motor: "/illustrations/module-articulation.png",
+  motor: "/illustrations/module-articulation-fox.png",
   sensory: "/illustrations/module-listening.png",
   mixed: "/illustrations/module-phrases.png",
 };
@@ -665,7 +665,7 @@ function ParentScreen({ child, dashboard }: { child?: Child; dashboard: Dashboar
     } catch (cause) { setAccountMessage(cause instanceof Error ? cause.message : "Не удалось сохранить"); }
   };
   const age = child ? (() => { const born = new Date(child.birth_date); const now = new Date(); let years = now.getFullYear() - born.getFullYear(); if (now.getMonth() < born.getMonth() || (now.getMonth() === born.getMonth() && now.getDate() < born.getDate())) years -= 1; return Math.max(0, years); })() : 0;
-  const sessionLabels = { motor: ["/illustrations/module-articulation.png", "Весёлая артикуляция"], sensory: ["/illustrations/module-listening.png", "Слушай и находи"], mixed: ["/illustrations/module-phrases.png", "Собери фразу"] } as const;
+  const sessionLabels = { motor: ["/illustrations/module-articulation-fox.png", "Весёлая артикуляция"], sensory: ["/illustrations/module-listening.png", "Слушай и находи"], mixed: ["/illustrations/module-phrases.png", "Собери фразу"] } as const;
   return <div className="page-enter stack-xl">
     <PageTitle eyebrow="КАБИНЕТ РОДИТЕЛЯ" title={`Вместе поддерживаем ${child?.name || "ребёнка"}`} subtitle="Реальные результаты занятий, персональные рекомендации и управление доступом ребёнка." />
     <div className="parent-hero"><div className="parent-profile"><div className="avatar large">{child?.name[0] || "Р"}</div><div><span>ПРОФИЛЬ РЕБЁНКА</span><h2>{child?.name || "Ребёнок"}, {age} лет</h2><p>{dashboard?.total_sessions || 0} занятий · {dashboard?.total_minutes || 0} минут</p></div></div><div className="overall"><div className="large-ring"><strong>{dashboard?.overall || 0}%</strong><span>общий прогресс</span></div><div><b>{dashboard?.streak_days || 0} дн.</b><span>текущая серия</span></div></div></div>
@@ -688,12 +688,12 @@ function LegacyAdminScreen() {
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [tab, setTab] = useState<"users" | "exercises" | "usage">("users");
   const [formOpen, setFormOpen] = useState(false);
-  const [form, setForm] = useState({ module: "motor", title: "", instruction: "", difficulty: 1, target: "custom", icon: "/illustrations/module-articulation.png", is_active: true });
+  const [form, setForm] = useState({ module: "motor", title: "", instruction: "", difficulty: 1, target: "custom", icon: "/illustrations/module-articulation-fox.png", is_active: true });
   const load = useCallback(() => { api<typeof stats>("/api/admin/stats").then(setStats); api<User[]>("/api/admin/users").then(setUsers); api<StudentAccount[]>("/api/admin/students").then(setStudents); api<UsageData>("/api/admin/usage").then(setUsage); api<Exercise[]>("/api/exercises").then(setExercises); }, []);
   useEffect(load, [load]);
   const changeRole = async (id: number, role: Role) => { await api(`/api/admin/users/${id}/role`, { method: "PATCH", body: JSON.stringify({ role }) }); load(); };
   const toggleUser = async (item: User) => { await api(`/api/admin/users/${item.id}/active`, { method: "PATCH", body: JSON.stringify({ is_active: !item.is_active }) }); load(); };
-  const addExercise = async (event: React.FormEvent) => { event.preventDefault(); const payload = { ...form, icon: moduleImages[form.module as ModuleName] }; await api("/api/admin/exercises", { method: "POST", body: JSON.stringify(payload) }); setFormOpen(false); setForm({ module: "motor", title: "", instruction: "", difficulty: 1, target: "custom", icon: "/illustrations/module-articulation.png", is_active: true }); load(); };
+  const addExercise = async (event: React.FormEvent) => { event.preventDefault(); const payload = { ...form, icon: moduleImages[form.module as ModuleName] }; await api("/api/admin/exercises", { method: "POST", body: JSON.stringify(payload) }); setFormOpen(false); setForm({ module: "motor", title: "", instruction: "", difficulty: 1, target: "custom", icon: "/illustrations/module-articulation-fox.png", is_active: true }); load(); };
   const archiveExercise = async (id: number) => { await api(`/api/admin/exercises/${id}`, { method: "DELETE" }); load(); };
   return <div className="page-enter stack-xl"><PageTitle eyebrow="УПРАВЛЕНИЕ ПЛАТФОРМОЙ" title="Админ-панель" subtitle="Пользователи, роли, контент и ключевые показатели Söyle."/><div className="stats-row"><StatCard icon={<Users/>} value={String(stats.users)} label="пользователей"/><StatCard icon={<UserRound/>} value={String(stats.children)} label="профилей детей"/><StatCard icon={<Target/>} value={String(stats.sessions)} label="занятий пройдено"/><StatCard icon={<Gamepad2/>} value={String(stats.exercises)} label="активных заданий"/></div><div className="admin-tabs"><button className={tab === "users" ? "active" : ""} onClick={() => setTab("users")}><Users size={17}/>Пользователи</button><button className={tab === "exercises" ? "active" : ""} onClick={() => setTab("exercises")}><Gamepad2 size={17}/>Задания</button></div>{tab === "users" ? <section className="admin-card"><div className="admin-card-head"><div><span className="kicker">ДОСТУП И РОЛИ</span><h3>Пользователи</h3></div></div><div className="data-table"><div className="table-row header"><span>Пользователь</span><span>Роль</span><span>Статус</span><span>Действие</span></div>{users.map((item) => <div className="table-row" key={item.id}><span><b>{item.full_name}</b><small>{item.email}</small></span><span><select value={item.role} onChange={(e) => changeRole(item.id, e.target.value as Role)}><option value="parent">Родитель</option><option value="specialist">Специалист</option><option value="admin">Администратор</option></select></span><span><i className={`status ${item.is_active ? "active" : "blocked"}`}>{item.is_active ? "Активен" : "Отключён"}</i></span><span><button className="small-button" onClick={() => toggleUser(item)}>{item.is_active ? "Отключить" : "Включить"}</button></span></div>)}</div></section> : <section className="admin-card"><div className="admin-card-head"><div><span className="kicker">КОНТЕНТ</span><h3>Библиотека заданий</h3></div><button className="primary-button" onClick={() => setFormOpen(!formOpen)}>+ Добавить</button></div>{formOpen && <form className="exercise-form" onSubmit={addExercise}><select value={form.module} onChange={(e) => setForm({...form,module:e.target.value})}><option value="motor">Моторный</option><option value="sensory">Сенсорный</option><option value="mixed">Смешанный</option></select><input placeholder="Название" value={form.title} onChange={(e) => setForm({...form,title:e.target.value})} required/><input placeholder="Инструкция" value={form.instruction} onChange={(e) => setForm({...form,instruction:e.target.value})} required/><button className="primary-button">Сохранить</button></form>}<div className="admin-exercises">{exercises.map((item) => <div key={item.id}><span><Image src={moduleImages[item.module]} alt="" width={42} height={42}/></span><div><strong>{item.title}</strong><small>{item.module} · уровень {item.difficulty}</small></div><button onClick={() => archiveExercise(item.id)}>В архив</button></div>)}</div></section>}</div>;
 }
@@ -708,7 +708,7 @@ function AdminScreen() {
   const [usage, setUsage] = useState<UsageData>({ requests: 0, input_tokens: 0, output_tokens: 0, total_tokens: 0, estimated_cost_usd: 0, note: "", breakdown: [] });
   const [tab, setTab] = useState<"users" | "exercises" | "usage">("users");
   const [formOpen, setFormOpen] = useState(false);
-  const [form, setForm] = useState({ module: "motor", title: "", instruction: "", difficulty: 1, target: "custom", icon: "/illustrations/module-articulation.png", is_active: true });
+  const [form, setForm] = useState({ module: "motor", title: "", instruction: "", difficulty: 1, target: "custom", icon: "/illustrations/module-articulation-fox.png", is_active: true });
   const load = useCallback(() => {
     api<typeof stats>("/api/admin/stats").then(setStats);
     api<User[]>("/api/admin/users").then(setUsers);
@@ -719,7 +719,7 @@ function AdminScreen() {
   useEffect(load, [load]);
   const changeRole = async (id: number, role: Exclude<Role, "student">) => { await api(`/api/admin/users/${id}/role`, { method: "PATCH", body: JSON.stringify({ role }) }); load(); };
   const toggleUser = async (item: User) => { await api(`/api/admin/users/${item.id}/active`, { method: "PATCH", body: JSON.stringify({ is_active: !item.is_active }) }); load(); };
-  const addExercise = async (event: React.FormEvent) => { event.preventDefault(); const payload = { ...form, icon: moduleImages[form.module as ModuleName] }; await api("/api/admin/exercises", { method: "POST", body: JSON.stringify(payload) }); setFormOpen(false); setForm({ module: "motor", title: "", instruction: "", difficulty: 1, target: "custom", icon: "/illustrations/module-articulation.png", is_active: true }); load(); };
+  const addExercise = async (event: React.FormEvent) => { event.preventDefault(); const payload = { ...form, icon: moduleImages[form.module as ModuleName] }; await api("/api/admin/exercises", { method: "POST", body: JSON.stringify(payload) }); setFormOpen(false); setForm({ module: "motor", title: "", instruction: "", difficulty: 1, target: "custom", icon: "/illustrations/module-articulation-fox.png", is_active: true }); load(); };
   const archiveExercise = async (id: number) => { await api(`/api/admin/exercises/${id}`, { method: "DELETE" }); load(); };
   return <div className="page-enter stack-xl">
     <PageTitle eyebrow="УПРАВЛЕНИЕ ПЛАТФОРМОЙ" title="Админ-панель" subtitle="Пользователи, контент и прозрачный учёт использования ИИ."/>
