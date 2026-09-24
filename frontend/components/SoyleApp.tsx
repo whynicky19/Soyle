@@ -37,10 +37,11 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { api, Child, Dashboard, Exercise, Role, setToken, User } from "@/lib/api";
+import { api, AppSettings, Child, Dashboard, Exercise, Role, setToken, User } from "@/lib/api";
 
 type Screen = "home" | "games" | "motor" | "sensory" | "mixed" | "progress" | "parent" | "settings" | "admin" | "specialist";
 type ModuleName = "motor" | "sensory" | "mixed";
+const defaultSettings: AppSettings = { camera_enabled: true, sound_enabled: true, calm_mode: false, theme: "peach" };
 
 const modules = [
   {
@@ -104,16 +105,23 @@ function AuthenticatedApp({ user, onLogout }: { user: User; onLogout: () => void
   const [screen, setScreen] = useState<Screen>(() => user.role === "admin" ? "admin" : user.role === "specialist" ? "specialist" : "home");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [children, setChildren] = useState<Child[]>([]);
+  const [exercises, setExercises] = useState<Exercise[]>([]);
+  const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(null);
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
   const [reward, setReward] = useState<{ stars: number; nonce: number } | null>(null);
   const gameStartedAtRef = useRef(0);
   const [childrenLoading, setChildrenLoading] = useState(true);
-  const [theme, setTheme] = useState(() => typeof window === "undefined" ? "peach" : localStorage.getItem("soyle-theme") || "peach");
+  const [settings, setSettings] = useState<AppSettings>(defaultSettings);
 
   useEffect(() => {
-    document.documentElement.dataset.theme = theme;
-  }, [theme]);
+    document.documentElement.dataset.theme = settings.theme;
+    document.documentElement.dataset.calm = settings.calm_mode ? "true" : "false";
+  }, [settings]);
   useEffect(() => { api<Child[]>("/api/children").then(setChildren).catch(() => setChildren([])).finally(() => setChildrenLoading(false)); }, []);
+  useEffect(() => {
+    api<Exercise[]>("/api/exercises").then(setExercises).catch(() => setExercises([]));
+    api<AppSettings>("/api/settings").then(setSettings).catch(() => setSettings(defaultSettings));
+  }, []);
 
   const navigation: { id: Screen; label: string; icon: typeof Home }[] = user.role === "admin"
     ? [{ id: "admin", label: "Админ-панель", icon: LayoutDashboard }, { id: "settings", label: "Настройки", icon: Settings }]
@@ -134,11 +142,11 @@ function AuthenticatedApp({ user, onLogout }: { user: User; onLogout: () => void
   }, [child]);
   useEffect(refreshDashboard, [refreshDashboard]);
 
-  const saveSession = async (module: ModuleName, score: number, details: Record<string, unknown>) => {
-    if (!child) return;
+  const saveSession = async (exerciseId: number, module: ModuleName, score: number, details: Record<string, unknown>) => {
+    if (!child || !exerciseId) return;
     const startedAt = gameStartedAtRef.current || Date.now();
     const durationSeconds = Math.max(1, Math.round((Date.now() - startedAt) / 1000));
-    const result = await api<{ awarded_stars: number }>("/api/sessions", { method: "POST", body: JSON.stringify({ child_id: child.id, module, score, duration_seconds: durationSeconds, details }) }).catch(() => null);
+    const result = await api<{ awarded_stars: number }>("/api/sessions", { method: "POST", body: JSON.stringify({ child_id: child.id, exercise_id: exerciseId, module, score, duration_seconds: durationSeconds, details }) }).catch(() => null);
     if (result) {
       setReward({ stars: result.awarded_stars, nonce: Date.now() });
       window.setTimeout(() => setReward(null), 2200);
@@ -147,18 +155,28 @@ function AuthenticatedApp({ user, onLogout }: { user: User; onLogout: () => void
     }
   };
 
-  const changeTheme = (next: string) => {
-    setTheme(next);
-    localStorage.setItem("soyle-theme", next);
-    document.documentElement.dataset.theme = next;
+  const changeSettings = (next: AppSettings) => {
+    setSettings(next);
+    api<AppSettings>("/api/settings", { method: "PUT", body: JSON.stringify(next) }).then(setSettings).catch(() => undefined);
   };
 
   if (user.role === "parent" && childrenLoading) return <div className="auth-loading"><div className="brand-mark"><BrandIcon /></div><span>Загружаем профиль ребёнка…</span></div>;
   if (user.role === "parent" && !children.length) return <ChildOnboarding user={user} onCreated={(newChild) => setChildren([newChild])} onLogout={onLogout} />;
 
   const openScreen = (next: Screen) => {
-    if (["motor", "sensory", "mixed"].includes(next)) gameStartedAtRef.current = Date.now();
+    if (["motor", "sensory", "mixed"].includes(next)) {
+      gameStartedAtRef.current = Date.now();
+      setSelectedExercise(exercises.find((item) => item.module === next) || null);
+    }
     setScreen(next);
+    setSidebarOpen(false);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const openExercise = (exercise: Exercise) => {
+    setSelectedExercise(exercise);
+    gameStartedAtRef.current = Date.now();
+    setScreen(exercise.module);
     setSidebarOpen(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -211,15 +229,15 @@ function AuthenticatedApp({ user, onLogout }: { user: User; onLogout: () => void
 
         <div className="page">
           {screen === "home" && <HomeScreen onOpen={openScreen} child={child} dashboard={dashboard} />}
-          {screen === "games" && <GamesScreen onOpen={openScreen} dashboard={dashboard} />}
-          {screen === "motor" && <MotorGame onBack={() => openScreen("games")} onComplete={(score) => saveSession("motor", score, { source: "face-landmarker" })} />}
-          {screen === "sensory" && <SensoryGame onBack={() => openScreen("games")} onComplete={(score) => saveSession("sensory", score, { rounds: 5 })} />}
-          {screen === "mixed" && <PhraseGame onBack={() => openScreen("games")} onComplete={(score, phrase) => saveSession("mixed", score, { phrase })} />}
+          {screen === "games" && <GamesScreen onOpen={openScreen} onExercise={openExercise} dashboard={dashboard} />}
+          {screen === "motor" && <MotorGame exercises={exercises.filter((item) => item.module === "motor")} initialExercise={selectedExercise} cameraEnabled={settings.camera_enabled} onBack={() => openScreen("games")} onComplete={(score, exerciseId) => saveSession(exerciseId, "motor", score, { source: "face-landmarker" })} />}
+          {screen === "sensory" && <SensoryGame exercise={selectedExercise?.module === "sensory" ? selectedExercise : exercises.find((item) => item.module === "sensory")} soundEnabled={settings.sound_enabled} onBack={() => openScreen("games")} onComplete={(score, exerciseId) => saveSession(exerciseId, "sensory", score, { rounds: 5 })} />}
+          {screen === "mixed" && <PhraseGame exercise={selectedExercise?.module === "mixed" ? selectedExercise : exercises.find((item) => item.module === "mixed")} soundEnabled={settings.sound_enabled} onBack={() => openScreen("games")} onComplete={(score, phrase, exerciseId) => saveSession(exerciseId, "mixed", score, { phrase })} />}
           {screen === "progress" && <ProgressScreen childId={child?.id} dashboard={dashboard} />}
           {screen === "parent" && <ParentScreen child={child} dashboard={dashboard} />}
           {screen === "admin" && <AdminScreen />}
           {screen === "specialist" && <SpecialistScreen />}
-          {screen === "settings" && <SettingsScreen theme={theme} onThemeChange={changeTheme} onLogout={onLogout} />}
+          {screen === "settings" && <SettingsScreen settings={settings} onChange={changeSettings} onLogout={onLogout} />}
         </div>
       </main>
       {reward && <RewardCelebration key={reward.nonce} stars={reward.stars} />}
@@ -284,10 +302,8 @@ function HomeScreen({ onOpen, child, dashboard }: { onOpen: (screen: Screen) => 
           <button className="primary-button" onClick={() => onOpen("motor")}><Play size={18} fill="currentColor" /> Начать занятие</button>
         </div>
         <div className="hero-art" aria-hidden="true">
-          <div className="orbit orbit-one">あ</div>
-          <div className="orbit orbit-two">♪</div>
           <div className="mascot">
-            <Image src="/illustrations/mascot-fox.png" alt="" width={755} height={900} priority />
+            <Image src="/illustrations/mascot-parrot-headphones.png" alt="" width={599} height={900} priority />
           </div>
           <div className="hero-badge"><Trophy size={22} /><span><b>{dashboard?.today_sessions || 0} заданий</b><small>выполнено сегодня</small></span></div>
         </div>
@@ -296,7 +312,7 @@ function HomeScreen({ onOpen, child, dashboard }: { onOpen: (screen: Screen) => 
       <section>
         <div className="section-heading"><div><span className="kicker">МОЙ ПЛАН</span><h2>Куда отправимся сегодня?</h2></div><button className="text-button" onClick={() => onOpen("games")}>Все занятия <ChevronRight size={17} /></button></div>
         <div className="module-grid">
-          {modules.map((module, index) => <ModuleCard key={module.id} module={{...module, progress: dashboard?.module_completion[module.id] || 0}} sessions={dashboard?.module_sessions[module.id] || 0} total={dashboard?.active_exercises[module.id] || 0} onClick={() => onOpen(module.id)} index={index + 1} />)}
+          {modules.map((module, index) => <ModuleCard key={module.id} module={{...module, progress: dashboard?.module_completion[module.id] || 0}} completed={dashboard?.module_completed[module.id] || 0} total={dashboard?.active_exercises[module.id] || 0} onClick={() => onOpen(module.id)} index={index + 1} />)}
         </div>
       </section>
 
@@ -312,7 +328,7 @@ function HomeScreen({ onOpen, child, dashboard }: { onOpen: (screen: Screen) => 
   );
 }
 
-function ModuleCard({ module, onClick, index, sessions, total }: { module: typeof modules[number]; onClick: () => void; index: number; sessions?: number; total?: number }) {
+function ModuleCard({ module, onClick, index, completed, total }: { module: typeof modules[number]; onClick: () => void; index: number; completed?: number; total?: number }) {
   return (
     <button className={`module-card ${module.accent}`} onClick={onClick}>
       <div className="module-top"><span className="module-number">0{index}</span><span className="module-time">{module.time}</span></div>
@@ -321,29 +337,29 @@ function ModuleCard({ module, onClick, index, sessions, total }: { module: typeo
       <h3>{module.title}</h3>
       <p>{module.description}</p>
       <div className="module-progress"><span style={{ width: `${module.progress}%` }} /></div>
-      <div className="module-bottom"><small>Пройдено {module.progress}%{total ? ` · ${Math.min(sessions || 0, total)} из ${total}` : ""}</small><span className="round-arrow"><ChevronRight size={18} /></span></div>
+      <div className="module-bottom"><small>Пройдено {module.progress}%{total ? ` · ${Math.min(completed || 0, total)} из ${total}` : ""}</small><span className="round-arrow"><ChevronRight size={18} /></span></div>
     </button>
   );
 }
 
-function GamesScreen({ onOpen, dashboard }: { onOpen: (screen: Screen) => void; dashboard: Dashboard | null }) {
+function GamesScreen({ onOpen, onExercise, dashboard }: { onOpen: (screen: Screen) => void; onExercise: (exercise: Exercise) => void; dashboard: Dashboard | null }) {
   return (
     <div className="page-enter stack-xl">
       <PageTitle eyebrow="ИГРОВАЯ КОМНАТА" title="Выбери приключение" subtitle="Каждая игра развивает отдельный навык. Занимайся понемногу, но регулярно." />
-      <div className="module-grid large">{modules.map((m, i) => <ModuleCard key={m.id} module={{...m, progress: dashboard?.module_completion[m.id] || 0}} sessions={dashboard?.module_sessions[m.id] || 0} total={dashboard?.active_exercises[m.id] || 0} index={i + 1} onClick={() => onOpen(m.id)} />)}</div>
-      <ExerciseLibrary onOpen={onOpen} />
+      <div className="module-grid large">{modules.map((m, i) => <ModuleCard key={m.id} module={{...m, progress: dashboard?.module_completion[m.id] || 0}} completed={dashboard?.module_completed[m.id] || 0} total={dashboard?.active_exercises[m.id] || 0} index={i + 1} onClick={() => onOpen(m.id)} />)}</div>
+      <ExerciseLibrary onExercise={onExercise} />
       <div className="tip-banner"><div className="tip-icon"><Sparkles/></div><div><strong>Подсказка для взрослых</strong><p>Одного занятия по 5–10 минут достаточно. Заканчивайте игру, пока ребёнку ещё интересно.</p></div></div>
     </div>
   );
 }
 
-function ExerciseLibrary({ onOpen }: { onOpen: (screen: Screen) => void }) {
+function ExerciseLibrary({ onExercise }: { onExercise: (exercise: Exercise) => void }) {
   const [items, setItems] = useState<Exercise[]>([]);
   const [filter, setFilter] = useState<"all" | ModuleName>("all");
   useEffect(() => { api<Exercise[]>("/api/exercises").then(setItems).catch(() => setItems([])); }, []);
   const filtered = filter === "all" ? items : items.filter((item) => item.module === filter);
   const labels = { motor: "Артикуляция", sensory: "Понимание", mixed: "Фразы" };
-  return <section className="exercise-library"><div className="section-heading"><div><span className="kicker">БИБЛИОТЕКА</span><h2>Все задания</h2></div><div className="filter-tabs">{(["all","motor","sensory","mixed"] as const).map((value) => <button key={value} className={filter === value ? "active" : ""} onClick={() => setFilter(value)}>{value === "all" ? "Все" : labels[value]}</button>)}</div></div><div className="exercise-grid">{filtered.map((exercise) => { const moduleInfo = modules.find((item) => item.id === exercise.module)!; return <button key={exercise.id} className={`exercise-card ${exercise.module}`} onClick={() => onOpen(exercise.module)}><span className="exercise-emoji"><Image src={moduleInfo.icon} alt="" width={48} height={48}/></span><div><small>{labels[exercise.module]} · уровень {exercise.difficulty}</small><strong>{exercise.title}</strong><p>{exercise.instruction}</p></div><ChevronRight size={18}/></button>; })}</div></section>;
+  return <section className="exercise-library"><div className="section-heading"><div><span className="kicker">БИБЛИОТЕКА</span><h2>Все задания</h2></div><div className="filter-tabs">{(["all","motor","sensory","mixed"] as const).map((value) => <button key={value} className={filter === value ? "active" : ""} onClick={() => setFilter(value)}>{value === "all" ? "Все" : labels[value]}</button>)}</div></div><div className="exercise-grid">{filtered.map((exercise) => { const moduleInfo = modules.find((item) => item.id === exercise.module)!; return <button key={exercise.id} className={`exercise-card ${exercise.module}`} onClick={() => onExercise(exercise)}><span className="exercise-emoji"><Image src={moduleInfo.icon} alt="" width={48} height={48}/></span><div><small>{labels[exercise.module]} · уровень {exercise.difficulty}</small><strong>{exercise.title}</strong><p>{exercise.instruction}</p></div><ChevronRight size={18}/></button>; })}</div></section>;
 }
 
 function PageTitle({ eyebrow, title, subtitle }: { eyebrow: string; title: string; subtitle: string }) {
@@ -370,7 +386,7 @@ const motorExercises = [
 ] as const;
 type MotorExercise = typeof motorExercises[number]["id"];
 
-function MotorGame({ onBack, onComplete }: { onBack: () => void; onComplete: (score: number) => void }) {
+function MotorGame({ exercises, initialExercise, cameraEnabled, onBack, onComplete }: { exercises: Exercise[]; initialExercise: Exercise | null; cameraEnabled: boolean; onBack: () => void; onComplete: (score: number, exerciseId: number) => void }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const requestRef = useRef<number | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -381,9 +397,10 @@ function MotorGame({ onBack, onComplete }: { onBack: () => void; onComplete: (sc
   const consecutiveErrorsRef = useRef(0);
   const analysisStoppedRef = useRef(true);
   const [cameraState, setCameraState] = useState<"idle" | "loading" | "ready" | "error">("idle");
-  const [exerciseIndex, setExerciseIndex] = useState(0);
+  const initialIndex = Math.max(0, motorExercises.findIndex((item) => item.id === initialExercise?.target));
+  const [exerciseIndex, setExerciseIndex] = useState(initialIndex);
   const [accuracy, setAccuracy] = useState(0);
-  const exerciseRef = useRef<MotorExercise>("smile");
+  const exerciseRef = useRef<MotorExercise>(motorExercises[initialIndex].id);
   const accuracyRef = useRef(0);
   const rewardedRef = useRef(false);
   const completed = accuracy >= 78;
@@ -445,7 +462,8 @@ function MotorGame({ onBack, onComplete }: { onBack: () => void; onComplete: (sc
         setAccuracy(smoothed);
         if (smoothed >= 78 && !rewardedRef.current) {
           rewardedRef.current = true;
-          onComplete(smoothed);
+          const completedExerciseId = exercises.find((item) => item.target === exerciseRef.current)?.id;
+          if (completedExerciseId) onComplete(smoothed, completedExerciseId);
         }
       }
     } catch {
@@ -459,6 +477,7 @@ function MotorGame({ onBack, onComplete }: { onBack: () => void; onComplete: (sc
   }
 
   const startCamera = async () => {
+    if (!cameraEnabled) return;
     setCameraState("loading");
     setAccuracy(0);
     stopCamera();
@@ -475,9 +494,9 @@ function MotorGame({ onBack, onComplete }: { onBack: () => void; onComplete: (sc
       if (!videoRef.current) return;
       videoRef.current.srcObject = stream;
       await videoRef.current.play();
-      const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22-rc.20250304/wasm");
+      const vision = await FilesetResolver.forVisionTasks("/mediapipe/wasm");
       landmarkerRef.current = await FaceLandmarker.createFromOptions(vision, {
-        baseOptions: { modelAssetPath: "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task", delegate: "CPU" },
+        baseOptions: { modelAssetPath: "/mediapipe/models/face_landmarker.task", delegate: "CPU" },
         runningMode: "VIDEO",
         numFaces: 1,
       });
@@ -504,7 +523,7 @@ function MotorGame({ onBack, onComplete }: { onBack: () => void; onComplete: (sc
       <div className="game-layout">
         <div className="camera-panel">
           <video ref={videoRef} playsInline muted className={cameraState === "ready" ? "visible" : ""} />
-          {cameraState !== "ready" && <div className="camera-placeholder"><div className="face-guide">☺</div><h3>{cameraState === "loading" ? "Включаем волшебное зеркало…" : "Посмотри в волшебное зеркало"}</h3><p>Камера нужна только во время игры. Видео остаётся на устройстве.</p><button className="primary-button" onClick={startCamera} disabled={cameraState === "loading"}><Camera size={19} /> {cameraState === "error" ? "Попробовать ещё раз" : "Включить камеру"}</button></div>}
+          {cameraState !== "ready" && <div className="camera-placeholder"><div className="face-guide">☺</div><h3>{!cameraEnabled ? "Камера отключена в настройках" : cameraState === "loading" ? "Включаем волшебное зеркало…" : cameraState === "error" ? "Камеру не удалось запустить" : "Посмотри в волшебное зеркало"}</h3><p>{cameraEnabled ? "Анализ работает на устройстве. Видео не отправляется и не сохраняется." : "Включите камеру в настройках, чтобы использовать распознавание движения."}</p><button className="primary-button" onClick={startCamera} disabled={cameraState === "loading" || !cameraEnabled}><Camera size={19} /> {cameraState === "error" ? "Попробовать ещё раз" : "Включить камеру"}</button></div>}
           {cameraState === "ready" && <><div className="face-frame" /><div className="camera-label"><span className="live-dot" /> ИИ видит движение</div></>}
         </div>
         <div className="instruction-panel">
@@ -547,8 +566,8 @@ function speechAsset(text: string) {
   }
   return null;
 }
-function speak(text: string, rate = 0.78) {
-  if (activeAudio) return;
+function speak(text: string, rate = 0.78, enabled = true) {
+  if (!enabled || activeAudio) return;
   const asset = speechAsset(text);
   if (!asset) return;
   const audio = new Audio(`/audio/${asset}.mp3`);
@@ -560,7 +579,7 @@ function speak(text: string, rate = 0.78) {
   audio.play().catch(() => { activeAudio = null; });
 }
 
-function SensoryGame({ onBack, onComplete }: { onBack: () => void; onComplete: (score: number) => void }) {
+function SensoryGame({ exercise, soundEnabled, onBack, onComplete }: { exercise?: Exercise; soundEnabled: boolean; onBack: () => void; onComplete: (score: number, exerciseId: number) => void }) {
   const [targetIndex, setTargetIndex] = useState(0);
   const [picked, setPicked] = useState<number | null>(null);
   const [score, setScore] = useState(0);
@@ -569,15 +588,15 @@ function SensoryGame({ onBack, onComplete }: { onBack: () => void; onComplete: (
   const choose = (index: number) => {
     if (picked !== null) return;
     setPicked(index);
-    if (index === targetIndex) { setScore((v) => v + 1); speak("Верно! Отличная работа.", 0.9); }
-    else speak(`Попробуй ещё. Это ${sensoryItems[index].word.toLowerCase()}.`, 0.75);
+    if (index === targetIndex) { setScore((v) => v + 1); speak("Верно! Отличная работа.", 0.9, soundEnabled); }
+    else speak(`Попробуй ещё. Это ${sensoryItems[index].word.toLowerCase()}.`, 0.75, soundEnabled);
   };
-  const next = () => { if (round === 5) { onComplete(score * 20); setRound(1); setScore(0); } else setRound((v) => v + 1); setTargetIndex((targetIndex + 1) % sensoryItems.length); setPicked(null); };
+  const next = () => { if (round === 5) { if (exercise) onComplete(score * 20, exercise.id); setRound(1); setScore(0); } else setRound((v) => v + 1); setTargetIndex((targetIndex + 1) % sensoryItems.length); setPicked(null); };
   return (
     <div className="page-enter game-page">
       <GameHeader title="Слушай и находи" subtitle="Понимаем слова" step={`${round} из 5`} onBack={onBack} />
       <div className="listen-card">
-        <div className="sound-zone"><button className="sound-button" onClick={() => speak(sensoryItems[targetIndex].word)}><Volume2 size={34} fill="currentColor" /></button><div><span className="kicker">ПОСЛУШАЙ СЛОВО</span><h2>Нажми и послушай</h2><div className="wave"><i /><i /><i /><i /><i /><i /><i /></div></div><button className="replay" onClick={() => speak(sensoryItems[targetIndex].word, 0.55)}><RotateCcw size={17} /> Медленнее</button></div>
+        <div className="sound-zone"><button className="sound-button" disabled={!soundEnabled} onClick={() => speak(sensoryItems[targetIndex].word, 0.78, soundEnabled)}><Volume2 size={34} fill="currentColor" /></button><div><span className="kicker">ПОСЛУШАЙ СЛОВО</span><h2>{soundEnabled ? "Нажми и послушай" : "Звук отключён в настройках"}</h2><div className="wave"><i /><i /><i /><i /><i /><i /><i /></div></div><button className="replay" disabled={!soundEnabled} onClick={() => speak(sensoryItems[targetIndex].word, 0.55, soundEnabled)}><RotateCcw size={17} /> Медленнее</button></div>
         <h3 className="choose-title">А теперь выбери картинку</h3>
         <div className="picture-options">
           {sensoryItems.map((item, index) => <button key={item.word} onClick={() => choose(index)} className={`${picked === index ? (index === targetIndex ? "correct" : "wrong") : ""} ${picked !== null && index === targetIndex ? "answer" : ""}`}><span><Image src={item.image} alt={item.word} width={112} height={112}/></span><strong>{item.word}</strong>{picked !== null && index === targetIndex && <i><Check size={16} /></i>}</button>)}
@@ -595,12 +614,12 @@ const phraseGroups = [
   { label: "Что?", color: "#5fc1a7", cards: [{ word: "сок", image: "/illustrations/juice.png" }, { word: "мяч", image: "/illustrations/ball.png" }, { word: "яблоко", image: "/illustrations/apple.png" }] },
 ];
 
-function PhraseGame({ onBack, onComplete }: { onBack: () => void; onComplete: (score: number, phrase: string) => void }) {
+function PhraseGame({ exercise, soundEnabled, onBack, onComplete }: { exercise?: Exercise; soundEnabled: boolean; onBack: () => void; onComplete: (score: number, phrase: string, exerciseId: number) => void }) {
   const [selected, setSelected] = useState<Array<{ word: string; image: string; group: number }>>([]);
   const savedRef = useRef(false);
   const sentence = selected.map((item) => item.word).join(" ");
   const selectCard = (card: { word: string; image: string }, group: number) => { savedRef.current = false; setSelected((items) => [...items.filter((item) => item.group !== group), { ...card, group }].sort((a,b) => a.group - b.group)); };
-  const sayPhrase = () => { if (selected.length) { speak(sentence, 0.72); if (selected.length === 3 && !savedRef.current) { savedRef.current = true; onComplete(100, sentence); } } };
+  const sayPhrase = () => { if (selected.length) { speak(sentence, 0.72, soundEnabled); if (selected.length === 3 && !savedRef.current && exercise) { savedRef.current = true; onComplete(100, sentence, exercise.id); } } };
   return (
     <div className="page-enter game-page">
       <GameHeader title="Собери свою фразу" subtitle="Учимся общаться" step={`${selected.length} из 3`} onBack={onBack} />
@@ -613,7 +632,7 @@ function PhraseGame({ onBack, onComplete }: { onBack: () => void; onComplete: (s
           <div className="result-illustration"><div className="speech-cloud">{sentence || "Я хочу сказать…"}</div><div className="child-figure"><Image src="/illustrations/me.png" alt="Ребёнок" width={150} height={150}/></div></div>
           <span className="kicker">ТВОЯ ФРАЗА</span>
           <div className="sentence-strip">{[0,1,2].map((group) => { const item = selected.find((entry) => entry.group === group); return <div key={group} className={item ? "filled" : ""}>{item ? <><span><Image src={item.image} alt="" width={44} height={44}/></span><b>{item.word}</b></> : <span className="plus">+</span>}</div>; })}</div>
-          <button className="speak-button" disabled={!selected.length} onClick={sayPhrase}><Volume2 size={22} /> Озвучить фразу</button>
+          <button className="speak-button" disabled={!selected.length} onClick={sayPhrase}><Volume2 size={22} /> {soundEnabled ? "Озвучить фразу" : "Сохранить фразу"}</button>
           <button className="clear-button" onClick={() => setSelected([])}>Очистить карточки</button>
           {selected.length === 3 && <div className="success-box compact"><Check size={18} /><div><strong>Готовое предложение!</strong><span>Нажми, чтобы услышать его</span></div></div>}
         </div>
@@ -740,10 +759,10 @@ function SpecialistScreen() {
   return <div className="page-enter stack-xl"><PageTitle eyebrow="КАБИНЕТ СПЕЦИАЛИСТА" title="Наблюдение и рекомендации" subtitle="Выберите ребёнка, чтобы увидеть динамику и персональный план."/><div className="specialist-layout"><section className="children-list"><span className="kicker">МОИ ПОДОПЕЧНЫЕ</span>{children.map((child) => <button key={child.id} className={selected === child.id ? "active" : ""} onClick={() => setSelected(child.id)}><div className="avatar" style={{background:child.avatar_color}}>{child.name[0]}</div><div><strong>{child.name}</strong><small>{child.parent_name || "Родитель"}</small></div><ChevronRight size={17}/></button>)}</section><section className="ai-panel"><div className="ai-heading"><div className="recommend-icon"><Sparkles/></div><div><span className="kicker">AI-АНАЛИЗ</span><h2>Рекомендация на неделю</h2></div><span className="confidence">{recommendation?.confidence || 0}% уверенности</span></div><p>{recommendation?.summary || "Анализируем историю занятий…"}</p><div className="plan-list">{recommendation?.plan.map((item, index) => <div key={item}><span>{index + 1}</span><strong>{item}</strong></div>)}</div><div className="medical-note"><ShieldCheck size={21}/><p>Рекомендация помогает специалисту принимать решение, но не заменяет профессиональную оценку.</p></div></section></div></div>;
 }
 
-function SettingsScreen({ theme, onThemeChange, onLogout }: { theme: string; onThemeChange: (theme: string) => void; onLogout: () => void }) {
-  const [camera, setCamera] = useState(true); const [sound, setSound] = useState(true); const [calm, setCalm] = useState(false);
+function SettingsScreen({ settings, onChange, onLogout }: { settings: AppSettings; onChange: (settings: AppSettings) => void; onLogout: () => void }) {
   const themes = [{id:"peach",name:"Персиковая",colors:["#f07d68","#4eab91","#f7f5ef"]},{id:"ocean",name:"Океан",colors:["#397fa8","#5fb7ad","#edf6f7"]},{id:"lavender",name:"Лаванда",colors:["#8b74c8","#d18ca6","#f5f1fa"]},{id:"contrast",name:"Контрастная",colors:["#315f55","#e18445","#fffdf5"]}];
-  return <div className="page-enter settings-page"><PageTitle eyebrow="НАСТРОЙКИ" title="Комфортный режим" subtitle="Настройте занятия под потребности ребёнка."/><div className="settings-card"><div className="theme-setting"><span className="kicker">ЦВЕТОВАЯ ТЕМА</span><h3>Выберите оформление</h3><div className="theme-options">{themes.map((item) => <button key={item.id} className={theme === item.id ? "active" : ""} onClick={() => onThemeChange(item.id)}><span>{item.colors.map((color) => <i key={color} style={{background:color}}/>)}</span><strong>{item.name}</strong>{theme === item.id && <Check size={16}/>}</button>)}</div></div><SettingRow icon={<Camera/>} title="Камера для артикуляции" text="Обрабатывается локально, запись не сохраняется" value={camera} onChange={setCamera}/><SettingRow icon={<Volume2/>} title="Звуковые подсказки" text="Голос и мягкие сигналы успеха" value={sound} onChange={setSound}/><SettingRow icon={<Sparkles/>} title="Спокойный режим" text="Меньше анимации и визуальных эффектов" value={calm} onChange={setCalm}/><div className="setting-row"><div className="setting-icon"><LockKeyhole/></div><div><strong>Данные и приватность</strong><span>Управление согласием и удаление прогресса</span></div><button className="small-button">Открыть</button></div><div className="setting-row"><div className="setting-icon danger"><LogOut/></div><div><strong>Выйти из аккаунта</strong><span>На этом устройстве потребуется повторный вход</span></div><button className="small-button" onClick={onLogout}>Выйти</button></div></div></div>;
+  const update = <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => onChange({ ...settings, [key]: value });
+  return <div className="page-enter settings-page"><PageTitle eyebrow="НАСТРОЙКИ" title="Комфортный режим" subtitle="Настройте занятия под потребности ребёнка. Изменения сохраняются в аккаунте."/><div className="settings-card"><div className="theme-setting"><span className="kicker">ЦВЕТОВАЯ ТЕМА</span><h3>Выберите оформление</h3><div className="theme-options">{themes.map((item) => <button key={item.id} className={settings.theme === item.id ? "active" : ""} onClick={() => update("theme", item.id as AppSettings["theme"])}><span>{item.colors.map((color) => <i key={color} style={{background:color}}/>)}</span><strong>{item.name}</strong>{settings.theme === item.id && <Check size={16}/>}</button>)}</div></div><SettingRow icon={<Camera/>} title="Камера для артикуляции" text="Обрабатывается локально, запись не сохраняется" value={settings.camera_enabled} onChange={(value) => update("camera_enabled", value)}/><SettingRow icon={<Volume2/>} title="Звуковые подсказки" text="Голос и мягкие сигналы успеха" value={settings.sound_enabled} onChange={(value) => update("sound_enabled", value)}/><SettingRow icon={<Sparkles/>} title="Спокойный режим" text="Меньше анимации и визуальных эффектов" value={settings.calm_mode} onChange={(value) => update("calm_mode", value)}/><div className="setting-row"><div className="setting-icon"><LockKeyhole/></div><div><strong>Данные и приватность</strong><span>Видео не сохраняется; результаты хранятся в профиле ребёнка</span></div><span className="status active">Защищено</span></div><div className="setting-row"><div className="setting-icon danger"><LogOut/></div><div><strong>Выйти из аккаунта</strong><span>На этом устройстве потребуется повторный вход</span></div><button className="small-button" onClick={onLogout}>Выйти</button></div></div></div>;
 }
 
 function SettingRow({ icon, title, text, value, onChange }: { icon: React.ReactNode; title: string; text: string; value: boolean; onChange: (v: boolean) => void }) {

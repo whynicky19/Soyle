@@ -8,7 +8,7 @@ from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 
 from .database import connect, init_db, now_iso
-from .schemas import ActiveUpdate, ChildCreate, ExerciseCreate, LoginRequest, RegisterRequest, RoleUpdate, SessionCreate, StudentAccountCreate, StudentLoginRequest
+from .schemas import ActiveUpdate, ChildCreate, ExerciseCreate, LoginRequest, RegisterRequest, RoleUpdate, SessionCreate, StudentAccountCreate, StudentLoginRequest, UserSettingsUpdate
 from .security import create_access_token, create_student_access_token, get_current_user, hash_password, require_roles, verify_password
 
 
@@ -44,6 +44,22 @@ def ensure_child_access(child_id: int, user: dict) -> dict:
     if user["role"] == "student" and child["id"] != user["child_id"]:
         raise HTTPException(403, "Нет доступа к профилю ребёнка")
     return dict(child)
+
+
+def settings_key(user: dict) -> str:
+    account_type = "student" if user["role"] == "student" else "user"
+    return f"{account_type}:{user['id']}"
+
+
+def public_settings(row=None) -> dict:
+    if not row:
+        return {"camera_enabled": True, "sound_enabled": True, "calm_mode": False, "theme": "peach"}
+    return {
+        "camera_enabled": bool(row["camera_enabled"]),
+        "sound_enabled": bool(row["sound_enabled"]),
+        "calm_mode": bool(row["calm_mode"]),
+        "theme": row["theme"],
+    }
 
 
 @app.get("/health")
@@ -92,6 +108,28 @@ def student_login(payload: StudentLoginRequest) -> dict:
 @app.get("/api/auth/me")
 def me(user: dict = Depends(get_current_user)) -> dict:
     return user
+
+
+@app.get("/api/settings")
+def get_settings(user: dict = Depends(get_current_user)) -> dict:
+    with connect() as db:
+        row = db.execute("SELECT * FROM user_settings WHERE user_key=?", (settings_key(user),)).fetchone()
+    return public_settings(row)
+
+
+@app.put("/api/settings")
+def update_settings(payload: UserSettingsUpdate, user: dict = Depends(get_current_user)) -> dict:
+    with connect() as db:
+        db.execute(
+            """INSERT INTO user_settings(user_key,camera_enabled,sound_enabled,calm_mode,theme,updated_at)
+               VALUES(?,?,?,?,?,?)
+               ON CONFLICT(user_key) DO UPDATE SET camera_enabled=excluded.camera_enabled,
+               sound_enabled=excluded.sound_enabled,calm_mode=excluded.calm_mode,
+               theme=excluded.theme,updated_at=excluded.updated_at""",
+            (settings_key(user), int(payload.camera_enabled), int(payload.sound_enabled), int(payload.calm_mode), payload.theme, now_iso()),
+        )
+        row = db.execute("SELECT * FROM user_settings WHERE user_key=?", (settings_key(user),)).fetchone()
+    return public_settings(row)
 
 
 @app.get("/api/children")
@@ -160,6 +198,11 @@ def list_exercises(module: str | None = Query(default=None), user: dict = Depend
 def create_session(payload: SessionCreate, user: dict = Depends(get_current_user)) -> dict:
     ensure_child_access(payload.child_id, user)
     with connect() as db:
+        exercise = db.execute("SELECT id,module,is_active FROM exercises WHERE id=?", (payload.exercise_id,)).fetchone()
+        if not exercise or not exercise["is_active"]:
+            raise HTTPException(422, "Задание не найдено или находится в архиве")
+        if exercise["module"] != payload.module:
+            raise HTTPException(422, "Задание не относится к выбранному модулю")
         cursor = db.execute(
             "INSERT INTO sessions(child_id,exercise_id,module,score,duration_seconds,details,measurement_version,created_at) VALUES(?,?,?,?,?,?,1,?)",
             (payload.child_id, payload.exercise_id, payload.module, payload.score, payload.duration_seconds, json.dumps(payload.details, ensure_ascii=False), now_iso()),
@@ -177,13 +220,27 @@ def progress_data(child_id: int, user: dict) -> dict:
     child = ensure_child_access(child_id, user)
     with connect() as db:
         rows = db.execute("SELECT * FROM sessions WHERE child_id=? AND measurement_version=1 ORDER BY created_at", (child_id,)).fetchall()
+        exercise_rows = db.execute("SELECT id,module FROM exercises WHERE is_active=1").fetchall()
     by_module: dict[str, list[int]] = defaultdict(list)
     for row in rows:
         by_module[row["module"]].append(row["score"])
     labels = {"motor": "Артикуляция", "sensory": "Понимание речи", "mixed": "Построение фраз"}
     skills = [{"module": module, "label": labels[module], "value": round(sum(by_module[module]) / len(by_module[module])) if by_module[module] else 0, "sessions": len(by_module[module])} for module in ("motor", "sensory", "mixed")]
-    overall = round(sum(item["value"] for item in skills) / 3)
-    return {"child": child, "overall": overall, "total_sessions": len(rows), "skills": skills, "recent": [dict(row) for row in rows[-8:]][::-1]}
+    active_exercise_ids = {
+        module: {row["id"] for row in exercise_rows if row["module"] == module}
+        for module in ("motor", "sensory", "mixed")
+    }
+    exercise_counts = {module: len(ids) for module, ids in active_exercise_ids.items()}
+    completed = {
+        module: len({row["exercise_id"] for row in rows if row["module"] == module and row["exercise_id"] in active_exercise_ids[module]})
+        for module in ("motor", "sensory", "mixed")
+    }
+    completion = {
+        module: min(100, round(completed[module] / max(exercise_counts.get(module, 1), 1) * 100))
+        for module in ("motor", "sensory", "mixed")
+    }
+    overall = round(sum(completed.values()) / max(sum(exercise_counts.values()), 1) * 100)
+    return {"child": child, "overall": overall, "total_sessions": len(rows), "skills": skills, "module_completion": completion, "module_completed": completed, "recent": [dict(row) for row in rows[-8:]][::-1]}
 
 
 @app.get("/api/progress/{child_id}")
@@ -195,8 +252,8 @@ def progress(child_id: int, user: dict = Depends(get_current_user)) -> dict:
 def dashboard(child_id: int, user: dict = Depends(get_current_user)) -> dict:
     child = ensure_child_access(child_id, user)
     with connect() as db:
-        rows = db.execute("SELECT id,module,score,duration_seconds,created_at FROM sessions WHERE child_id=? AND measurement_version=1 ORDER BY created_at", (child_id,)).fetchall()
-        exercise_rows = db.execute("SELECT module,COUNT(*) count FROM exercises WHERE is_active=1 GROUP BY module").fetchall()
+        rows = db.execute("SELECT id,exercise_id,module,score,duration_seconds,created_at FROM sessions WHERE child_id=? AND measurement_version=1 ORDER BY created_at", (child_id,)).fetchall()
+        exercise_rows = db.execute("SELECT id,module FROM exercises WHERE is_active=1").fetchall()
 
     local_zone = ZoneInfo("Asia/Almaty")
     today = datetime.now(local_zone).date()
@@ -225,9 +282,17 @@ def dashboard(child_id: int, user: dict = Depends(get_current_user)) -> dict:
         module: round(sum(scores) / len(scores)) if scores else 0
         for module, scores in ((name, by_module[name]) for name in ("motor", "sensory", "mixed"))
     }
-    exercise_counts = {row["module"]: row["count"] for row in exercise_rows}
+    active_exercise_ids = {
+        module: {row["id"] for row in exercise_rows if row["module"] == module}
+        for module in ("motor", "sensory", "mixed")
+    }
+    exercise_counts = {module: len(ids) for module, ids in active_exercise_ids.items()}
+    module_completed = {
+        module: len({row["exercise_id"] for row in rows if row["module"] == module and row["exercise_id"] in active_exercise_ids[module]})
+        for module in ("motor", "sensory", "mixed")
+    }
     module_completion = {
-        module: min(100, round(len(by_module[module]) / max(exercise_counts.get(module, 1), 1) * 100))
+        module: min(100, round(module_completed[module] / max(exercise_counts.get(module, 1), 1) * 100))
         for module in ("motor", "sensory", "mixed")
     }
     daily = []
@@ -256,10 +321,11 @@ def dashboard(child_id: int, user: dict = Depends(get_current_user)) -> dict:
         "week_minutes": round(week_seconds / 60, 1),
         "streak_days": streak,
         "stars": sum(max(1, row["score"] // 20) for row in rows),
-        "overall": round(sum(module_accuracy.values()) / 3),
+        "overall": round(sum(module_completed.values()) / max(sum(exercise_counts.values()), 1) * 100),
         "module_progress": module_accuracy,
         "module_accuracy": module_accuracy,
         "module_completion": module_completion,
+        "module_completed": module_completed,
         "module_sessions": {module: len(by_module[module]) for module in ("motor", "sensory", "mixed")},
         "active_exercises": exercise_counts,
         "progress_delta": current_average - previous_average,

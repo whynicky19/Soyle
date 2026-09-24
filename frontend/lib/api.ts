@@ -25,12 +25,20 @@ export type Dashboard = {
   module_progress: Record<"motor" | "sensory" | "mixed", number>;
   module_accuracy: Record<"motor" | "sensory" | "mixed", number>;
   module_completion: Record<"motor" | "sensory" | "mixed", number>;
+  module_completed: Record<"motor" | "sensory" | "mixed", number>;
   module_sessions: Record<"motor" | "sensory" | "mixed", number>;
   active_exercises: Record<"motor" | "sensory" | "mixed", number>;
   progress_delta: number;
   daily: Array<{ date: string; label: string; motor: number | null; sensory: number | null; mixed: number | null }>;
   achievements: { first_five: boolean; good_listener: boolean; phrase_master: boolean; week_streak: boolean };
   recent: Array<{ id: number; module: "motor" | "sensory" | "mixed"; score: number; duration_seconds: number; created_at: string }>;
+};
+
+export type AppSettings = {
+  camera_enabled: boolean;
+  sound_enabled: boolean;
+  calm_mode: boolean;
+  theme: "peach" | "ocean" | "lavender" | "contrast";
 };
 
 export type Child = {

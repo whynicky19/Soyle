@@ -29,7 +29,7 @@ class ChildCreate(BaseModel):
 
 class SessionCreate(BaseModel):
     child_id: int
-    exercise_id: int | None = None
+    exercise_id: int
     module: ModuleName
     score: int = Field(ge=0, le=100)
     duration_seconds: int = Field(ge=0, le=7200)
@@ -41,7 +41,7 @@ class ExerciseCreate(BaseModel):
     instruction: str = Field(min_length=2, max_length=300)
     difficulty: int = Field(ge=1, le=3)
     target: str = Field(min_length=1, max_length=50)
-    icon: str = Field(min_length=1, max_length=10)
+    icon: str = Field(min_length=1, max_length=200)
     is_active: bool = True
 
 class RoleUpdate(BaseModel):
@@ -49,3 +49,9 @@ class RoleUpdate(BaseModel):
 
 class ActiveUpdate(BaseModel):
     is_active: bool
+
+class UserSettingsUpdate(BaseModel):
+    camera_enabled: bool
+    sound_enabled: bool
+    calm_mode: bool
+    theme: Literal["peach", "ocean", "lavender", "contrast"]

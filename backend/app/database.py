@@ -81,6 +81,14 @@ def init_db() -> None:
             estimated_cost_usd REAL NOT NULL DEFAULT 0,
             created_at TEXT NOT NULL
         );
+        CREATE TABLE IF NOT EXISTS user_settings (
+            user_key TEXT PRIMARY KEY,
+            camera_enabled INTEGER NOT NULL DEFAULT 1,
+            sound_enabled INTEGER NOT NULL DEFAULT 1,
+            calm_mode INTEGER NOT NULL DEFAULT 0,
+            theme TEXT NOT NULL DEFAULT 'peach',
+            updated_at TEXT NOT NULL
+        );
         """)
         columns = {row["name"] for row in db.execute("PRAGMA table_info(users)")}
         if "username" not in columns:
