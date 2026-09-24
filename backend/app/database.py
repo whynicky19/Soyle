@@ -15,24 +15,24 @@ def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 EXERCISES = [
-    ("motor", "Широкая улыбка", "Улыбнись широко и удерживай движение", 1, "smile", "😊"),
-    ("motor", "Губы трубочкой", "Вытяни губы вперёд, будто задуваешь свечу", 1, "tube", "😗"),
-    ("motor", "Окошко", "Открой рот и удерживай нижнюю челюсть спокойно", 2, "open", "😮"),
-    ("motor", "Заборчик", "Покажи зубы в спокойной улыбке", 2, "teeth", "😁"),
-    ("motor", "Воздушный шар", "Надуй обе щёки и удерживай воздух", 3, "cheeks", "🎈"),
-    ("motor", "Чередование", "Сделай улыбку, затем трубочку", 3, "sequence", "✨"),
-    ("sensory", "Домашние животные", "Послушай слово и выбери животное", 1, "animals", "🐈"),
-    ("sensory", "Еда и напитки", "Найди названный продукт", 1, "food", "🍎"),
-    ("sensory", "Игрушки", "Послушай и выбери нужную игрушку", 1, "toys", "⚽"),
-    ("sensory", "Действия", "Соедини глагол с картинкой", 2, "actions", "🏃"),
-    ("sensory", "Признаки", "Различай большой, маленький, горячий и холодный", 2, "qualities", "🌈"),
-    ("sensory", "Два шага", "Выполни короткую инструкцию из двух действий", 3, "commands", "👂"),
-    ("mixed", "Я хочу", "Собери просьбу из трёх карточек", 1, "request", "🧃"),
-    ("mixed", "Я вижу", "Расскажи, что находится рядом", 1, "observation", "👀"),
-    ("mixed", "Мне нравится", "Составь фразу о предпочтениях", 2, "preference", "❤️"),
-    ("mixed", "Моя семья", "Собери предложение о близких", 2, "family", "👨‍👩‍👦"),
-    ("mixed", "Как я себя чувствую", "Выбери эмоцию и расскажи о ней", 2, "feelings", "🙂"),
-    ("mixed", "Мой день", "Составь последовательность из четырёх карточек", 3, "routine", "☀️"),
+    ("motor", "Широкая улыбка", "Улыбнись широко и удерживай движение", 1, "smile", "/illustrations/module-articulation.png"),
+    ("motor", "Губы трубочкой", "Вытяни губы вперёд, будто задуваешь свечу", 1, "tube", "/illustrations/module-articulation.png"),
+    ("motor", "Окошко", "Открой рот и удерживай нижнюю челюсть спокойно", 2, "open", "/illustrations/module-articulation.png"),
+    ("motor", "Заборчик", "Покажи зубы в спокойной улыбке", 2, "teeth", "/illustrations/module-articulation.png"),
+    ("motor", "Воздушный шар", "Надуй обе щёки и удерживай воздух", 3, "cheeks", "/illustrations/module-articulation.png"),
+    ("motor", "Чередование", "Сделай улыбку, затем трубочку", 3, "sequence", "/illustrations/module-articulation.png"),
+    ("sensory", "Домашние животные", "Послушай слово и выбери животное", 1, "animals", "/illustrations/cat.png"),
+    ("sensory", "Еда и напитки", "Найди названный продукт", 1, "food", "/illustrations/apple.png"),
+    ("sensory", "Игрушки", "Послушай и выбери нужную игрушку", 1, "toys", "/illustrations/ball.png"),
+    ("sensory", "Действия", "Соедини глагол с картинкой", 2, "actions", "/illustrations/module-listening.png"),
+    ("sensory", "Признаки", "Различай большой, маленький, горячий и холодный", 2, "qualities", "/illustrations/module-listening.png"),
+    ("sensory", "Два шага", "Выполни короткую инструкцию из двух действий", 3, "commands", "/illustrations/module-listening.png"),
+    ("mixed", "Я хочу", "Собери просьбу из трёх карточек", 1, "request", "/illustrations/juice.png"),
+    ("mixed", "Я вижу", "Расскажи, что находится рядом", 1, "observation", "/illustrations/see.png"),
+    ("mixed", "Мне нравится", "Составь фразу о предпочтениях", 2, "preference", "/illustrations/love.png"),
+    ("mixed", "Моя семья", "Собери предложение о близких", 2, "family", "/illustrations/module-phrases.png"),
+    ("mixed", "Как я себя чувствую", "Выбери эмоцию и расскажи о ней", 2, "feelings", "/illustrations/module-phrases.png"),
+    ("mixed", "Мой день", "Составь последовательность из четырёх карточек", 3, "routine", "/illustrations/module-phrases.png"),
 ]
 
 def init_db() -> None:
@@ -104,6 +104,8 @@ def init_db() -> None:
             db.execute("INSERT INTO student_accounts(child_id,username,pin_hash,created_at) VALUES(?,?,?,?)", (child_id, "alikhan", hash_password("1234"), now_iso()))
         if not db.execute("SELECT 1 FROM exercises LIMIT 1").fetchone():
             db.executemany("INSERT INTO exercises(module,title,instruction,difficulty,target,icon) VALUES(?,?,?,?,?,?)", EXERCISES)
+        icon_by_target = {exercise[4]: exercise[5] for exercise in EXERCISES}
+        db.executemany("UPDATE exercises SET icon=? WHERE target=?", [(icon, target) for target, icon in icon_by_target.items()])
         if not db.execute("SELECT 1 FROM usage_events LIMIT 1").fetchone():
             child_id = db.execute("SELECT id FROM children ORDER BY id LIMIT 1").fetchone()["id"]
             db.executemany("INSERT INTO usage_events(child_id,provider,model,feature,input_tokens,output_tokens,estimated_cost_usd,created_at) VALUES(?,?,?,?,?,?,?,?)", [
