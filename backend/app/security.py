@@ -7,7 +7,10 @@ from jwt import InvalidTokenError
 from pwdlib import PasswordHash
 from .database import connect
 
-SECRET_KEY = os.getenv("SOYLE_SECRET_KEY", "dev-only-change-this-secret-before-production")
+DEFAULT_SECRET_KEY = "dev-only-change-this-secret-before-production"
+SECRET_KEY = os.getenv("SOYLE_SECRET_KEY", DEFAULT_SECRET_KEY)
+if os.getenv("VERCEL") and SECRET_KEY == DEFAULT_SECRET_KEY:
+    raise RuntimeError("SOYLE_SECRET_KEY must be configured in production")
 ALGORITHM = "HS256"
 password_hash = PasswordHash.recommended()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")

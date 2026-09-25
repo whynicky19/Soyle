@@ -55,3 +55,18 @@ class UserSettingsUpdate(BaseModel):
     sound_enabled: bool
     calm_mode: bool
     theme: Literal["peach", "ocean", "lavender", "contrast"]
+
+class AACCardCreate(BaseModel):
+    child_id: int
+    label: str = Field(min_length=1, max_length=40)
+    speech: str = Field(min_length=1, max_length=120)
+    category: Literal["help", "wants", "needs", "people", "food", "play", "actions"]
+    image: str = Field(default="/soyle-icon.png", min_length=1, max_length=200)
+
+class AACFavoriteUpdate(BaseModel):
+    favorite: bool
+
+class AACPhraseCreate(BaseModel):
+    child_id: int
+    phrase: str = Field(min_length=1, max_length=300)
+    card_ids: list[int] = Field(default_factory=list, max_length=12)

@@ -1,4 +1,5 @@
 import json
+import os
 from collections import defaultdict
 from contextlib import asynccontextmanager
 from datetime import date, datetime, timedelta, timezone
@@ -8,7 +9,7 @@ from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 
 from .database import connect, init_db, now_iso
-from .schemas import ActiveUpdate, ChildCreate, ExerciseCreate, LoginRequest, RegisterRequest, RoleUpdate, SessionCreate, StudentAccountCreate, StudentLoginRequest, UserSettingsUpdate
+from .schemas import AACCardCreate, AACFavoriteUpdate, AACPhraseCreate, ActiveUpdate, ChildCreate, ExerciseCreate, LoginRequest, RegisterRequest, RoleUpdate, SessionCreate, StudentAccountCreate, StudentLoginRequest, UserSettingsUpdate
 from .security import create_access_token, create_student_access_token, get_current_user, hash_password, require_roles, verify_password
 
 
@@ -19,13 +20,28 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(title="Söyle API", version="1.0.0", lifespan=lifespan)
+allowed_origins = [origin.strip() for origin in os.getenv(
+    "SOYLE_ALLOWED_ORIGINS",
+    "http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,http://127.0.0.1:3001",
+).split(",") if origin.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:3001", "http://127.0.0.1:3001"],
+    allow_origins=allowed_origins,
+    allow_origin_regex=os.getenv("SOYLE_ALLOWED_ORIGIN_REGEX") or None,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+COURSE_UNITS = [
+    {"id": "intro", "label": "Вводный курс", "title": "Я могу сообщить о важном", "targets": ["help", "desire", "need"], "practice": "В течение дня создайте 3 спокойные ситуации, где ребёнок сможет попросить помощь, перерыв или желаемый предмет."},
+    {"id": "food", "label": "Модуль 1", "title": "Еда и продукты", "targets": ["food", "request", "preference"], "practice": "Во время еды предлагайте выбор из двух продуктов и дайте ребёнку время попросить нужное словом или карточкой."},
+    {"id": "home", "label": "Модуль 2", "title": "Дом и семья", "targets": ["family", "observation", "animals"], "practice": "Называйте близких и знакомые предметы дома, затем задавайте короткий вопрос: «Кто это?» или «Что ты видишь?»."},
+    {"id": "play", "label": "Модуль 3", "title": "Игрушки и признаки", "targets": ["toys", "qualities"], "practice": "В игре просите выбрать большой или маленький предмет и поощряйте просьбы «дай мяч» и «хочу ещё»."},
+    {"id": "actions", "label": "Модуль 4", "title": "Действия и мой день", "targets": ["actions", "commands", "routine"], "practice": "Комментируйте знакомые действия короткими фразами и вместе составьте последовательность из 2–3 событий дня."},
+    {"id": "feelings", "label": "Модуль 5", "title": "Чувства и состояние", "targets": ["feelings"], "practice": "Несколько раз в день предлагайте выбрать карточку состояния: весело, грустно, больно, устал или нужен перерыв."},
+    {"id": "motor", "label": "Модуль 6", "title": "Артикуляционная гимнастика", "targets": ["smile", "tube", "open", "teeth", "cheeks", "sequence"], "practice": "Повторяйте знакомые движения перед зеркалом по 3–5 минут без давления и заканчивайте на успешной попытке."},
+]
 
 
 def public_user(row) -> dict:
@@ -62,6 +78,39 @@ def public_settings(row=None) -> dict:
     }
 
 
+def create_module_notification(db, child_id: int, exercise_id: int) -> None:
+    exercise = db.execute("SELECT target FROM exercises WHERE id=?", (exercise_id,)).fetchone()
+    if not exercise:
+        return
+    unit = next((item for item in COURSE_UNITS if exercise["target"] in item["targets"]), None)
+    if not unit:
+        return
+    placeholders = ",".join("?" for _ in unit["targets"])
+    completed_targets = {
+        row["target"] for row in db.execute(
+            f"""SELECT DISTINCT e.target FROM sessions s JOIN exercises e ON e.id=s.exercise_id
+                WHERE s.child_id=? AND s.measurement_version=1 AND e.target IN ({placeholders})""",
+            (child_id, *unit["targets"]),
+        ).fetchall()
+    }
+    if not set(unit["targets"]).issubset(completed_targets):
+        return
+    child = db.execute("SELECT name,parent_id FROM children WHERE id=?", (child_id,)).fetchone()
+    if not child:
+        return
+    db.execute(
+        """INSERT INTO notifications(user_id,child_id,event_key,title,message,metadata,created_at)
+           VALUES(?,?,?,?,?,?,?) ON CONFLICT(event_key) DO NOTHING""",
+        (
+            child["parent_id"], child_id, f"module_complete:{child_id}:{unit['id']}",
+            f"{unit['label']}: {unit['title']} завершён",
+            f"{child['name']}: модуль пройден. Самое время начать практические тренировки дома! {unit['practice']}",
+            json.dumps({"unit_id": unit["id"], "unit_label": unit["label"], "unit_title": unit["title"], "practice": unit["practice"]}, ensure_ascii=False),
+            now_iso(),
+        ),
+    )
+
+
 @app.get("/health")
 def health() -> dict:
     return {"status": "ok", "service": "soyle-api"}
@@ -74,10 +123,10 @@ def register(payload: RegisterRequest) -> dict:
         if db.execute("SELECT 1 FROM users WHERE lower(username)=?", (username,)).fetchone():
             raise HTTPException(409, "Этот логин уже занят")
         cursor = db.execute(
-            "INSERT INTO users(email,username,password_hash,full_name,role,created_at) VALUES(?,?,?,?,?,?)",
+            "INSERT INTO users(email,username,password_hash,full_name,role,created_at) VALUES(?,?,?,?,?,?) RETURNING id",
             (f"{username}@local.soyle", username, hash_password(payload.password), payload.full_name, "parent", now_iso()),
         )
-        user_id = cursor.lastrowid
+        user_id = cursor.fetchone()["id"]
         row = db.execute("SELECT * FROM users WHERE id=?", (user_id,)).fetchone()
     return {"access_token": create_access_token(user_id, "parent"), "token_type": "bearer", "user": public_user(row)}
 
@@ -132,6 +181,39 @@ def update_settings(payload: UserSettingsUpdate, user: dict = Depends(get_curren
     return public_settings(row)
 
 
+@app.get("/api/notifications")
+def list_notifications(user: dict = Depends(require_roles("parent"))) -> dict:
+    with connect() as db:
+        completed_rows = db.execute(
+            """SELECT DISTINCT s.child_id,s.exercise_id FROM sessions s
+               JOIN children c ON c.id=s.child_id
+               WHERE c.parent_id=? AND s.exercise_id IS NOT NULL AND s.measurement_version=1""",
+            (user["id"],),
+        ).fetchall()
+        for completed in completed_rows:
+            create_module_notification(db, completed["child_id"], completed["exercise_id"])
+        rows = db.execute("SELECT * FROM notifications WHERE user_id=? ORDER BY id DESC LIMIT 30", (user["id"],)).fetchall()
+    items = [{**dict(row), "metadata": json.loads(row["metadata"]), "is_read": bool(row["is_read"])} for row in rows]
+    return {"unread": sum(1 for item in items if not item["is_read"]), "items": items}
+
+
+@app.patch("/api/notifications/{notification_id}/read")
+def read_notification(notification_id: int, user: dict = Depends(require_roles("parent"))) -> dict:
+    with connect() as db:
+        db.execute("UPDATE notifications SET is_read=1 WHERE id=? AND user_id=?", (notification_id, user["id"]))
+        row = db.execute("SELECT id,is_read FROM notifications WHERE id=? AND user_id=?", (notification_id, user["id"])).fetchone()
+    if not row:
+        raise HTTPException(404, "Уведомление не найдено")
+    return {"id": row["id"], "is_read": bool(row["is_read"])}
+
+
+@app.patch("/api/notifications/actions/read-all")
+def read_all_notifications(user: dict = Depends(require_roles("parent"))) -> dict:
+    with connect() as db:
+        cursor = db.execute("UPDATE notifications SET is_read=1 WHERE user_id=? AND is_read=0", (user["id"],))
+    return {"updated": cursor.rowcount}
+
+
 @app.get("/api/children")
 def list_children(user: dict = Depends(get_current_user)) -> list[dict]:
     with connect() as db:
@@ -152,10 +234,10 @@ def create_child(payload: ChildCreate, user: dict = Depends(require_roles("paren
         raise HTTPException(422, "Дата должна быть в формате YYYY-MM-DD")
     with connect() as db:
         cursor = db.execute(
-            "INSERT INTO children(parent_id,name,birth_date,primary_module,avatar_color) VALUES(?,?,?,?,?)",
+            "INSERT INTO children(parent_id,name,birth_date,primary_module,avatar_color) VALUES(?,?,?,?,?) RETURNING id",
             (user["id"], payload.name, payload.birth_date, payload.primary_module, payload.avatar_color),
         )
-        row = db.execute("SELECT * FROM children WHERE id=?", (cursor.lastrowid,)).fetchone()
+        row = db.execute("SELECT * FROM children WHERE id=?", (cursor.fetchone()["id"],)).fetchone()
     return dict(row)
 
 
@@ -194,6 +276,68 @@ def list_exercises(module: str | None = Query(default=None), user: dict = Depend
         return [dict(row) for row in db.execute(query + " ORDER BY module,difficulty,id", params).fetchall()]
 
 
+@app.get("/api/aac/cards/{child_id}")
+def aac_cards(child_id: int, user: dict = Depends(get_current_user)) -> list[dict]:
+    ensure_child_access(child_id, user)
+    with connect() as db:
+        rows = db.execute(
+            """SELECT c.*,CASE WHEN f.card_id IS NULL THEN 0 ELSE 1 END favorite
+               FROM aac_cards c LEFT JOIN aac_favorites f ON f.card_id=c.id AND f.child_id=?
+               WHERE c.is_active=1 AND (c.child_id IS NULL OR c.child_id=?)
+               ORDER BY c.is_core DESC,c.category,c.id""",
+            (child_id, child_id),
+        ).fetchall()
+    return [dict(row) for row in rows]
+
+
+@app.post("/api/aac/cards", status_code=201)
+def create_aac_card(payload: AACCardCreate, user: dict = Depends(require_roles("parent"))) -> dict:
+    ensure_child_access(payload.child_id, user)
+    with connect() as db:
+        cursor = db.execute(
+            "INSERT INTO aac_cards(child_id,label,speech,category,image,created_by,created_at) VALUES(?,?,?,?,?,?,?) RETURNING id",
+            (payload.child_id, payload.label, payload.speech, payload.category, payload.image, user["id"], now_iso()),
+        )
+        row = db.execute("SELECT *,0 favorite FROM aac_cards WHERE id=?", (cursor.fetchone()["id"],)).fetchone()
+    return dict(row)
+
+
+@app.patch("/api/aac/cards/{card_id}/favorite")
+def favorite_aac_card(card_id: int, child_id: int, payload: AACFavoriteUpdate, user: dict = Depends(get_current_user)) -> dict:
+    ensure_child_access(child_id, user)
+    with connect() as db:
+        card = db.execute("SELECT id FROM aac_cards WHERE id=? AND is_active=1 AND (child_id IS NULL OR child_id=?)", (card_id, child_id)).fetchone()
+        if not card:
+            raise HTTPException(404, "Карточка не найдена")
+        if payload.favorite:
+            db.execute("INSERT INTO aac_favorites(child_id,card_id) VALUES(?,?) ON CONFLICT DO NOTHING", (child_id, card_id))
+        else:
+            db.execute("DELETE FROM aac_favorites WHERE child_id=? AND card_id=?", (child_id, card_id))
+    return {"card_id": card_id, "favorite": payload.favorite}
+
+
+@app.post("/api/aac/history", status_code=201)
+def save_aac_phrase(payload: AACPhraseCreate, user: dict = Depends(get_current_user)) -> dict:
+    ensure_child_access(payload.child_id, user)
+    with connect() as db:
+        cursor = db.execute(
+            "INSERT INTO aac_phrase_history(child_id,user_key,phrase,card_ids,created_at) VALUES(?,?,?,?,?) RETURNING id",
+            (payload.child_id, settings_key(user), payload.phrase, json.dumps(payload.card_ids), now_iso()),
+        )
+        row = db.execute("SELECT * FROM aac_phrase_history WHERE id=?", (cursor.fetchone()["id"],)).fetchone()
+    result = dict(row)
+    result["card_ids"] = json.loads(result["card_ids"])
+    return result
+
+
+@app.get("/api/aac/history/{child_id}")
+def aac_history(child_id: int, user: dict = Depends(get_current_user)) -> list[dict]:
+    ensure_child_access(child_id, user)
+    with connect() as db:
+        rows = db.execute("SELECT * FROM aac_phrase_history WHERE child_id=? ORDER BY id DESC LIMIT 12", (child_id,)).fetchall()
+    return [{**dict(row), "card_ids": json.loads(row["card_ids"])} for row in rows]
+
+
 @app.post("/api/sessions", status_code=201)
 def create_session(payload: SessionCreate, user: dict = Depends(get_current_user)) -> dict:
     ensure_child_access(payload.child_id, user)
@@ -204,12 +348,13 @@ def create_session(payload: SessionCreate, user: dict = Depends(get_current_user
         if exercise["module"] != payload.module:
             raise HTTPException(422, "Задание не относится к выбранному модулю")
         cursor = db.execute(
-            "INSERT INTO sessions(child_id,exercise_id,module,score,duration_seconds,details,measurement_version,created_at) VALUES(?,?,?,?,?,?,1,?)",
+            "INSERT INTO sessions(child_id,exercise_id,module,score,duration_seconds,details,measurement_version,created_at) VALUES(?,?,?,?,?,?,1,?) RETURNING id",
             (payload.child_id, payload.exercise_id, payload.module, payload.score, payload.duration_seconds, json.dumps(payload.details, ensure_ascii=False), now_iso()),
         )
-        row = db.execute("SELECT * FROM sessions WHERE id=?", (cursor.lastrowid,)).fetchone()
+        row = db.execute("SELECT * FROM sessions WHERE id=?", (cursor.fetchone()["id"],)).fetchone()
         if payload.module == "motor" and payload.details.get("source") == "face-landmarker":
             db.execute("INSERT INTO usage_events(user_id,child_id,provider,model,feature,created_at) VALUES(?,?,?,?,?,?)", (user["id"], payload.child_id, "local", "MediaPipe Face Landmarker", "Анализ артикуляции", now_iso()))
+        create_module_notification(db, payload.child_id, payload.exercise_id)
     result = dict(row)
     result["details"] = json.loads(result["details"])
     result["awarded_stars"] = max(1, payload.score // 20)
@@ -326,6 +471,7 @@ def dashboard(child_id: int, user: dict = Depends(get_current_user)) -> dict:
         "module_accuracy": module_accuracy,
         "module_completion": module_completion,
         "module_completed": module_completed,
+        "completed_exercise_ids": sorted({row["exercise_id"] for row in rows if row["exercise_id"] is not None}),
         "module_sessions": {module: len(by_module[module]) for module in ("motor", "sensory", "mixed")},
         "active_exercises": exercise_counts,
         "progress_delta": current_average - previous_average,
@@ -390,9 +536,10 @@ def admin_students(_: dict = Depends(require_roles("admin"))) -> list[dict]:
 
 @app.get("/api/admin/usage")
 def admin_usage(days: int = Query(default=30, ge=1, le=365), _: dict = Depends(require_roles("admin"))) -> dict:
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
     with connect() as db:
-        totals = db.execute("SELECT COUNT(*) requests,COALESCE(SUM(input_tokens),0) input_tokens,COALESCE(SUM(output_tokens),0) output_tokens,COALESCE(SUM(estimated_cost_usd),0) cost FROM usage_events WHERE created_at >= datetime('now', ?)", (f"-{days} days",)).fetchone()
-        breakdown = db.execute("SELECT provider,model,feature,COUNT(*) requests,SUM(input_tokens) input_tokens,SUM(output_tokens) output_tokens,SUM(estimated_cost_usd) cost FROM usage_events WHERE created_at >= datetime('now', ?) GROUP BY provider,model,feature ORDER BY requests DESC", (f"-{days} days",)).fetchall()
+        totals = db.execute("SELECT COUNT(*) requests,COALESCE(SUM(input_tokens),0) input_tokens,COALESCE(SUM(output_tokens),0) output_tokens,COALESCE(SUM(estimated_cost_usd),0) cost FROM usage_events WHERE created_at >= ?", (cutoff,)).fetchone()
+        breakdown = db.execute("SELECT provider,model,feature,COUNT(*) requests,SUM(input_tokens) input_tokens,SUM(output_tokens) output_tokens,SUM(estimated_cost_usd) cost FROM usage_events WHERE created_at >= ? GROUP BY provider,model,feature ORDER BY requests DESC", (cutoff,)).fetchall()
         recent = db.execute("SELECT provider,model,feature,input_tokens,output_tokens,estimated_cost_usd,created_at FROM usage_events ORDER BY id DESC LIMIT 20").fetchall()
     return {"period_days": days, "requests": totals["requests"], "input_tokens": totals["input_tokens"], "output_tokens": totals["output_tokens"], "total_tokens": totals["input_tokens"] + totals["output_tokens"], "estimated_cost_usd": round(totals["cost"], 6), "breakdown": [dict(row) for row in breakdown], "recent": [dict(row) for row in recent], "note": "MediaPipe выполняется локально и не расходует токены. Стоимость облачных моделей будет рассчитана при их подключении."}
 
@@ -424,8 +571,8 @@ def update_active(user_id: int, payload: ActiveUpdate, admin: dict = Depends(req
 @app.post("/api/admin/exercises", status_code=201)
 def create_exercise(payload: ExerciseCreate, _: dict = Depends(require_roles("admin"))) -> dict:
     with connect() as db:
-        cursor = db.execute("INSERT INTO exercises(module,title,instruction,difficulty,target,icon,is_active) VALUES(?,?,?,?,?,?,?)", (payload.module, payload.title, payload.instruction, payload.difficulty, payload.target, payload.icon, int(payload.is_active)))
-        row = db.execute("SELECT * FROM exercises WHERE id=?", (cursor.lastrowid,)).fetchone()
+        cursor = db.execute("INSERT INTO exercises(module,title,instruction,difficulty,target,icon,is_active) VALUES(?,?,?,?,?,?,?) RETURNING id", (payload.module, payload.title, payload.instruction, payload.difficulty, payload.target, payload.icon, int(payload.is_active)))
+        row = db.execute("SELECT * FROM exercises WHERE id=?", (cursor.fetchone()["id"],)).fetchone()
     return dict(row)
 
 

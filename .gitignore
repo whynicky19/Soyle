@@ -2,6 +2,12 @@ node_modules/
 .next/
 __pycache__/
 .venv/
-ai_sana.db
+*.db
+*.db-shm
+*.db-wal
 .env
+.env.local
+.vercel/
+backend/.agents/
+backend/skills-lock.json
 .DS_Store

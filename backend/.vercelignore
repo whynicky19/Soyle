@@ -1,0 +1,8 @@
+.agents/
+.venv/
+.env*
+*.db
+*.db-shm
+*.db-wal
+__pycache__/
+skills-lock.json

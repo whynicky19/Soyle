@@ -5,10 +5,12 @@ PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
 BACKEND_DIR="$PROJECT_DIR/backend"
 FRONTEND_DIR="$PROJECT_DIR/frontend"
 
-if [[ ! -x "$BACKEND_DIR/.venv/bin/uvicorn" ]]; then
+VENV_PYTHON="$BACKEND_DIR/.venv/bin/python"
+
+if [[ ! -x "$VENV_PYTHON" ]] || ! "$VENV_PYTHON" -c "import uvicorn" >/dev/null 2>&1; then
   echo "Устанавливаю backend-зависимости…"
   python3 -m venv "$BACKEND_DIR/.venv"
-  "$BACKEND_DIR/.venv/bin/pip" install -r "$BACKEND_DIR/requirements.txt"
+  "$VENV_PYTHON" -m pip install -r "$BACKEND_DIR/requirements.txt"
 fi
 
 if [[ ! -d "$FRONTEND_DIR/node_modules" ]]; then
@@ -28,10 +30,20 @@ if curl -fsS http://127.0.0.1:8010/health >/dev/null 2>&1; then
 else
   echo "Запускаю FastAPI: http://127.0.0.1:8010"
   cd "$BACKEND_DIR"
-  "$BACKEND_DIR/.venv/bin/uvicorn" app.main:app --reload --host 127.0.0.1 --port 8010 &
+  "$VENV_PYTHON" -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8010 &
   BACKEND_PID=$!
-  sleep 1
-  if ! kill -0 "$BACKEND_PID" 2>/dev/null; then
+  BACKEND_READY=0
+  for _ in {1..40}; do
+    if curl -fsS http://127.0.0.1:8010/health >/dev/null 2>&1; then
+      BACKEND_READY=1
+      break
+    fi
+    if ! kill -0 "$BACKEND_PID" 2>/dev/null; then
+      break
+    fi
+    sleep 0.25
+  done
+  if [[ "$BACKEND_READY" -ne 1 ]]; then
     echo "Не удалось запустить FastAPI. Проверьте, свободен ли порт 8010."
     exit 1
   fi
