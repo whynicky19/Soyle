@@ -11,3 +11,5 @@ __pycache__/
 backend/.agents/
 backend/skills-lock.json
 .DS_Store
+.vercel
+.env*
