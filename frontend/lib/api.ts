@@ -1,4 +1,16 @@
 export type Role = "admin" | "parent" | "specialist" | "student";
+export type SkillName = "articulation" | "vocabulary" | "speech_comprehension" | "word_repetition" | "phrase_building" | "communication";
+
+export type SkillProgress = {
+  skill: SkillName;
+  label: string;
+  value: number;
+  recent_change: number | null;
+  sessions: number;
+  completed_exercises: number;
+  total_exercises: number;
+  recommended_practice: string;
+};
 
 export type User = {
   id: number;
@@ -29,6 +41,9 @@ export type Dashboard = {
   completed_exercise_ids: number[];
   module_sessions: Record<"motor" | "sensory" | "mixed", number>;
   active_exercises: Record<"motor" | "sensory" | "mixed", number>;
+  skill_progress: SkillProgress[];
+  weakest_skill: SkillProgress | null;
+  recommended_exercise: Exercise | null;
   progress_delta: number;
   daily: Array<{ date: string; label: string; motor: number | null; sensory: number | null; mixed: number | null }>;
   achievements: { first_five: boolean; good_listener: boolean; phrase_master: boolean; week_streak: boolean };
@@ -60,7 +75,19 @@ export type Exercise = {
   difficulty: number;
   target: string;
   icon: string;
+  skill: SkillName | null;
   is_active: number | boolean;
+};
+
+export type LearningSession = {
+  id: number;
+  child_id: number;
+  status: "in_progress" | "completed";
+  current_index: number;
+  started_at: string;
+  completed_at?: string | null;
+  exercises: Exercise[];
+  results?: Array<{ exercise_id: number; score: number; duration_seconds: number; created_at: string }>;
 };
 
 export type AACCard = {
@@ -68,7 +95,7 @@ export type AACCard = {
   child_id: number | null;
   label: string;
   speech: string;
-  category: "help" | "wants" | "needs" | "people" | "food" | "play" | "actions";
+  category: "help" | "wants" | "needs" | "feelings" | "yes_no" | "people" | "food" | "play" | "places" | "actions";
   image: string;
   is_core: number | boolean;
   favorite: number | boolean;
@@ -111,8 +138,8 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
   try {
     response = await fetch(`${API_URL}${path}`, { ...options, headers, signal: controller.signal });
   } catch (cause) {
-    if (cause instanceof DOMException && cause.name === "AbortError") throw new Error("Сервер Söyle отвечает слишком долго. Перезапустите проект командой ./start.sh");
-    throw new Error("Сервер Söyle недоступен. Запустите проект командой ./start.sh");
+    if (cause instanceof DOMException && cause.name === "AbortError") throw new Error("Сервер Söyle отвечает слишком долго. Попробуйте ещё раз через несколько секунд.");
+    throw new Error("Сервер Söyle временно недоступен. Проверьте подключение и попробуйте ещё раз.");
   } finally {
     window.clearTimeout(timeout);
   }

@@ -9,7 +9,7 @@ from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 
 from .database import connect, init_db, now_iso
-from .schemas import AACCardCreate, AACFavoriteUpdate, AACPhraseCreate, ActiveUpdate, ChildCreate, ExerciseCreate, LoginRequest, RegisterRequest, RoleUpdate, SessionCreate, StudentAccountCreate, StudentLoginRequest, UserSettingsUpdate
+from .schemas import AACCardCreate, AACFavoriteUpdate, AACPhraseCreate, ActiveUpdate, AssignedExerciseCreate, ChildCreate, ExerciseCreate, LearningSessionCreate, LoginRequest, RecommendationReview, RegisterRequest, RoleUpdate, SessionCreate, SpecialistAssignmentCreate, SpecialistRecommendationCreate, StudentAccountCreate, StudentLoginRequest, UserSettingsUpdate
 from .security import create_access_token, create_student_access_token, get_current_user, hash_password, require_roles, verify_password
 
 
@@ -43,6 +43,15 @@ COURSE_UNITS = [
     {"id": "motor", "label": "Модуль 6", "title": "Артикуляционная гимнастика", "targets": ["smile", "tube", "open", "teeth", "cheeks", "sequence"], "practice": "Повторяйте знакомые движения перед зеркалом по 3–5 минут без давления и заканчивайте на успешной попытке."},
 ]
 
+SKILL_META = {
+    "articulation": {"label": "Артикуляция", "practice": "Повторить знакомые движения перед зеркалом"},
+    "vocabulary": {"label": "Словарный запас", "practice": "Назвать 3–5 знакомых предметов"},
+    "speech_comprehension": {"label": "Понимание речи", "practice": "Выполнить короткую инструкцию из одного шага"},
+    "word_repetition": {"label": "Повторение слов", "practice": "Спокойно повторить 3 знакомых слова"},
+    "phrase_building": {"label": "Построение фраз", "practice": "Собрать короткую фразу из 2–3 карточек"},
+    "communication": {"label": "Коммуникация", "practice": "Попросить помощь или сообщить о желании"},
+}
+
 
 def public_user(row) -> dict:
     result = {key: row[key] for key in ("id", "username", "full_name", "role", "is_active", "created_at")}
@@ -59,6 +68,11 @@ def ensure_child_access(child_id: int, user: dict) -> dict:
         raise HTTPException(403, "Нет доступа к профилю ребёнка")
     if user["role"] == "student" and child["id"] != user["child_id"]:
         raise HTTPException(403, "Нет доступа к профилю ребёнка")
+    if user["role"] == "specialist":
+        with connect() as db:
+            assignment = db.execute("SELECT 1 FROM specialist_children WHERE specialist_id=? AND child_id=?", (user["id"], child_id)).fetchone()
+        if not assignment:
+            raise HTTPException(403, "Ребёнок не назначен этому специалисту")
     return dict(child)
 
 
@@ -221,6 +235,13 @@ def list_children(user: dict = Depends(get_current_user)) -> list[dict]:
             rows = db.execute("SELECT * FROM children WHERE parent_id=? ORDER BY id", (user["id"],)).fetchall()
         elif user["role"] == "student":
             rows = db.execute("SELECT * FROM children WHERE id=?", (user["child_id"],)).fetchall()
+        elif user["role"] == "specialist":
+            rows = db.execute(
+                """SELECT c.*,u.full_name parent_name,u.username parent_username
+                   FROM specialist_children sc JOIN children c ON c.id=sc.child_id
+                   JOIN users u ON u.id=c.parent_id WHERE sc.specialist_id=? ORDER BY c.id""",
+                (user["id"],),
+            ).fetchall()
         else:
             rows = db.execute("SELECT c.*,u.full_name parent_name,u.username parent_username FROM children c JOIN users u ON u.id=c.parent_id ORDER BY c.id").fetchall()
     return [dict(row) for row in rows]
@@ -347,13 +368,29 @@ def create_session(payload: SessionCreate, user: dict = Depends(get_current_user
             raise HTTPException(422, "Задание не найдено или находится в архиве")
         if exercise["module"] != payload.module:
             raise HTTPException(422, "Задание не относится к выбранному модулю")
+        if payload.learning_session_id:
+            learning = db.execute("SELECT * FROM learning_sessions WHERE id=? AND child_id=?", (payload.learning_session_id, payload.child_id)).fetchone()
+            if not learning:
+                raise HTTPException(422, "Занятие не найдено")
+            planned_ids = json.loads(learning["exercise_ids"])
+            if payload.exercise_id not in planned_ids:
+                raise HTTPException(422, "Это упражнение не входит в текущее занятие")
         cursor = db.execute(
-            "INSERT INTO sessions(child_id,exercise_id,module,score,duration_seconds,details,measurement_version,created_at) VALUES(?,?,?,?,?,?,1,?) RETURNING id",
-            (payload.child_id, payload.exercise_id, payload.module, payload.score, payload.duration_seconds, json.dumps(payload.details, ensure_ascii=False), now_iso()),
+            """INSERT INTO sessions(child_id,exercise_id,module,score,duration_seconds,details,measurement_version,learning_session_id,sequence_index,created_at)
+               VALUES(?,?,?,?,?,?,1,?,?,?) RETURNING id""",
+            (payload.child_id, payload.exercise_id, payload.module, payload.score, payload.duration_seconds, json.dumps(payload.details, ensure_ascii=False), payload.learning_session_id, payload.sequence_index, now_iso()),
         )
         row = db.execute("SELECT * FROM sessions WHERE id=?", (cursor.fetchone()["id"],)).fetchone()
+        if payload.learning_session_id:
+            completed_count = db.execute("SELECT COUNT(DISTINCT exercise_id) count FROM sessions WHERE learning_session_id=? AND measurement_version=1", (payload.learning_session_id,)).fetchone()["count"]
+            planned_count = len(json.loads(learning["exercise_ids"]))
+            if completed_count >= planned_count:
+                db.execute("UPDATE learning_sessions SET status='completed',current_index=?,completed_at=? WHERE id=?", (planned_count, now_iso(), payload.learning_session_id))
+            else:
+                db.execute("UPDATE learning_sessions SET current_index=? WHERE id=?", (completed_count, payload.learning_session_id))
         if payload.module == "motor" and payload.details.get("source") == "face-landmarker":
             db.execute("INSERT INTO usage_events(user_id,child_id,provider,model,feature,created_at) VALUES(?,?,?,?,?,?)", (user["id"], payload.child_id, "local", "MediaPipe Face Landmarker", "Анализ артикуляции", now_iso()))
+        db.execute("UPDATE assigned_exercises SET status='completed',completed_at=? WHERE child_id=? AND exercise_id=? AND status='assigned'", (now_iso(), payload.child_id, payload.exercise_id))
         create_module_notification(db, payload.child_id, payload.exercise_id)
     result = dict(row)
     result["details"] = json.loads(result["details"])
@@ -361,11 +398,39 @@ def create_session(payload: SessionCreate, user: dict = Depends(get_current_user
     return result
 
 
+def build_skill_progress(rows, exercise_rows) -> list[dict]:
+    exercises_by_id = {row["id"]: row for row in exercise_rows}
+    results: list[dict] = []
+    for skill, meta in SKILL_META.items():
+        skill_exercise_ids = {row["id"] for row in exercise_rows if row.get("skill") == skill}
+        skill_rows = [row for row in rows if row["exercise_id"] in skill_exercise_ids]
+        scores = [row["score"] for row in skill_rows]
+        recent_scores = scores[-5:]
+        previous_scores = scores[-10:-5]
+        current = round(sum(scores) / len(scores)) if scores else 0
+        recent = round(sum(recent_scores) / len(recent_scores)) if recent_scores else 0
+        previous = round(sum(previous_scores) / len(previous_scores)) if previous_scores else None
+        delta = recent - previous if previous is not None else None
+        completed = len({row["exercise_id"] for row in skill_rows})
+        results.append({
+            "skill": skill,
+            "label": meta["label"],
+            "value": current,
+            "recent_change": delta,
+            "sessions": len(skill_rows),
+            "completed_exercises": completed,
+            "total_exercises": len(skill_exercise_ids),
+            "recommended_practice": meta["practice"],
+        })
+    return results
+
+
 def progress_data(child_id: int, user: dict) -> dict:
     child = ensure_child_access(child_id, user)
     with connect() as db:
         rows = db.execute("SELECT * FROM sessions WHERE child_id=? AND measurement_version=1 ORDER BY created_at", (child_id,)).fetchall()
-        exercise_rows = db.execute("SELECT id,module FROM exercises WHERE is_active=1").fetchall()
+        exercise_rows = [dict(row) for row in db.execute("SELECT id,module,skill FROM exercises WHERE is_active=1").fetchall()]
+    rows = [dict(row) for row in rows]
     by_module: dict[str, list[int]] = defaultdict(list)
     for row in rows:
         by_module[row["module"]].append(row["score"])
@@ -385,7 +450,8 @@ def progress_data(child_id: int, user: dict) -> dict:
         for module in ("motor", "sensory", "mixed")
     }
     overall = round(sum(completed.values()) / max(sum(exercise_counts.values()), 1) * 100)
-    return {"child": child, "overall": overall, "total_sessions": len(rows), "skills": skills, "module_completion": completion, "module_completed": completed, "recent": [dict(row) for row in rows[-8:]][::-1]}
+    skill_progress = build_skill_progress(rows, exercise_rows)
+    return {"child": child, "overall": overall, "total_sessions": len(rows), "skills": skills, "skill_progress": skill_progress, "module_completion": completion, "module_completed": completed, "recent": rows[-8:][::-1]}
 
 
 @app.get("/api/progress/{child_id}")
@@ -398,7 +464,7 @@ def dashboard(child_id: int, user: dict = Depends(get_current_user)) -> dict:
     child = ensure_child_access(child_id, user)
     with connect() as db:
         rows = db.execute("SELECT id,exercise_id,module,score,duration_seconds,created_at FROM sessions WHERE child_id=? AND measurement_version=1 ORDER BY created_at", (child_id,)).fetchall()
-        exercise_rows = db.execute("SELECT id,module FROM exercises WHERE is_active=1").fetchall()
+        exercise_rows = [dict(row) for row in db.execute("SELECT id,module,skill,title,instruction FROM exercises WHERE is_active=1").fetchall()]
 
     local_zone = ZoneInfo("Asia/Almaty")
     today = datetime.now(local_zone).date()
@@ -456,6 +522,15 @@ def dashboard(child_id: int, user: dict = Depends(get_current_user)) -> dict:
     total_seconds = sum(row["duration_seconds"] for row in rows)
     today_seconds = sum(row["duration_seconds"] for row in today_rows)
     week_seconds = sum(row["duration_seconds"] for row in week_rows)
+    row_dicts = [dict(row) for row in rows]
+    skill_progress = build_skill_progress(row_dicts, exercise_rows)
+    practiced_skills = [item for item in skill_progress if item["sessions"] > 0]
+    weakest_skill = min(practiced_skills, key=lambda item: item["value"]) if practiced_skills else None
+    recommended_exercise = None
+    if weakest_skill:
+        completed_ids = {row["exercise_id"] for row in rows if row["exercise_id"] is not None}
+        candidates = [item for item in exercise_rows if item.get("skill") == weakest_skill["skill"]]
+        recommended_exercise = next((item for item in candidates if item["id"] not in completed_ids), candidates[0] if candidates else None)
     return {
         "child": child,
         "total_sessions": len(rows),
@@ -474,6 +549,9 @@ def dashboard(child_id: int, user: dict = Depends(get_current_user)) -> dict:
         "completed_exercise_ids": sorted({row["exercise_id"] for row in rows if row["exercise_id"] is not None}),
         "module_sessions": {module: len(by_module[module]) for module in ("motor", "sensory", "mixed")},
         "active_exercises": exercise_counts,
+        "skill_progress": skill_progress,
+        "weakest_skill": weakest_skill,
+        "recommended_exercise": recommended_exercise,
         "progress_delta": current_average - previous_average,
         "daily": daily,
         "achievements": {
@@ -486,28 +564,218 @@ def dashboard(child_id: int, user: dict = Depends(get_current_user)) -> dict:
     }
 
 
+@app.get("/api/session-plan/{child_id}")
+def session_plan(child_id: int, user: dict = Depends(get_current_user)) -> dict:
+    child = ensure_child_access(child_id, user)
+    data = progress_data(child_id, user)
+    practiced = [item for item in data["skill_progress"] if item["sessions"] > 0]
+    focus = min(practiced, key=lambda item: item["value"])["skill"] if practiced else None
+    with connect() as db:
+        assigned = db.execute(
+            """SELECT e.* FROM assigned_exercises a JOIN exercises e ON e.id=a.exercise_id
+               WHERE a.child_id=? AND a.status='assigned' AND e.is_active=1 ORDER BY a.id LIMIT 2""",
+            (child_id,),
+        ).fetchall()
+        all_exercises = db.execute("SELECT * FROM exercises WHERE is_active=1 ORDER BY difficulty,id").fetchall()
+    selected: list[dict] = []
+    seen: set[int] = set()
+    for row in [*assigned, *all_exercises]:
+        item = dict(row)
+        if item["id"] in seen:
+            continue
+        if len(selected) < 1 and item["module"] != "motor":
+            continue
+        if focus and len(selected) == 1 and item.get("skill") != focus:
+            continue
+        selected.append(item)
+        seen.add(item["id"])
+        if len(selected) == 4:
+            break
+    if len(selected) < 3:
+        for row in all_exercises:
+            item = dict(row)
+            if item["id"] not in seen:
+                selected.append(item)
+                seen.add(item["id"])
+            if len(selected) == 4:
+                break
+    minutes = sum(2 + item["difficulty"] for item in selected)
+    return {"child": child, "focus_skill": focus, "estimated_minutes": minutes, "exercises": selected}
+
+
+@app.post("/api/learning-sessions", status_code=201)
+def create_learning_session(payload: LearningSessionCreate, user: dict = Depends(get_current_user)) -> dict:
+    ensure_child_access(payload.child_id, user)
+    unique_ids = list(dict.fromkeys(payload.exercise_ids))
+    if len(unique_ids) != len(payload.exercise_ids):
+        raise HTTPException(422, "В занятии не должно быть повторяющихся заданий")
+    placeholders = ",".join("?" for _ in unique_ids)
+    with connect() as db:
+        exercises = db.execute(f"SELECT * FROM exercises WHERE is_active=1 AND id IN ({placeholders})", tuple(unique_ids)).fetchall()
+        if len(exercises) != len(unique_ids):
+            raise HTTPException(422, "Одно из заданий недоступно")
+        cursor = db.execute(
+            "INSERT INTO learning_sessions(child_id,status,exercise_ids,current_index,started_at) VALUES(?,'in_progress',?,0,?) RETURNING id",
+            (payload.child_id, json.dumps(unique_ids), now_iso()),
+        )
+        session_id = cursor.fetchone()["id"]
+    by_id = {row["id"]: dict(row) for row in exercises}
+    return {"id": session_id, "child_id": payload.child_id, "status": "in_progress", "current_index": 0, "started_at": now_iso(), "exercises": [by_id[item_id] for item_id in unique_ids]}
+
+
+@app.get("/api/learning-sessions/{session_id}")
+def get_learning_session(session_id: int, user: dict = Depends(get_current_user)) -> dict:
+    with connect() as db:
+        session = db.execute("SELECT * FROM learning_sessions WHERE id=?", (session_id,)).fetchone()
+        if not session:
+            raise HTTPException(404, "Занятие не найдено")
+        ensure_child_access(session["child_id"], user)
+        exercise_ids = json.loads(session["exercise_ids"])
+        placeholders = ",".join("?" for _ in exercise_ids)
+        exercise_rows = db.execute(f"SELECT * FROM exercises WHERE id IN ({placeholders})", tuple(exercise_ids)).fetchall()
+        result_rows = db.execute("SELECT exercise_id,score,duration_seconds,created_at FROM sessions WHERE learning_session_id=? AND measurement_version=1 ORDER BY sequence_index,id", (session_id,)).fetchall()
+    by_id = {row["id"]: dict(row) for row in exercise_rows}
+    return {**dict(session), "exercise_ids": exercise_ids, "exercises": [by_id[item_id] for item_id in exercise_ids if item_id in by_id], "results": [dict(row) for row in result_rows]}
+
+
 @app.get("/api/ai/recommendations/{child_id}")
 def recommendations(child_id: int, user: dict = Depends(get_current_user)) -> dict:
     data = progress_data(child_id, user)
-    weakest = min(data["skills"], key=lambda item: item["value"])
-    module_text = {
-        "motor": ("артикуляции", "Чередование «улыбка — трубочка»", "2 подхода по 3 минуты"),
-        "sensory": ("понимании речи", "Слова из темы «Еда и напитки»", "повторить 5 знакомых слов"),
-        "mixed": ("построении фраз", "Шаблон «Я хочу + предмет»", "собрать 4 короткие просьбы"),
-    }
-    focus, exercise, goal = module_text[weakest["module"]]
-    input_tokens = 60 + data["total_sessions"] * 6
-    output_tokens = 38
+    practiced = [item for item in data["skill_progress"] if item["sessions"] > 0]
+    if not practiced:
+        return {
+            "generated_at": datetime.now(timezone.utc).isoformat(), "confidence": None,
+            "insufficient_data": True, "suggested_skill": None, "suggested_exercise": None,
+            "summary": "Пока недостаточно выполненных заданий для персональной рекомендации. Начните с короткого вводного занятия.",
+            "plan": ["Пройти 3 коротких задания", "Завершить на успешной попытке"],
+            "disclaimer": "Рекомендация носит информационный характер и должна быть согласована со специалистом.",
+        }
+    weakest = min(practiced, key=lambda item: item["value"])
     with connect() as db:
-        db.execute("INSERT INTO usage_events(user_id,child_id,provider,model,feature,input_tokens,output_tokens,estimated_cost_usd,created_at) VALUES(?,?,?,?,?,?,?,?,?)", (user["id"], child_id, "local", "Söyle Rules v1", "Персональная рекомендация", input_tokens, output_tokens, 0, now_iso()))
+        exercise_row = db.execute("SELECT id,title,instruction,module,skill FROM exercises WHERE is_active=1 AND skill=? ORDER BY difficulty,id LIMIT 1", (weakest["skill"],)).fetchone()
+    exercise = dict(exercise_row) if exercise_row else None
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(),
-        "confidence": min(96, 68 + data["total_sessions"] * 3),
-        "summary": f"Сейчас полезнее сделать акцент на {focus}. Задания подобраны по результатам {data['total_sessions']} занятий.",
-        "focus_module": weakest["module"],
-        "plan": [exercise, goal, "Закончить занятие на успешной попытке"],
+        "confidence": min(94, 55 + weakest["sessions"] * 5),
+        "insufficient_data": False,
+        "suggested_skill": weakest["skill"],
+        "suggested_exercise": exercise,
+        "summary": f"В последних результатах больше практики требует навык «{weakest['label']}». Это учебная подсказка, а не медицинский вывод.",
+        "plan": [exercise["title"] if exercise else weakest["recommended_practice"], weakest["recommended_practice"], "Закончить занятие на успешной попытке"],
         "disclaimer": "Рекомендация носит информационный характер и должна быть согласована со специалистом.",
     }
+
+
+@app.post("/api/ai/recommendations/{child_id}/generate", status_code=201)
+def generate_recommendation(child_id: int, user: dict = Depends(require_roles("specialist"))) -> dict:
+    data = recommendations(child_id, user)
+    if data["insufficient_data"]:
+        return data
+    with connect() as db:
+        cursor = db.execute(
+            """INSERT INTO specialist_recommendations(child_id,specialist_id,suggested_skill,exercise_id,source,status,comment,created_at)
+               VALUES(?,?,?,?,?,'pending',?,?) RETURNING id""",
+            (child_id, user["id"], data["suggested_skill"], data["suggested_exercise"]["id"] if data["suggested_exercise"] else None, "ai_rules", data["summary"], now_iso()),
+        )
+        recommendation_id = cursor.fetchone()["id"]
+        db.execute(
+            "INSERT INTO usage_events(user_id,child_id,provider,model,feature,input_tokens,output_tokens,estimated_cost_usd,created_at) VALUES(?,?,?,?,?,?,?,?,?)",
+            (user["id"], child_id, "local", "Söyle Rules v2", "Предложение для специалиста", 0, 0, 0, now_iso()),
+        )
+    return {**data, "recommendation_id": recommendation_id, "status": "pending"}
+
+
+@app.get("/api/specialist/children/{child_id}")
+def specialist_child(child_id: int, user: dict = Depends(require_roles("specialist"))) -> dict:
+    dashboard_data = dashboard(child_id, user)
+    with connect() as db:
+        assigned = db.execute(
+            """SELECT a.*,e.title,e.module,e.skill FROM assigned_exercises a JOIN exercises e ON e.id=a.exercise_id
+               WHERE a.child_id=? AND a.specialist_id=? ORDER BY a.id DESC""", (child_id, user["id"]),
+        ).fetchall()
+        reviews = db.execute(
+            """SELECT r.*,e.title exercise_title FROM specialist_recommendations r LEFT JOIN exercises e ON e.id=r.exercise_id
+               WHERE r.child_id=? AND r.specialist_id=? ORDER BY r.id DESC LIMIT 10""", (child_id, user["id"]),
+        ).fetchall()
+    return {"dashboard": dashboard_data, "assigned_exercises": [dict(row) for row in assigned], "recommendations": [dict(row) for row in reviews]}
+
+
+@app.post("/api/specialist/assigned-exercises", status_code=201)
+def assign_exercise(payload: AssignedExerciseCreate, user: dict = Depends(require_roles("specialist"))) -> dict:
+    ensure_child_access(payload.child_id, user)
+    with connect() as db:
+        exercise = db.execute("SELECT id FROM exercises WHERE id=? AND is_active=1", (payload.exercise_id,)).fetchone()
+        if not exercise:
+            raise HTTPException(404, "Упражнение не найдено")
+        cursor = db.execute(
+            "INSERT INTO assigned_exercises(child_id,specialist_id,exercise_id,note,status,created_at) VALUES(?,?,?,?,'assigned',?) RETURNING id",
+            (payload.child_id, user["id"], payload.exercise_id, payload.note, now_iso()),
+        )
+        row = db.execute("SELECT * FROM assigned_exercises WHERE id=?", (cursor.fetchone()["id"],)).fetchone()
+    return dict(row)
+
+
+@app.post("/api/specialist/recommendations", status_code=201)
+def create_specialist_recommendation(payload: SpecialistRecommendationCreate, user: dict = Depends(require_roles("specialist"))) -> dict:
+    ensure_child_access(payload.child_id, user)
+    with connect() as db:
+        if payload.exercise_id and not db.execute("SELECT 1 FROM exercises WHERE id=? AND is_active=1", (payload.exercise_id,)).fetchone():
+            raise HTTPException(404, "Упражнение не найдено")
+        cursor = db.execute(
+            """INSERT INTO specialist_recommendations(child_id,specialist_id,suggested_skill,exercise_id,source,status,comment,created_at)
+               VALUES(?,?,?,?,?,'approved',?,?) RETURNING id""",
+            (payload.child_id, user["id"], payload.suggested_skill, payload.exercise_id, "specialist", payload.comment, now_iso()),
+        )
+        row = db.execute("SELECT * FROM specialist_recommendations WHERE id=?", (cursor.fetchone()["id"],)).fetchone()
+    return dict(row)
+
+
+@app.patch("/api/specialist/recommendations/{recommendation_id}")
+def review_recommendation(recommendation_id: int, payload: RecommendationReview, user: dict = Depends(require_roles("specialist"))) -> dict:
+    with connect() as db:
+        row = db.execute("SELECT * FROM specialist_recommendations WHERE id=? AND specialist_id=?", (recommendation_id, user["id"])).fetchone()
+        if not row:
+            raise HTTPException(404, "Рекомендация не найдена")
+        db.execute("UPDATE specialist_recommendations SET status=?,comment=?,reviewed_at=? WHERE id=?", (payload.status, payload.comment or row["comment"], now_iso(), recommendation_id))
+        if payload.status in {"approved", "edited"} and row["exercise_id"]:
+            db.execute(
+                "INSERT INTO assigned_exercises(child_id,specialist_id,exercise_id,note,status,created_at) VALUES(?,?,?,?,'assigned',?)",
+                (row["child_id"], user["id"], row["exercise_id"], payload.comment or row["comment"], now_iso()),
+            )
+        updated = db.execute("SELECT * FROM specialist_recommendations WHERE id=?", (recommendation_id,)).fetchone()
+    return dict(updated)
+
+
+@app.get("/api/admin/specialist-assignments")
+def specialist_assignments(_: dict = Depends(require_roles("admin"))) -> list[dict]:
+    with connect() as db:
+        rows = db.execute(
+            """SELECT sc.specialist_id,sc.child_id,sc.assigned_at,u.full_name specialist_name,c.name child_name
+               FROM specialist_children sc JOIN users u ON u.id=sc.specialist_id
+               JOIN children c ON c.id=sc.child_id ORDER BY sc.assigned_at DESC"""
+        ).fetchall()
+    return [dict(row) for row in rows]
+
+
+@app.post("/api/admin/specialist-assignments", status_code=201)
+def create_specialist_assignment(payload: SpecialistAssignmentCreate, _: dict = Depends(require_roles("admin"))) -> dict:
+    with connect() as db:
+        specialist = db.execute("SELECT id FROM users WHERE id=? AND role='specialist' AND is_active=1", (payload.specialist_id,)).fetchone()
+        child = db.execute("SELECT id FROM children WHERE id=?", (payload.child_id,)).fetchone()
+        if not specialist or not child:
+            raise HTTPException(422, "Проверьте специалиста и профиль ребёнка")
+        db.execute(
+            "INSERT INTO specialist_children(specialist_id,child_id,assigned_at) VALUES(?,?,?) ON CONFLICT(specialist_id,child_id) DO NOTHING",
+            (payload.specialist_id, payload.child_id, now_iso()),
+        )
+        row = db.execute("SELECT * FROM specialist_children WHERE specialist_id=? AND child_id=?", (payload.specialist_id, payload.child_id)).fetchone()
+    return dict(row)
+
+
+@app.delete("/api/admin/specialist-assignments/{specialist_id}/{child_id}", status_code=204)
+def delete_specialist_assignment(specialist_id: int, child_id: int, _: dict = Depends(require_roles("admin"))):
+    with connect() as db:
+        db.execute("DELETE FROM specialist_children WHERE specialist_id=? AND child_id=?", (specialist_id, child_id))
 
 
 @app.get("/api/admin/stats")
@@ -570,16 +838,18 @@ def update_active(user_id: int, payload: ActiveUpdate, admin: dict = Depends(req
 
 @app.post("/api/admin/exercises", status_code=201)
 def create_exercise(payload: ExerciseCreate, _: dict = Depends(require_roles("admin"))) -> dict:
+    skill = payload.skill or {"motor": "articulation", "sensory": "vocabulary", "mixed": "phrase_building"}[payload.module]
     with connect() as db:
-        cursor = db.execute("INSERT INTO exercises(module,title,instruction,difficulty,target,icon,is_active) VALUES(?,?,?,?,?,?,?) RETURNING id", (payload.module, payload.title, payload.instruction, payload.difficulty, payload.target, payload.icon, int(payload.is_active)))
+        cursor = db.execute("INSERT INTO exercises(module,title,instruction,difficulty,target,icon,skill,is_active) VALUES(?,?,?,?,?,?,?,?) RETURNING id", (payload.module, payload.title, payload.instruction, payload.difficulty, payload.target, payload.icon, skill, int(payload.is_active)))
         row = db.execute("SELECT * FROM exercises WHERE id=?", (cursor.fetchone()["id"],)).fetchone()
     return dict(row)
 
 
 @app.put("/api/admin/exercises/{exercise_id}")
 def update_exercise(exercise_id: int, payload: ExerciseCreate, _: dict = Depends(require_roles("admin"))) -> dict:
+    skill = payload.skill or {"motor": "articulation", "sensory": "vocabulary", "mixed": "phrase_building"}[payload.module]
     with connect() as db:
-        db.execute("UPDATE exercises SET module=?,title=?,instruction=?,difficulty=?,target=?,icon=?,is_active=? WHERE id=?", (payload.module, payload.title, payload.instruction, payload.difficulty, payload.target, payload.icon, int(payload.is_active), exercise_id))
+        db.execute("UPDATE exercises SET module=?,title=?,instruction=?,difficulty=?,target=?,icon=?,skill=?,is_active=? WHERE id=?", (payload.module, payload.title, payload.instruction, payload.difficulty, payload.target, payload.icon, skill, int(payload.is_active), exercise_id))
         row = db.execute("SELECT * FROM exercises WHERE id=?", (exercise_id,)).fetchone()
     if not row:
         raise HTTPException(404, "Упражнение не найдено")

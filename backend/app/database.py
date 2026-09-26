@@ -117,7 +117,22 @@ AAC_CARDS = [
     ("Кот", "кот", "play", "/illustrations/cat.png", 0),
     ("Люблю", "люблю", "actions", "/illustrations/love.png", 0),
     ("Вижу", "вижу", "actions", "/illustrations/see.png", 0),
+    ("Да", "Да", "yes_no", "/illustrations/love.png", 1),
+    ("Нет", "Нет", "yes_no", "/illustrations/me.png", 1),
+    ("Весело", "Мне весело", "feelings", "/illustrations/mascot-parrot-headphones.png", 0),
+    ("Грустно", "Мне грустно", "feelings", "/illustrations/me.png", 0),
+    ("Домой", "Я хочу домой", "places", "/illustrations/mom.png", 0),
 ]
+
+SKILL_BY_TARGET = {
+    "smile": "articulation", "tube": "articulation", "open": "articulation",
+    "teeth": "articulation", "cheeks": "articulation", "sequence": "articulation",
+    "animals": "vocabulary", "food": "vocabulary", "toys": "vocabulary", "qualities": "vocabulary",
+    "actions": "speech_comprehension", "commands": "speech_comprehension",
+    "observation": "word_repetition", "family": "word_repetition",
+    "request": "phrase_building", "preference": "phrase_building", "routine": "phrase_building",
+    "help": "communication", "desire": "communication", "need": "communication", "feelings": "communication",
+}
 
 def init_db() -> None:
     from .security import hash_password
@@ -146,13 +161,42 @@ def init_db() -> None:
         CREATE TABLE IF NOT EXISTS exercises (
             id {id_column}, module TEXT NOT NULL CHECK(module IN ('motor','sensory','mixed')),
             title TEXT NOT NULL, instruction TEXT NOT NULL, difficulty INTEGER NOT NULL DEFAULT 1,
-            target TEXT NOT NULL, icon TEXT NOT NULL, is_active INTEGER NOT NULL DEFAULT 1
+            target TEXT NOT NULL, icon TEXT NOT NULL, skill TEXT, is_active INTEGER NOT NULL DEFAULT 1
+        );
+        CREATE TABLE IF NOT EXISTS learning_sessions (
+            id {id_column}, child_id BIGINT NOT NULL REFERENCES children(id) ON DELETE CASCADE,
+            status TEXT NOT NULL DEFAULT 'in_progress', exercise_ids TEXT NOT NULL DEFAULT '[]',
+            current_index INTEGER NOT NULL DEFAULT 0, started_at TEXT NOT NULL, completed_at TEXT
         );
         CREATE TABLE IF NOT EXISTS sessions (
             id {id_column}, child_id BIGINT NOT NULL REFERENCES children(id) ON DELETE CASCADE,
             exercise_id BIGINT REFERENCES exercises(id) ON DELETE SET NULL, module TEXT NOT NULL,
             score INTEGER NOT NULL, duration_seconds INTEGER NOT NULL, details TEXT NOT NULL DEFAULT '{{}}',
-            measurement_version INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL
+            measurement_version INTEGER NOT NULL DEFAULT 1,
+            learning_session_id BIGINT REFERENCES learning_sessions(id) ON DELETE SET NULL,
+            sequence_index INTEGER, created_at TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS specialist_children (
+            specialist_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            child_id BIGINT NOT NULL REFERENCES children(id) ON DELETE CASCADE,
+            assigned_at TEXT NOT NULL, PRIMARY KEY(specialist_id,child_id)
+        );
+        CREATE TABLE IF NOT EXISTS assigned_exercises (
+            id {id_column}, child_id BIGINT NOT NULL REFERENCES children(id) ON DELETE CASCADE,
+            specialist_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            exercise_id BIGINT NOT NULL REFERENCES exercises(id) ON DELETE CASCADE,
+            note TEXT NOT NULL DEFAULT '', status TEXT NOT NULL DEFAULT 'assigned',
+            created_at TEXT NOT NULL, completed_at TEXT
+        );
+        CREATE TABLE IF NOT EXISTS specialist_recommendations (
+            id {id_column}, child_id BIGINT NOT NULL REFERENCES children(id) ON DELETE CASCADE,
+            specialist_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            suggested_skill TEXT NOT NULL, exercise_id BIGINT REFERENCES exercises(id) ON DELETE SET NULL,
+            source TEXT NOT NULL DEFAULT 'specialist', status TEXT NOT NULL DEFAULT 'pending',
+            comment TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL, reviewed_at TEXT
+        );
+        CREATE TABLE IF NOT EXISTS schema_migrations (
+            version INTEGER PRIMARY KEY, applied_at TEXT NOT NULL
         );
         CREATE TABLE IF NOT EXISTS usage_events (
             id {id_column},
@@ -226,6 +270,17 @@ def init_db() -> None:
             session_columns = {row["name"] for row in db.execute("PRAGMA table_info(sessions)").fetchall()}
         if "measurement_version" not in session_columns:
             db.execute("ALTER TABLE sessions ADD COLUMN measurement_version INTEGER NOT NULL DEFAULT 0")
+        if db.backend == "postgresql":
+            exercise_columns = {row["column_name"] for row in db.execute("SELECT column_name FROM information_schema.columns WHERE table_schema='public' AND table_name='exercises'").fetchall()}
+        else:
+            exercise_columns = {row["name"] for row in db.execute("PRAGMA table_info(exercises)").fetchall()}
+        if "skill" not in exercise_columns:
+            db.execute("ALTER TABLE exercises ADD COLUMN skill TEXT")
+        if "learning_session_id" not in session_columns:
+            db.execute("ALTER TABLE sessions ADD COLUMN learning_session_id BIGINT REFERENCES learning_sessions(id) ON DELETE SET NULL")
+        if "sequence_index" not in session_columns:
+            db.execute("ALTER TABLE sessions ADD COLUMN sequence_index INTEGER")
+        db.execute("INSERT INTO schema_migrations(version,applied_at) VALUES(1,?) ON CONFLICT(version) DO NOTHING", (now_iso(),))
 
         seed_demo = env_enabled("SOYLE_SEED_DEMO_DATA", default=not bool(DATABASE_URL))
         if seed_demo and not db.execute("SELECT 1 FROM users LIMIT 1").fetchone():
@@ -249,20 +304,28 @@ def init_db() -> None:
         if seed_demo and not db.execute("SELECT 1 FROM student_accounts LIMIT 1").fetchone():
             child_id = db.execute("SELECT id FROM children ORDER BY id LIMIT 1").fetchone()["id"]
             db.execute("INSERT INTO student_accounts(child_id,username,pin_hash,created_at) VALUES(?,?,?,?)", (child_id, "alikhan", hash_password("1234"), now_iso()))
+        if seed_demo and not db.execute("SELECT 1 FROM specialist_children LIMIT 1").fetchone():
+            specialist = db.execute("SELECT id FROM users WHERE role='specialist' ORDER BY id LIMIT 1").fetchone()
+            child = db.execute("SELECT id FROM children ORDER BY id LIMIT 1").fetchone()
+            if specialist and child:
+                db.execute("INSERT INTO specialist_children(specialist_id,child_id,assigned_at) VALUES(?,?,?)", (specialist["id"], child["id"], now_iso()))
         existing_targets = {row["target"] for row in db.execute("SELECT target FROM exercises").fetchall()}
         missing_exercises = [exercise for exercise in EXERCISES if exercise[4] not in existing_targets]
         if missing_exercises:
             db.executemany("INSERT INTO exercises(module,title,instruction,difficulty,target,icon) VALUES(?,?,?,?,?,?)", missing_exercises)
         icon_by_target = {exercise[4]: exercise[5] for exercise in EXERCISES}
         db.executemany("UPDATE exercises SET icon=? WHERE target=?", [(icon, target) for target, icon in icon_by_target.items()])
-        if not db.execute("SELECT 1 FROM aac_cards WHERE child_id IS NULL LIMIT 1").fetchone():
+        db.executemany("UPDATE exercises SET skill=? WHERE target=?", [(skill, target) for target, skill in SKILL_BY_TARGET.items()])
+        existing_cards = {(row["label"], row["category"]) for row in db.execute("SELECT label,category FROM aac_cards WHERE child_id IS NULL").fetchall()}
+        missing_cards = [card for card in AAC_CARDS if (card[0], card[2]) not in existing_cards]
+        if missing_cards:
             db.executemany(
                 "INSERT INTO aac_cards(child_id,label,speech,category,image,is_core,created_at) VALUES(NULL,?,?,?,?,?,?)",
-                [(*card, now_iso()) for card in AAC_CARDS],
+                [(*card, now_iso()) for card in missing_cards],
             )
         if seed_demo and not db.execute("SELECT 1 FROM usage_events LIMIT 1").fetchone():
             child_id = db.execute("SELECT id FROM children ORDER BY id LIMIT 1").fetchone()["id"]
             db.executemany("INSERT INTO usage_events(child_id,provider,model,feature,input_tokens,output_tokens,estimated_cost_usd,created_at) VALUES(?,?,?,?,?,?,?,?)", [
                 (child_id, "local", "MediaPipe Face Landmarker", "Анализ артикуляции", 0, 0, 0, now_iso()),
-                (child_id, "local", "Söyle Rules v1", "Персональная рекомендация", 82, 41, 0, now_iso()),
+                (child_id, "local", "Söyle Rules v1", "Персональная рекомендация", 0, 0, 0, now_iso()),
             ])
