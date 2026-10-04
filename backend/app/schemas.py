@@ -37,10 +37,15 @@ class SessionCreate(BaseModel):
     details: dict[str, Any] = Field(default_factory=dict)
     learning_session_id: int | None = None
     sequence_index: int | None = Field(default=None, ge=0, le=10)
+    independence: int | None = Field(default=None, ge=0, le=100)
+    prompt_level: Literal["independent", "minimal", "full", "refused"] | None = None
+    response_ms: int | None = Field(default=None, ge=0, le=300000)
+    communication_initiatives: int = Field(default=0, ge=0, le=100)
 
 class LearningSessionCreate(BaseModel):
     child_id: int
     exercise_ids: list[int] = Field(default_factory=list, min_length=3, max_length=5)
+    target_minutes: Literal[3, 5, 10] = 5
 
 class ExerciseCreate(BaseModel):
     module: ModuleName
@@ -97,3 +102,35 @@ class AACPhraseCreate(BaseModel):
     child_id: int
     phrase: str = Field(min_length=1, max_length=300)
     card_ids: list[int] = Field(default_factory=list, max_length=12)
+
+class ChildGoalCreate(BaseModel):
+    child_id: int
+    title: str = Field(min_length=2, max_length=120)
+    target_skill: SkillName
+    due_date: str | None = None
+    success_criterion: str = Field(min_length=2, max_length=300)
+    difficulty: int = Field(default=1, ge=1, le=3)
+    exercise_ids: list[int] = Field(default_factory=list, max_length=12)
+    position: int = Field(default=0, ge=0, le=1000)
+
+class GoalStatusUpdate(BaseModel):
+    status: Literal["active", "paused", "completed"]
+
+class HomeworkCreate(BaseModel):
+    child_id: int
+    title: str = Field(min_length=2, max_length=160)
+    instruction: str = Field(min_length=2, max_length=500)
+    goal_id: int | None = None
+    due_date: str | None = None
+
+class HomeworkResultUpdate(BaseModel):
+    result: Literal["independent", "minimal_prompt", "full_prompt", "failed", "refused"]
+    parent_note: str = Field(default="", max_length=500)
+
+class ConsentUpdate(BaseModel):
+    privacy_accepted: bool
+    camera_processing: bool = False
+    specialist_sharing: bool = True
+
+class ChildDeleteRequest(BaseModel):
+    password: str = Field(min_length=1, max_length=128)

@@ -9,8 +9,10 @@ from .database import connect
 
 DEFAULT_SECRET_KEY = "dev-only-change-this-secret-before-production"
 SECRET_KEY = os.getenv("SOYLE_SECRET_KEY", DEFAULT_SECRET_KEY)
-if os.getenv("VERCEL") and SECRET_KEY == DEFAULT_SECRET_KEY:
-    raise RuntimeError("SOYLE_SECRET_KEY must be configured in production")
+DEPLOYMENT_MARKERS = ("VERCEL", "RAILWAY_ENVIRONMENT", "RENDER", "FLY_APP_NAME", "K_SERVICE")
+IS_PRODUCTION = os.getenv("SOYLE_ENV", "").lower() in {"production", "staging"} or any(os.getenv(name) for name in DEPLOYMENT_MARKERS)
+if IS_PRODUCTION and (SECRET_KEY == DEFAULT_SECRET_KEY or len(SECRET_KEY.encode()) < 32):
+    raise RuntimeError("SOYLE_SECRET_KEY must be unique and at least 32 bytes in production")
 ALGORITHM = "HS256"
 password_hash = PasswordHash.recommended()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")

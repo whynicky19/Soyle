@@ -1,5 +1,5 @@
-import { SoyleApp } from "@/components/SoyleApp";
+import { LandingPage } from "@/components/LandingPage";
 
 export default function Home() {
-  return <SoyleApp />;
+  return <LandingPage />;
 }

@@ -82,8 +82,9 @@ export type Exercise = {
 export type LearningSession = {
   id: number;
   child_id: number;
-  status: "in_progress" | "completed";
+  status: "in_progress" | "paused" | "completed";
   current_index: number;
+  target_minutes: 3 | 5 | 10;
   started_at: string;
   completed_at?: string | null;
   exercises: Exercise[];

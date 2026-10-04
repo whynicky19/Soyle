@@ -254,6 +254,53 @@ def init_db() -> None:
             is_read INTEGER NOT NULL DEFAULT 0,
             created_at TEXT NOT NULL
         );
+        CREATE TABLE IF NOT EXISTS child_goals (
+            id {id_column},
+            child_id BIGINT NOT NULL REFERENCES children(id) ON DELETE CASCADE,
+            specialist_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            title TEXT NOT NULL,
+            target_skill TEXT NOT NULL,
+            due_date TEXT,
+            success_criterion TEXT NOT NULL,
+            difficulty INTEGER NOT NULL DEFAULT 1,
+            exercise_ids TEXT NOT NULL DEFAULT '[]',
+            position INTEGER NOT NULL DEFAULT 0,
+            status TEXT NOT NULL DEFAULT 'active',
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS homework_assignments (
+            id {id_column},
+            child_id BIGINT NOT NULL REFERENCES children(id) ON DELETE CASCADE,
+            specialist_id BIGINT REFERENCES users(id) ON DELETE SET NULL,
+            goal_id BIGINT REFERENCES child_goals(id) ON DELETE SET NULL,
+            title TEXT NOT NULL,
+            instruction TEXT NOT NULL,
+            due_date TEXT,
+            result TEXT,
+            parent_note TEXT NOT NULL DEFAULT '',
+            completed_at TEXT,
+            created_at TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS child_consents (
+            child_id BIGINT PRIMARY KEY REFERENCES children(id) ON DELETE CASCADE,
+            parent_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            privacy_accepted INTEGER NOT NULL DEFAULT 0,
+            camera_processing INTEGER NOT NULL DEFAULT 0,
+            specialist_sharing INTEGER NOT NULL DEFAULT 1,
+            version TEXT NOT NULL DEFAULT '2026-10',
+            updated_at TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS auth_attempts (
+            id {id_column}, identifier TEXT NOT NULL, successful INTEGER NOT NULL DEFAULT 0,
+            attempted_at TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_auth_attempts_identifier ON auth_attempts(identifier,attempted_at);
+        CREATE TABLE IF NOT EXISTS audit_events (
+            id {id_column}, actor_key TEXT NOT NULL, action TEXT NOT NULL,
+            object_type TEXT NOT NULL, object_id TEXT, metadata TEXT NOT NULL DEFAULT '{{}}',
+            created_at TEXT NOT NULL
+        );
         """)
         if db.backend == "postgresql":
             columns = {row["column_name"] for row in db.execute("SELECT column_name FROM information_schema.columns WHERE table_schema='public' AND table_name='users'").fetchall()}
@@ -280,7 +327,24 @@ def init_db() -> None:
             db.execute("ALTER TABLE sessions ADD COLUMN learning_session_id BIGINT REFERENCES learning_sessions(id) ON DELETE SET NULL")
         if "sequence_index" not in session_columns:
             db.execute("ALTER TABLE sessions ADD COLUMN sequence_index INTEGER")
+        if "independence" not in session_columns:
+            db.execute("ALTER TABLE sessions ADD COLUMN independence INTEGER")
+        if "prompt_level" not in session_columns:
+            db.execute("ALTER TABLE sessions ADD COLUMN prompt_level TEXT")
+        if "response_ms" not in session_columns:
+            db.execute("ALTER TABLE sessions ADD COLUMN response_ms INTEGER")
+        if "communication_initiatives" not in session_columns:
+            db.execute("ALTER TABLE sessions ADD COLUMN communication_initiatives INTEGER NOT NULL DEFAULT 0")
+        if db.backend == "postgresql":
+            learning_columns = {row["column_name"] for row in db.execute("SELECT column_name FROM information_schema.columns WHERE table_schema='public' AND table_name='learning_sessions'").fetchall()}
+        else:
+            learning_columns = {row["name"] for row in db.execute("PRAGMA table_info(learning_sessions)").fetchall()}
+        if "target_minutes" not in learning_columns:
+            db.execute("ALTER TABLE learning_sessions ADD COLUMN target_minutes INTEGER NOT NULL DEFAULT 5")
+        if "paused_at" not in learning_columns:
+            db.execute("ALTER TABLE learning_sessions ADD COLUMN paused_at TEXT")
         db.execute("INSERT INTO schema_migrations(version,applied_at) VALUES(1,?) ON CONFLICT(version) DO NOTHING", (now_iso(),))
+        db.execute("INSERT INTO schema_migrations(version,applied_at) VALUES(2,?) ON CONFLICT(version) DO NOTHING", (now_iso(),))
 
         seed_demo = env_enabled("SOYLE_SEED_DEMO_DATA", default=not bool(DATABASE_URL))
         if seed_demo and not db.execute("SELECT 1 FROM users LIMIT 1").fetchone():
