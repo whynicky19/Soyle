@@ -71,7 +71,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible,su
 @keyframes rise { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
 .stack-xl { display:grid; gap:42px; }
 
-.hero { min-height: 360px; border-radius: 34px; padding: 52px 58px; display:grid; grid-template-columns: 1.1fr .9fr; background:linear-gradient(90deg,rgba(247,248,239,.96) 0%,rgba(247,248,239,.75) 48%,rgba(247,248,239,.05) 76%),url('/landing/soyle-hero.jpg') center/cover no-repeat; position:relative; overflow:hidden; box-shadow: var(--shadow); }
+.hero { min-height: 360px; border-radius: 34px; padding: 52px 58px; display:grid; grid-template-columns: 1.1fr .9fr; background:linear-gradient(90deg,rgba(247,248,239,.9) 0%,rgba(247,248,239,.58) 50%,rgba(247,248,239,.08) 78%),url('/illustrations/hero-landscape.png') center/cover no-repeat; position:relative; overflow:hidden; box-shadow: var(--shadow); }
 .hero-copy { position:relative; z-index:3; align-self:center; }
 .pill { width:max-content; display:flex; align-items:center; gap:7px; padding:0; color:#598276; font-size:12px; font-weight:800; }
 h1,h2,h3,p { margin-top:0; }
@@ -84,7 +84,7 @@ h1,h2,h3,p { margin-top:0; }
 .primary-button:active,.secondary-button:active,.small-button:active,.module-card:active { transform:scale(.98); transition-duration:90ms; }
 .primary-button:disabled { opacity:.6; cursor:wait; }
 .hero-art { position:relative; min-height:270px; }
-.mascot { position:absolute; width:min(300px,80%); height:320px; left:50%;top:50%; transform:translate(-50%,-48%); filter:drop-shadow(0 22px 24px rgba(75,89,59,.15)); }
+.mascot { position:absolute; width:min(340px,82%); height:340px; left:50%;top:50%; transform:translate(-50%,-48%); filter:drop-shadow(0 22px 24px rgba(75,89,59,.18)); }
 .mascot img{width:100%;height:100%;object-fit:contain}
 .hero-badge{position:absolute;right:0;bottom:2px;background:rgba(255,255,255,.82);padding:10px 14px;border-radius:16px;display:flex;gap:9px;align-items:center;box-shadow:0 10px 30px rgba(34,56,49,.1);color:#c28a2b}.hero-badge span{color:var(--ink)}.hero-badge b,.hero-badge small{display:block}.hero-badge b{font-size:12px}.hero-badge small{font-size:10px;color:var(--muted);margin-top:2px}
 

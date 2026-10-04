@@ -387,6 +387,7 @@ function HomeScreen({ onOpen, onStartSession, onResume, activeSession, dailyMinu
           {sessionError && <div className="inline-error" role="alert">{sessionError}</div>}
         </div>
         <div className="hero-art" aria-hidden="true">
+          <div className="mascot"><Image src="/illustrations/mascot-parrot.png" alt="" width={360} height={360} priority /></div>
           <div className="hero-badge"><Trophy size={22} /><span><b>{dashboard?.today_sessions || 0} заданий</b><small>выполнено сегодня</small></span></div>
         </div>
       </section>
