@@ -35,12 +35,12 @@ app.add_middleware(
 )
 
 COURSE_UNITS = [
-    {"id": "intro", "label": "Вводный курс", "title": "Я могу сообщить о важном", "targets": ["help", "desire", "need"], "practice": "В течение дня создайте 3 спокойные ситуации, где ребёнок сможет попросить помощь, перерыв или желаемый предмет."},
+    {"id": "intro", "label": "Вводный курс", "title": "Я могу сообщить о важном", "targets": ["help", "desire", "need", "refusal", "choice"], "practice": "В течение дня создайте 3 спокойные ситуации, где ребёнок сможет попросить помощь, отказаться или выбрать желаемый предмет."},
     {"id": "food", "label": "Модуль 1", "title": "Еда и продукты", "targets": ["food", "request", "preference"], "practice": "Во время еды предлагайте выбор из двух продуктов и дайте ребёнку время попросить нужное словом или карточкой."},
-    {"id": "home", "label": "Модуль 2", "title": "Дом и семья", "targets": ["family", "observation", "animals"], "practice": "Называйте близких и знакомые предметы дома, затем задавайте короткий вопрос: «Кто это?» или «Что ты видишь?»."},
-    {"id": "play", "label": "Модуль 3", "title": "Игрушки и признаки", "targets": ["toys", "qualities"], "practice": "В игре просите выбрать большой или маленький предмет и поощряйте просьбы «дай мяч» и «хочу ещё»."},
-    {"id": "actions", "label": "Модуль 4", "title": "Действия и мой день", "targets": ["actions", "commands", "routine"], "practice": "Комментируйте знакомые действия короткими фразами и вместе составьте последовательность из 2–3 событий дня."},
-    {"id": "feelings", "label": "Модуль 5", "title": "Чувства и состояние", "targets": ["feelings"], "practice": "Несколько раз в день предлагайте выбрать карточку состояния: весело, грустно, больно, устал или нужен перерыв."},
+    {"id": "home", "label": "Модуль 2", "title": "Я и мой дом", "targets": ["family", "observation", "animals", "body", "clothes", "household"], "practice": "Называйте близких, части тела и знакомые предметы дома, затем задавайте короткий вопрос: «Кто это?» или «Что ты видишь?»."},
+    {"id": "play", "label": "Модуль 3", "title": "Игра и пространство", "targets": ["toys", "qualities", "opposites", "location", "spatial_phrase"], "practice": "В игре просите выбрать предмет по признаку и комментируйте, где он находится: на столе, в коробке или под стулом."},
+    {"id": "actions", "label": "Модуль 4", "title": "Действия и мой день", "targets": ["actions", "commands", "agent_action", "routine", "past_event"], "practice": "Комментируйте знакомые действия короткими фразами и вместе составьте последовательность из 2–3 событий дня."},
+    {"id": "feelings", "label": "Модуль 5", "title": "Диалог и состояние", "targets": ["feelings", "greeting", "answer", "question", "places"], "practice": "Предлагайте выбрать карточку состояния, поздороваться, ответить «да» или «нет» и задать короткий вопрос."},
     {"id": "motor", "label": "Модуль 6", "title": "Артикуляционная гимнастика", "targets": ["smile", "tube", "open", "teeth", "cheeks", "sequence"], "practice": "Повторяйте знакомые движения перед зеркалом по 3–5 минут без давления и заканчивайте на успешной попытке."},
 ]
 
@@ -663,7 +663,7 @@ def session_plan(child_id: int, minutes: int = Query(default=5), user: dict = De
             (child_id,),
         ).fetchall()
         all_exercises = db.execute("SELECT * FROM exercises WHERE is_active=1 ORDER BY difficulty,id").fetchall()
-    target_count = {3: 3, 5: 4, 10: 5}[minutes]
+    target_count = {3: 5, 5: 7, 10: 10}[minutes]
     selected: list[dict] = []
     seen: set[int] = set()
     # Обязательные назначения специалиста всегда идут первыми и не фильтруются по модулю.
@@ -742,7 +742,28 @@ def get_active_learning_session(child_id: int, user: dict = Depends(get_current_
             "SELECT id FROM learning_sessions WHERE child_id=? AND status IN ('in_progress','paused') ORDER BY id DESC LIMIT 1",
             (child_id,),
         ).fetchone()
-    return get_learning_session(row["id"], user) if row else None
+    if not row:
+        return None
+    session = get_learning_session(row["id"], user)
+    desired_count = {3: 5, 5: 7, 10: 10}.get(session["target_minutes"], 7)
+    current_ids = list(session["exercise_ids"])
+    if len(current_ids) < desired_count:
+        placeholders = ",".join("?" for _ in current_ids)
+        exclusion = f"AND id NOT IN ({placeholders})" if current_ids else ""
+        with connect() as db:
+            candidates = db.execute(
+                f"SELECT id,module FROM exercises WHERE is_active=1 {exclusion} ORDER BY difficulty,id",
+                tuple(current_ids),
+            ).fetchall()
+            while candidates and len(current_ids) < desired_count:
+                module_counts = {name: sum(1 for exercise in session["exercises"] if exercise["module"] == name) for name in ("motor", "sensory", "mixed")}
+                candidates.sort(key=lambda item: (module_counts[item["module"]], item["id"]))
+                chosen = candidates.pop(0)
+                current_ids.append(chosen["id"])
+                session["exercises"].append({"module": chosen["module"]})
+            db.execute("UPDATE learning_sessions SET exercise_ids=? WHERE id=?", (json.dumps(current_ids), row["id"]))
+        session = get_learning_session(row["id"], user)
+    return session
 
 
 @app.get("/api/ai/recommendations/{child_id}")

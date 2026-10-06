@@ -13,3 +13,15 @@ backend/skills-lock.json
 .DS_Store
 .vercel
 .env*
+
+# Local pitch-generation artifacts (Codex)
+/.codex-build/
+/.codex-finalizer/
+/deliverables/soyle-pitch/
+/output/pdf/
+/tmp/pdfs/
+/frontend/public/pitch/
+
+# Local files generated while running the frontend for pitch review
+/frontend/AGENTS.md
+/frontend/CLAUDE.md

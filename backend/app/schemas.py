@@ -36,7 +36,7 @@ class SessionCreate(BaseModel):
     duration_seconds: int = Field(ge=0, le=7200)
     details: dict[str, Any] = Field(default_factory=dict)
     learning_session_id: int | None = None
-    sequence_index: int | None = Field(default=None, ge=0, le=10)
+    sequence_index: int | None = Field(default=None, ge=0, le=20)
     independence: int | None = Field(default=None, ge=0, le=100)
     prompt_level: Literal["independent", "minimal", "full", "refused"] | None = None
     response_ms: int | None = Field(default=None, ge=0, le=300000)
@@ -44,7 +44,7 @@ class SessionCreate(BaseModel):
 
 class LearningSessionCreate(BaseModel):
     child_id: int
-    exercise_ids: list[int] = Field(default_factory=list, min_length=3, max_length=5)
+    exercise_ids: list[int] = Field(default_factory=list, min_length=3, max_length=10)
     target_minutes: Literal[3, 5, 10] = 5
 
 class ExerciseCreate(BaseModel):

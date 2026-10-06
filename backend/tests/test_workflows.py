@@ -33,6 +33,7 @@ def test_specialist_assignment_is_first_in_plan(client, parent_headers, speciali
     plan = client.get(f"/api/session-plan/{child_id}?minutes=3", headers=parent_headers)
     assert plan.status_code == 200
     assert plan.json()["estimated_minutes"] == 3
+    assert len(plan.json()["exercises"]) == 5
     assert plan.json()["exercises"][0]["id"] == sensory["id"]
 
 

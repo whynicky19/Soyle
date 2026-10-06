@@ -4,39 +4,84 @@ import {
   ArrowLeft,
   ArrowDown,
   ArrowUp,
+  Apple,
+  Activity,
+  Armchair,
   Backpack,
+  Banana,
   BarChart3,
+  BedDouble,
+  Bed,
+  BookOpen,
   Bell,
+  Blocks,
   Bot,
   Camera,
+  Car,
+  Cat,
   Check,
   ChevronRight,
+  Circle,
+  CircleHelp,
+  Coffee,
   CreditCard,
+  Dog,
+  Ear,
+  Eye,
+  EyeOff,
+  Fish,
+  Flame,
+  Frown,
   Gamepad2,
+  GlassWater,
+  Glasses,
+  Hand,
+  HandHelping,
+  Heart,
+  HeartPulse,
   Home,
+  House,
+  KeyRound,
+  LampDesk,
   Languages,
   LayoutDashboard,
   LockKeyhole,
   LogOut,
   Menu,
+  MapPin,
+  MessageCircle,
+  Milk,
   Mic2,
   Parentheses,
+  Pause,
   Play,
+  Plus,
   RotateCcw,
+  School,
+  Search,
   Settings,
+  Shirt,
   ShieldCheck,
+  Smile,
+  Snowflake,
   Sparkles,
   Star,
   Target,
   Timer,
+  Toilet,
+  Trees,
   TrendingUp,
   Trophy,
+  Utensils,
   Users,
   UserRound,
+  UserRoundCheck,
   Volume2,
   X,
+  type LucideIcon,
 } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api, AACCard, AppSettings, Child, Dashboard, Exercise, getToken, LearningSession, NotificationsData, Role, setToken, SkillProgress, User } from "@/lib/api";
 
@@ -83,7 +128,7 @@ const moduleImages: Record<ModuleName, string> = {
 };
 
 function BrandIcon({ size = 26 }: { size?: number }) {
-  return <Image src="/soyle-icon.png" alt="" width={size} height={size} priority />;
+  return <Image src="/soyle-mark-v2.png" alt="" width={size} height={size} priority />;
 }
 
 export function SoyleApp() {
@@ -319,7 +364,7 @@ function AuthenticatedApp({ user, onLogout }: { user: User; onLogout: () => void
           {screen === "games" && <GamesScreen onOpen={openScreen} onExercise={openExercise} dashboard={dashboard} exercises={exercises} />}
           {screen === "session" && activeSession && <SessionScreen session={activeSession} onContinue={continueSession} onPause={pauseSession} onFinish={() => { setActiveSession(null); refreshDashboard(); setScreen("home"); }} />}
           {screen === "motor" && <MotorGame exercises={exercises.filter((item) => item.module === "motor")} initialExercise={selectedExercise} cameraEnabled={settings.camera_enabled} onBack={() => activeSession ? setScreen("session") : openScreen("games")} onComplete={(score, exerciseId) => saveSession(exerciseId, "motor", score, { source: "face-landmarker" })} />}
-          {screen === "sensory" && <SensoryGame exercise={selectedExercise?.module === "sensory" ? selectedExercise : exercises.find((item) => item.module === "sensory")} soundEnabled={settings.sound_enabled} onBack={() => activeSession ? setScreen("session") : openScreen("games")} onComplete={(score, exerciseId) => saveSession(exerciseId, "sensory", score, { rounds: 5 })} />}
+          {screen === "sensory" && <SensoryGame key={selectedExercise?.id || "sensory"} exercise={selectedExercise?.module === "sensory" ? selectedExercise : exercises.find((item) => item.module === "sensory")} soundEnabled={settings.sound_enabled} onBack={() => activeSession ? setScreen("session") : openScreen("games")} onComplete={(score, exerciseId) => saveSession(exerciseId, "sensory", score, { rounds: 5 })} />}
           {screen === "mixed" && <PhraseGame key={selectedExercise?.id || "mixed"} childId={child?.id} canManage={user.role === "parent"} exercise={selectedExercise?.module === "mixed" ? selectedExercise : exercises.find((item) => item.module === "mixed")} soundEnabled={settings.sound_enabled} onBack={() => activeSession ? setScreen("session") : openScreen("games")} onComplete={(score, phrase, exerciseId) => saveSession(exerciseId, "mixed", score, { phrase })} />}
           {screen === "progress" && <ProgressScreen childId={child?.id} dashboard={dashboard} />}
           {screen === "parent" && <ParentScreen child={child} childProfiles={children} onSelectChild={setSelectedChildId} onDeleted={(id) => { const remaining = children.filter((item) => item.id !== id); setChildren(remaining); setSelectedChildId(remaining[0]?.id || null); setScreen("home"); }} dashboard={dashboard} />}
@@ -354,6 +399,7 @@ function AuthScreen({ onAuthenticated }: { onAuthenticated: (user: User) => void
   const [name, setName] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault(); setError(""); setLoading(true);
@@ -368,8 +414,26 @@ function AuthScreen({ onAuthenticated }: { onAuthenticated: (user: User) => void
     finally { setLoading(false); }
   };
 
-  const heading = mode === "student" ? "Вход для ученика" : mode === "login" ? "Войти в Söyle" : "Создать аккаунт родителя";
-  return <div className="auth-page"><div className="auth-visual"><div className="auth-brand"><div className="brand-mark"><BrandIcon /></div><strong>Söyle</strong></div><div className="auth-copy"><span className="pill"><Sparkles size={15}/> Безопасное пространство развития</span><h1>Каждый голос<br/><em>заслуживает быть услышанным</em></h1><p>Игровые занятия, компьютерное зрение и понятная динамика прогресса — в одной платформе.</p></div><div className="auth-orbs"><i><Image src={modules[0].icon} alt="" width={64} height={64}/></i><i><Image src={modules[1].icon} alt="" width={64} height={64}/></i><i><Image src={modules[2].icon} alt="" width={64} height={64}/></i></div></div><div className="auth-form-wrap"><form className="auth-card" onSubmit={submit}><span className="kicker">ДОБРО ПОЖАЛОВАТЬ</span><h2>{heading}</h2><p>{mode === "student" ? "Введи логин и PIN, которые создал родитель" : mode === "login" ? "Продолжите занятия и посмотрите прогресс" : "Будет создан безопасный аккаунт родителя"}</p>{mode === "register" && <label>Ваше имя<input value={name} onChange={(e) => setName(e.target.value)} placeholder="Айгерим Садыкова" required minLength={2}/></label>}<label>{mode === "student" ? "Логин ученика" : "Логин"}<input type="text" autoComplete="username" value={username} onChange={(e) => setUsername(e.target.value)} placeholder={mode === "student" ? "логин от родителя" : "латинскими буквами"} required minLength={3}/></label><label>{mode === "student" ? "PIN-код" : "Пароль"}<input type="password" autoComplete={mode === "register" ? "new-password" : "current-password"} inputMode={mode === "student" ? "numeric" : undefined} value={password} onChange={(e) => setPassword(e.target.value)} required minLength={mode === "register" ? 8 : mode === "student" ? 4 : 6}/></label>{error && <div className="auth-error">{error}</div>}<button className="primary-button auth-submit" disabled={loading}>{loading ? "Подождите…" : mode === "register" ? "Создать аккаунт родителя" : "Войти"}<ChevronRight size={18}/></button>{mode === "student" ? <button type="button" className="auth-switch" onClick={() => { setMode("login"); setUsername(""); setPassword(""); }}>Вход для взрослых</button> : <><button type="button" className="auth-switch" onClick={() => { setMode(mode === "login" ? "register" : "login"); setUsername(""); setPassword(""); }}>{mode === "login" ? "Нет аккаунта? Зарегистрироваться" : "Уже есть аккаунт? Войти"}</button><button type="button" className="student-login-button" onClick={() => { setMode("student"); setUsername(""); setPassword(""); }}><Backpack size={16}/> Войти как ученик</button></>}</form></div></div>;
+  const heading = mode === "student" ? "Вход для ребёнка" : mode === "login" ? "Вход в аккаунт" : "Регистрация родителя";
+  const switchMode = (next: "login" | "register" | "student") => { setMode(next); setUsername(""); setPassword(""); setError(""); setShowPassword(false); };
+  return <div className="auth-page">
+    <div className="auth-visual">
+      <div className="auth-brand"><div className="brand-mark"><BrandIcon /></div><strong>Söyle</strong></div>
+      <div className="auth-copy"><span className="pill"><ShieldCheck size={15}/> Спокойная ежедневная практика</span><h1>Помогаем ребёнку<br/><em>понимать и общаться</em></h1><p>Короткие занятия на понимание речи, активный словарь, артикуляцию и поддерживаемую коммуникацию.</p><div className="auth-benefits"><span><Check/> Пошаговая программа</span><span><Check/> Понятный прогресс</span><span><Check/> Отдельный вход ребёнка</span></div></div>
+      <div className="auth-orbs"><i><Image src={modules[0].icon} alt="" width={64} height={64}/></i><i><Image src={modules[1].icon} alt="" width={64} height={64}/></i><i><Image src={modules[2].icon} alt="" width={64} height={64}/></i></div>
+    </div>
+    <div className="auth-form-wrap"><Link href="/" className="auth-back-home"><ArrowLeft size={17}/> На главную</Link><form className="auth-card" onSubmit={submit}>
+      <div className="auth-role-tabs" aria-label="Тип входа"><button type="button" className={mode !== "student" ? "active" : ""} onClick={() => switchMode("login")}><UserRoundCheck size={18}/> Взрослый</button><button type="button" className={mode === "student" ? "active" : ""} onClick={() => switchMode("student")}><Backpack size={18}/> Ребёнок</button></div>
+      <span className="kicker">{mode === "register" ? "НОВЫЙ АККАУНТ" : "ДОБРО ПОЖАЛОВАТЬ"}</span><h2>{heading}</h2><p>{mode === "student" ? "Введите логин и цифровой PIN, которые выдал родитель." : mode === "login" ? "Продолжите занятия или посмотрите прогресс ребёнка." : "После регистрации вы создадите профиль ребёнка и выберете направление занятий."}</p>
+      {mode === "register" && <label>Ваше имя<input value={name} onChange={(e) => setName(e.target.value)} placeholder="Например, Айгерим" autoComplete="name" required minLength={2}/></label>}
+      <label>{mode === "student" ? "Логин ребёнка" : "Логин"}<span className="auth-input"><UserRound size={17}/><input type="text" autoComplete="username" value={username} onChange={(e) => setUsername(e.target.value.replace(/[^A-Za-z0-9_.-]/g, ""))} placeholder={mode === "student" ? "Логин от родителя" : "Латинские буквы и цифры"} pattern="[A-Za-z0-9_.-]+" required minLength={3}/></span>{mode === "register" && <small>Не менее 3 символов: латинские буквы, цифры, точка, дефис или подчёркивание.</small>}</label>
+      <label>{mode === "student" ? "PIN-код" : "Пароль"}<span className="auth-input"><KeyRound size={17}/><input type={showPassword ? "text" : "password"} autoComplete={mode === "register" ? "new-password" : "current-password"} inputMode={mode === "student" ? "numeric" : undefined} value={password} onChange={(e) => setPassword(mode === "student" ? e.target.value.replace(/\D/g, "") : e.target.value)} placeholder={mode === "student" ? "4–12 цифр" : "Введите пароль"} required minLength={mode === "register" ? 8 : mode === "student" ? 4 : 6} maxLength={mode === "student" ? 12 : undefined}/><button type="button" onClick={() => setShowPassword((value) => !value)} aria-label={showPassword ? "Скрыть пароль" : "Показать пароль"}>{showPassword ? <EyeOff size={17}/> : <Eye size={17}/>}</button></span>{mode === "register" && <small>Не менее 8 символов.</small>}</label>
+      {error && <div className="auth-error" role="alert"><CircleHelp size={17}/><span>{error}</span></div>}
+      <button className="primary-button auth-submit" disabled={loading}>{loading ? "Подождите…" : mode === "register" ? "Создать аккаунт" : mode === "student" ? "Начать заниматься" : "Войти"}<ChevronRight size={18}/></button>
+      {mode !== "student" && <div className="auth-secondary">{mode === "login" ? "Впервые в Söyle?" : "Уже зарегистрированы?"}<button type="button" onClick={() => switchMode(mode === "login" ? "register" : "login")}>{mode === "login" ? "Создать аккаунт родителя" : "Войти"}</button></div>}
+      {mode === "student" && <div className="student-help"><ShieldCheck size={17}/><span>Логин и PIN ребёнка создаются в кабинете родителя. Электронная почта не нужна.</span></div>}
+    </form></div>
+  </div>;
 }
 
 function HomeScreen({ onOpen, onStartSession, onResume, activeSession, dailyMinutes, onMinutesChange, sessionLoading, sessionError, child, dashboard }: { onOpen: (screen: Screen) => void; onStartSession: () => void; onResume: () => void; activeSession: LearningSession | null; dailyMinutes: 3 | 5 | 10; onMinutesChange: (value: 3 | 5 | 10) => void; sessionLoading: boolean; sessionError: string; child?: Child; dashboard: Dashboard | null }) {
@@ -441,12 +505,12 @@ function ModuleCard({ module, onClick, index, completed, total }: { module: type
 }
 
 const courseUnits = [
-  { id: "intro", number: "ВВОДНЫЙ КУРС", title: "Я могу сообщить о важном", description: "Помощь, желания и основные потребности", color: "coral", targets: ["help", "desire", "need"] },
+  { id: "intro", number: "ВВОДНЫЙ КУРС", title: "Я могу сообщить о важном", description: "Помощь, желания, отказ и выбор", color: "coral", targets: ["help", "desire", "need", "refusal", "choice"] },
   { id: "food", number: "МОДУЛЬ 1", title: "Еда и продукты", description: "Просим еду, выбираем продукты и говорим о предпочтениях", color: "mint", targets: ["food", "request", "preference"] },
-  { id: "home", number: "МОДУЛЬ 2", title: "Дом и семья", description: "Близкие люди, животные и предметы вокруг", color: "blue", targets: ["family", "observation", "animals"] },
-  { id: "play", number: "МОДУЛЬ 3", title: "Игрушки и признаки", description: "Играем, выбираем и сравниваем предметы", color: "lavender", targets: ["toys", "qualities"] },
-  { id: "actions", number: "МОДУЛЬ 4", title: "Действия и мой день", description: "Глаголы, короткие инструкции и распорядок", color: "coral", targets: ["actions", "commands", "routine"] },
-  { id: "feelings", number: "МОДУЛЬ 5", title: "Чувства и состояние", description: "Учимся сообщать о самочувствии и эмоциях", color: "mint", targets: ["feelings"] },
+  { id: "home", number: "МОДУЛЬ 2", title: "Я и мой дом", description: "Семья, тело, одежда, животные и знакомые предметы", color: "blue", targets: ["family", "observation", "animals", "body", "clothes", "household"] },
+  { id: "play", number: "МОДУЛЬ 3", title: "Игра и пространство", description: "Игрушки, признаки, противоположности и предлоги", color: "lavender", targets: ["toys", "qualities", "opposites", "location", "spatial_phrase"] },
+  { id: "actions", number: "МОДУЛЬ 4", title: "Действия и мой день", description: "Глаголы, инструкции, события и распорядок", color: "coral", targets: ["actions", "commands", "agent_action", "routine", "past_event"] },
+  { id: "feelings", number: "МОДУЛЬ 5", title: "Диалог и состояние", description: "Эмоции, приветствия, ответы, вопросы и знакомые места", color: "mint", targets: ["feelings", "greeting", "answer", "question", "places"] },
   { id: "motor", number: "МОДУЛЬ 6", title: "Артикуляционная гимнастика", description: "Последовательная практика движений губ и языка", color: "blue", targets: ["smile", "tube", "open", "teeth", "cheeks", "sequence"] },
 ] as const;
 
@@ -465,17 +529,13 @@ function GamesScreen({ onOpen, onExercise, dashboard, exercises }: { onOpen: (sc
 
 function LearningPath({ exercises, completedIds, onExercise }: { exercises: Exercise[]; completedIds: number[]; onExercise: (exercise: Exercise) => void }) {
   const completed = new Set(completedIds);
-  const lessonsFor = (targets: readonly string[]) => targets.map((target) => exercises.find((item) => item.target === target)).filter((item): item is Exercise => Boolean(item));
-  return <section className="learning-path"><div className="path-heading"><div><span className="kicker">ПОШАГОВЫЙ КУРС</span><h2>Путь к самостоятельному общению</h2><p>Начните с жизненно важных фраз, затем двигайтесь по знакомым темам.</p></div><div className="path-total"><strong>{completedIds.length}</strong><span>уроков пройдено</span></div></div><div className="course-units">{courseUnits.map((unit, unitIndex) => {
+  return <section className="learning-path"><div className="path-heading"><div><span className="kicker">ПОШАГОВЫЙ КУРС</span><h2>Путь к самостоятельному общению</h2><p>Начните с жизненно важных фраз, затем двигайтесь по знакомым темам.</p></div><div className="path-total"><strong>{completedIds.length}</strong><span>уроков пройдено</span></div></div><div className="course-units">{courseUnits.map((unit) => {
     const lessons = unit.targets.map((target) => exercises.find((item) => item.target === target)).filter((item): item is Exercise => Boolean(item));
     const unitComplete = lessons.length > 0 && lessons.every((lesson) => completed.has(lesson.id));
-    const unitUnlocked = unitIndex === 0 || courseUnits.slice(0, unitIndex).every((previousUnit) => {
-      const previousLessons = lessonsFor(previousUnit.targets);
-      return previousLessons.length > 0 && previousLessons.every((lesson) => completed.has(lesson.id));
-    });
+    const unitUnlocked = true;
     return <article className={`course-unit ${unit.color} ${unitUnlocked ? "unlocked" : "locked"}`} key={unit.id}><div className="unit-summary"><span>{unit.number}</span><h3>{unit.title}</h3><p>{unit.description}</p><div className="unit-progress"><i style={{width:`${lessons.length ? Math.round(lessons.filter((lesson) => completed.has(lesson.id)).length / lessons.length * 100) : 0}%`}}/></div><small>{lessons.filter((lesson) => completed.has(lesson.id)).length} из {lessons.length} уроков</small></div><div className="lesson-steps">{lessons.map((lesson, index) => {
       const done = completed.has(lesson.id);
-      const unlocked = unitUnlocked && (index === 0 || lessons.slice(0, index).every((previousLesson) => completed.has(previousLesson.id)));
+      const unlocked = unitUnlocked && (done || index === 0 || lessons.slice(0, index).every((previousLesson) => completed.has(previousLesson.id)));
       return <button key={lesson.id} disabled={!unlocked} className={`${done ? "done" : ""} ${unlocked ? "available" : ""}`} onClick={() => onExercise(lesson)}><span>{done ? <Check size={21}/> : unlocked ? index + 1 : <LockKeyhole size={18}/>}</span><div><strong>{lesson.title}</strong><small>{done ? "Урок пройден — можно повторить" : lesson.instruction}</small></div><ChevronRight size={18}/></button>;
     })}</div>{unitComplete && <div className="unit-complete"><Trophy size={18}/> Модуль завершён</div>}</article>;
   })}</div></section>;
@@ -483,9 +543,11 @@ function LearningPath({ exercises, completedIds, onExercise }: { exercises: Exer
 
 function ExerciseLibrary({ items, onExercise }: { items: Exercise[]; onExercise: (exercise: Exercise) => void }) {
   const [filter, setFilter] = useState<"all" | ModuleName>("all");
-  const filtered = filter === "all" ? items : items.filter((item) => item.module === filter);
+  const [query, setQuery] = useState("");
+  const normalizedQuery = query.trim().toLocaleLowerCase("ru");
+  const filtered = items.filter((item) => (filter === "all" || item.module === filter) && (!normalizedQuery || `${item.title} ${item.instruction}`.toLocaleLowerCase("ru").includes(normalizedQuery)));
   const labels = { motor: "Артикуляция", sensory: "Понимание", mixed: "Фразы" };
-  return <section className="exercise-library"><div className="section-heading"><div><span className="kicker">БИБЛИОТЕКА</span><h2>Все задания</h2></div><div className="filter-tabs">{(["all","motor","sensory","mixed"] as const).map((value) => <button key={value} className={filter === value ? "active" : ""} onClick={() => setFilter(value)}>{value === "all" ? "Все" : labels[value]}</button>)}</div></div><div className="exercise-grid">{filtered.map((exercise) => { const moduleInfo = modules.find((item) => item.id === exercise.module)!; return <button key={exercise.id} className={`exercise-card ${exercise.module}`} onClick={() => onExercise(exercise)}><span className="exercise-emoji"><Image src={moduleInfo.icon} alt="" width={48} height={48}/></span><div><small>{labels[exercise.module]} · уровень {exercise.difficulty}</small><strong>{exercise.title}</strong><p>{exercise.instruction}</p></div><ChevronRight size={18}/></button>; })}</div></section>;
+  return <section className="exercise-library"><div className="section-heading"><div><span className="kicker">БИБЛИОТЕКА</span><h2>Все задания</h2></div><div className="library-controls"><label className="exercise-search"><Search size={16}/><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Найти задание" aria-label="Найти задание"/></label><div className="filter-tabs">{(["all","motor","sensory","mixed"] as const).map((value) => <button key={value} className={filter === value ? "active" : ""} onClick={() => setFilter(value)}>{value === "all" ? "Все" : labels[value]}</button>)}</div></div></div><div className="exercise-grid">{filtered.map((exercise) => { const moduleInfo = modules.find((item) => item.id === exercise.module)!; return <button key={exercise.id} className={`exercise-card ${exercise.module}`} onClick={() => onExercise(exercise)}><span className="exercise-emoji"><Image src={moduleInfo.icon} alt="" width={48} height={48}/></span><div><small>{labels[exercise.module]} · уровень {exercise.difficulty}</small><strong>{exercise.title}</strong><p>{exercise.instruction}</p></div><ChevronRight size={18}/></button>; })}</div>{!filtered.length && <div className="empty-state large"><Search size={28}/><strong>Ничего не найдено</strong><span>Измените запрос или выберите другой раздел.</span></div>}</section>;
 }
 
 function PageTitle({ eyebrow, title, subtitle }: { eyebrow: string; title: string; subtitle: string }) {
@@ -503,14 +565,19 @@ function GameHeader({ title, subtitle, step, onBack }: { title: string; subtitle
 }
 
 const motorExercises = [
-  { id: "smile", symbol: "◡", title: "Сделай широкую улыбку", text: "Улыбнись широко и удерживай движение." },
-  { id: "tube", symbol: "○", title: "Сложи губы трубочкой", text: "Вытяни губы вперёд, будто хочешь задуть свечу." },
-  { id: "open", symbol: "О", title: "Открой окошко", text: "Плавно открой рот и удерживай челюсть спокойно." },
-  { id: "teeth", symbol: "▤", title: "Покажи заборчик", text: "Сомкни зубы и покажи их в спокойной улыбке." },
-  { id: "cheeks", symbol: "◉", title: "Надуй воздушный шар", text: "Надуй обе щёки и удерживай воздух несколько секунд." },
-  { id: "sequence", symbol: "◡ → ○", title: "Улыбка — трубочка", text: "Сначала широко улыбнись, затем сложи губы трубочкой." },
+  { id: "smile", title: "Сделай широкую улыбку", text: "Улыбнись широко и удерживай движение 3 секунды." },
+  { id: "tube", title: "Сложи губы трубочкой", text: "Вытяни губы вперёд, будто хочешь задуть свечу." },
+  { id: "open", title: "Открой окошко", text: "Плавно открой рот и удерживай нижнюю челюсть спокойно." },
+  { id: "teeth", title: "Покажи заборчик", text: "Сомкни зубы и покажи их в спокойной улыбке." },
+  { id: "cheeks", title: "Надуй воздушный шар", text: "Надуй обе щёки и удерживай воздух 3 секунды." },
+  { id: "sequence", title: "Улыбка — трубочка", text: "Сначала широко улыбнись, затем сложи губы трубочкой." },
 ] as const;
 type MotorExercise = typeof motorExercises[number]["id"];
+
+function MouthGuide({ type }: { type: MotorExercise }) {
+  if (type === "sequence") return <div className="mouth-sequence" aria-label="Сначала улыбка, затем губы трубочкой"><MouthGuide type="smile"/><ChevronRight/><MouthGuide type="tube"/></div>;
+  return <div className={`mouth-guide ${type}`} aria-hidden="true"><i className="guide-eye left"/><i className="guide-eye right"/><span className="guide-mouth">{type === "teeth" && <b><i/><i/><i/><i/></b>}</span>{type === "cheeks" && <><i className="guide-cheek left"/><i className="guide-cheek right"/></>}</div>;
+}
 
 function MotorGame({ exercises, initialExercise, cameraEnabled, onBack, onComplete }: { exercises: Exercise[]; initialExercise: Exercise | null; cameraEnabled: boolean; onBack: () => void; onComplete: (score: number, exerciseId: number) => void }) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -649,12 +716,12 @@ function MotorGame({ exercises, initialExercise, cameraEnabled, onBack, onComple
       <div className="game-layout">
         <div className="camera-panel">
           <video ref={videoRef} playsInline muted className={cameraState === "ready" ? "visible" : ""} />
-          {cameraState !== "ready" && <div className="camera-placeholder"><div className="face-guide">☺</div><h3>{!cameraEnabled ? "Камера отключена в настройках" : cameraState === "loading" ? "Включаем волшебное зеркало…" : cameraState === "error" ? "Камеру не удалось запустить" : "Посмотри в волшебное зеркало"}</h3><p>{cameraEnabled ? "Анализ работает на устройстве. Видео не отправляется и не сохраняется." : "Включите камеру в настройках, чтобы использовать распознавание движения."}</p><button className="primary-button" onClick={startCamera} disabled={cameraState === "loading" || !cameraEnabled}><Camera size={19} /> {cameraState === "error" ? "Попробовать ещё раз" : "Включить камеру"}</button></div>}
+          {cameraState !== "ready" && <div className="camera-placeholder"><div className="face-guide"><UserRound strokeWidth={1.4}/></div><h3>{!cameraEnabled ? "Камера отключена в настройках" : cameraState === "loading" ? "Включаем зеркало…" : cameraState === "error" ? "Камеру не удалось запустить" : "Расположи лицо в рамке"}</h3><p>{cameraEnabled ? "Камера анализирует движение только на устройстве. Видео не отправляется и не сохраняется." : "Включите камеру в настройках, чтобы использовать распознавание движения."}</p><button className="primary-button" onClick={startCamera} disabled={cameraState === "loading" || !cameraEnabled}><Camera size={19} /> {cameraState === "error" ? "Попробовать ещё раз" : "Включить камеру"}</button></div>}
           {cameraState === "ready" && <><div className="face-frame" /><div className="camera-label"><span className="live-dot" /> Камера видит движение</div></>}
         </div>
         <div className="instruction-panel">
           <span className="kicker">ТВОЁ ЗАДАНИЕ</span>
-          <div className={`mouth-demo ${exercise.id}`}>{exercise.symbol}</div>
+          <div className={`mouth-demo ${exercise.id}`}><MouthGuide type={exercise.id}/></div>
           <h2>{exercise.title}</h2>
           <p>{exercise.text}</p>
           <div className="accuracy-block"><div><span>Точность движения</span><strong>{accuracy}%</strong></div><div className="accuracy-track"><span style={{ width: `${accuracy}%` }} /></div></div>
@@ -666,55 +733,91 @@ function MotorGame({ exercises, initialExercise, cameraEnabled, onBack, onComple
   );
 }
 
-const sensoryItems = [
-  { word: "Мяч", image: "/illustrations/ball.png", hint: "Он круглый, с ним играют" },
-  { word: "Кот", image: "/illustrations/cat.png", hint: "Он пушистый и говорит мяу" },
-  { word: "Яблоко", image: "/illustrations/apple.png", hint: "Красный сладкий фрукт" },
-];
+type SensoryItem = { word: string; hint: string; icon: LucideIcon; visualClass?: string };
 
-let activeAudio: HTMLAudioElement | null = null;
-function speechAsset(text: string) {
-  const fixed: Record<string, string> = {
-    "Мяч": "word-ball", "Кот": "word-cat", "Яблоко": "word-apple",
-    "Верно! Отличная работа.": "feedback-correct",
-    "Попробуй ещё. Это мяч.": "feedback-retry-ball",
-    "Попробуй ещё. Это кот.": "feedback-retry-cat",
-    "Попробуй ещё. Это яблоко.": "feedback-retry-apple",
-  };
-  if (fixed[text]) return fixed[text];
-  const subjects = ["Я", "Мама", "Папа"];
-  const verbs = ["хочу", "вижу", "люблю"];
-  const objects = ["сок", "мяч", "яблоко"];
-  const parts = text.split(" ");
-  if (parts.length === 3) {
-    const indexes = [subjects.indexOf(parts[0]), verbs.indexOf(parts[1]), objects.indexOf(parts[2])];
-    if (indexes.every((index) => index >= 0)) return `phrase-${indexes.join("-")}`;
-  }
-  return null;
+const sensorySets: Record<string, SensoryItem[]> = {
+  animals: [
+    { word: "Кот", hint: "Домашнее животное, которое мяукает", icon: Cat },
+    { word: "Собака", hint: "Домашнее животное, которое лает", icon: Dog },
+    { word: "Рыба", hint: "Она живёт в воде", icon: Fish },
+  ],
+  food: [
+    { word: "Яблоко", hint: "Фрукт круглой формы", icon: Apple },
+    { word: "Банан", hint: "Длинный жёлтый фрукт", icon: Banana },
+    { word: "Молоко", hint: "Белый напиток", icon: Milk },
+  ],
+  toys: [
+    { word: "Мяч", hint: "Круглая игрушка", icon: Circle },
+    { word: "Машинка", hint: "Игрушка на колёсах", icon: Car },
+    { word: "Кубики", hint: "Из них можно строить", icon: Blocks },
+  ],
+  body: [
+    { word: "Рука", hint: "Ею берут и держат предметы", icon: Hand },
+    { word: "Ухо", hint: "Им мы слышим", icon: Ear },
+    { word: "Глаз", hint: "Им мы видим", icon: Eye },
+  ],
+  clothes: [
+    { word: "Рубашка", hint: "Её надевают на верхнюю часть тела", icon: Shirt },
+    { word: "Рюкзак", hint: "Его носят за спиной", icon: Backpack },
+    { word: "Очки", hint: "Их надевают на глаза", icon: Glasses },
+  ],
+  household: [
+    { word: "Кресло", hint: "На нём сидят", icon: Armchair },
+    { word: "Лампа", hint: "Она даёт свет", icon: LampDesk },
+    { word: "Кровать", hint: "На ней спят", icon: BedDouble },
+  ],
+  actions: [
+    { word: "Спит", hint: "Человек отдыхает в кровати", icon: BedDouble },
+    { word: "Ест", hint: "Человек принимает пищу", icon: Utensils },
+    { word: "Играет", hint: "Ребёнок занят игрой", icon: Gamepad2 },
+  ],
+  qualities: [
+    { word: "Большой", hint: "Предмет большого размера", icon: Circle, visualClass: "is-large" },
+    { word: "Маленький", hint: "Предмет маленького размера", icon: Circle, visualClass: "is-small" },
+    { word: "Горячий", hint: "Предмет высокой температуры", icon: Flame },
+  ],
+  location: [
+    { word: "На коробке", hint: "Предмет находится сверху", icon: ArrowUp },
+    { word: "В коробке", hint: "Предмет находится внутри", icon: Blocks },
+    { word: "Под коробкой", hint: "Предмет находится снизу", icon: ArrowDown },
+  ],
+  places: [
+    { word: "Дом", hint: "Место, где живёт семья", icon: House },
+    { word: "Школа", hint: "Место, где учатся", icon: School },
+    { word: "Парк", hint: "Место для прогулок", icon: Trees },
+  ],
+  opposites: [
+    { word: "Холодный", hint: "Имеет низкую температуру", icon: Snowflake },
+    { word: "Горячий", hint: "Имеет высокую температуру", icon: Flame },
+    { word: "Маленький", hint: "Имеет небольшой размер", icon: Circle, visualClass: "is-small" },
+  ],
+  commands: [
+    { word: "Хлопни и подними руки", hint: "Сначала хлопок, затем руки вверх", icon: Hand },
+    { word: "Встань и помаши", hint: "Сначала встать, затем помахать рукой", icon: UserRoundCheck },
+    { word: "Возьми мяч и положи его", hint: "Два действия с мячом по порядку", icon: Circle },
+  ],
+};
+
+function SensoryVisual({ item }: { item: SensoryItem }) {
+  const Icon = item.icon;
+  return <span className={`sensory-visual ${item.visualClass || ""}`} aria-hidden="true"><Icon strokeWidth={1.65}/></span>;
 }
+
 function speak(text: string, rate = 0.78, enabled = true) {
-  if (!enabled || activeAudio) return;
-  const asset = speechAsset(text);
-  if (!asset) {
-    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = "ru-RU";
-    utterance.rate = Math.max(0.65, Math.min(1, rate));
-    utterance.volume = 0.78;
-    window.speechSynthesis.speak(utterance);
-    return;
-  }
-  const audio = new Audio(`/audio/${asset}.mp3`);
-  audio.volume = 0.82;
-  audio.playbackRate = Math.max(0.65, Math.min(1.15, rate / 0.78));
-  audio.onended = () => { activeAudio = null; };
-  audio.onerror = () => { activeAudio = null; };
-  activeAudio = audio;
-  audio.play().catch(() => { activeAudio = null; });
+  if (!enabled || typeof window === "undefined" || !("speechSynthesis" in window)) return;
+  window.speechSynthesis.cancel();
+  const utterance = new SpeechSynthesisUtterance(text.replace(/\s+/g, " ").trim());
+  const russianVoice = window.speechSynthesis.getVoices().find((voice) => voice.lang.toLowerCase().startsWith("ru"));
+  if (russianVoice) utterance.voice = russianVoice;
+  utterance.lang = "ru-RU";
+  utterance.rate = Math.max(0.65, Math.min(1, rate));
+  utterance.pitch = 0.96;
+  utterance.volume = 0.72;
+  window.speechSynthesis.speak(utterance);
 }
 
 function SensoryGame({ exercise, soundEnabled, onBack, onComplete }: { exercise?: Exercise; soundEnabled: boolean; onBack: () => void; onComplete: (score: number, exerciseId: number) => void }) {
+  const items = sensorySets[exercise?.target || "animals"] || sensorySets.animals;
   const [targetIndex, setTargetIndex] = useState(0);
   const [picked, setPicked] = useState<number | null>(null);
   const [score, setScore] = useState(0);
@@ -725,19 +828,19 @@ function SensoryGame({ exercise, soundEnabled, onBack, onComplete }: { exercise?
     if (picked !== null) return;
     setPicked(index);
     if (index === targetIndex) { setScore((v) => v + 1); speak("Верно! Отличная работа.", 0.9, soundEnabled); }
-    else speak(`Попробуй ещё. Это ${sensoryItems[index].word.toLowerCase()}.`, 0.75, soundEnabled);
+    else speak(`Попробуй ещё. Правильный ответ: ${items[targetIndex].word.toLowerCase()}.`, 0.75, soundEnabled);
   };
-  const next = () => { if (round === 5) { if (exercise) onComplete(score * 20, exercise.id); setRound(1); setScore(0); } else setRound((v) => v + 1); setTargetIndex((targetIndex + 1) % sensoryItems.length); setPicked(null); };
+  const next = () => { if (round === 5) { if (exercise) onComplete(score * 20, exercise.id); setRound(1); setScore(0); } else setRound((v) => v + 1); setTargetIndex((targetIndex + 1) % items.length); setPicked(null); };
   return (
     <div className="page-enter game-page">
-      <GameHeader title="Слушай и находи" subtitle="Понимаем слова" step={`${round} из 5`} onBack={onBack} />
+      <GameHeader title={exercise?.title || "Слушай и находи"} subtitle="Понимаем речь" step={`${round} из 5`} onBack={onBack} />
       <div className="listen-card">
-        <div className="sound-zone"><button className="sound-button" disabled={!soundEnabled} onClick={() => speak(sensoryItems[targetIndex].word, speechRate, soundEnabled)}><Volume2 size={34} fill="currentColor" /></button><div><span className="kicker">ПОСЛУШАЙ СЛОВО</span><h2>{soundEnabled ? "Нажми и послушай" : "Звук отключён в настройках"}</h2><div className="wave"><i /><i /><i /><i /><i /><i /><i /></div><div className="speech-rate" aria-label="Скорость речи">{[{v:.65,l:"Медленно"},{v:.78,l:"Обычно"},{v:1,l:"Быстрее"}].map((item)=><button key={item.v} className={speechRate===item.v?"active":""} onClick={()=>setSpeechRate(item.v)}>{item.l}</button>)}</div></div><button className="replay" disabled={!soundEnabled} onClick={() => speak(sensoryItems[targetIndex].word, speechRate, soundEnabled)}><RotateCcw size={17} /> Повторить</button></div>
-        <h3 className="choose-title">А теперь выбери картинку</h3>
+        <div className="sound-zone"><button className="sound-button" disabled={!soundEnabled} onClick={() => speak(items[targetIndex].word, speechRate, soundEnabled)}><Volume2 size={34} fill="currentColor" /></button><div><span className="kicker">ПОСЛУШАЙ ЗАДАНИЕ</span><h2>{soundEnabled ? "Нажми и послушай" : "Звук отключён в настройках"}</h2><div className="wave"><i /><i /><i /><i /><i /><i /><i /></div><div className="speech-rate" aria-label="Скорость речи">{[{v:.65,l:"Медленно"},{v:.78,l:"Обычно"},{v:1,l:"Быстрее"}].map((item)=><button key={item.v} className={speechRate===item.v?"active":""} onClick={()=>setSpeechRate(item.v)}>{item.l}</button>)}</div></div><button className="replay" disabled={!soundEnabled} onClick={() => speak(items[targetIndex].word, speechRate, soundEnabled)}><RotateCcw size={17} /> Повторить</button></div>
+        <h3 className="choose-title">{exercise?.instruction || "Выбери подходящую карточку"}</h3>
         <div className="picture-options">
-          {sensoryItems.map((item, index) => <button key={item.word} onClick={() => choose(index)} className={`${picked === index ? (index === targetIndex ? "correct" : "wrong") : ""} ${picked !== null && index === targetIndex ? "answer" : ""}`}><span><Image src={item.image} alt={item.word} width={112} height={112}/></span><strong>{item.word}</strong>{picked !== null && index === targetIndex && <i><Check size={16} /></i>}</button>)}
+          {items.map((item, index) => <button key={item.word} onClick={() => choose(index)} className={`${picked === index ? (index === targetIndex ? "correct" : "wrong") : ""} ${picked !== null && index === targetIndex ? "answer" : ""}`}><SensoryVisual item={item}/><strong>{item.word}</strong>{picked !== null && index === targetIndex && <i><Check size={16} /></i>}</button>)}
         </div>
-        {picked !== null && <div className={`answer-panel ${correct ? "good" : "try"}`}><div className="answer-emoji">{correct ? <Star fill="currentColor"/> : <Sparkles/>}</div><div><strong>{correct ? "Верно! Ты услышал слово" : "Ничего, учимся вместе"}</strong><span>{correct ? sensoryItems[targetIndex].hint : `Правильный ответ — ${sensoryItems[targetIndex].word}`}</span></div><button className="primary-button" onClick={next}>{round === 5 ? "Завершить" : "Дальше"}<ChevronRight size={17} /></button></div>}
+        {picked !== null && <div className={`answer-panel ${correct ? "good" : "try"}`}><div className="answer-emoji">{correct ? <Star fill="currentColor"/> : <Sparkles/>}</div><div><strong>{correct ? "Верно!" : "Ничего, учимся вместе"}</strong><span>{correct ? items[targetIndex].hint : `Правильный ответ — ${items[targetIndex].word}`}</span></div><button className="primary-button" onClick={next}>{round === 5 ? "Завершить" : "Дальше"}<ChevronRight size={17} /></button></div>}
         <div className="score-dots">{[1,2,3,4,5].map((value) => <span key={value} className={value <= score ? "filled" : ""} />)}</div>
       </div>
     </div>
@@ -745,18 +848,49 @@ function SensoryGame({ exercise, soundEnabled, onBack, onComplete }: { exercise?
 }
 
 const aacCategories = [
-  { id: "favorites", label: "Избранное" }, { id: "help", label: "Помощь" },
-  { id: "wants", label: "Желания" }, { id: "needs", label: "Потребности" },
-  { id: "feelings", label: "Чувства" }, { id: "yes_no", label: "Да / Нет" },
-  { id: "people", label: "Люди" }, { id: "food", label: "Еда" },
-  { id: "play", label: "Игры" }, { id: "places", label: "Места" }, { id: "actions", label: "Действия" },
+  { id: "favorites", label: "Главные", icon: Star }, { id: "help", label: "Помощь", icon: HandHelping },
+  { id: "wants", label: "Желания", icon: Heart }, { id: "needs", label: "Потребности", icon: Activity },
+  { id: "feelings", label: "Чувства", icon: Smile }, { id: "yes_no", label: "Да / Нет", icon: Check },
+  { id: "people", label: "Люди", icon: Users }, { id: "food", label: "Еда", icon: Apple },
+  { id: "play", label: "Игры", icon: Gamepad2 }, { id: "places", label: "Места", icon: MapPin }, { id: "actions", label: "Действия", icon: Play },
 ] as const;
+
+const aacIconByLabel: Record<string, LucideIcon> = {
+  "Помоги": HandHelping, "Больно": HeartPulse, "Перерыв": Pause, "Не хочу": X,
+  "Ещё": Plus, "Хочу": Heart, "Пить": GlassWater, "Есть": Utensils, "Туалет": Toilet, "Отдых": Bed,
+  "Я": UserRound, "Мама": UserRound, "Папа": UserRound, "Бабушка": UserRound, "Дедушка": UserRound,
+  "Брат": UserRound, "Сестра": UserRound, "Сок": GlassWater, "Вода": GlassWater, "Чай": Coffee,
+  "Яблоко": Apple, "Банан": Banana, "Хлеб": Coffee, "Суп": Coffee, "Каша": Coffee,
+  "Мяч": Circle, "Машинка": Car, "Кукла": UserRound, "Книга": BookOpen, "Пазл": Blocks, "Кот": Cat,
+  "Люблю": Heart, "Вижу": Eye, "Иду": UserRound, "Играю": Gamepad2, "Рисовать": Activity,
+  "Читать": BookOpen, "Спать": Bed, "Гулять": Trees, "Играл": Gamepad2, "Гулял": Trees,
+  "Да": Check, "Нет": X, "Весело": Smile, "Грустно": Frown, "Устал": Bed, "Спокойно": Heart,
+  "Злюсь": Flame, "Страшно": ShieldCheck, "Жарко": Flame, "Холодно": Snowflake,
+  "Домой": House, "Школа": School, "Площадка": Gamepad2, "Магазин": MapPin, "Детский сад": House,
+  "Привет": Hand, "Где?": CircleHelp, "Что это?": CircleHelp, "На столе": ArrowUp,
+  "В коробке": Blocks, "Под стулом": ArrowDown, "Вчера": Timer,
+};
+
+const aacCategoryIcons: Record<string, LucideIcon> = {
+  help: HandHelping, wants: Heart, needs: Activity, feelings: Smile, yes_no: Check,
+  people: Users, food: Apple, play: Gamepad2, places: MapPin, actions: Play,
+};
+
+function AACVisual({ card, compact = false }: { card: AACCard; compact?: boolean }) {
+  const Icon = aacIconByLabel[card.label] || aacCategoryIcons[card.category] || MessageCircle;
+  return <span className={`aac-visual aac-${card.category} ${compact ? "compact" : ""}`} aria-hidden="true"><Icon strokeWidth={1.7}/></span>;
+}
 
 function PhraseGame({ childId, canManage, exercise, soundEnabled, onBack, onComplete }: { childId?: number; canManage: boolean; exercise?: Exercise; soundEnabled: boolean; onBack: () => void; onComplete: (score: number, phrase: string, exerciseId: number) => void }) {
   const [cards, setCards] = useState<AACCard[]>([]);
   const [selected, setSelected] = useState<AACCard[]>([]);
-  const [category, setCategory] = useState<string>(() => exercise?.target === "help" ? "help" : exercise?.target === "need" ? "needs" : exercise?.target === "desire" ? "wants" : "favorites");
+  const [category, setCategory] = useState<string>(() => ({
+    help: "help", refusal: "yes_no", need: "needs", desire: "wants", request: "wants", preference: "food", choice: "food",
+    feelings: "feelings", answer: "yes_no", family: "people", greeting: "people", observation: "actions", agent_action: "actions",
+    routine: "actions", past_event: "actions", spatial_phrase: "places", question: "places",
+  }[exercise?.target || ""] || "favorites"));
   const [history, setHistory] = useState<Array<{ id: number; phrase: string }>>([]);
+  const [cardQuery, setCardQuery] = useState("");
   const [customOpen, setCustomOpen] = useState(false);
   const [custom, setCustom] = useState({ label: "", speech: "", category: "needs" });
   const savedRef = useRef(false);
@@ -768,7 +902,8 @@ function PhraseGame({ childId, canManage, exercise, soundEnabled, onBack, onComp
     api<Array<{ id: number; phrase: string }>>(`/api/aac/history/${childId}`).then(setHistory).catch(() => setHistory([]));
   }, [childId]);
   useEffect(loadBoard, [loadBoard]);
-  const visibleCards = category === "favorites" ? cards.filter((card) => card.favorite || card.is_core) : cards.filter((card) => card.category === category);
+  const normalizedCardQuery = cardQuery.trim().toLocaleLowerCase("ru");
+  const visibleCards = (category === "favorites" ? cards.filter((card) => card.favorite || card.is_core) : cards.filter((card) => card.category === category)).filter((card) => !normalizedCardQuery || `${card.label} ${card.speech}`.toLocaleLowerCase("ru").includes(normalizedCardQuery));
   const addCard = (card: AACCard) => { savedRef.current = false; setSelected((items) => card.is_core ? [card] : [...items, card].slice(-6)); };
   const toggleFavorite = async (card: AACCard) => {
     if (!childId) return;
@@ -789,22 +924,24 @@ function PhraseGame({ childId, canManage, exercise, soundEnabled, onBack, onComp
   const createCustom = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!childId) return;
-    const card = await api<AACCard>("/api/aac/cards", { method: "POST", body: JSON.stringify({ child_id: childId, ...custom, image: "/soyle-icon.png" }) }).catch(() => null);
+    const card = await api<AACCard>("/api/aac/cards", { method: "POST", body: JSON.stringify({ child_id: childId, ...custom, image: "/soyle-mark-v2.png" }) }).catch(() => null);
     if (card) { setCards((items) => [...items, card]); setCustom({ label: "", speech: "", category: "needs" }); setCustomOpen(false); setCategory(card.category); }
   };
   const replayHistory = (phrase: string) => {
     speak(phrase, 0.72, soundEnabled);
   };
-  return <div className="page-enter game-page aac-page">
+  const activeCategory = aacCategories.find((item) => item.id === category) || aacCategories[0];
+  return <div className="page-enter game-page aac-page redesigned">
     <GameHeader title={exercise?.title || "Доска общения"} subtitle="AAC — говорю с помощью карточек" step={`${selected.length} карточек`} onBack={onBack}/>
-    <div className="aac-goal"><div><span className="kicker">ЦЕЛЬ УРОКА</span><strong>{exercise?.instruction || "Собери сообщение из карточек и озвучь его"}</strong></div><ShieldCheck size={22}/><p>Можно использовать одну карточку или собрать целую фразу. Любая понятная просьба — успешная коммуникация.</p></div>
+    <div className="aac-goal"><div><span className="kicker">ЦЕЛЬ</span><strong>{exercise?.instruction || "Собери сообщение из карточек и озвучь его"}</strong></div><ShieldCheck size={22}/><p>Одной карточки достаточно, если она передаёт смысл. Давить и требовать полную фразу не нужно.</p></div>
+    <section className="aac-composer aac-composer-top"><div className="aac-composer-head"><div><span className="kicker">МОЁ СООБЩЕНИЕ</span><strong>{sentence || "Выбери карточки ниже"}</strong></div><div className="aac-composer-actions"><button className="clear-button" disabled={!selected.length} onClick={() => { setSelected([]); savedRef.current = false; }}>Очистить</button><button className="speak-button" disabled={!selected.length} onClick={sayPhrase}><Volume2 size={21}/>{soundEnabled ? "Произнести" : "Сохранить"}</button></div></div><div className={`aac-sentence ${selected.length ? "filled" : ""}`}>{selected.length ? selected.map((card, index) => <button key={`${card.id}-${index}`} onClick={() => { savedRef.current = false; setSelected((items) => items.filter((_, itemIndex) => itemIndex !== index)); }}><AACVisual card={card} compact/><span>{card.label}</span><X size={13}/></button>) : <p><Plus size={18}/> Нажимай на карточки — сообщение появится здесь</p>}</div></section>
     <div className="aac-workspace">
-      <section className="aac-board"><div className="aac-toolbar"><div className="aac-tabs">{aacCategories.map((item) => <button key={item.id} className={category === item.id ? "active" : ""} onClick={() => setCategory(item.id)}>{item.label}</button>)}</div><div className="aac-tools"><button className="small-button" onClick={() => document.querySelector<HTMLElement>(".aac-page")?.requestFullscreen?.()}>На весь экран</button>{canManage && <button className="small-button" onClick={() => setCustomOpen((value) => !value)}>+ Своя карточка</button>}</div></div>
+      <aside className="aac-category-panel"><div><span className="kicker">КАТЕГОРИИ</span><h3>Найди нужное слово</h3></div><nav className="aac-tabs">{aacCategories.map((item) => { const Icon = item.icon; const count = item.id === "favorites" ? cards.filter((card) => card.favorite || card.is_core).length : cards.filter((card) => card.category === item.id).length; return <button key={item.id} className={category === item.id ? "active" : ""} onClick={() => { setCategory(item.id); setCardQuery(""); }}><Icon size={18}/><span>{item.label}</span><small>{count}</small></button>; })}</nav>{history.length > 0 && <div className="aac-history"><span className="kicker">НЕДАВНИЕ</span>{history.slice(0,3).map((item) => <button key={item.id} onClick={() => replayHistory(item.phrase)}><RotateCcw size={14}/><span>{item.phrase}</span></button>)}</div>}</aside>
+      <section className="aac-board"><div className="aac-toolbar"><div><span className="kicker">{category === "favorites" ? "БЫСТРЫЙ ДОСТУП" : "КАТЕГОРИЯ"}</span><h3>{activeCategory.label}</h3></div><div className="aac-tools"><label className="aac-search"><Search size={16}/><input value={cardQuery} onChange={(event) => setCardQuery(event.target.value)} placeholder="Найти слово" aria-label="Найти слово"/></label><button className="small-button" onClick={() => document.querySelector<HTMLElement>(".aac-page")?.requestFullscreen?.()}><LayoutDashboard size={15}/> На весь экран</button>{canManage && <button className="small-button" onClick={() => setCustomOpen((value) => !value)}><Plus size={15}/> Своя карточка</button>}</div></div>
         {customOpen && <form className="aac-custom-form" onSubmit={createCustom}><input value={custom.label} onChange={(e) => setCustom({...custom,label:e.target.value})} placeholder="Короткая подпись" required/><input value={custom.speech} onChange={(e) => setCustom({...custom,speech:e.target.value})} placeholder="Что должна сказать карточка" required/><select value={custom.category} onChange={(e) => setCustom({...custom,category:e.target.value})}>{aacCategories.filter((item) => item.id !== "favorites").map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select><button className="primary-button">Добавить</button></form>}
-        <div className="aac-card-grid">{visibleCards.map((card) => <div className={`aac-card ${card.is_core ? "core" : ""}`} key={card.id}><button className="aac-card-main" onClick={() => addCard(card)}><span><Image src={card.image} alt="" width={76} height={76}/></span><strong>{card.label}</strong><small>{card.speech}</small></button><button className={`aac-favorite ${card.favorite ? "active" : ""}`} onClick={() => toggleFavorite(card)} aria-label="Добавить в избранное"><Star size={16} fill={card.favorite ? "currentColor" : "none"}/></button></div>)}</div>
-        {!visibleCards.length && <div className="aac-empty">В этой категории пока нет карточек. Родитель может добавить свою.</div>}
+        <div className="aac-card-grid">{visibleCards.map((card) => <div className={`aac-card ${card.is_core ? "core" : ""}`} key={card.id}><button className="aac-card-main" onClick={() => addCard(card)}><AACVisual card={card}/><strong>{card.label}</strong><small>{card.speech}</small></button><button className={`aac-favorite ${card.favorite ? "active" : ""}`} onClick={() => toggleFavorite(card)} aria-label={card.favorite ? `Убрать ${card.label} из избранного` : `Добавить ${card.label} в избранное`}><Star size={15} fill={card.favorite ? "currentColor" : "none"}/></button></div>)}</div>
+        {!visibleCards.length && <div className="aac-empty"><Search size={24}/><strong>Карточки не найдены</strong><span>Измените поиск или выберите другую категорию.</span></div>}
       </section>
-      <aside className="aac-composer"><span className="kicker">МОЁ СООБЩЕНИЕ</span><div className={`aac-sentence ${selected.length ? "filled" : ""}`}>{selected.length ? selected.map((card, index) => <button key={`${card.id}-${index}`} onClick={() => { savedRef.current = false; setSelected((items) => items.filter((_, itemIndex) => itemIndex !== index)); }}><Image src={card.image} alt="" width={42} height={42}/><span>{card.label}</span><X size={13}/></button>) : <p>Нажимай на карточки слева — они появятся здесь</p>}</div><div className="aac-phrase-text">{sentence || "Твоя фраза появится здесь"}</div><button className="speak-button" disabled={!selected.length} onClick={sayPhrase}><Volume2 size={22}/>{soundEnabled ? "Сказать вслух" : "Сохранить сообщение"}</button><button className="clear-button" onClick={() => { setSelected([]); savedRef.current = false; }}>Очистить</button>{history.length > 0 && <div className="aac-history"><span className="kicker">НЕДАВНИЕ ФРАЗЫ</span>{history.slice(0,4).map((item) => <button key={item.id} onClick={() => replayHistory(item.phrase)}><RotateCcw size={14}/>{item.phrase}</button>)}</div>}</aside>
     </div>
   </div>;
 }
@@ -819,8 +956,8 @@ function ProgressScreen({ childId, dashboard }: { childId?: number; dashboard: D
   const practiced = skills.filter((item) => item.sessions > 0);
   const weakest = practiced.length ? practiced.reduce((current, item) => item.value < current.value ? item : current, practiced[0]) : null;
   return (
-    <div className="page-enter stack-xl">
-      <PageTitle eyebrow="МАЛЕНЬКИЕ ШАГИ — БОЛЬШОЙ РЕЗУЛЬТАТ" title={`Прогресс ${data?.child?.name || "ребёнка"}`} subtitle="Данные обновляются после каждого завершённого занятия." />
+    <div className="page-enter stack-xl progress-page">
+      <section className="progress-hero"><div><span className="kicker">МАЛЕНЬКИЕ ШАГИ — БОЛЬШОЙ РЕЗУЛЬТАТ</span><h1>{`Прогресс ${data?.child?.name || "ребёнка"}`}</h1><p>Смотрите на динамику навыков и регулярность практики, а не на отдельный результат.</p></div><div className="progress-hero-score"><strong>{dashboard?.overall ?? data?.overall ?? 0}%</strong><span>общий прогресс</span></div></section>
       <div className="stats-row"><StatCard icon={<TrendingUp/>} value={`${dashboard?.overall ?? data?.overall ?? 0}%`} label="общий прогресс" /><StatCard icon={<Timer/>} value={String(dashboard?.total_minutes || 0)} label="минут занятий" /><StatCard icon={<Star/>} value={String(dashboard?.stars || 0)} label="звезды собрано" /><StatCard icon={<Target/>} value={String(dashboard?.total_sessions ?? data?.total_sessions ?? 0)} label="занятий пройдено" /></div>
       <div className="progress-grid">
         <section className="chart-card"><div className="card-heading"><div><span className="kicker">ДИНАМИКА</span><h3>Результаты за 7 дней</h3></div><span className={delta >= 0 ? "positive" : "negative"}>{delta > 0 ? "+" : ""}{delta}%</span></div><div className="chart-area"><div className="chart-lines"><i/><i/><i/><i/></div>{dashboard?.daily.some((point) => point.motor !== null || point.sensory !== null || point.mixed !== null) ? <svg viewBox="0 0 700 230" preserveAspectRatio="none" aria-label="График фактических результатов"><polyline points={chartPoints("motor")} className="line coral-line"/><polyline points={chartPoints("sensory")} className="line blue-line"/><polyline points={chartPoints("mixed")} className="line mint-line"/></svg> : <div className="chart-empty">Завершите занятие — здесь появится динамика</div>}<div className="chart-labels">{dashboard?.daily.map((point) => <span key={point.date}>{point.label}</span>)}</div></div><div className="legend"><span><i className="coral-dot"/>Артикуляция</span><span><i className="blue-dot"/>Понимание</span><span><i className="mint-dot"/>Фразы</span></div></section>

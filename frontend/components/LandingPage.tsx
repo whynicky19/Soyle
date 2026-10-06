@@ -45,7 +45,7 @@ const faqs = [
 ];
 
 function Logo() {
-  return <span className="landing-logo"><Image src="/soyle-icon.png" alt="" width={42} height={42} /><span><b>Söyle</b><small>растём вместе</small></span></span>;
+  return <span className="landing-logo"><Image src="/soyle-mark-v2.png" alt="" width={42} height={42} /><span><b>Söyle</b><small>растём вместе</small></span></span>;
 }
 
 export function LandingPage() {
