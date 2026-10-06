@@ -1,16 +1,21 @@
 import json
 import os
 import hashlib
+import shutil
+import subprocess
+import tempfile
 from collections import defaultdict
 from contextlib import asynccontextmanager
 from datetime import date, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
+from pathlib import Path
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 
 from .database import connect, init_db, now_iso
-from .schemas import AACCardCreate, AACFavoriteUpdate, AACPhraseCreate, ActiveUpdate, AssignedExerciseCreate, ChildCreate, ChildDeleteRequest, ChildGoalCreate, ConsentUpdate, ExerciseCreate, GoalStatusUpdate, HomeworkCreate, HomeworkResultUpdate, LearningSessionCreate, LoginRequest, RecommendationReview, RegisterRequest, RoleUpdate, SessionCreate, SpecialistAssignmentCreate, SpecialistRecommendationCreate, StudentAccountCreate, StudentLoginRequest, UserSettingsUpdate
+from .schemas import AACCardCreate, AACFavoriteUpdate, AACPhraseCreate, ActiveUpdate, AssignedExerciseCreate, ChildCreate, ChildDeleteRequest, ChildGoalCreate, ConsentUpdate, ExerciseCreate, GoalStatusUpdate, HomeworkCreate, HomeworkResultUpdate, LearningSessionCreate, LoginRequest, RecommendationReview, RegisterRequest, RoleUpdate, SessionCreate, SpecialistAssignmentCreate, SpecialistRecommendationCreate, StudentAccountCreate, StudentLoginRequest, TTSRequest, UserSettingsUpdate
 from .security import create_access_token, create_student_access_token, get_current_user, hash_password, require_roles, verify_password
 
 
@@ -84,12 +89,13 @@ def settings_key(user: dict) -> str:
 
 def public_settings(row=None) -> dict:
     if not row:
-        return {"camera_enabled": True, "sound_enabled": True, "calm_mode": False, "theme": "peach"}
+        return {"camera_enabled": True, "sound_enabled": True, "calm_mode": False, "theme": "peach", "language": "ru"}
     return {
         "camera_enabled": bool(row["camera_enabled"]),
         "sound_enabled": bool(row["sound_enabled"]),
         "calm_mode": bool(row["calm_mode"]),
         "theme": row["theme"],
+        "language": row["language"] if "language" in row.keys() else "ru",
     }
 
 
@@ -229,15 +235,48 @@ def get_settings(user: dict = Depends(get_current_user)) -> dict:
 def update_settings(payload: UserSettingsUpdate, user: dict = Depends(get_current_user)) -> dict:
     with connect() as db:
         db.execute(
-            """INSERT INTO user_settings(user_key,camera_enabled,sound_enabled,calm_mode,theme,updated_at)
-               VALUES(?,?,?,?,?,?)
+            """INSERT INTO user_settings(user_key,camera_enabled,sound_enabled,calm_mode,theme,language,updated_at)
+               VALUES(?,?,?,?,?,?,?)
                ON CONFLICT(user_key) DO UPDATE SET camera_enabled=excluded.camera_enabled,
                sound_enabled=excluded.sound_enabled,calm_mode=excluded.calm_mode,
-               theme=excluded.theme,updated_at=excluded.updated_at""",
-            (settings_key(user), int(payload.camera_enabled), int(payload.sound_enabled), int(payload.calm_mode), payload.theme, now_iso()),
+               theme=excluded.theme,language=excluded.language,updated_at=excluded.updated_at""",
+            (settings_key(user), int(payload.camera_enabled), int(payload.sound_enabled), int(payload.calm_mode), payload.theme, payload.language, now_iso()),
         )
         row = db.execute("SELECT * FROM user_settings WHERE user_key=?", (settings_key(user),)).fetchone()
     return public_settings(row)
+
+
+@app.post("/api/tts")
+def text_to_speech(payload: TTSRequest, _: dict = Depends(get_current_user)) -> FileResponse:
+    text = " ".join(payload.text.split()).strip()
+    cache_dir = Path(tempfile.gettempdir()) / "soyle-tts-v1"
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    cache_key = hashlib.sha256(f"{text}|{payload.rate:.2f}".encode("utf-8")).hexdigest()
+    output_path = cache_dir / f"{cache_key}.wav"
+    if not output_path.exists():
+        source_path = cache_dir / f"{cache_key}.aiff"
+        say_path = shutil.which("say")
+        ffmpeg_path = shutil.which("ffmpeg")
+        if not say_path or not ffmpeg_path:
+            raise HTTPException(503, "Локальный голосовой движок недоступен")
+        words_per_minute = max(125, min(215, round(190 * payload.rate)))
+        voice = os.getenv("SOYLE_TTS_VOICE", "Milena")
+        command = [say_path, "-v", voice, "-r", str(words_per_minute), "-o", str(source_path), text]
+        generated = subprocess.run(command, capture_output=True, timeout=20, check=False)
+        if generated.returncode != 0:
+            generated = subprocess.run([say_path, "-r", str(words_per_minute), "-o", str(source_path), text], capture_output=True, timeout=20, check=False)
+        if generated.returncode != 0 or not source_path.exists():
+            raise HTTPException(503, "Не удалось подготовить озвучивание")
+        filtered = subprocess.run([
+            ffmpeg_path, "-loglevel", "error", "-y", "-i", str(source_path),
+            "-af", "highpass=f=60,lowpass=f=10500,areverse,afade=t=in:st=0:d=0.12,areverse,apad=pad_dur=0.08",
+            "-ar", "24000", "-ac", "1", str(output_path),
+        ], capture_output=True, timeout=20, check=False)
+        source_path.unlink(missing_ok=True)
+        if filtered.returncode != 0 or not output_path.exists():
+            output_path.unlink(missing_ok=True)
+            raise HTTPException(503, "Не удалось обработать озвучивание")
+    return FileResponse(output_path, media_type="audio/wav", filename="soyle-speech.wav", headers={"Cache-Control": "private, max-age=86400"})
 
 
 @app.get("/api/notifications")
@@ -690,6 +729,13 @@ def session_plan(child_id: int, minutes: int = Query(default=5), user: dict = De
 @app.post("/api/learning-sessions", status_code=201)
 def create_learning_session(payload: LearningSessionCreate, user: dict = Depends(get_current_user)) -> dict:
     ensure_child_access(payload.child_id, user)
+    with connect() as db:
+        existing = db.execute(
+            "SELECT id FROM learning_sessions WHERE child_id=? AND status IN ('in_progress','paused') ORDER BY id DESC LIMIT 1",
+            (payload.child_id,),
+        ).fetchone()
+    if existing:
+        return get_learning_session(existing["id"], user)
     unique_ids = list(dict.fromkeys(payload.exercise_ids))
     if len(unique_ids) != len(payload.exercise_ids):
         raise HTTPException(422, "В занятии не должно быть повторяющихся заданий")

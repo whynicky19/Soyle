@@ -73,6 +73,11 @@ def test_learning_session_pause_and_measurements(client, parent_headers):
     })
     assert created.status_code == 201
     session = created.json()
+    repeated = client.post("/api/learning-sessions", headers=parent_headers, json={
+        "child_id": child_id, "exercise_ids": [item["id"] for item in plan["exercises"]], "target_minutes": 5,
+    })
+    assert repeated.status_code == 201
+    assert repeated.json()["id"] == session["id"]
     paused = client.patch(f"/api/learning-sessions/{session['id']}/pause", headers=parent_headers)
     assert paused.json()["status"] == "paused"
     active = client.get(f"/api/children/{child_id}/active-session", headers=parent_headers)

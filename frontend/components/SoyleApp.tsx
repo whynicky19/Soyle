@@ -9,6 +9,7 @@ import {
   Armchair,
   Backpack,
   Banana,
+  Baby,
   BarChart3,
   BedDouble,
   Bed,
@@ -22,10 +23,14 @@ import {
   Check,
   ChevronRight,
   Circle,
+  CircleUserRound,
   CircleHelp,
   Coffee,
+  Contact,
+  CupSoda,
   CreditCard,
   Dog,
+  Droplets,
   Ear,
   Eye,
   EyeOff,
@@ -54,16 +59,19 @@ import {
   Mic2,
   Parentheses,
   Pause,
+  PersonStanding,
   Play,
   Plus,
   RotateCcw,
   School,
+  Sandwich,
   Search,
   Settings,
   Shirt,
   ShieldCheck,
   Smile,
   Snowflake,
+  Soup,
   Sparkles,
   Star,
   Target,
@@ -77,17 +85,19 @@ import {
   UserRound,
   UserRoundCheck,
   Volume2,
+  Wheat,
   X,
   type LucideIcon,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { api, AACCard, AppSettings, Child, Dashboard, Exercise, getToken, LearningSession, NotificationsData, Role, setToken, SkillProgress, User } from "@/lib/api";
+import { api, AACCard, API_URL, AppSettings, Child, Dashboard, Exercise, getToken, LearningSession, NotificationsData, Role, setToken, SkillProgress, User } from "@/lib/api";
+import { useInterfaceLanguage } from "@/lib/i18n";
 
-type Screen = "home" | "games" | "session" | "motor" | "sensory" | "mixed" | "progress" | "parent" | "settings" | "admin" | "specialist";
+type Screen = "home" | "games" | "session" | "motor" | "sensory" | "mixed" | "progress" | "parent" | "profile" | "settings" | "admin" | "specialist";
 type ModuleName = "motor" | "sensory" | "mixed";
-const defaultSettings: AppSettings = { camera_enabled: true, sound_enabled: true, calm_mode: false, theme: "peach" };
+const defaultSettings: AppSettings = { camera_enabled: true, sound_enabled: true, calm_mode: false, theme: "peach", language: "ru" };
 
 const modules = [
   {
@@ -131,6 +141,11 @@ function BrandIcon({ size = 26 }: { size?: number }) {
   return <Image src="/soyle-mark-v2.png" alt="" width={size} height={size} priority />;
 }
 
+function ModuleGlyph({ module, size = 30 }: { module: ModuleName; size?: number }) {
+  const Icon = module === "motor" ? Mic2 : module === "sensory" ? Ear : MessageCircle;
+  return <span className={`module-glyph ${module}`} aria-hidden="true"><Icon size={size} strokeWidth={1.8}/><i/></span>;
+}
+
 export function SoyleApp() {
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
@@ -166,6 +181,8 @@ function AuthenticatedApp({ user, onLogout }: { user: User; onLogout: () => void
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(null);
   const [activeSession, setActiveSession] = useState<LearningSession | null>(null);
+  const [sessionExerciseActive, setSessionExerciseActive] = useState(false);
+  const [activeSessionLoading, setActiveSessionLoading] = useState(true);
   const [sessionLoading, setSessionLoading] = useState(false);
   const [sessionError, setSessionError] = useState("");
   const [dailyMinutes, setDailyMinutes] = useState<3 | 5 | 10>(5);
@@ -176,6 +193,7 @@ function AuthenticatedApp({ user, onLogout }: { user: User; onLogout: () => void
   const gameStartedAtRef = useRef(0);
   const [childrenLoading, setChildrenLoading] = useState(true);
   const [settings, setSettings] = useState<AppSettings>(defaultSettings);
+  useInterfaceLanguage(settings.language);
 
   useEffect(() => {
     document.documentElement.dataset.theme = settings.theme;
@@ -207,11 +225,11 @@ function AuthenticatedApp({ user, onLogout }: { user: User; onLogout: () => void
   const child = children.find((item) => item.id === selectedChildId) || children[0];
 
   useEffect(() => {
-    if (!child?.id) return;
+    if (!child?.id) { queueMicrotask(() => setActiveSessionLoading(false)); return; }
     api<LearningSession | null>(`/api/children/${child.id}/active-session`).then((session) => {
-      if (session) setActiveSession((current) => current?.child_id === child.id ? current : session);
-    }).catch(() => undefined);
-  }, [child?.id]);
+      setActiveSession(session);
+    }).catch(() => undefined).finally(() => setActiveSessionLoading(false));
+  }, [child?.id, screen]);
 
   const refreshDashboard = useCallback(() => {
     if (child?.id) api<Dashboard>(`/api/dashboard/${child.id}`).then(setDashboard).catch(() => setDashboard(null));
@@ -222,15 +240,15 @@ function AuthenticatedApp({ user, onLogout }: { user: User; onLogout: () => void
     if (!child || !exerciseId) return;
     const startedAt = gameStartedAtRef.current || Date.now();
     const durationSeconds = Math.max(1, Math.round((Date.now() - startedAt) / 1000));
-    const sequenceIndex = activeSession?.exercises.findIndex((item) => item.id === exerciseId);
-    const result = await api<{ awarded_stars: number; score: number; duration_seconds: number; created_at: string }>("/api/sessions", { method: "POST", body: JSON.stringify({ child_id: child.id, exercise_id: exerciseId, module, score, duration_seconds: durationSeconds, details, learning_session_id: activeSession?.id || null, sequence_index: sequenceIndex !== undefined && sequenceIndex >= 0 ? sequenceIndex : null }) }).catch(() => null);
+    const sequenceIndex = sessionExerciseActive ? activeSession?.exercises.findIndex((item) => item.id === exerciseId) : undefined;
+    const result = await api<{ awarded_stars: number; score: number; duration_seconds: number; created_at: string }>("/api/sessions", { method: "POST", body: JSON.stringify({ child_id: child.id, exercise_id: exerciseId, module, score, duration_seconds: durationSeconds, details, learning_session_id: sessionExerciseActive ? activeSession?.id || null : null, sequence_index: sequenceIndex !== undefined && sequenceIndex >= 0 ? sequenceIndex : null }) }).catch(() => null);
     if (result) {
       setReward({ stars: result.awarded_stars, nonce: Date.now() });
       window.setTimeout(() => setReward(null), 2200);
       gameStartedAtRef.current = Date.now();
       refreshDashboard();
       loadNotifications();
-      if (activeSession && sequenceIndex !== undefined && sequenceIndex >= 0) {
+      if (sessionExerciseActive && activeSession && sequenceIndex !== undefined && sequenceIndex >= 0) {
         const nextIndex = Math.max(activeSession.current_index, sequenceIndex + 1);
         setActiveSession({ ...activeSession, current_index: nextIndex, status: nextIndex >= activeSession.exercises.length ? "completed" : "in_progress", results: [...(activeSession.results || []), { exercise_id: exerciseId, score: result.score, duration_seconds: result.duration_seconds, created_at: result.created_at }] });
         window.setTimeout(() => setScreen("session"), 850);
@@ -243,6 +261,12 @@ function AuthenticatedApp({ user, onLogout }: { user: User; onLogout: () => void
     if (!child || sessionLoading) return;
     setSessionLoading(true); setSessionError("");
     try {
+      const existing = await api<LearningSession | null>(`/api/children/${child.id}/active-session`);
+      if (existing) {
+        setActiveSession(existing);
+        setScreen("session");
+        return;
+      }
       const plan = await api<{ exercises: Exercise[] }>(`/api/session-plan/${child.id}?minutes=${dailyMinutes}`);
       const created = await api<LearningSession>("/api/learning-sessions", { method: "POST", body: JSON.stringify({ child_id: child.id, exercise_ids: plan.exercises.map((item) => item.id), target_minutes: dailyMinutes }) });
       setActiveSession({ ...created, results: [] });
@@ -255,6 +279,7 @@ function AuthenticatedApp({ user, onLogout }: { user: User; onLogout: () => void
   const continueSession = () => {
     if (!activeSession || activeSession.current_index >= activeSession.exercises.length) return;
     const exercise = activeSession.exercises[activeSession.current_index];
+    setSessionExerciseActive(true);
     setSelectedExercise(exercise);
     gameStartedAtRef.current = Date.now();
     setScreen(exercise.module);
@@ -294,7 +319,7 @@ function AuthenticatedApp({ user, onLogout }: { user: User; onLogout: () => void
 
   const openScreen = (next: Screen) => {
     if (["motor", "sensory", "mixed"].includes(next)) {
-      setActiveSession(null);
+      setSessionExerciseActive(false);
       gameStartedAtRef.current = Date.now();
       setSelectedExercise(exercises.find((item) => item.module === next) || null);
     }
@@ -304,7 +329,7 @@ function AuthenticatedApp({ user, onLogout }: { user: User; onLogout: () => void
   };
 
   const openExercise = (exercise: Exercise) => {
-    setActiveSession(null);
+    setSessionExerciseActive(false);
     setSelectedExercise(exercise);
     gameStartedAtRef.current = Date.now();
     setScreen(exercise.module);
@@ -339,8 +364,8 @@ function AuthenticatedApp({ user, onLogout }: { user: User; onLogout: () => void
           <span>{dashboard?.week_sessions || 0} занятий на этой неделе</span>
         </div>
         <div className="profile-mini">
-          <div className="avatar">{user.full_name[0]}</div>
-          <div><strong>{user.full_name}</strong><span>{roleLabel(user.role)}</span></div>
+          <button className="avatar avatar-button" onClick={() => openScreen("profile")} aria-label="Открыть профиль">{user.full_name[0]}</button>
+          <button className="profile-mini-info" onClick={() => openScreen("profile")}><strong>{user.full_name}</strong><span>{roleLabel(user.role)}</span></button>
           <button className="logout-mini" onClick={onLogout} aria-label="Выйти"><LogOut size={17} /></button>
         </div>
       </aside>
@@ -352,22 +377,23 @@ function AuthenticatedApp({ user, onLogout }: { user: User; onLogout: () => void
           <button className="menu-button" onClick={() => setSidebarOpen(true)} aria-label="Открыть меню"><Menu /></button>
           <div className="mobile-logo"><BrandIcon size={22} /> Söyle</div>
           <div className="top-actions">
-            <button className="language"><Languages size={17} /> RU</button>
+            <button className="language" data-i18n-native onClick={() => changeSettings({ ...settings, language: settings.language === "ru" ? "en" : settings.language === "en" ? "kk" : "ru" })} aria-label="Сменить язык"><Languages size={17} /> {settings.language === "kk" ? "ҚАЗ" : settings.language.toUpperCase()}</button>
             <div className="stars"><Star size={18} fill="currentColor" /> {dashboard?.stars || 0}</div>
             {user.role === "parent" && <div className="notification-wrap"><button className="notification-button" onClick={() => setNotificationsOpen((value) => !value)} aria-label="Уведомления"><Bell size={19}/>{notifications.unread > 0 && <i>{notifications.unread}</i>}</button>{notificationsOpen && <div className="notification-panel"><div className="notification-head"><div><span className="kicker">УВЕДОМЛЕНИЯ</span><strong>Практика после модулей</strong></div>{notifications.unread > 0 && <button onClick={markAllNotificationsRead}>Прочитать все</button>}</div><div className="notification-list">{notifications.items.length ? notifications.items.map((item) => <button key={item.id} className={item.is_read ? "read" : "unread"} onClick={() => markNotificationRead(item.id)}><span className="notification-symbol"><Trophy size={18}/></span><div><strong>{item.title}</strong><p>{item.message}</p><small>{new Date(item.created_at).toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}</small></div>{!item.is_read && <i/>}</button>) : <div className="notification-empty"><Bell size={24}/><strong>Пока всё спокойно</strong><span>После завершения модуля здесь появится домашняя тренировка.</span></div>}</div></div>}</div>}
-            <div className="avatar small">{user.full_name[0]}</div>
+            <button className="avatar small avatar-button" onClick={() => openScreen("profile")} aria-label="Открыть профиль">{user.full_name[0]}</button>
           </div>
         </header>
 
         <div className="page">
-          {screen === "home" && <HomeScreen onOpen={openScreen} onStartSession={startDailySession} onResume={resumeSession} activeSession={activeSession} dailyMinutes={dailyMinutes} onMinutesChange={setDailyMinutes} sessionLoading={sessionLoading} sessionError={sessionError} child={child} dashboard={dashboard} />}
+          {screen === "home" && <HomeScreen onOpen={openScreen} onStartSession={startDailySession} onResume={resumeSession} activeSession={activeSession} activeSessionLoading={activeSessionLoading} dailyMinutes={dailyMinutes} onMinutesChange={setDailyMinutes} sessionLoading={sessionLoading} sessionError={sessionError} child={child} dashboard={dashboard} />}
           {screen === "games" && <GamesScreen onOpen={openScreen} onExercise={openExercise} dashboard={dashboard} exercises={exercises} />}
           {screen === "session" && activeSession && <SessionScreen session={activeSession} onContinue={continueSession} onPause={pauseSession} onFinish={() => { setActiveSession(null); refreshDashboard(); setScreen("home"); }} />}
-          {screen === "motor" && <MotorGame exercises={exercises.filter((item) => item.module === "motor")} initialExercise={selectedExercise} cameraEnabled={settings.camera_enabled} onBack={() => activeSession ? setScreen("session") : openScreen("games")} onComplete={(score, exerciseId) => saveSession(exerciseId, "motor", score, { source: "face-landmarker" })} />}
-          {screen === "sensory" && <SensoryGame key={selectedExercise?.id || "sensory"} exercise={selectedExercise?.module === "sensory" ? selectedExercise : exercises.find((item) => item.module === "sensory")} soundEnabled={settings.sound_enabled} onBack={() => activeSession ? setScreen("session") : openScreen("games")} onComplete={(score, exerciseId) => saveSession(exerciseId, "sensory", score, { rounds: 5 })} />}
-          {screen === "mixed" && <PhraseGame key={selectedExercise?.id || "mixed"} childId={child?.id} canManage={user.role === "parent"} exercise={selectedExercise?.module === "mixed" ? selectedExercise : exercises.find((item) => item.module === "mixed")} soundEnabled={settings.sound_enabled} onBack={() => activeSession ? setScreen("session") : openScreen("games")} onComplete={(score, phrase, exerciseId) => saveSession(exerciseId, "mixed", score, { phrase })} />}
+          {screen === "motor" && <MotorGame exercises={exercises.filter((item) => item.module === "motor")} initialExercise={selectedExercise} cameraEnabled={settings.camera_enabled} onBack={() => sessionExerciseActive && activeSession ? setScreen("session") : openScreen("games")} onComplete={(score, exerciseId) => saveSession(exerciseId, "motor", score, { source: "face-landmarker" })} />}
+          {screen === "sensory" && <SensoryGame key={selectedExercise?.id || "sensory"} exercise={selectedExercise?.module === "sensory" ? selectedExercise : exercises.find((item) => item.module === "sensory")} soundEnabled={settings.sound_enabled} onBack={() => sessionExerciseActive && activeSession ? setScreen("session") : openScreen("games")} onComplete={(score, exerciseId) => saveSession(exerciseId, "sensory", score, { rounds: 5 })} />}
+          {screen === "mixed" && <PhraseGame key={selectedExercise?.id || "mixed"} childId={child?.id} canManage={user.role === "parent"} exercise={selectedExercise?.module === "mixed" ? selectedExercise : exercises.find((item) => item.module === "mixed")} soundEnabled={settings.sound_enabled} onBack={() => sessionExerciseActive && activeSession ? setScreen("session") : openScreen("games")} onComplete={(score, phrase, exerciseId) => saveSession(exerciseId, "mixed", score, { phrase })} />}
           {screen === "progress" && <ProgressScreen childId={child?.id} dashboard={dashboard} />}
           {screen === "parent" && <ParentScreen child={child} childProfiles={children} onSelectChild={setSelectedChildId} onDeleted={(id) => { const remaining = children.filter((item) => item.id !== id); setChildren(remaining); setSelectedChildId(remaining[0]?.id || null); setScreen("home"); }} dashboard={dashboard} />}
+          {screen === "profile" && <ProfileScreen user={user} child={child} dashboard={dashboard} settings={settings} onOpen={openScreen} onLogout={onLogout}/>}
           {screen === "admin" && <AdminScreen />}
           {screen === "specialist" && <SpecialistScreen />}
           {screen === "settings" && <SettingsScreen settings={settings} onChange={changeSettings} onLogout={onLogout} />}
@@ -420,7 +446,7 @@ function AuthScreen({ onAuthenticated }: { onAuthenticated: (user: User) => void
     <div className="auth-visual">
       <div className="auth-brand"><div className="brand-mark"><BrandIcon /></div><strong>Söyle</strong></div>
       <div className="auth-copy"><span className="pill"><ShieldCheck size={15}/> Спокойная ежедневная практика</span><h1>Помогаем ребёнку<br/><em>понимать и общаться</em></h1><p>Короткие занятия на понимание речи, активный словарь, артикуляцию и поддерживаемую коммуникацию.</p><div className="auth-benefits"><span><Check/> Пошаговая программа</span><span><Check/> Понятный прогресс</span><span><Check/> Отдельный вход ребёнка</span></div></div>
-      <div className="auth-orbs"><i><Image src={modules[0].icon} alt="" width={64} height={64}/></i><i><Image src={modules[1].icon} alt="" width={64} height={64}/></i><i><Image src={modules[2].icon} alt="" width={64} height={64}/></i></div>
+      <div className="auth-orbs"><i><ModuleGlyph module="motor"/></i><i><ModuleGlyph module="sensory"/></i><i><ModuleGlyph module="mixed"/></i></div>
     </div>
     <div className="auth-form-wrap"><Link href="/" className="auth-back-home"><ArrowLeft size={17}/> На главную</Link><form className="auth-card" onSubmit={submit}>
       <div className="auth-role-tabs" aria-label="Тип входа"><button type="button" className={mode !== "student" ? "active" : ""} onClick={() => switchMode("login")}><UserRoundCheck size={18}/> Взрослый</button><button type="button" className={mode === "student" ? "active" : ""} onClick={() => switchMode("student")}><Backpack size={18}/> Ребёнок</button></div>
@@ -436,7 +462,7 @@ function AuthScreen({ onAuthenticated }: { onAuthenticated: (user: User) => void
   </div>;
 }
 
-function HomeScreen({ onOpen, onStartSession, onResume, activeSession, dailyMinutes, onMinutesChange, sessionLoading, sessionError, child, dashboard }: { onOpen: (screen: Screen) => void; onStartSession: () => void; onResume: () => void; activeSession: LearningSession | null; dailyMinutes: 3 | 5 | 10; onMinutesChange: (value: 3 | 5 | 10) => void; sessionLoading: boolean; sessionError: string; child?: Child; dashboard: Dashboard | null }) {
+function HomeScreen({ onOpen, onStartSession, onResume, activeSession, activeSessionLoading, dailyMinutes, onMinutesChange, sessionLoading, sessionError, child, dashboard }: { onOpen: (screen: Screen) => void; onStartSession: () => void; onResume: () => void; activeSession: LearningSession | null; activeSessionLoading: boolean; dailyMinutes: 3 | 5 | 10; onMinutesChange: (value: 3 | 5 | 10) => void; sessionLoading: boolean; sessionError: string; child?: Child; dashboard: Dashboard | null }) {
   const today = new Date();
   const month = today.toLocaleDateString("ru-RU", { month: "short" }).replace(".", "").toUpperCase();
   return (
@@ -447,7 +473,7 @@ function HomeScreen({ onOpen, onStartSession, onResume, activeSession, dailyMinu
           <h1>Учимся говорить<br /><em>через игру</em></h1>
           <p>Выбери комфортную продолжительность. План учтёт назначения специалиста и текущие навыки.</p>
           <div className="duration-picker" aria-label="Продолжительность занятия">{([3,5,10] as const).map((value) => <button key={value} className={dailyMinutes === value ? "active" : ""} onClick={() => onMinutesChange(value)}>{value} мин</button>)}</div>
-          {activeSession && activeSession.status !== "completed" ? <button className="primary-button" onClick={onResume}><Play size={18} fill="currentColor" /> Продолжить занятие</button> : <button className="primary-button" onClick={onStartSession} disabled={sessionLoading}><Play size={18} fill="currentColor" /> {sessionLoading ? "Готовим занятие…" : "Начать занятие"}</button>}
+          {activeSession && activeSession.status !== "completed" ? <button className="primary-button" onClick={onResume}><Play size={18} fill="currentColor" /> Продолжить занятие</button> : <button className="primary-button" onClick={onStartSession} disabled={sessionLoading || activeSessionLoading}><Play size={18} fill="currentColor" /> {activeSessionLoading ? "Восстанавливаем занятие…" : sessionLoading ? "Готовим занятие…" : "Начать занятие"}</button>}
           {sessionError && <div className="inline-error" role="alert">{sessionError}</div>}
         </div>
         <div className="hero-art" aria-hidden="true">
@@ -494,7 +520,7 @@ function ModuleCard({ module, onClick, index, completed, total }: { module: type
   return (
     <button className={`module-card ${module.accent}`} onClick={onClick}>
       <div className="module-top"><span className="module-number">0{index}</span><span className="module-time">{module.time}</span></div>
-      <div className="module-icon"><Image src={module.icon} alt="" width={62} height={62}/></div>
+      <div className="module-icon"><ModuleGlyph module={module.id}/></div>
       <span className="module-eyebrow">{module.eyebrow}</span>
       <h3>{module.title}</h3>
       <p>{module.description}</p>
@@ -547,7 +573,7 @@ function ExerciseLibrary({ items, onExercise }: { items: Exercise[]; onExercise:
   const normalizedQuery = query.trim().toLocaleLowerCase("ru");
   const filtered = items.filter((item) => (filter === "all" || item.module === filter) && (!normalizedQuery || `${item.title} ${item.instruction}`.toLocaleLowerCase("ru").includes(normalizedQuery)));
   const labels = { motor: "Артикуляция", sensory: "Понимание", mixed: "Фразы" };
-  return <section className="exercise-library"><div className="section-heading"><div><span className="kicker">БИБЛИОТЕКА</span><h2>Все задания</h2></div><div className="library-controls"><label className="exercise-search"><Search size={16}/><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Найти задание" aria-label="Найти задание"/></label><div className="filter-tabs">{(["all","motor","sensory","mixed"] as const).map((value) => <button key={value} className={filter === value ? "active" : ""} onClick={() => setFilter(value)}>{value === "all" ? "Все" : labels[value]}</button>)}</div></div></div><div className="exercise-grid">{filtered.map((exercise) => { const moduleInfo = modules.find((item) => item.id === exercise.module)!; return <button key={exercise.id} className={`exercise-card ${exercise.module}`} onClick={() => onExercise(exercise)}><span className="exercise-emoji"><Image src={moduleInfo.icon} alt="" width={48} height={48}/></span><div><small>{labels[exercise.module]} · уровень {exercise.difficulty}</small><strong>{exercise.title}</strong><p>{exercise.instruction}</p></div><ChevronRight size={18}/></button>; })}</div>{!filtered.length && <div className="empty-state large"><Search size={28}/><strong>Ничего не найдено</strong><span>Измените запрос или выберите другой раздел.</span></div>}</section>;
+  return <section className="exercise-library"><div className="section-heading"><div><span className="kicker">БИБЛИОТЕКА</span><h2>Все задания</h2></div><div className="library-controls"><label className="exercise-search"><Search size={16}/><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Найти задание" aria-label="Найти задание"/></label><div className="filter-tabs">{(["all","motor","sensory","mixed"] as const).map((value) => <button key={value} className={filter === value ? "active" : ""} onClick={() => setFilter(value)}>{value === "all" ? "Все" : labels[value]}</button>)}</div></div></div><div className="exercise-grid">{filtered.map((exercise) => <button key={exercise.id} className={`exercise-card ${exercise.module}`} onClick={() => onExercise(exercise)}><span className="exercise-emoji"><ModuleGlyph module={exercise.module} size={24}/></span><div><small>{labels[exercise.module]} · уровень {exercise.difficulty}</small><strong>{exercise.title}</strong><p>{exercise.instruction}</p></div><ChevronRight size={18}/></button>)}</div>{!filtered.length && <div className="empty-state large"><Search size={28}/><strong>Ничего не найдено</strong><span>Измените запрос или выберите другой раздел.</span></div>}</section>;
 }
 
 function PageTitle({ eyebrow, title, subtitle }: { eyebrow: string; title: string; subtitle: string }) {
@@ -803,17 +829,43 @@ function SensoryVisual({ item }: { item: SensoryItem }) {
   return <span className={`sensory-visual ${item.visualClass || ""}`} aria-hidden="true"><Icon strokeWidth={1.65}/></span>;
 }
 
-function speak(text: string, rate = 0.78, enabled = true) {
-  if (!enabled || typeof window === "undefined" || !("speechSynthesis" in window)) return;
-  window.speechSynthesis.cancel();
-  const utterance = new SpeechSynthesisUtterance(text.replace(/\s+/g, " ").trim());
-  const russianVoice = window.speechSynthesis.getVoices().find((voice) => voice.lang.toLowerCase().startsWith("ru"));
-  if (russianVoice) utterance.voice = russianVoice;
-  utterance.lang = "ru-RU";
-  utterance.rate = Math.max(0.65, Math.min(1, rate));
-  utterance.pitch = 0.96;
-  utterance.volume = 0.72;
-  window.speechSynthesis.speak(utterance);
+let currentSpeechAudio: HTMLAudioElement | null = null;
+let currentSpeechUrl = "";
+let speechController: AbortController | null = null;
+
+async function speak(text: string, rate = 0.78, enabled = true) {
+  if (!enabled || typeof window === "undefined") return;
+  const cleaned = text.replace(/\s+/g, " ").trim();
+  if (!cleaned) return;
+  speechController?.abort();
+  speechController = new AbortController();
+  if (currentSpeechAudio) { currentSpeechAudio.pause(); currentSpeechAudio.currentTime = 0; }
+  if (currentSpeechUrl) URL.revokeObjectURL(currentSpeechUrl);
+  currentSpeechAudio = null;
+  currentSpeechUrl = "";
+  try {
+    const response = await fetch(`${API_URL}/api/tts`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}) },
+      body: JSON.stringify({ text: cleaned, rate }),
+      signal: speechController.signal,
+    });
+    if (!response.ok) return;
+    currentSpeechUrl = URL.createObjectURL(await response.blob());
+    const audio = new Audio(currentSpeechUrl);
+    currentSpeechAudio = audio;
+    audio.volume = 0.92;
+    const cleanupAudio = () => {
+      if (currentSpeechUrl) URL.revokeObjectURL(currentSpeechUrl);
+      currentSpeechUrl = "";
+      currentSpeechAudio = null;
+    };
+    audio.onended = cleanupAudio;
+    audio.onerror = cleanupAudio;
+    await audio.play();
+  } catch (cause) {
+    if (!(cause instanceof DOMException && cause.name === "AbortError")) console.warn("Söyle TTS unavailable");
+  }
 }
 
 function SensoryGame({ exercise, soundEnabled, onBack, onComplete }: { exercise?: Exercise; soundEnabled: boolean; onBack: () => void; onComplete: (score: number, exerciseId: number) => void }) {
@@ -835,7 +887,7 @@ function SensoryGame({ exercise, soundEnabled, onBack, onComplete }: { exercise?
     <div className="page-enter game-page">
       <GameHeader title={exercise?.title || "Слушай и находи"} subtitle="Понимаем речь" step={`${round} из 5`} onBack={onBack} />
       <div className="listen-card">
-        <div className="sound-zone"><button className="sound-button" disabled={!soundEnabled} onClick={() => speak(items[targetIndex].word, speechRate, soundEnabled)}><Volume2 size={34} fill="currentColor" /></button><div><span className="kicker">ПОСЛУШАЙ ЗАДАНИЕ</span><h2>{soundEnabled ? "Нажми и послушай" : "Звук отключён в настройках"}</h2><div className="wave"><i /><i /><i /><i /><i /><i /><i /></div><div className="speech-rate" aria-label="Скорость речи">{[{v:.65,l:"Медленно"},{v:.78,l:"Обычно"},{v:1,l:"Быстрее"}].map((item)=><button key={item.v} className={speechRate===item.v?"active":""} onClick={()=>setSpeechRate(item.v)}>{item.l}</button>)}</div></div><button className="replay" disabled={!soundEnabled} onClick={() => speak(items[targetIndex].word, speechRate, soundEnabled)}><RotateCcw size={17} /> Повторить</button></div>
+        <div className="sound-zone"><button className="sound-button" disabled={!soundEnabled} onClick={() => speak(items[targetIndex].word, speechRate, soundEnabled)} aria-label="Прослушать слово"><Volume2 size={34} strokeWidth={2} /></button><div><span className="kicker">ПОСЛУШАЙ ЗАДАНИЕ</span><h2>{soundEnabled ? "Нажми и послушай" : "Звук отключён в настройках"}</h2><div className="wave"><i /><i /><i /><i /><i /><i /><i /></div><div className="speech-rate" aria-label="Скорость речи">{[{v:.65,l:"Медленно"},{v:.78,l:"Обычно"},{v:1,l:"Быстрее"}].map((item)=><button key={item.v} className={speechRate===item.v?"active":""} onClick={()=>setSpeechRate(item.v)}>{item.l}</button>)}</div></div><button className="replay" disabled={!soundEnabled} onClick={() => speak(items[targetIndex].word, speechRate, soundEnabled)}><RotateCcw size={17} /> Повторить</button></div>
         <h3 className="choose-title">{exercise?.instruction || "Выбери подходящую карточку"}</h3>
         <div className="picture-options">
           {items.map((item, index) => <button key={item.word} onClick={() => choose(index)} className={`${picked === index ? (index === targetIndex ? "correct" : "wrong") : ""} ${picked !== null && index === targetIndex ? "answer" : ""}`}><SensoryVisual item={item}/><strong>{item.word}</strong>{picked !== null && index === targetIndex && <i><Check size={16} /></i>}</button>)}
@@ -858,9 +910,9 @@ const aacCategories = [
 const aacIconByLabel: Record<string, LucideIcon> = {
   "Помоги": HandHelping, "Больно": HeartPulse, "Перерыв": Pause, "Не хочу": X,
   "Ещё": Plus, "Хочу": Heart, "Пить": GlassWater, "Есть": Utensils, "Туалет": Toilet, "Отдых": Bed,
-  "Я": UserRound, "Мама": UserRound, "Папа": UserRound, "Бабушка": UserRound, "Дедушка": UserRound,
-  "Брат": UserRound, "Сестра": UserRound, "Сок": GlassWater, "Вода": GlassWater, "Чай": Coffee,
-  "Яблоко": Apple, "Банан": Banana, "Хлеб": Coffee, "Суп": Coffee, "Каша": Coffee,
+  "Я": CircleUserRound, "Мама": Contact, "Папа": UserRound, "Бабушка": Glasses, "Дедушка": Contact,
+  "Брат": PersonStanding, "Сестра": Baby, "Сок": CupSoda, "Вода": Droplets, "Чай": Coffee,
+  "Яблоко": Apple, "Банан": Banana, "Хлеб": Sandwich, "Суп": Soup, "Каша": Wheat,
   "Мяч": Circle, "Машинка": Car, "Кукла": UserRound, "Книга": BookOpen, "Пазл": Blocks, "Кот": Cat,
   "Люблю": Heart, "Вижу": Eye, "Иду": UserRound, "Играю": Gamepad2, "Рисовать": Activity,
   "Читать": BookOpen, "Спать": Bed, "Гулять": Trees, "Играл": Gamepad2, "Гулял": Trees,
@@ -878,7 +930,7 @@ const aacCategoryIcons: Record<string, LucideIcon> = {
 
 function AACVisual({ card, compact = false }: { card: AACCard; compact?: boolean }) {
   const Icon = aacIconByLabel[card.label] || aacCategoryIcons[card.category] || MessageCircle;
-  return <span className={`aac-visual aac-${card.category} ${compact ? "compact" : ""}`} aria-hidden="true"><Icon strokeWidth={1.7}/></span>;
+  return <span className={`aac-visual aac-${card.category} ${compact ? "compact" : ""}`} data-label={card.label} aria-hidden="true"><Icon strokeWidth={1.7}/></span>;
 }
 
 function PhraseGame({ childId, canManage, exercise, soundEnabled, onBack, onComplete }: { childId?: number; canManage: boolean; exercise?: Exercise; soundEnabled: boolean; onBack: () => void; onComplete: (score: number, phrase: string, exerciseId: number) => void }) {
@@ -904,7 +956,7 @@ function PhraseGame({ childId, canManage, exercise, soundEnabled, onBack, onComp
   useEffect(loadBoard, [loadBoard]);
   const normalizedCardQuery = cardQuery.trim().toLocaleLowerCase("ru");
   const visibleCards = (category === "favorites" ? cards.filter((card) => card.favorite || card.is_core) : cards.filter((card) => card.category === category)).filter((card) => !normalizedCardQuery || `${card.label} ${card.speech}`.toLocaleLowerCase("ru").includes(normalizedCardQuery));
-  const addCard = (card: AACCard) => { savedRef.current = false; setSelected((items) => card.is_core ? [card] : [...items, card].slice(-6)); };
+  const addCard = (card: AACCard) => { savedRef.current = false; setSelected((items) => [...items, card].slice(-8)); };
   const toggleFavorite = async (card: AACCard) => {
     if (!childId) return;
     await api(`/api/aac/cards/${card.id}/favorite?child_id=${childId}`, { method: "PATCH", body: JSON.stringify({ favorite: !card.favorite }) });
@@ -934,7 +986,7 @@ function PhraseGame({ childId, canManage, exercise, soundEnabled, onBack, onComp
   return <div className="page-enter game-page aac-page redesigned">
     <GameHeader title={exercise?.title || "Доска общения"} subtitle="AAC — говорю с помощью карточек" step={`${selected.length} карточек`} onBack={onBack}/>
     <div className="aac-goal"><div><span className="kicker">ЦЕЛЬ</span><strong>{exercise?.instruction || "Собери сообщение из карточек и озвучь его"}</strong></div><ShieldCheck size={22}/><p>Одной карточки достаточно, если она передаёт смысл. Давить и требовать полную фразу не нужно.</p></div>
-    <section className="aac-composer aac-composer-top"><div className="aac-composer-head"><div><span className="kicker">МОЁ СООБЩЕНИЕ</span><strong>{sentence || "Выбери карточки ниже"}</strong></div><div className="aac-composer-actions"><button className="clear-button" disabled={!selected.length} onClick={() => { setSelected([]); savedRef.current = false; }}>Очистить</button><button className="speak-button" disabled={!selected.length} onClick={sayPhrase}><Volume2 size={21}/>{soundEnabled ? "Произнести" : "Сохранить"}</button></div></div><div className={`aac-sentence ${selected.length ? "filled" : ""}`}>{selected.length ? selected.map((card, index) => <button key={`${card.id}-${index}`} onClick={() => { savedRef.current = false; setSelected((items) => items.filter((_, itemIndex) => itemIndex !== index)); }}><AACVisual card={card} compact/><span>{card.label}</span><X size={13}/></button>) : <p><Plus size={18}/> Нажимай на карточки — сообщение появится здесь</p>}</div></section>
+    <section className="aac-composer aac-composer-top"><div className="aac-composer-head"><div><span className="kicker">СОБЕРИ ФРАЗУ</span><strong>{sentence || "Фраза пока пустая"}</strong><small>{selected.length ? "Карточки читаются слева направо" : "Нажми несколько карточек ниже — например: «Я» + «хочу» + «сок»"}</small></div><div className="aac-composer-actions"><button className="clear-button" disabled={!selected.length} onClick={() => { setSelected([]); savedRef.current = false; }}>Очистить всё</button><button className="speak-button" disabled={!selected.length} onClick={sayPhrase}><Volume2 size={21}/>{soundEnabled ? "Озвучить фразу" : "Сохранить фразу"}</button></div></div><div className={`aac-sentence ${selected.length ? "filled" : ""}`}>{selected.length ? selected.map((card, index) => <button key={`${card.id}-${index}`} aria-label={`Убрать карточку ${card.label}`} onClick={() => { savedRef.current = false; setSelected((items) => items.filter((_, itemIndex) => itemIndex !== index)); }}><span className="aac-card-order">{index + 1}</span><AACVisual card={card} compact/><span>{card.label}</span><X size={13}/></button>) : <div className="aac-empty-message"><MessageCircle size={24}/><div><strong>Выбери первую карточку</strong><span>Можно добавить до восьми карточек и составить целое сообщение</span></div></div>}</div>{selected.length > 0 && <p className="aac-remove-hint">Чтобы убрать одну карточку, нажми на неё в строке фразы.</p>}</section>
     <div className="aac-workspace">
       <aside className="aac-category-panel"><div><span className="kicker">КАТЕГОРИИ</span><h3>Найди нужное слово</h3></div><nav className="aac-tabs">{aacCategories.map((item) => { const Icon = item.icon; const count = item.id === "favorites" ? cards.filter((card) => card.favorite || card.is_core).length : cards.filter((card) => card.category === item.id).length; return <button key={item.id} className={category === item.id ? "active" : ""} onClick={() => { setCategory(item.id); setCardQuery(""); }}><Icon size={18}/><span>{item.label}</span><small>{count}</small></button>; })}</nav>{history.length > 0 && <div className="aac-history"><span className="kicker">НЕДАВНИЕ</span>{history.slice(0,3).map((item) => <button key={item.id} onClick={() => replayHistory(item.phrase)}><RotateCcw size={14}/><span>{item.phrase}</span></button>)}</div>}</aside>
       <section className="aac-board"><div className="aac-toolbar"><div><span className="kicker">{category === "favorites" ? "БЫСТРЫЙ ДОСТУП" : "КАТЕГОРИЯ"}</span><h3>{activeCategory.label}</h3></div><div className="aac-tools"><label className="aac-search"><Search size={16}/><input value={cardQuery} onChange={(event) => setCardQuery(event.target.value)} placeholder="Найти слово" aria-label="Найти слово"/></label><button className="small-button" onClick={() => document.querySelector<HTMLElement>(".aac-page")?.requestFullscreen?.()}><LayoutDashboard size={15}/> На весь экран</button>{canManage && <button className="small-button" onClick={() => setCustomOpen((value) => !value)}><Plus size={15}/> Своя карточка</button>}</div></div>
@@ -951,7 +1003,10 @@ function ProgressScreen({ childId, dashboard }: { childId?: number; dashboard: D
   useEffect(() => { if (childId) api<typeof data>(`/api/progress/${childId}`).then(setData).catch(() => undefined); }, [childId]);
   const skillColors = ["coral", "blue", "mint", "lavender", "coral", "blue"];
   const skills = (data?.skill_progress || dashboard?.skill_progress || []).map((skill, index) => ({ ...skill, color: skillColors[index] }));
-  const chartPoints = (module: ModuleName) => (dashboard?.daily || []).map((point, index) => point[module] === null ? null : `${index * (700 / 6)},${210 - Number(point[module]) * 1.8}`).filter(Boolean).join(" ");
+  const chartDays = dashboard?.daily || [];
+  const daysWithData = chartDays.filter((point) => point.motor !== null || point.sensory !== null || point.mixed !== null).length;
+  const chartCoordinates = (module: ModuleName) => chartDays.flatMap((point, index) => point[module] === null ? [] : [{ x: index * (700 / 6), y: 205 - Number(point[module]) * 1.7 }]);
+  const chartPoints = (module: ModuleName) => chartCoordinates(module).map((point) => `${point.x},${point.y}`).join(" ");
   const delta = dashboard?.progress_delta || 0;
   const practiced = skills.filter((item) => item.sessions > 0);
   const weakest = practiced.length ? practiced.reduce((current, item) => item.value < current.value ? item : current, practiced[0]) : null;
@@ -960,7 +1015,7 @@ function ProgressScreen({ childId, dashboard }: { childId?: number; dashboard: D
       <section className="progress-hero"><div><span className="kicker">МАЛЕНЬКИЕ ШАГИ — БОЛЬШОЙ РЕЗУЛЬТАТ</span><h1>{`Прогресс ${data?.child?.name || "ребёнка"}`}</h1><p>Смотрите на динамику навыков и регулярность практики, а не на отдельный результат.</p></div><div className="progress-hero-score"><strong>{dashboard?.overall ?? data?.overall ?? 0}%</strong><span>общий прогресс</span></div></section>
       <div className="stats-row"><StatCard icon={<TrendingUp/>} value={`${dashboard?.overall ?? data?.overall ?? 0}%`} label="общий прогресс" /><StatCard icon={<Timer/>} value={String(dashboard?.total_minutes || 0)} label="минут занятий" /><StatCard icon={<Star/>} value={String(dashboard?.stars || 0)} label="звезды собрано" /><StatCard icon={<Target/>} value={String(dashboard?.total_sessions ?? data?.total_sessions ?? 0)} label="занятий пройдено" /></div>
       <div className="progress-grid">
-        <section className="chart-card"><div className="card-heading"><div><span className="kicker">ДИНАМИКА</span><h3>Результаты за 7 дней</h3></div><span className={delta >= 0 ? "positive" : "negative"}>{delta > 0 ? "+" : ""}{delta}%</span></div><div className="chart-area"><div className="chart-lines"><i/><i/><i/><i/></div>{dashboard?.daily.some((point) => point.motor !== null || point.sensory !== null || point.mixed !== null) ? <svg viewBox="0 0 700 230" preserveAspectRatio="none" aria-label="График фактических результатов"><polyline points={chartPoints("motor")} className="line coral-line"/><polyline points={chartPoints("sensory")} className="line blue-line"/><polyline points={chartPoints("mixed")} className="line mint-line"/></svg> : <div className="chart-empty">Завершите занятие — здесь появится динамика</div>}<div className="chart-labels">{dashboard?.daily.map((point) => <span key={point.date}>{point.label}</span>)}</div></div><div className="legend"><span><i className="coral-dot"/>Артикуляция</span><span><i className="blue-dot"/>Понимание</span><span><i className="mint-dot"/>Фразы</span></div></section>
+        <section className="chart-card"><div className="card-heading"><div><span className="kicker">ДИНАМИКА</span><h3>Результаты за 7 дней</h3></div><span className={delta >= 0 ? "positive" : "negative"}>{delta > 0 ? "+" : ""}{delta}%</span></div><div className="chart-area"><div className="chart-lines"><i/><i/><i/><i/></div>{daysWithData ? <><svg viewBox="0 0 700 230" preserveAspectRatio="none" aria-label="График фактических результатов">{daysWithData >= 3 && <><polyline points={chartPoints("motor")} className="line coral-line"/><polyline points={chartPoints("sensory")} className="line blue-line"/><polyline points={chartPoints("mixed")} className="line mint-line"/></>}{(["motor", "sensory", "mixed"] as ModuleName[]).map((module) => chartCoordinates(module).map((point, index) => <circle key={`${module}-${index}`} cx={point.x} cy={point.y} r="6" className={`chart-point ${module}-point`}/>))}</svg>{daysWithData < 3 && <div className="chart-sparse-note">Пока есть результаты за {daysWithData === 1 ? "один день" : "два дня"}. Динамика появится после третьего дня занятий.</div>}</> : <div className="chart-empty">Завершите занятие — здесь появится динамика</div>}<div className="chart-labels">{chartDays.map((point) => <span key={point.date}>{point.label}</span>)}</div></div><div className="legend"><span><i className="coral-dot"/>Артикуляция</span><span><i className="blue-dot"/>Понимание</span><span><i className="mint-dot"/>Фразы</span></div></section>
         <section className="skills-card"><span className="kicker">ТЕКУЩИЙ УРОВЕНЬ</span><h3>Шесть навыков</h3>{skills.length ? skills.map((skill) => <div className="skill" key={skill.skill}><div><span>{skill.label}<small>{skill.recent_change === null ? "нет сравнения" : `${skill.recent_change >= 0 ? "+" : ""}${skill.recent_change}% недавно`}</small></span><strong>{skill.value}%</strong></div><div className="skill-track"><i className={skill.color} style={{ width: `${skill.value}%` }}/></div></div>) : <div className="empty-state">Завершите первое занятие — здесь появятся навыки.</div>}<div className="specialist-note"><Sparkles size={19}/><p><strong>Рекомендуемая практика:</strong> {weakest ? `${weakest.label} — ${weakest.recommended_practice.toLowerCase()}.` : "завершите первое занятие, чтобы определить направление работы."}</p></div></section>
       </div>
       <section className="achievements"><div className="section-heading"><div><span className="kicker">ДОСТИЖЕНИЯ</span><h2>Значки за реальные результаты</h2></div></div><div className="badges"><Badge icon={<Star/>} title="Первая пятёрка" text="5 занятий" unlocked={dashboard?.achievements.first_five}/><Badge image="/illustrations/module-listening.png" title="Чуткое ушко" text="5 сенсорных занятий" unlocked={dashboard?.achievements.good_listener}/><Badge image="/illustrations/module-phrases.png" title="Мастер фраз" text="5 собранных фраз" unlocked={dashboard?.achievements.phrase_master}/><Badge icon={<Trophy/>} title="Неделя силы" text="7 дней подряд" unlocked={dashboard?.achievements.week_streak}/></div></section>
@@ -1137,10 +1192,31 @@ function SpecialistScreen() {
   return <div className="page-enter stack-xl"><PageTitle eyebrow="КАБИНЕТ СПЕЦИАЛИСТА" title="Наблюдение и рекомендации" subtitle="Результаты занятий помогают планировать практику, но не являются диагнозом."/><div className="specialist-layout"><section className="children-list"><span className="kicker">МОИ ПОДОПЕЧНЫЕ</span>{children.map((child) => <button key={child.id} className={selected === child.id ? "active" : ""} onClick={() => setSelected(child.id)}><div className="avatar" style={{background:child.avatar_color}}>{child.name[0]}</div><div><strong>{child.name}</strong><small>{child.parent_name || "Родитель"}</small></div><ChevronRight size={17}/></button>)}</section><div className="specialist-detail">{loading ? <div className="empty-state">Загружаем реальные результаты…</div> : detail ? <><div className="stats-row compact"><StatCard icon={<Target/>} value={`${detail.dashboard.overall}%`} label="пройдено"/><StatCard icon={<Gamepad2/>} value={String(detail.dashboard.week_sessions)} label="за неделю"/><StatCard icon={<Timer/>} value={`${detail.dashboard.week_minutes} мин`} label="практики"/></div><section className="skills-card specialist-skills"><span className="kicker">НАВЫКИ И ПОДДЕРЖКА</span>{detail.dashboard.skill_progress.map((skill, index) => <div className="skill" key={skill.skill}><div><span>{skill.label}<small>{skill.sessions ? `${skill.sessions} заданий` : "ещё нет данных"}</small></span><strong>{skill.value}%</strong></div><div className="skill-track"><i className={["coral","blue","mint"][index % 3]} style={{width:`${skill.value}%`}}/></div></div>)}{detail.support_metrics.plain_language && <div className="progress-plain"><Check size={17}/>{detail.support_metrics.plain_language}</div>}</section><section className="ai-panel"><div className="ai-heading"><div className="recommend-icon"><Sparkles/></div><div><span className="kicker">УМНЫЙ ПОДБОР</span><h2>Область для практики</h2></div>{recommendation?.confidence !== null && recommendation?.confidence !== undefined && <span className="confidence">достаточность данных {recommendation.confidence}%</span>}</div><p>{recommendation?.summary || "Нажмите кнопку, чтобы проанализировать результаты."}</p><div className="plan-list">{recommendation?.plan.map((item, index) => <div key={`${item}-${index}`}><span>{index + 1}</span><strong>{item}</strong></div>)}</div><button className="secondary-button wide" onClick={generate}><Sparkles size={17}/>Сформировать рекомендацию</button>{pending && <div className="review-actions"><button className="primary-button" onClick={() => review(pending.id, "approved")}><Check size={17}/>Подтвердить</button><button className="small-button" onClick={() => review(pending.id, "rejected")}><X size={17}/>Отклонить</button></div>}<div className="medical-note"><ShieldCheck size={21}/><p>Рекомендация строится по самому слабому отработанному навыку. Только специалист решает, добавлять ли её в план.</p></div></section><section className="admin-card"><div className="admin-card-head"><div><span className="kicker">ИНДИВИДУАЛЬНЫЕ ЦЕЛИ</span><h3>Персональная программа</h3></div></div><form className="goal-form" onSubmit={createGoal}><input value={goalForm.title} onChange={(e)=>setGoalForm({...goalForm,title:e.target.value})} placeholder="Название цели" required/><select value={goalForm.target_skill} onChange={(e)=>setGoalForm({...goalForm,target_skill:e.target.value as SkillProgress["skill"]})}>{detail.dashboard.skill_progress.map((item)=><option value={item.skill} key={item.skill}>{item.label}</option>)}</select><input value={goalForm.success_criterion} onChange={(e)=>setGoalForm({...goalForm,success_criterion:e.target.value})} placeholder="Критерий достижения" required/><input type="date" value={goalForm.due_date} onChange={(e)=>setGoalForm({...goalForm,due_date:e.target.value})}/><button className="primary-button">Добавить цель</button></form><div className="goal-list">{detail.goals.map((goal)=><div key={goal.id}><div><strong>{goal.title}</strong><small>{goal.success_criterion}</small></div><select value={goal.status} onChange={(e)=>setGoalStatus(goal.id,e.target.value as Goal["status"])}><option value="active">В работе</option><option value="paused">Пауза</option><option value="completed">Завершена</option></select></div>)}</div></section><section className="admin-card"><div className="admin-card-head"><div><span className="kicker">ПЕРСОНАЛЬНЫЙ ПЛАН</span><h3>Назначить упражнение</h3></div></div><form className="specialist-assignment" onSubmit={assign}><select value={exerciseId} onChange={(event) => setExerciseId(event.target.value)} required><option value="">Выберите упражнение</option>{exercises.map((item) => <option key={item.id} value={item.id}>{skillLabel(item.skill)} — {item.title}</option>)}</select><input value={note} onChange={(event) => setNote(event.target.value)} placeholder="Комментарий для родителя (необязательно)"/><button className="primary-button">Назначить</button></form><div className="assigned-list">{detail.assigned_exercises.length ? detail.assigned_exercises.map((item) => <div key={item.id}><Check size={17}/><div><strong>{item.title}</strong><small>{item.note || skillLabel(item.skill)} · {item.status === "completed" ? "выполнено" : "назначено"}</small></div></div>) : <div className="empty-state">Назначенных упражнений пока нет.</div>}</div></section><section className="admin-card"><div className="admin-card-head"><div><span className="kicker">ДОМАШНЯЯ ПРАКТИКА</span><h3>Задание для семьи</h3></div></div><form className="specialist-assignment" onSubmit={createHomework}><input value={homeworkForm.title} onChange={(e)=>setHomeworkForm({...homeworkForm,title:e.target.value})} placeholder="Короткое название" required/><input value={homeworkForm.instruction} onChange={(e)=>setHomeworkForm({...homeworkForm,instruction:e.target.value})} placeholder="Одна понятная бытовая ситуация" required/><button className="primary-button">Отправить</button></form><div className="assigned-list">{detail.homework.slice(0,5).map((item)=><div key={item.id}><Check size={17}/><div><strong>{item.title}</strong><small>{item.result ? `Результат: ${item.result}` : "Ожидает выполнения дома"}</small></div></div>)}</div></section>{message && <div className="usage-note"><Check size={18}/><p>{message}</p></div>}</> : <div className="empty-state">Не удалось загрузить профиль ребёнка.</div>}</div></div></div>;
 }
 
+function ProfileScreen({ user, child, dashboard, settings, onOpen, onLogout }: { user: User; child?: Child; dashboard: Dashboard | null; settings: AppSettings; onOpen: (screen: Screen) => void; onLogout: () => void }) {
+  const age = child ? Math.max(0, new Date().getFullYear() - new Date(child.birth_date).getFullYear() - (new Date() < new Date(new Date().getFullYear(), new Date(child.birth_date).getMonth(), new Date(child.birth_date).getDate()) ? 1 : 0)) : null;
+  const primaryModule = child ? modules.find((item) => item.id === child.primary_module)?.title : null;
+  const languageName = { ru: "Русский", en: "English", kk: "Қазақша" }[settings.language];
+  const themeName = { peach: "Шалфей", ocean: "Океан", lavender: "Лаванда", contrast: "Высокий контраст" }[settings.theme];
+  return <div className="page-enter profile-page">
+    <PageTitle eyebrow="ПРОФИЛЬ" title="Личный кабинет" subtitle="Информация об аккаунте, ребёнке и текущих настройках."/>
+    <section className="profile-hero-card">
+      <div className="profile-avatar-large">{user.full_name[0]}</div>
+      <div><span className="kicker">{roleLabel(user.role)}</span><h2>{user.full_name}</h2><p>@{user.username}</p></div>
+      <button className="small-button" onClick={() => onOpen("settings")}><Settings size={16}/> Настройки</button>
+    </section>
+    <div className="profile-grid">
+      <section className="profile-info-card"><div className="profile-card-title"><UserRound size={20}/><div><span className="kicker">АККАУНТ</span><h3>Основная информация</h3></div></div><dl><div><dt>Имя</dt><dd>{user.full_name}</dd></div><div><dt>Логин</dt><dd>{user.username}</dd></div><div><dt>Роль</dt><dd>{roleLabel(user.role)}</dd></div><div><dt>Язык</dt><dd>{languageName}</dd></div><div><dt>Оформление</dt><dd>{themeName}</dd></div></dl></section>
+      {child && <section className="profile-info-card child-profile-card"><div className="profile-card-title"><Baby size={20}/><div><span className="kicker">ПРОФИЛЬ РЕБЁНКА</span><h3>{child.name}</h3></div></div><dl><div><dt>Возраст</dt><dd>{age} лет</dd></div><div><dt>Основное направление</dt><dd>{primaryModule}</dd></div><div><dt>Всего занятий</dt><dd>{dashboard?.total_sessions || 0}</dd></div><div><dt>Минут практики</dt><dd>{dashboard?.total_minutes || 0}</dd></div><div><dt>Звёзд</dt><dd>{dashboard?.stars || 0}</dd></div></dl>{user.role === "parent" && <button className="secondary-button wide" onClick={() => onOpen("parent")}>Открыть кабинет родителя <ChevronRight size={16}/></button>}</section>}
+    </div>
+    <button className="profile-logout" onClick={onLogout}><LogOut size={17}/> Выйти из аккаунта</button>
+  </div>;
+}
+
 function SettingsScreen({ settings, onChange, onLogout }: { settings: AppSettings; onChange: (settings: AppSettings) => void; onLogout: () => void }) {
-  const themes = [{id:"peach",name:"Шалфей",colors:["#587f69","#82a78f","#f4f6ec"]},{id:"ocean",name:"Эвкалипт",colors:["#47766e","#789fa0","#edf4f1"]},{id:"lavender",name:"Олива",colors:["#747a65","#919b80","#f3f3ea"]},{id:"contrast",name:"Контрастная",colors:["#274c3b","#557c64","#fbfcef"]}];
+  const themes = [{id:"peach",name:"Шалфей",colors:["#557b68","#d9ead2","#fffaf1"]},{id:"ocean",name:"Океан",colors:["#266f91","#a8d8eb","#f2fbff"]},{id:"lavender",name:"Лаванда",colors:["#715a91","#d5c2e8","#fbf7ff"]},{id:"contrast",name:"Высокий контраст",colors:["#10271f","#ffd75a","#ffffff"]}];
+  const languages = [{id:"ru",short:"RU",name:"Русский"},{id:"en",short:"EN",name:"Английский"},{id:"kk",short:"ҚАЗ",name:"Казахский"}] as const;
   const update = <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => onChange({ ...settings, [key]: value });
-  return <div className="page-enter settings-page"><PageTitle eyebrow="НАСТРОЙКИ" title="Комфортный режим" subtitle="Настройте занятия под потребности ребёнка. Изменения сохраняются в аккаунте."/><div className="settings-card"><div className="theme-setting"><span className="kicker">ЦВЕТОВАЯ ТЕМА</span><h3>Выберите оформление</h3><div className="theme-options">{themes.map((item) => <button key={item.id} className={settings.theme === item.id ? "active" : ""} onClick={() => update("theme", item.id as AppSettings["theme"])}><span>{item.colors.map((color) => <i key={color} style={{background:color}}/>)}</span><strong>{item.name}</strong>{settings.theme === item.id && <Check size={16}/>}</button>)}</div></div><SettingRow icon={<Camera/>} title="Камера для артикуляции" text="Обрабатывается локально, запись не сохраняется" value={settings.camera_enabled} onChange={(value) => update("camera_enabled", value)}/><SettingRow icon={<Volume2/>} title="Звуковые подсказки" text="Голос и мягкие сигналы успеха" value={settings.sound_enabled} onChange={(value) => update("sound_enabled", value)}/><SettingRow icon={<Sparkles/>} title="Спокойный режим" text="Меньше анимации и визуальных эффектов" value={settings.calm_mode} onChange={(value) => update("calm_mode", value)}/><div className="setting-row"><div className="setting-icon"><LockKeyhole/></div><div><strong>Данные и приватность</strong><span>Видео не сохраняется; результаты хранятся в профиле ребёнка</span></div><span className="status active">Защищено</span></div><div className="setting-row"><div className="setting-icon danger"><LogOut/></div><div><strong>Выйти из аккаунта</strong><span>На этом устройстве потребуется повторный вход</span></div><button className="small-button" onClick={onLogout}>Выйти</button></div></div></div>;
+  return <div className="page-enter settings-page"><PageTitle eyebrow="НАСТРОЙКИ" title="Комфортный режим" subtitle="Настройте занятия под потребности ребёнка. Изменения сохраняются в аккаунте."/><div className="settings-card"><section className="settings-section language-setting"><div><span className="kicker">ЯЗЫК ИНТЕРФЕЙСА</span><h3>Язык платформы</h3></div><div className="language-options">{languages.map((item) => <button key={item.id} className={settings.language === item.id ? "active" : ""} onClick={() => update("language", item.id)}><b>{item.short}</b><span>{item.name}</span>{settings.language === item.id && <Check size={16}/>}</button>)}</div></section><section className="settings-section theme-setting"><div><span className="kicker">ЦВЕТОВАЯ ТЕМА</span><h3>Выберите оформление</h3></div><div className="theme-options">{themes.map((item) => <button key={item.id} className={settings.theme === item.id ? "active" : ""} onClick={() => update("theme", item.id as AppSettings["theme"])}><span>{item.colors.map((color) => <i key={color} style={{background:color}}/>)}</span><strong>{item.name}</strong>{settings.theme === item.id && <Check size={16}/>}</button>)}</div></section><section className="settings-section preference-setting"><span className="kicker">ЗАНЯТИЯ И ДОСТУПНОСТЬ</span><SettingRow icon={<Camera/>} title="Камера для артикуляции" text="Обрабатывается локально, запись не сохраняется" value={settings.camera_enabled} onChange={(value) => update("camera_enabled", value)}/><SettingRow icon={<Volume2/>} title="Звуковые подсказки" text="Голос и мягкие сигналы успеха" value={settings.sound_enabled} onChange={(value) => update("sound_enabled", value)}/><SettingRow icon={<Sparkles/>} title="Спокойный режим" text="Меньше анимации и визуальных эффектов" value={settings.calm_mode} onChange={(value) => update("calm_mode", value)}/></section><section className="settings-section account-setting"><div className="setting-row"><div className="setting-icon"><LockKeyhole/></div><div><strong>Данные и приватность</strong><span>Видео не сохраняется; результаты хранятся в профиле ребёнка</span></div><span className="status active">Защищено</span></div><div className="setting-row"><div className="setting-icon danger"><LogOut/></div><div><strong>Выйти из аккаунта</strong><span>На этом устройстве потребуется повторный вход</span></div><button className="small-button" onClick={onLogout}>Выйти</button></div></section></div></div>;
 }
 
 function SettingRow({ icon, title, text, value, onChange }: { icon: React.ReactNode; title: string; text: string; value: boolean; onChange: (v: boolean) => void }) {

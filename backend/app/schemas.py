@@ -87,6 +87,11 @@ class UserSettingsUpdate(BaseModel):
     sound_enabled: bool
     calm_mode: bool
     theme: Literal["peach", "ocean", "lavender", "contrast"]
+    language: Literal["ru", "en", "kk"] = "ru"
+
+class TTSRequest(BaseModel):
+    text: str = Field(min_length=1, max_length=300)
+    rate: float = Field(default=0.78, ge=0.6, le=1.1)
 
 class AACCardCreate(BaseModel):
     child_id: int

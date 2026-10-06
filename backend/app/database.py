@@ -270,6 +270,7 @@ def init_db() -> None:
             sound_enabled INTEGER NOT NULL DEFAULT 1,
             calm_mode INTEGER NOT NULL DEFAULT 0,
             theme TEXT NOT NULL DEFAULT 'peach',
+            language TEXT NOT NULL DEFAULT 'ru',
             updated_at TEXT NOT NULL
         );
         CREATE TABLE IF NOT EXISTS aac_cards (
@@ -397,6 +398,12 @@ def init_db() -> None:
             db.execute("ALTER TABLE learning_sessions ADD COLUMN target_minutes INTEGER NOT NULL DEFAULT 5")
         if "paused_at" not in learning_columns:
             db.execute("ALTER TABLE learning_sessions ADD COLUMN paused_at TEXT")
+        if db.backend == "postgresql":
+            settings_columns = {row["column_name"] for row in db.execute("SELECT column_name FROM information_schema.columns WHERE table_schema='public' AND table_name='user_settings'").fetchall()}
+        else:
+            settings_columns = {row["name"] for row in db.execute("PRAGMA table_info(user_settings)").fetchall()}
+        if "language" not in settings_columns:
+            db.execute("ALTER TABLE user_settings ADD COLUMN language TEXT NOT NULL DEFAULT 'ru'")
         db.execute("INSERT INTO schema_migrations(version,applied_at) VALUES(1,?) ON CONFLICT(version) DO NOTHING", (now_iso(),))
         db.execute("INSERT INTO schema_migrations(version,applied_at) VALUES(2,?) ON CONFLICT(version) DO NOTHING", (now_iso(),))
 

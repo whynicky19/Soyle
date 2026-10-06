@@ -1,4 +1,4 @@
-const CACHE = "soyle-core-v3";
+const CACHE = "soyle-core-v6";
 const CORE = [
   "/app", "/soyle-mark-v2.png", "/illustrations/apple.png", "/illustrations/ball.png",
   "/illustrations/cat.png", "/illustrations/juice.png", "/illustrations/love.png",

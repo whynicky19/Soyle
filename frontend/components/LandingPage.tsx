@@ -2,12 +2,13 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ArrowRight, BookOpen, Brain, Check, ChevronDown, Clock3, HeartHandshake,
-  Menu, MessageSquareText, Mic2, ShieldCheck, Sparkles, Target, Users, X,
+  Languages, Menu, MessageSquareText, Mic2, ShieldCheck, Sparkles, Target, Users, X,
 } from "lucide-react";
 import "@/app/landing.css";
+import { Language, useInterfaceLanguage } from "@/lib/i18n";
 
 const audiences = [
   { icon: Sparkles, title: "Детям", text: "Короткие понятные занятия и доступный способ сообщить о важном." },
@@ -50,6 +51,9 @@ function Logo() {
 
 export function LandingPage() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [language, setLanguage] = useState<Language>("ru");
+  useEffect(() => { const saved = localStorage.getItem("soyle-language"); if (saved === "en" || saved === "kk") queueMicrotask(() => setLanguage(saved)); }, []);
+  useInterfaceLanguage(language);
   const closeMenu = () => setMenuOpen(false);
   return <div className="landing-page">
     <a className="skip-link" href="#main-content">Перейти к содержанию</a>
@@ -64,6 +68,7 @@ export function LandingPage() {
           <Link className="mobile-login" href="/app" onClick={closeMenu}>Войти</Link>
         </nav>
         <div className="nav-actions">
+          <button className="landing-language" onClick={() => setLanguage(language === "ru" ? "en" : language === "en" ? "kk" : "ru")} aria-label="Сменить язык"><Languages size={16}/>{language === "kk" ? "ҚАЗ" : language.toUpperCase()}</button>
           <Link className="button ghost" href="/app">Войти</Link>
           <Link className="button primary" href="/app">Начать <ArrowRight size={17}/></Link>
         </div>

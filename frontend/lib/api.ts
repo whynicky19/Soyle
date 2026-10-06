@@ -55,6 +55,7 @@ export type AppSettings = {
   sound_enabled: boolean;
   calm_mode: boolean;
   theme: "peach" | "ocean" | "lavender" | "contrast";
+  language: "ru" | "en" | "kk";
 };
 
 export type Child = {
@@ -114,7 +115,7 @@ export type NotificationItem = {
 
 export type NotificationsData = { unread: number; items: NotificationItem[] };
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8010";
+export const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8010";
 
 export function getToken() {
   if (typeof window === "undefined") return null;
