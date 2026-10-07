@@ -41,6 +41,10 @@ class SessionCreate(BaseModel):
     prompt_level: Literal["independent", "minimal", "full", "refused"] | None = None
     response_ms: int | None = Field(default=None, ge=0, le=300000)
     communication_initiatives: int = Field(default=0, ge=0, le=100)
+    attempts_count: int | None = Field(default=None, ge=0, le=100)
+    correct_answers: int | None = Field(default=None, ge=0, le=100)
+    prompts_used: int = Field(default=0, ge=0, le=100)
+    attempt_status: Literal["completed", "participated", "refused", "break", "technical_error"] = "completed"
 
 class LearningSessionCreate(BaseModel):
     child_id: int
@@ -92,6 +96,7 @@ class UserSettingsUpdate(BaseModel):
 class TTSRequest(BaseModel):
     text: str = Field(min_length=1, max_length=300)
     rate: float = Field(default=0.78, ge=0.6, le=1.1)
+    language: Literal["ru", "kk", "en"] = "ru"
 
 class AACCardCreate(BaseModel):
     child_id: int
@@ -99,6 +104,10 @@ class AACCardCreate(BaseModel):
     speech: str = Field(min_length=1, max_length=120)
     category: Literal["help", "wants", "needs", "feelings", "yes_no", "people", "food", "play", "places", "actions"]
     image: str = Field(default="/soyle-icon.png", min_length=1, max_length=200)
+    lemma: str | None = Field(default=None, max_length=80)
+    grammatical_role: Literal["subject", "action", "object", "ready_message"] = "ready_message"
+    language: Literal["ru", "kk", "en"] = "ru"
+    pictogram: str | None = Field(default=None, max_length=200)
 
 class AACFavoriteUpdate(BaseModel):
     favorite: bool
@@ -107,6 +116,11 @@ class AACPhraseCreate(BaseModel):
     child_id: int
     phrase: str = Field(min_length=1, max_length=300)
     card_ids: list[int] = Field(default_factory=list, max_length=12)
+
+class AACComposeRequest(BaseModel):
+    child_id: int
+    card_ids: list[int] = Field(min_length=1, max_length=8)
+    language: Literal["ru", "kk", "en"] = "ru"
 
 class ChildGoalCreate(BaseModel):
     child_id: int
@@ -135,7 +149,8 @@ class HomeworkResultUpdate(BaseModel):
 class ConsentUpdate(BaseModel):
     privacy_accepted: bool
     camera_processing: bool = False
-    specialist_sharing: bool = True
+    specialist_sharing: bool = False
+    analytics_processing: bool = False
 
 class ChildDeleteRequest(BaseModel):
     password: str = Field(min_length=1, max_length=128)

@@ -47,7 +47,7 @@ export type Dashboard = {
   progress_delta: number;
   daily: Array<{ date: string; label: string; motor: number | null; sensory: number | null; mixed: number | null }>;
   achievements: { first_five: boolean; good_listener: boolean; phrase_master: boolean; week_streak: boolean };
-  recent: Array<{ id: number; module: "motor" | "sensory" | "mixed"; score: number; duration_seconds: number; created_at: string }>;
+  recent: Array<{ id: number; module: "motor" | "sensory" | "mixed"; score: number; duration_seconds: number; attempts_count?: number | null; correct_answers?: number | null; prompts_used?: number; attempt_status?: "completed" | "participated" | "refused" | "break" | "technical_error"; created_at: string }>;
 };
 
 export type AppSettings = {
@@ -56,6 +56,21 @@ export type AppSettings = {
   calm_mode: boolean;
   theme: "peach" | "ocean" | "lavender" | "contrast";
   language: "ru" | "en" | "kk";
+};
+
+export type ChildConsent = {
+  child_id: number;
+  privacy_accepted: boolean;
+  camera_processing: boolean;
+  specialist_sharing: boolean;
+  analytics_processing: boolean;
+  version: string;
+  updated_at: string | null;
+  consented_by_user_id?: number | null;
+  privacy_accepted_at?: string | null;
+  camera_processing_at?: string | null;
+  specialist_sharing_at?: string | null;
+  analytics_processing_at?: string | null;
 };
 
 export type Child = {
@@ -89,7 +104,7 @@ export type LearningSession = {
   started_at: string;
   completed_at?: string | null;
   exercises: Exercise[];
-  results?: Array<{ exercise_id: number; score: number; duration_seconds: number; created_at: string }>;
+  results?: Array<{ exercise_id: number; score: number; duration_seconds: number; attempt_status?: "completed" | "participated" | "refused" | "break" | "technical_error"; created_at: string }>;
 };
 
 export type AACCard = {
@@ -99,6 +114,10 @@ export type AACCard = {
   speech: string;
   category: "help" | "wants" | "needs" | "feelings" | "yes_no" | "people" | "food" | "play" | "places" | "actions";
   image: string;
+  lemma?: string | null;
+  grammatical_role?: "subject" | "action" | "object" | "ready_message";
+  language?: "ru" | "kk" | "en";
+  pictogram?: string | null;
   is_core: number | boolean;
   favorite: number | boolean;
 };

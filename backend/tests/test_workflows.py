@@ -1,3 +1,7 @@
+from app.aac_grammar import compose_aac_phrase
+from app.database import connect
+
+
 def test_auth_roles_and_child_access(client, parent_headers, admin_headers):
     assert client.get("/api/admin/stats", headers=parent_headers).status_code == 403
     assert client.get("/api/admin/stats", headers=admin_headers).status_code == 200
@@ -97,3 +101,330 @@ def test_learning_session_pause_and_measurements(client, parent_headers):
     metrics = client.get(f"/api/progress/{child_id}", headers=parent_headers).json()["support_metrics"]
     assert metrics["average_independence"] == 75
     assert metrics["communication_initiatives"] >= 2
+
+
+def test_consent_is_opt_in_and_revocation_is_immediate(client, admin_headers, specialist_headers):
+    registration = client.post("/api/auth/register", json={
+        "username": "consentparent", "password": "ConsentParent123!", "full_name": "Родитель согласий",
+    })
+    assert registration.status_code == 201, registration.text
+    parent = {"Authorization": f"Bearer {registration.json()['access_token']}"}
+    child_response = client.post("/api/children", headers=parent, json={
+        "name": "Тест согласий", "birth_date": "2020-05-04", "primary_module": "mixed", "avatar_color": "#82a78f",
+    })
+    assert child_response.status_code == 201, child_response.text
+    child_id = child_response.json()["id"]
+
+    initial = client.get(f"/api/children/{child_id}/consent", headers=parent)
+    assert initial.status_code == 200
+    assert initial.json() == {
+        "child_id": child_id,
+        "privacy_accepted": False,
+        "camera_processing": False,
+        "specialist_sharing": False,
+        "analytics_processing": False,
+        "version": "2026-10-pilot-1",
+        "updated_at": None,
+        "consented_by_user_id": None,
+        "privacy_accepted_at": None,
+        "camera_processing_at": None,
+        "specialist_sharing_at": None,
+        "analytics_processing_at": None,
+    }
+    cards_without_consent = client.get(f"/api/aac/cards/{child_id}", headers=parent)
+    assert cards_without_consent.status_code == 200
+    cards_by_label = {item["label"]: item for item in cards_without_consent.json()}
+    for label in ("Помоги", "Больно", "Перерыв", "Не хочу", "Да", "Нет"):
+        assert label in cards_by_label
+        assert cards_by_label[label]["is_core"]
+    assert client.get("/api/settings", headers=parent).json()["camera_enabled"] is False
+
+    specialist_id = next(user["id"] for user in client.get("/api/admin/users", headers=admin_headers).json() if user["role"] == "specialist")
+    denied_assignment = client.post("/api/admin/specialist-assignments", headers=admin_headers, json={
+        "specialist_id": specialist_id, "child_id": child_id,
+    })
+    assert denied_assignment.status_code == 409
+    assert child_id not in {item["id"] for item in client.get("/api/children", headers=specialist_headers).json()}
+
+    exercise = client.get("/api/exercises", headers=parent).json()[0]
+    denied_result = client.post("/api/sessions", headers=parent, json={
+        "child_id": child_id, "exercise_id": exercise["id"], "module": exercise["module"],
+        "score": 100, "duration_seconds": 10, "details": {},
+    })
+    assert denied_result.status_code == 403
+    assert "родител" in denied_result.json()["detail"].lower()
+    exercise_ids = [item["id"] for item in client.get("/api/exercises", headers=parent).json()[:3]]
+    denied_program = client.post("/api/learning-sessions", headers=parent, json={
+        "child_id": child_id, "exercise_ids": exercise_ids, "target_minutes": 3,
+    })
+    assert denied_program.status_code == 403
+
+    inconsistent = client.put(f"/api/children/{child_id}/consent", headers=parent, json={
+        "privacy_accepted": False, "camera_processing": True,
+    })
+    assert inconsistent.status_code == 422
+
+    allowed = client.put(f"/api/children/{child_id}/consent", headers=parent, json={
+        "privacy_accepted": True,
+        "camera_processing": False,
+        "specialist_sharing": True,
+        "analytics_processing": False,
+    })
+    assert allowed.status_code == 200, allowed.text
+    consent = allowed.json()
+    assert consent["camera_processing"] is False
+    assert consent["specialist_sharing"] is True
+    assert consent["version"] == "2026-10-pilot-1"
+    assert consent["consented_by_user_id"] == registration.json()["user"]["id"]
+    assert consent["privacy_accepted_at"]
+    assert consent["specialist_sharing_at"]
+    assert consent["analytics_processing_at"] is None
+
+    assignment = client.post("/api/admin/specialist-assignments", headers=admin_headers, json={
+        "specialist_id": specialist_id, "child_id": child_id,
+    })
+    assert assignment.status_code == 201, assignment.text
+    assert child_id in {item["id"] for item in client.get("/api/children", headers=specialist_headers).json()}
+
+    no_analytics = client.post("/api/aac/history", headers=parent, json={
+        "child_id": child_id, "phrase": "Помоги", "card_ids": [],
+    })
+    assert no_analytics.status_code == 403
+    assert client.get(f"/api/aac/history/{child_id}", headers=parent).json() == []
+
+    analytics_allowed = client.put(f"/api/children/{child_id}/consent", headers=parent, json={
+        "privacy_accepted": True,
+        "camera_processing": False,
+        "specialist_sharing": True,
+        "analytics_processing": True,
+    })
+    assert analytics_allowed.status_code == 200
+    saved_phrase = client.post("/api/aac/history", headers=parent, json={
+        "child_id": child_id, "phrase": "Помоги", "card_ids": [],
+    })
+    assert saved_phrase.status_code == 201
+
+    revoked = client.put(f"/api/children/{child_id}/consent", headers=parent, json={
+        "privacy_accepted": True,
+        "camera_processing": False,
+        "specialist_sharing": False,
+        "analytics_processing": False,
+    })
+    assert revoked.status_code == 200
+    assert child_id not in {item["id"] for item in client.get("/api/children", headers=specialist_headers).json()}
+    assert client.get(f"/api/specialist/children/{child_id}", headers=specialist_headers).status_code == 403
+    assert client.get(f"/api/aac/history/{child_id}", headers=parent).json() == []
+
+    fully_revoked = client.put(f"/api/children/{child_id}/consent", headers=parent, json={
+        "privacy_accepted": False,
+        "camera_processing": False,
+        "specialist_sharing": False,
+        "analytics_processing": False,
+    })
+    assert fully_revoked.status_code == 200
+    assert fully_revoked.json()["privacy_accepted_at"] is None
+    assert client.post("/api/sessions", headers=parent, json={
+        "child_id": child_id, "exercise_id": exercise["id"], "module": exercise["module"],
+        "score": 100, "duration_seconds": 10, "details": {},
+    }).status_code == 403
+
+    audits = client.get("/api/admin/audit", headers=admin_headers).json()
+    consent_audits = [item for item in audits if item["action"] == "consent.update" and item["object_id"] == str(child_id)]
+    assert consent_audits
+    assert consent_audits[0]["metadata"]["version"] == "2026-10-pilot-1"
+
+
+def test_student_can_read_but_not_change_consent(client, parent_headers, student_headers):
+    child_id = client.get("/api/children", headers=student_headers).json()[0]["id"]
+    visible = client.get(f"/api/children/{child_id}/consent", headers=student_headers)
+    assert visible.status_code == 200
+    denied = client.put(f"/api/children/{child_id}/consent", headers=student_headers, json={
+        "privacy_accepted": False,
+        "camera_processing": False,
+        "specialist_sharing": False,
+        "analytics_processing": False,
+    })
+    assert denied.status_code == 403
+
+
+def test_game_results_are_server_calculated_and_non_scored_outcomes_are_separate(client):
+    registration = client.post("/api/auth/register", json={
+        "username": "metricsparent", "password": "MetricsParent123!", "full_name": "Родитель метрик",
+    })
+    assert registration.status_code == 201, registration.text
+    headers = {"Authorization": f"Bearer {registration.json()['access_token']}"}
+    child = client.post("/api/children", headers=headers, json={
+        "name": "Тест метрик", "birth_date": "2020-08-15", "primary_module": "sensory", "avatar_color": "#82a78f",
+    }).json()
+    consent = client.put(f"/api/children/{child['id']}/consent", headers=headers, json={
+        "privacy_accepted": True,
+        "camera_processing": False,
+        "specialist_sharing": False,
+        "analytics_processing": False,
+    })
+    assert consent.status_code == 200
+    exercise = next(item for item in client.get("/api/exercises", headers=headers).json() if item["module"] == "sensory")
+
+    saved_scores = []
+    for correct in (0, 1, 4, 5):
+        response = client.post("/api/sessions", headers=headers, json={
+            "child_id": child["id"], "exercise_id": exercise["id"], "module": "sensory",
+            "score": 99, "duration_seconds": 12, "details": {"source": "test", "prompt_types": ["repeat_audio"] if correct == 4 else []},
+            "attempts_count": 5, "correct_answers": correct, "prompts_used": 5 - correct,
+            "attempt_status": "completed", "independence": correct * 20,
+            "prompt_level": "independent" if correct == 5 else "minimal",
+        })
+        assert response.status_code == 201, response.text
+        saved_scores.append(response.json()["score"])
+        assert response.json()["measurement_version"] == 2
+        if correct == 4:
+            assert response.json()["details"]["prompt_types"] == ["repeat_audio"]
+    assert saved_scores == [0, 20, 80, 100]
+
+    technical = client.post("/api/sessions", headers=headers, json={
+        "child_id": child["id"], "exercise_id": exercise["id"], "module": "sensory",
+        "score": 100, "duration_seconds": 4, "details": {"reason": "audio_unavailable"},
+        "attempts_count": 5, "correct_answers": 0, "prompts_used": 0,
+        "attempt_status": "technical_error",
+    })
+    assert technical.status_code == 201
+    assert technical.json()["score"] == 0
+    assert technical.json()["awarded_stars"] == 0
+
+    for status in ("refused", "break"):
+        response = client.post("/api/sessions", headers=headers, json={
+            "child_id": child["id"], "exercise_id": exercise["id"], "module": "sensory",
+            "score": 100, "duration_seconds": 2, "details": {},
+            "attempts_count": 0, "correct_answers": 0, "prompts_used": 0,
+            "attempt_status": status,
+        })
+        assert response.status_code == 201
+        assert response.json()["score"] == 0
+        assert response.json()["awarded_stars"] == 0
+
+    motor_exercises = [item for item in client.get("/api/exercises", headers=headers).json() if item["module"] == "motor"]
+    motor_exercise = motor_exercises[0]
+    participated = client.post("/api/sessions", headers=headers, json={
+        "child_id": child["id"], "exercise_id": motor_exercise["id"], "module": "motor",
+        "score": 99, "duration_seconds": 8,
+        "details": {"source": "manual", "movement_signal_seen": False},
+        "attempt_status": "participated", "independence": 100, "prompt_level": "independent",
+    })
+    assert participated.status_code == 201, participated.text
+    assert participated.json()["score"] == 0
+    assert participated.json()["awarded_stars"] == 1
+
+    invalid = client.post("/api/sessions", headers=headers, json={
+        "child_id": child["id"], "exercise_id": exercise["id"], "module": "sensory",
+        "score": 100, "duration_seconds": 1, "details": {},
+        "attempts_count": 5, "correct_answers": 6,
+    })
+    assert invalid.status_code == 422
+
+    progress = client.get(f"/api/progress/{child['id']}", headers=headers)
+    assert progress.status_code == 200
+    metrics = progress.json()["support_metrics"]
+    assert metrics["attempts_count"] == 25
+    assert metrics["correct_answers"] == 10
+    assert metrics["prompts_used"] == 10
+    assert metrics["technical_errors"] == 1
+    assert metrics["refusals"] == 1
+    assert metrics["breaks"] == 1
+    assert metrics["participations"] == 1
+    assert metrics["game_result_average"] == 50
+
+    dashboard = client.get(f"/api/dashboard/{child['id']}", headers=headers).json()
+    assert dashboard["module_accuracy"]["sensory"] == 50
+    assert dashboard["module_accuracy"]["motor"] == 0
+    assert dashboard["module_completed"]["motor"] == 1
+    assert motor_exercise["id"] in dashboard["completed_exercise_ids"]
+    assert dashboard["recent"][0]["attempt_status"] == "participated"
+    assert next(item for item in dashboard["recent"] if item["attempt_status"] == "break")["score"] == 0
+    assert next(item for item in dashboard["recent"] if item["attempt_status"] == "technical_error")["score"] == 0
+
+    for remaining_motor_exercise in motor_exercises[1:]:
+        response = client.post("/api/sessions", headers=headers, json={
+            "child_id": child["id"], "exercise_id": remaining_motor_exercise["id"], "module": "motor",
+            "score": 100, "duration_seconds": 5, "details": {"source": "manual"},
+            "attempt_status": "participated", "independence": 100, "prompt_level": "independent",
+        })
+        assert response.status_code == 201, response.text
+    notifications = client.get("/api/notifications", headers=headers)
+    assert notifications.status_code == 200
+    assert any(item["metadata"].get("unit_id") == "motor" for item in notifications.json()["items"])
+
+
+def test_aac_grammar_uses_safe_language_specific_templates(client, parent_headers):
+    child_id = client.get("/api/children", headers=parent_headers).json()[0]["id"]
+    cards = client.get(f"/api/aac/cards/{child_id}", headers=parent_headers).json()
+    by_label = {item["label"]: item for item in cards}
+    assert by_label["Хочу"]["speech"] == "хочу"
+    assert by_label["Хочу"]["lemma"] == "хотеть"
+    assert by_label["Хочу"]["grammatical_role"] == "action"
+    assert by_label["Я"]["grammatical_role"] == "subject"
+    assert by_label["Сок"]["grammatical_role"] == "object"
+
+    composed = client.post("/api/aac/compose", headers=parent_headers, json={
+        "child_id": child_id,
+        "card_ids": [by_label["Я"]["id"], by_label["Хочу"]["id"], by_label["Сок"]["id"]],
+        "language": "ru",
+    })
+    assert composed.status_code == 200
+    assert composed.json()["valid"] is True
+    assert composed.json()["phrase"] == "Я хочу сок"
+
+    invalid = client.post("/api/aac/compose", headers=parent_headers, json={
+        "child_id": child_id,
+        "card_ids": [by_label["Я"]["id"], by_label["Сок"]["id"]],
+        "language": "ru",
+    })
+    assert invalid.status_code == 200
+    assert invalid.json()["valid"] is False
+    assert invalid.json()["phrase"] == ""
+
+    ready = client.post("/api/aac/compose", headers=parent_headers, json={
+        "child_id": child_id, "card_ids": [by_label["Помоги"]["id"]], "language": "ru",
+    }).json()
+    assert ready["phrase"] == "Помоги мне"
+
+    english = compose_aac_phrase([
+        {"speech": "I", "language": "en", "grammatical_role": "subject"},
+        {"speech": "want", "language": "en", "grammatical_role": "action"},
+        {"speech": "juice", "language": "en", "grammatical_role": "object"},
+    ], "en")
+    assert english == {"valid": True, "phrase": "I want juice", "reason": "", "pattern": "subject+action+object"}
+
+    kazakh = compose_aac_phrase([
+        {"speech": "Мен", "language": "kk", "grammatical_role": "subject"},
+        {"speech": "шырын", "language": "kk", "grammatical_role": "object"},
+        {"speech": "қалаймын", "language": "kk", "grammatical_role": "action"},
+    ], "kk")
+    assert kazakh == {"valid": True, "phrase": "Мен шырын қалаймын", "reason": "", "pattern": "subject+object+action"}
+
+
+def test_only_supported_aac_learning_scenarios_are_active(client, parent_headers):
+    mixed = [item for item in client.get("/api/exercises?module=mixed", headers=parent_headers).json()]
+    assert {item["target"] for item in mixed} == {
+        "request", "choice", "refusal", "feelings", "help",
+        "answer", "observation", "past_event", "question", "routine",
+    }
+    assert len(mixed) == 10
+
+
+def test_only_sensory_sets_with_eight_stimuli_are_active(client, parent_headers):
+    sensory = client.get("/api/exercises?module=sensory", headers=parent_headers).json()
+    assert {item["target"] for item in sensory} == {"animals", "food", "toys"}
+    assert len(sensory) == 3
+    with connect() as db:
+        hidden = db.execute("SELECT target FROM exercises WHERE module='sensory' AND is_active=0").fetchall()
+    assert {item["target"] for item in hidden} == {
+        "body", "clothes", "household", "actions", "qualities",
+        "location", "places", "opposites", "commands",
+    }
+
+
+def test_tts_rejects_unknown_language_before_audio_generation(client, parent_headers):
+    response = client.post("/api/tts", headers=parent_headers, json={
+        "text": "test", "rate": 0.8, "language": "de",
+    })
+    assert response.status_code == 422

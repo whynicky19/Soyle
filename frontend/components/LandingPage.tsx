@@ -52,8 +52,12 @@ function Logo() {
 export function LandingPage() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [language, setLanguage] = useState<Language>("ru");
-  useEffect(() => { const saved = localStorage.getItem("soyle-language"); if (saved === "en" || saved === "kk") queueMicrotask(() => setLanguage(saved)); }, []);
+  useEffect(() => {
+    const stored = localStorage.getItem("soyle-language");
+    if (stored === "ru" || stored === "en" || stored === "kk") queueMicrotask(() => setLanguage(stored));
+  }, []);
   useInterfaceLanguage(language);
+  const nextLanguage = () => setLanguage((current) => current === "ru" ? "en" : current === "en" ? "kk" : "ru");
   const closeMenu = () => setMenuOpen(false);
   return <div className="landing-page">
     <a className="skip-link" href="#main-content">Перейти к содержанию</a>
@@ -68,7 +72,7 @@ export function LandingPage() {
           <Link className="mobile-login" href="/app" onClick={closeMenu}>Войти</Link>
         </nav>
         <div className="nav-actions">
-          <button className="landing-language" onClick={() => setLanguage(language === "ru" ? "en" : language === "en" ? "kk" : "ru")} aria-label="Сменить язык"><Languages size={16}/>{language === "kk" ? "ҚАЗ" : language.toUpperCase()}</button>
+          <button className="landing-language" data-i18n-native onClick={nextLanguage} aria-label={{ ru: "Язык интерфейса: русский", en: "Interface language: English", kk: "Интерфейс тілі: қазақша" }[language]}><Languages size={16}/>{{ ru: "RU", en: "EN", kk: "ҚАЗ" }[language]}</button>
           <Link className="button ghost" href="/app">Войти</Link>
           <Link className="button primary" href="/app">Начать <ArrowRight size={17}/></Link>
         </div>

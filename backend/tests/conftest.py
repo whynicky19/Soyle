@@ -31,7 +31,17 @@ def login(client: TestClient, username: str, password: str) -> dict[str, str]:
 
 @pytest.fixture(scope="session")
 def parent_headers(client):
-    return login(client, "parent", "Parent123!")
+    headers = login(client, "parent", "Parent123!")
+    children = client.get("/api/children", headers=headers).json()
+    for child in children:
+        response = client.put(f"/api/children/{child['id']}/consent", headers=headers, json={
+            "privacy_accepted": True,
+            "camera_processing": True,
+            "specialist_sharing": True,
+            "analytics_processing": True,
+        })
+        assert response.status_code == 200, response.text
+    return headers
 
 
 @pytest.fixture(scope="session")
@@ -42,3 +52,10 @@ def specialist_headers(client):
 @pytest.fixture(scope="session")
 def admin_headers(client):
     return login(client, "admin", "Admin123!")
+
+
+@pytest.fixture(scope="session")
+def student_headers(client):
+    response = client.post("/api/auth/student-login", json={"username": "alikhan", "pin": "1234"})
+    assert response.status_code == 200, response.text
+    return {"Authorization": f"Bearer {response.json()['access_token']}"}

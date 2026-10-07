@@ -117,7 +117,7 @@ AAC_CARDS = [
     ("Перерыв", "Мне нужен перерыв", "help", "/illustrations/mascot-parrot.png", 1),
     ("Не хочу", "Я не хочу", "help", "/illustrations/me.png", 1),
     ("Ещё", "Я хочу ещё", "wants", "/illustrations/want.png", 1),
-    ("Хочу", "Я хочу", "wants", "/illustrations/want.png", 1),
+    ("Хочу", "хочу", "wants", "/illustrations/want.png", 1),
     ("Пить", "Я хочу пить", "needs", "/illustrations/juice.png", 1),
     ("Есть", "Я хочу есть", "needs", "/illustrations/apple.png", 1),
     ("Туалет", "Мне нужно в туалет", "needs", "/illustrations/me.png", 1),
@@ -228,7 +228,9 @@ def init_db() -> None:
             score INTEGER NOT NULL, duration_seconds INTEGER NOT NULL, details TEXT NOT NULL DEFAULT '{{}}',
             measurement_version INTEGER NOT NULL DEFAULT 1,
             learning_session_id BIGINT REFERENCES learning_sessions(id) ON DELETE SET NULL,
-            sequence_index INTEGER, created_at TEXT NOT NULL
+            sequence_index INTEGER, attempts_count INTEGER, correct_answers INTEGER,
+            prompts_used INTEGER NOT NULL DEFAULT 0, attempt_status TEXT NOT NULL DEFAULT 'completed',
+            created_at TEXT NOT NULL
         );
         CREATE TABLE IF NOT EXISTS specialist_children (
             specialist_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -266,7 +268,7 @@ def init_db() -> None:
         );
         CREATE TABLE IF NOT EXISTS user_settings (
             user_key TEXT PRIMARY KEY,
-            camera_enabled INTEGER NOT NULL DEFAULT 1,
+            camera_enabled INTEGER NOT NULL DEFAULT 0,
             sound_enabled INTEGER NOT NULL DEFAULT 1,
             calm_mode INTEGER NOT NULL DEFAULT 0,
             theme TEXT NOT NULL DEFAULT 'peach',
@@ -279,6 +281,10 @@ def init_db() -> None:
             label TEXT NOT NULL,
             speech TEXT NOT NULL,
             category TEXT NOT NULL,
+            lemma TEXT,
+            grammatical_role TEXT NOT NULL DEFAULT 'ready_message',
+            language TEXT NOT NULL DEFAULT 'ru',
+            pictogram TEXT,
             image TEXT NOT NULL,
             is_core INTEGER NOT NULL DEFAULT 0,
             created_by BIGINT,
@@ -342,7 +348,13 @@ def init_db() -> None:
             parent_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
             privacy_accepted INTEGER NOT NULL DEFAULT 0,
             camera_processing INTEGER NOT NULL DEFAULT 0,
-            specialist_sharing INTEGER NOT NULL DEFAULT 1,
+            specialist_sharing INTEGER NOT NULL DEFAULT 0,
+            analytics_processing INTEGER NOT NULL DEFAULT 0,
+            consented_by_user_id BIGINT REFERENCES users(id) ON DELETE SET NULL,
+            privacy_accepted_at TEXT,
+            camera_processing_at TEXT,
+            specialist_sharing_at TEXT,
+            analytics_processing_at TEXT,
             version TEXT NOT NULL DEFAULT '2026-10',
             updated_at TEXT NOT NULL
         );
@@ -390,6 +402,36 @@ def init_db() -> None:
             db.execute("ALTER TABLE sessions ADD COLUMN response_ms INTEGER")
         if "communication_initiatives" not in session_columns:
             db.execute("ALTER TABLE sessions ADD COLUMN communication_initiatives INTEGER NOT NULL DEFAULT 0")
+        if "attempts_count" not in session_columns:
+            db.execute("ALTER TABLE sessions ADD COLUMN attempts_count INTEGER")
+        if "correct_answers" not in session_columns:
+            db.execute("ALTER TABLE sessions ADD COLUMN correct_answers INTEGER")
+        if "prompts_used" not in session_columns:
+            db.execute("ALTER TABLE sessions ADD COLUMN prompts_used INTEGER NOT NULL DEFAULT 0")
+        if "attempt_status" not in session_columns:
+            db.execute("ALTER TABLE sessions ADD COLUMN attempt_status TEXT NOT NULL DEFAULT 'completed'")
+        if db.backend == "postgresql":
+            aac_columns = {row["column_name"] for row in db.execute("SELECT column_name FROM information_schema.columns WHERE table_schema='public' AND table_name='aac_cards'").fetchall()}
+        else:
+            aac_columns = {row["name"] for row in db.execute("PRAGMA table_info(aac_cards)").fetchall()}
+        if "lemma" not in aac_columns:
+            db.execute("ALTER TABLE aac_cards ADD COLUMN lemma TEXT")
+        if "grammatical_role" not in aac_columns:
+            db.execute("ALTER TABLE aac_cards ADD COLUMN grammatical_role TEXT NOT NULL DEFAULT 'ready_message'")
+        if "language" not in aac_columns:
+            db.execute("ALTER TABLE aac_cards ADD COLUMN language TEXT NOT NULL DEFAULT 'ru'")
+        if "pictogram" not in aac_columns:
+            db.execute("ALTER TABLE aac_cards ADD COLUMN pictogram TEXT")
+        db.execute("UPDATE aac_cards SET language='ru' WHERE language IS NULL OR language='' ")
+        db.execute("UPDATE aac_cards SET lemma=lower(label) WHERE lemma IS NULL OR lemma='' ")
+        db.execute("UPDATE aac_cards SET pictogram=image WHERE pictogram IS NULL OR pictogram='' ")
+        subject_labels = ("Я", "Мама", "Папа", "Бабушка", "Дедушка", "Брат", "Сестра")
+        action_labels = ("Хочу", "Люблю", "Вижу", "Иду", "Играю", "Рисовать", "Читать", "Спать", "Гулять", "Играл", "Гулял")
+        object_labels = ("Сок", "Вода", "Чай", "Яблоко", "Банан", "Хлеб", "Суп", "Каша", "Мяч", "Машинка", "Кукла", "Книга", "Пазл", "Кот")
+        for role, labels in (("subject", subject_labels), ("action", action_labels), ("object", object_labels)):
+            placeholders = ",".join("?" for _ in labels)
+            db.execute(f"UPDATE aac_cards SET grammatical_role=? WHERE label IN ({placeholders})", (role, *labels))
+        db.execute("UPDATE aac_cards SET speech='хочу',lemma='хотеть',grammatical_role='action' WHERE label='Хочу' AND language='ru'")
         if db.backend == "postgresql":
             learning_columns = {row["column_name"] for row in db.execute("SELECT column_name FROM information_schema.columns WHERE table_schema='public' AND table_name='learning_sessions'").fetchall()}
         else:
@@ -404,8 +446,33 @@ def init_db() -> None:
             settings_columns = {row["name"] for row in db.execute("PRAGMA table_info(user_settings)").fetchall()}
         if "language" not in settings_columns:
             db.execute("ALTER TABLE user_settings ADD COLUMN language TEXT NOT NULL DEFAULT 'ru'")
+        if db.backend == "postgresql":
+            consent_columns = {row["column_name"] for row in db.execute("SELECT column_name FROM information_schema.columns WHERE table_schema='public' AND table_name='child_consents'").fetchall()}
+        else:
+            consent_columns = {row["name"] for row in db.execute("PRAGMA table_info(child_consents)").fetchall()}
+        consent_additions = {
+            "analytics_processing": "INTEGER NOT NULL DEFAULT 0",
+            "consented_by_user_id": "BIGINT REFERENCES users(id) ON DELETE SET NULL",
+            "privacy_accepted_at": "TEXT",
+            "camera_processing_at": "TEXT",
+            "specialist_sharing_at": "TEXT",
+            "analytics_processing_at": "TEXT",
+        }
+        for column, definition in consent_additions.items():
+            if column not in consent_columns:
+                db.execute(f"ALTER TABLE child_consents ADD COLUMN {column} {definition}")
+        # Older builds defaulted specialist access to on. It cannot be treated as
+        # informed consent when the required privacy consent was never accepted.
+        db.execute("UPDATE child_consents SET specialist_sharing=0,specialist_sharing_at=NULL WHERE privacy_accepted=0")
+        if db.backend == "postgresql":
+            db.execute("ALTER TABLE child_consents ALTER COLUMN specialist_sharing SET DEFAULT 0")
         db.execute("INSERT INTO schema_migrations(version,applied_at) VALUES(1,?) ON CONFLICT(version) DO NOTHING", (now_iso(),))
         db.execute("INSERT INTO schema_migrations(version,applied_at) VALUES(2,?) ON CONFLICT(version) DO NOTHING", (now_iso(),))
+        db.execute("INSERT INTO schema_migrations(version,applied_at) VALUES(3,?) ON CONFLICT(version) DO NOTHING", (now_iso(),))
+        db.execute("INSERT INTO schema_migrations(version,applied_at) VALUES(4,?) ON CONFLICT(version) DO NOTHING", (now_iso(),))
+        db.execute("INSERT INTO schema_migrations(version,applied_at) VALUES(5,?) ON CONFLICT(version) DO NOTHING", (now_iso(),))
+        db.execute("INSERT INTO schema_migrations(version,applied_at) VALUES(6,?) ON CONFLICT(version) DO NOTHING", (now_iso(),))
+        db.execute("INSERT INTO schema_migrations(version,applied_at) VALUES(7,?) ON CONFLICT(version) DO NOTHING", (now_iso(),))
 
         seed_demo = env_enabled("SOYLE_SEED_DEMO_DATA", default=not bool(DATABASE_URL))
         if seed_demo and not db.execute("SELECT 1 FROM users LIMIT 1").fetchone():
@@ -450,6 +517,18 @@ def init_db() -> None:
                 "INSERT INTO aac_cards(child_id,label,speech,category,image,is_core,created_at) VALUES(NULL,?,?,?,?,?,?)",
                 [(*card, now_iso()) for card in missing_cards],
             )
+        db.execute("UPDATE aac_cards SET lemma=lower(label) WHERE lemma IS NULL OR lemma='' ")
+        db.execute("UPDATE aac_cards SET pictogram=image WHERE pictogram IS NULL OR pictogram='' ")
+        for role, labels in (("subject", subject_labels), ("action", action_labels), ("object", object_labels)):
+            placeholders = ",".join("?" for _ in labels)
+            db.execute(f"UPDATE aac_cards SET grammatical_role=?,language='ru' WHERE label IN ({placeholders})", (role, *labels))
+        db.execute("UPDATE aac_cards SET speech='хочу',lemma='хотеть',grammatical_role='action',language='ru' WHERE label='Хочу'")
+        supported_aac_scenarios = ("request", "choice", "refusal", "feelings", "help", "answer", "observation", "past_event", "question", "routine")
+        scenario_placeholders = ",".join("?" for _ in supported_aac_scenarios)
+        db.execute(f"UPDATE exercises SET is_active=0 WHERE module='mixed' AND target NOT IN ({scenario_placeholders})", supported_aac_scenarios)
+        supported_sensory_sets = ("animals", "food", "toys")
+        sensory_placeholders = ",".join("?" for _ in supported_sensory_sets)
+        db.execute(f"UPDATE exercises SET is_active=0 WHERE module='sensory' AND target NOT IN ({sensory_placeholders})", supported_sensory_sets)
         if seed_demo and not db.execute("SELECT 1 FROM usage_events LIMIT 1").fetchone():
             child_id = db.execute("SELECT id FROM children ORDER BY id LIMIT 1").fetchone()["id"]
             db.executemany("INSERT INTO usage_events(child_id,provider,model,feature,input_tokens,output_tokens,estimated_cost_usd,created_at) VALUES(?,?,?,?,?,?,?,?)", [

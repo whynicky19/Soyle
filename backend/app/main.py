@@ -15,7 +15,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
 from .database import connect, init_db, now_iso
-from .schemas import AACCardCreate, AACFavoriteUpdate, AACPhraseCreate, ActiveUpdate, AssignedExerciseCreate, ChildCreate, ChildDeleteRequest, ChildGoalCreate, ConsentUpdate, ExerciseCreate, GoalStatusUpdate, HomeworkCreate, HomeworkResultUpdate, LearningSessionCreate, LoginRequest, RecommendationReview, RegisterRequest, RoleUpdate, SessionCreate, SpecialistAssignmentCreate, SpecialistRecommendationCreate, StudentAccountCreate, StudentLoginRequest, TTSRequest, UserSettingsUpdate
+from .schemas import AACCardCreate, AACComposeRequest, AACFavoriteUpdate, AACPhraseCreate, ActiveUpdate, AssignedExerciseCreate, ChildCreate, ChildDeleteRequest, ChildGoalCreate, ConsentUpdate, ExerciseCreate, GoalStatusUpdate, HomeworkCreate, HomeworkResultUpdate, LearningSessionCreate, LoginRequest, RecommendationReview, RegisterRequest, RoleUpdate, SessionCreate, SpecialistAssignmentCreate, SpecialistRecommendationCreate, StudentAccountCreate, StudentLoginRequest, TTSRequest, UserSettingsUpdate
+from .aac_grammar import compose_aac_phrase
 from .security import create_access_token, create_student_access_token, get_current_user, hash_password, require_roles, verify_password
 
 
@@ -26,6 +27,7 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(title="Söyle API", version="1.0.0", lifespan=lifespan)
+CONSENT_VERSION = "2026-10-pilot-1"
 allowed_origins = [origin.strip() for origin in os.getenv(
     "SOYLE_ALLOWED_ORIGINS",
     "http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,http://127.0.0.1:3001",
@@ -76,10 +78,60 @@ def ensure_child_access(child_id: int, user: dict) -> dict:
         raise HTTPException(403, "Нет доступа к профилю ребёнка")
     if user["role"] == "specialist":
         with connect() as db:
-            assignment = db.execute("SELECT 1 FROM specialist_children WHERE specialist_id=? AND child_id=?", (user["id"], child_id)).fetchone()
+            assignment = db.execute(
+                """SELECT 1 FROM specialist_children sc
+                   JOIN child_consents cc ON cc.child_id=sc.child_id
+                   WHERE sc.specialist_id=? AND sc.child_id=?
+                   AND cc.privacy_accepted=1 AND cc.specialist_sharing=1""",
+                (user["id"], child_id),
+            ).fetchone()
         if not assignment:
-            raise HTTPException(403, "Ребёнок не назначен этому специалисту")
+            raise HTTPException(403, "Родитель ещё не разрешил доступ специалисту или отозвал его")
     return dict(child)
+
+
+def consent_record(child_id: int) -> dict:
+    with connect() as db:
+        row = db.execute("SELECT * FROM child_consents WHERE child_id=?", (child_id,)).fetchone()
+    if not row:
+        return {
+            "child_id": child_id,
+            "privacy_accepted": False,
+            "camera_processing": False,
+            "specialist_sharing": False,
+            "analytics_processing": False,
+            "version": CONSENT_VERSION,
+            "updated_at": None,
+            "consented_by_user_id": None,
+            "privacy_accepted_at": None,
+            "camera_processing_at": None,
+            "specialist_sharing_at": None,
+            "analytics_processing_at": None,
+        }
+    result = dict(row)
+    for key in ("privacy_accepted", "camera_processing", "specialist_sharing", "analytics_processing"):
+        result[key] = bool(result.get(key, False))
+    return result
+
+
+def ensure_privacy_consent(child_id: int) -> dict:
+    consent = consent_record(child_id)
+    if not consent["privacy_accepted"]:
+        raise HTTPException(403, "Сначала родителю нужно разрешить сохранение данных ребёнка")
+    return consent
+
+
+def ensure_analytics_consent(child_id: int) -> dict:
+    consent = ensure_privacy_consent(child_id)
+    if not consent["analytics_processing"]:
+        raise HTTPException(403, "История и необязательная аналитика отключены родителем")
+    return consent
+
+
+def calculate_game_score(correct_answers: int, attempts_count: int) -> int:
+    if attempts_count <= 0:
+        return 0
+    return round(correct_answers / attempts_count * 100)
 
 
 def settings_key(user: dict) -> str:
@@ -89,7 +141,7 @@ def settings_key(user: dict) -> str:
 
 def public_settings(row=None) -> dict:
     if not row:
-        return {"camera_enabled": True, "sound_enabled": True, "calm_mode": False, "theme": "peach", "language": "ru"}
+        return {"camera_enabled": False, "sound_enabled": True, "calm_mode": False, "theme": "peach", "language": "ru"}
     return {
         "camera_enabled": bool(row["camera_enabled"]),
         "sound_enabled": bool(row["sound_enabled"]),
@@ -141,14 +193,24 @@ def create_module_notification(db, child_id: int, exercise_id: int) -> None:
     if not unit:
         return
     placeholders = ",".join("?" for _ in unit["targets"])
+    active_targets = {
+        row["target"] for row in db.execute(
+            f"SELECT target FROM exercises WHERE is_active=1 AND target IN ({placeholders})",
+            tuple(unit["targets"]),
+        ).fetchall()
+    }
+    if not active_targets:
+        return
     completed_targets = {
         row["target"] for row in db.execute(
             f"""SELECT DISTINCT e.target FROM sessions s JOIN exercises e ON e.id=s.exercise_id
-                WHERE s.child_id=? AND s.measurement_version=1 AND e.target IN ({placeholders})""",
+                WHERE s.child_id=? AND s.measurement_version>=1
+                AND s.attempt_status IN ('completed','participated') AND e.is_active=1
+                AND e.target IN ({placeholders})""",
             (child_id, *unit["targets"]),
         ).fetchall()
     }
-    if not set(unit["targets"]).issubset(completed_targets):
+    if not active_targets.issubset(completed_targets):
         return
     child = db.execute("SELECT name,parent_id FROM children WHERE id=?", (child_id,)).fetchone()
     if not child:
@@ -251,7 +313,7 @@ def text_to_speech(payload: TTSRequest, _: dict = Depends(get_current_user)) -> 
     text = " ".join(payload.text.split()).strip()
     cache_dir = Path(tempfile.gettempdir()) / "soyle-tts-v1"
     cache_dir.mkdir(parents=True, exist_ok=True)
-    cache_key = hashlib.sha256(f"{text}|{payload.rate:.2f}".encode("utf-8")).hexdigest()
+    cache_key = hashlib.sha256(f"{payload.language}|{text}|{payload.rate:.2f}".encode("utf-8")).hexdigest()
     output_path = cache_dir / f"{cache_key}.wav"
     if not output_path.exists():
         source_path = cache_dir / f"{cache_key}.aiff"
@@ -260,13 +322,12 @@ def text_to_speech(payload: TTSRequest, _: dict = Depends(get_current_user)) -> 
         if not say_path or not ffmpeg_path:
             raise HTTPException(503, "Локальный голосовой движок недоступен")
         words_per_minute = max(125, min(215, round(190 * payload.rate)))
-        voice = os.getenv("SOYLE_TTS_VOICE", "Milena")
+        default_voices = {"ru": "Milena", "kk": "Aigerim", "en": "Samantha"}
+        voice = os.getenv(f"SOYLE_TTS_VOICE_{payload.language.upper()}", os.getenv("SOYLE_TTS_VOICE", default_voices[payload.language]))
         command = [say_path, "-v", voice, "-r", str(words_per_minute), "-o", str(source_path), text]
         generated = subprocess.run(command, capture_output=True, timeout=20, check=False)
-        if generated.returncode != 0:
-            generated = subprocess.run([say_path, "-r", str(words_per_minute), "-o", str(source_path), text], capture_output=True, timeout=20, check=False)
         if generated.returncode != 0 or not source_path.exists():
-            raise HTTPException(503, "Не удалось подготовить озвучивание")
+            raise HTTPException(503, f"Голос для языка {payload.language} недоступен")
         filtered = subprocess.run([
             ffmpeg_path, "-loglevel", "error", "-y", "-i", str(source_path),
             "-af", "highpass=f=60,lowpass=f=10500,areverse,afade=t=in:st=0:d=0.12,areverse,apad=pad_dur=0.08",
@@ -285,7 +346,8 @@ def list_notifications(user: dict = Depends(require_roles("parent"))) -> dict:
         completed_rows = db.execute(
             """SELECT DISTINCT s.child_id,s.exercise_id FROM sessions s
                JOIN children c ON c.id=s.child_id
-               WHERE c.parent_id=? AND s.exercise_id IS NOT NULL AND s.measurement_version=1""",
+               WHERE c.parent_id=? AND s.exercise_id IS NOT NULL AND s.measurement_version>=1
+               AND s.attempt_status IN ('completed','participated')""",
             (user["id"],),
         ).fetchall()
         for completed in completed_rows:
@@ -323,7 +385,10 @@ def list_children(user: dict = Depends(get_current_user)) -> list[dict]:
             rows = db.execute(
                 """SELECT c.*,u.full_name parent_name,u.username parent_username
                    FROM specialist_children sc JOIN children c ON c.id=sc.child_id
-                   JOIN users u ON u.id=c.parent_id WHERE sc.specialist_id=? ORDER BY c.id""",
+                   JOIN users u ON u.id=c.parent_id
+                   JOIN child_consents cc ON cc.child_id=c.id
+                   WHERE sc.specialist_id=? AND cc.privacy_accepted=1
+                   AND cc.specialist_sharing=1 ORDER BY c.id""",
                 (user["id"],),
             ).fetchall()
         else:
@@ -398,10 +463,11 @@ def aac_cards(child_id: int, user: dict = Depends(get_current_user)) -> list[dic
 @app.post("/api/aac/cards", status_code=201)
 def create_aac_card(payload: AACCardCreate, user: dict = Depends(require_roles("parent"))) -> dict:
     ensure_child_access(payload.child_id, user)
+    ensure_privacy_consent(payload.child_id)
     with connect() as db:
         cursor = db.execute(
-            "INSERT INTO aac_cards(child_id,label,speech,category,image,created_by,created_at) VALUES(?,?,?,?,?,?,?) RETURNING id",
-            (payload.child_id, payload.label, payload.speech, payload.category, payload.image, user["id"], now_iso()),
+            "INSERT INTO aac_cards(child_id,label,speech,category,lemma,grammatical_role,language,pictogram,image,created_by,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?) RETURNING id",
+            (payload.child_id, payload.label, payload.speech, payload.category, payload.lemma or payload.label.lower(), payload.grammatical_role, payload.language, payload.pictogram or payload.image, payload.image, user["id"], now_iso()),
         )
         row = db.execute("SELECT *,0 favorite FROM aac_cards WHERE id=?", (cursor.fetchone()["id"],)).fetchone()
     return dict(row)
@@ -410,6 +476,7 @@ def create_aac_card(payload: AACCardCreate, user: dict = Depends(require_roles("
 @app.patch("/api/aac/cards/{card_id}/favorite")
 def favorite_aac_card(card_id: int, child_id: int, payload: AACFavoriteUpdate, user: dict = Depends(get_current_user)) -> dict:
     ensure_child_access(child_id, user)
+    ensure_privacy_consent(child_id)
     with connect() as db:
         card = db.execute("SELECT id FROM aac_cards WHERE id=? AND is_active=1 AND (child_id IS NULL OR child_id=?)", (card_id, child_id)).fetchone()
         if not card:
@@ -421,9 +488,28 @@ def favorite_aac_card(card_id: int, child_id: int, payload: AACFavoriteUpdate, u
     return {"card_id": card_id, "favorite": payload.favorite}
 
 
+@app.post("/api/aac/compose")
+def compose_aac(payload: AACComposeRequest, user: dict = Depends(get_current_user)) -> dict:
+    ensure_child_access(payload.child_id, user)
+    unique_ids = list(dict.fromkeys(payload.card_ids))
+    if len(unique_ids) != len(payload.card_ids):
+        raise HTTPException(422, "Одна карточка не должна повторяться в сообщении")
+    placeholders = ",".join("?" for _ in unique_ids)
+    with connect() as db:
+        rows = db.execute(
+            f"SELECT id,label,speech,lemma,grammatical_role,language,pictogram FROM aac_cards WHERE is_active=1 AND (child_id IS NULL OR child_id=?) AND id IN ({placeholders})",
+            (payload.child_id, *unique_ids),
+        ).fetchall()
+    by_id = {row["id"]: dict(row) for row in rows}
+    if len(by_id) != len(unique_ids):
+        raise HTTPException(422, "Одна из карточек недоступна")
+    return compose_aac_phrase([by_id[card_id] for card_id in unique_ids], payload.language)
+
+
 @app.post("/api/aac/history", status_code=201)
 def save_aac_phrase(payload: AACPhraseCreate, user: dict = Depends(get_current_user)) -> dict:
     ensure_child_access(payload.child_id, user)
+    ensure_analytics_consent(payload.child_id)
     with connect() as db:
         cursor = db.execute(
             "INSERT INTO aac_phrase_history(child_id,user_key,phrase,card_ids,created_at) VALUES(?,?,?,?,?) RETURNING id",
@@ -438,6 +524,9 @@ def save_aac_phrase(payload: AACPhraseCreate, user: dict = Depends(get_current_u
 @app.get("/api/aac/history/{child_id}")
 def aac_history(child_id: int, user: dict = Depends(get_current_user)) -> list[dict]:
     ensure_child_access(child_id, user)
+    consent = consent_record(child_id)
+    if not consent["privacy_accepted"] or not consent["analytics_processing"]:
+        return []
     with connect() as db:
         rows = db.execute("SELECT * FROM aac_phrase_history WHERE child_id=? ORDER BY id DESC LIMIT 12", (child_id,)).fetchall()
     return [{**dict(row), "card_ids": json.loads(row["card_ids"])} for row in rows]
@@ -446,6 +535,19 @@ def aac_history(child_id: int, user: dict = Depends(get_current_user)) -> list[d
 @app.post("/api/sessions", status_code=201)
 def create_session(payload: SessionCreate, user: dict = Depends(get_current_user)) -> dict:
     ensure_child_access(payload.child_id, user)
+    consent = ensure_privacy_consent(payload.child_id)
+    if (payload.attempts_count is None) != (payload.correct_answers is None):
+        raise HTTPException(422, "Число попыток и правильных ответов нужно передавать вместе")
+    if payload.attempts_count is not None and payload.correct_answers is not None and payload.correct_answers > payload.attempts_count:
+        raise HTTPException(422, "Правильных ответов не может быть больше числа попыток")
+    attempt_status = "refused" if payload.prompt_level == "refused" and payload.attempt_status == "completed" else payload.attempt_status
+    if attempt_status == "completed" and payload.attempts_count == 0:
+        raise HTTPException(422, "Для завершённой игровой попытки укажите хотя бы один ответ")
+    game_score = payload.score
+    if attempt_status != "completed":
+        game_score = 0
+    elif payload.attempts_count is not None and payload.correct_answers is not None:
+        game_score = calculate_game_score(payload.correct_answers, payload.attempts_count)
     with connect() as db:
         exercise = db.execute("SELECT id,module,is_active FROM exercises WHERE id=?", (payload.exercise_id,)).fetchone()
         if not exercise or not exercise["is_active"]:
@@ -461,15 +563,17 @@ def create_session(payload: SessionCreate, user: dict = Depends(get_current_user
                 raise HTTPException(422, "Это упражнение не входит в текущее занятие")
         cursor = db.execute(
             """INSERT INTO sessions(child_id,exercise_id,module,score,duration_seconds,details,measurement_version,
-               learning_session_id,sequence_index,independence,prompt_level,response_ms,communication_initiatives,created_at)
-               VALUES(?,?,?,?,?,?,1,?,?,?,?,?,?,?) RETURNING id""",
-            (payload.child_id, payload.exercise_id, payload.module, payload.score, payload.duration_seconds,
+               learning_session_id,sequence_index,independence,prompt_level,response_ms,communication_initiatives,
+               attempts_count,correct_answers,prompts_used,attempt_status,created_at)
+               VALUES(?,?,?,?,?,?,2,?,?,?,?,?,?,?,?,?,?,?) RETURNING id""",
+            (payload.child_id, payload.exercise_id, payload.module, game_score, payload.duration_seconds,
              json.dumps(payload.details, ensure_ascii=False), payload.learning_session_id, payload.sequence_index,
-             payload.independence, payload.prompt_level, payload.response_ms, payload.communication_initiatives, now_iso()),
+             payload.independence, payload.prompt_level, payload.response_ms, payload.communication_initiatives,
+             payload.attempts_count, payload.correct_answers, payload.prompts_used, attempt_status, now_iso()),
         )
         row = db.execute("SELECT * FROM sessions WHERE id=?", (cursor.fetchone()["id"],)).fetchone()
         if payload.learning_session_id:
-            completed_count = db.execute("SELECT COUNT(DISTINCT exercise_id) count FROM sessions WHERE learning_session_id=? AND measurement_version=1", (payload.learning_session_id,)).fetchone()["count"]
+            completed_count = db.execute("SELECT COUNT(DISTINCT exercise_id) count FROM sessions WHERE learning_session_id=? AND measurement_version>=1 AND attempt_status IN ('completed','participated','refused')", (payload.learning_session_id,)).fetchone()["count"]
             planned_count = len(json.loads(learning["exercise_ids"]))
             if completed_count >= planned_count:
                 db.execute("UPDATE learning_sessions SET status='completed',current_index=?,completed_at=? WHERE id=?", (planned_count, now_iso(), payload.learning_session_id))
@@ -487,13 +591,14 @@ def create_session(payload: SessionCreate, user: dict = Depends(get_current_user
                     )
             else:
                 db.execute("UPDATE learning_sessions SET current_index=? WHERE id=?", (completed_count, payload.learning_session_id))
-        if payload.module == "motor" and payload.details.get("source") == "face-landmarker":
+        if consent["analytics_processing"] and payload.module == "motor" and payload.details.get("source") == "face-landmarker":
             db.execute("INSERT INTO usage_events(user_id,child_id,provider,model,feature,created_at) VALUES(?,?,?,?,?,?)", (user["id"], payload.child_id, "local", "MediaPipe Face Landmarker", "Анализ артикуляции", now_iso()))
-        db.execute("UPDATE assigned_exercises SET status='completed',completed_at=? WHERE child_id=? AND exercise_id=? AND status='assigned'", (now_iso(), payload.child_id, payload.exercise_id))
-        create_module_notification(db, payload.child_id, payload.exercise_id)
+        if attempt_status in {"completed", "participated"}:
+            db.execute("UPDATE assigned_exercises SET status='completed',completed_at=? WHERE child_id=? AND exercise_id=? AND status='assigned'", (now_iso(), payload.child_id, payload.exercise_id))
+            create_module_notification(db, payload.child_id, payload.exercise_id)
     result = dict(row)
     result["details"] = json.loads(result["details"])
-    result["awarded_stars"] = max(1, payload.score // 20)
+    result["awarded_stars"] = 1 if attempt_status == "participated" else max(1, game_score // 20) if attempt_status == "completed" else 0
     return result
 
 
@@ -527,11 +632,13 @@ def build_skill_progress(rows, exercise_rows) -> list[dict]:
 def progress_data(child_id: int, user: dict) -> dict:
     child = ensure_child_access(child_id, user)
     with connect() as db:
-        rows = db.execute("SELECT * FROM sessions WHERE child_id=? AND measurement_version=1 ORDER BY created_at", (child_id,)).fetchall()
+        rows = db.execute("SELECT * FROM sessions WHERE child_id=? AND measurement_version>=1 ORDER BY created_at,id", (child_id,)).fetchall()
         exercise_rows = [dict(row) for row in db.execute("SELECT id,module,skill FROM exercises WHERE is_active=1").fetchall()]
     rows = [dict(row) for row in rows]
+    scored_rows = [row for row in rows if row.get("attempt_status", "completed") == "completed"]
+    completion_rows = [row for row in rows if row.get("attempt_status", "completed") in {"completed", "participated"}]
     by_module: dict[str, list[int]] = defaultdict(list)
-    for row in rows:
+    for row in scored_rows:
         by_module[row["module"]].append(row["score"])
     labels = {"motor": "Артикуляция", "sensory": "Понимание речи", "mixed": "Построение фраз"}
     skills = [{"module": module, "label": labels[module], "value": round(sum(by_module[module]) / len(by_module[module])) if by_module[module] else 0, "sessions": len(by_module[module])} for module in ("motor", "sensory", "mixed")]
@@ -541,7 +648,7 @@ def progress_data(child_id: int, user: dict) -> dict:
     }
     exercise_counts = {module: len(ids) for module, ids in active_exercise_ids.items()}
     completed = {
-        module: len({row["exercise_id"] for row in rows if row["module"] == module and row["exercise_id"] in active_exercise_ids[module]})
+        module: len({row["exercise_id"] for row in completion_rows if row["module"] == module and row["exercise_id"] in active_exercise_ids[module]})
         for module in ("motor", "sensory", "mixed")
     }
     completion = {
@@ -549,9 +656,9 @@ def progress_data(child_id: int, user: dict) -> dict:
         for module in ("motor", "sensory", "mixed")
     }
     overall = round(sum(completed.values()) / max(sum(exercise_counts.values()), 1) * 100)
-    skill_progress = build_skill_progress(rows, exercise_rows)
-    independence_values = [row["independence"] for row in rows if row.get("independence") is not None]
-    response_values = [row["response_ms"] for row in rows if row.get("response_ms") is not None]
+    skill_progress = build_skill_progress(scored_rows, exercise_rows)
+    independence_values = [row["independence"] for row in scored_rows if row.get("independence") is not None]
+    response_values = [row["response_ms"] for row in scored_rows if row.get("response_ms") is not None]
     prompt_breakdown = {name: sum(1 for row in rows if row.get("prompt_level") == name) for name in ("independent", "minimal", "full", "refused")}
     with connect() as db:
         homework_rows = [dict(row) for row in db.execute("SELECT result,completed_at FROM homework_assignments WHERE child_id=? AND result IS NOT NULL ORDER BY completed_at", (child_id,)).fetchall()]
@@ -571,6 +678,14 @@ def progress_data(child_id: int, user: dict) -> dict:
             "average_response_ms": round(sum(response_values) / len(response_values)) if response_values else None,
             "communication_initiatives": sum(row.get("communication_initiatives") or 0 for row in rows),
             "prompt_breakdown": prompt_breakdown,
+            "attempts_count": sum(row.get("attempts_count") or 0 for row in rows),
+            "correct_answers": sum(row.get("correct_answers") or 0 for row in scored_rows),
+            "prompts_used": sum(row.get("prompts_used") or 0 for row in rows),
+            "refusals": sum(1 for row in rows if row.get("attempt_status") == "refused"),
+            "breaks": sum(1 for row in rows if row.get("attempt_status") == "break"),
+            "technical_errors": sum(1 for row in rows if row.get("attempt_status") == "technical_error"),
+            "participations": sum(1 for row in rows if row.get("attempt_status") == "participated"),
+            "game_result_average": round(sum(row["score"] for row in scored_rows) / len(scored_rows)) if scored_rows else None,
             "homework_completed": len(homework_rows),
             "plain_language": plain_language,
         },
@@ -586,8 +701,10 @@ def progress(child_id: int, user: dict = Depends(get_current_user)) -> dict:
 def dashboard(child_id: int, user: dict = Depends(get_current_user)) -> dict:
     child = ensure_child_access(child_id, user)
     with connect() as db:
-        rows = db.execute("SELECT id,exercise_id,module,score,duration_seconds,created_at FROM sessions WHERE child_id=? AND measurement_version=1 ORDER BY created_at", (child_id,)).fetchall()
+        rows = db.execute("SELECT id,exercise_id,module,score,duration_seconds,attempts_count,correct_answers,prompts_used,attempt_status,created_at FROM sessions WHERE child_id=? AND measurement_version>=1 ORDER BY created_at,id", (child_id,)).fetchall()
         exercise_rows = [dict(row) for row in db.execute("SELECT id,module,skill,title,instruction FROM exercises WHERE is_active=1").fetchall()]
+    scored_rows = [row for row in rows if row["attempt_status"] == "completed"]
+    completion_rows = [row for row in rows if row["attempt_status"] in {"completed", "participated"}]
 
     local_zone = ZoneInfo("Asia/Almaty")
     today = datetime.now(local_zone).date()
@@ -610,7 +727,7 @@ def dashboard(child_id: int, user: dict = Depends(get_current_user)) -> dict:
     today_rows = [row for row, day in parsed if day == today]
     week_rows = [row for row, day in parsed if week_start <= day <= today]
     by_module: dict[str, list[int]] = defaultdict(list)
-    for row in rows:
+    for row in scored_rows:
         by_module[row["module"]].append(row["score"])
     module_accuracy = {
         module: round(sum(scores) / len(scores)) if scores else 0
@@ -622,7 +739,7 @@ def dashboard(child_id: int, user: dict = Depends(get_current_user)) -> dict:
     }
     exercise_counts = {module: len(ids) for module, ids in active_exercise_ids.items()}
     module_completed = {
-        module: len({row["exercise_id"] for row in rows if row["module"] == module and row["exercise_id"] in active_exercise_ids[module]})
+        module: len({row["exercise_id"] for row in completion_rows if row["module"] == module and row["exercise_id"] in active_exercise_ids[module]})
         for module in ("motor", "sensory", "mixed")
     }
     module_completion = {
@@ -634,24 +751,24 @@ def dashboard(child_id: int, user: dict = Depends(get_current_user)) -> dict:
         day = today - timedelta(days=offset)
         point = {"date": day.isoformat(), "label": day.strftime("%d.%m")}
         for module in ("motor", "sensory", "mixed"):
-            scores = [row["score"] for row, row_day in parsed if row_day == day and row["module"] == module]
+            scores = [row["score"] for row, row_day in parsed if row_day == day and row["module"] == module and row["attempt_status"] == "completed"]
             point[module] = round(sum(scores) / len(scores)) if scores else None
         daily.append(point)
-    current_week_scores = [row["score"] for row in week_rows]
+    current_week_scores = [row["score"] for row in week_rows if row["attempt_status"] == "completed"]
     previous_week_start = week_start - timedelta(days=7)
-    previous_week_scores = [row["score"] for row, day in parsed if previous_week_start <= day < week_start]
+    previous_week_scores = [row["score"] for row, day in parsed if previous_week_start <= day < week_start and row["attempt_status"] == "completed"]
     current_average = round(sum(current_week_scores) / len(current_week_scores)) if current_week_scores else 0
     previous_average = round(sum(previous_week_scores) / len(previous_week_scores)) if previous_week_scores else 0
     total_seconds = sum(row["duration_seconds"] for row in rows)
     today_seconds = sum(row["duration_seconds"] for row in today_rows)
     week_seconds = sum(row["duration_seconds"] for row in week_rows)
     row_dicts = [dict(row) for row in rows]
-    skill_progress = build_skill_progress(row_dicts, exercise_rows)
+    skill_progress = build_skill_progress([row for row in row_dicts if row["attempt_status"] == "completed"], exercise_rows)
     practiced_skills = [item for item in skill_progress if item["sessions"] > 0]
     weakest_skill = min(practiced_skills, key=lambda item: item["value"]) if practiced_skills else None
     recommended_exercise = None
     if weakest_skill:
-        completed_ids = {row["exercise_id"] for row in rows if row["exercise_id"] is not None}
+        completed_ids = {row["exercise_id"] for row in scored_rows if row["exercise_id"] is not None}
         candidates = [item for item in exercise_rows if item.get("skill") == weakest_skill["skill"]]
         recommended_exercise = next((item for item in candidates if item["id"] not in completed_ids), candidates[0] if candidates else None)
     return {
@@ -663,14 +780,14 @@ def dashboard(child_id: int, user: dict = Depends(get_current_user)) -> dict:
         "week_sessions": len(week_rows),
         "week_minutes": round(week_seconds / 60, 1),
         "streak_days": streak,
-        "stars": sum(max(1, row["score"] // 20) for row in rows),
+        "stars": sum(max(1, row["score"] // 20) for row in scored_rows) + sum(1 for row in completion_rows if row["attempt_status"] == "participated"),
         "overall": round(sum(module_completed.values()) / max(sum(exercise_counts.values()), 1) * 100),
         "module_progress": module_accuracy,
         "module_accuracy": module_accuracy,
         "module_completion": module_completion,
         "module_completed": module_completed,
-        "completed_exercise_ids": sorted({row["exercise_id"] for row in rows if row["exercise_id"] is not None}),
-        "module_sessions": {module: len(by_module[module]) for module in ("motor", "sensory", "mixed")},
+        "completed_exercise_ids": sorted({row["exercise_id"] for row in completion_rows if row["exercise_id"] is not None}),
+        "module_sessions": {module: sum(1 for row in completion_rows if row["module"] == module) for module in ("motor", "sensory", "mixed")},
         "active_exercises": exercise_counts,
         "skill_progress": skill_progress,
         "weakest_skill": weakest_skill,
@@ -678,7 +795,7 @@ def dashboard(child_id: int, user: dict = Depends(get_current_user)) -> dict:
         "progress_delta": current_average - previous_average,
         "daily": daily,
         "achievements": {
-            "first_five": len(rows) >= 5,
+            "first_five": len(completion_rows) >= 5,
             "good_listener": len(by_module["sensory"]) >= 5,
             "phrase_master": len(by_module["mixed"]) >= 5,
             "week_streak": streak >= 7,
@@ -729,6 +846,7 @@ def session_plan(child_id: int, minutes: int = Query(default=5), user: dict = De
 @app.post("/api/learning-sessions", status_code=201)
 def create_learning_session(payload: LearningSessionCreate, user: dict = Depends(get_current_user)) -> dict:
     ensure_child_access(payload.child_id, user)
+    ensure_privacy_consent(payload.child_id)
     with connect() as db:
         existing = db.execute(
             "SELECT id FROM learning_sessions WHERE child_id=? AND status IN ('in_progress','paused') ORDER BY id DESC LIMIT 1",
@@ -760,6 +878,7 @@ def pause_learning_session(session_id: int, user: dict = Depends(get_current_use
         if not row:
             raise HTTPException(404, "Занятие не найдено")
         ensure_child_access(row["child_id"], user)
+        ensure_privacy_consent(row["child_id"])
         next_status = "in_progress" if row["status"] == "paused" else "paused"
         db.execute("UPDATE learning_sessions SET status=?,paused_at=? WHERE id=?", (next_status, None if next_status == "in_progress" else now_iso(), session_id))
     return {"id": session_id, "status": next_status}
@@ -775,7 +894,7 @@ def get_learning_session(session_id: int, user: dict = Depends(get_current_user)
         exercise_ids = json.loads(session["exercise_ids"])
         placeholders = ",".join("?" for _ in exercise_ids)
         exercise_rows = db.execute(f"SELECT * FROM exercises WHERE id IN ({placeholders})", tuple(exercise_ids)).fetchall()
-        result_rows = db.execute("SELECT exercise_id,score,duration_seconds,created_at FROM sessions WHERE learning_session_id=? AND measurement_version=1 ORDER BY sequence_index,id", (session_id,)).fetchall()
+        result_rows = db.execute("SELECT exercise_id,score,duration_seconds,attempts_count,correct_answers,prompts_used,attempt_status,created_at FROM sessions WHERE learning_session_id=? AND measurement_version>=1 ORDER BY sequence_index,id", (session_id,)).fetchall()
     by_id = {row["id"]: dict(row) for row in exercise_rows}
     return {**dict(session), "exercise_ids": exercise_ids, "exercises": [by_id[item_id] for item_id in exercise_ids if item_id in by_id], "results": [dict(row) for row in result_rows]}
 
@@ -814,6 +933,8 @@ def get_active_learning_session(child_id: int, user: dict = Depends(get_current_
 
 @app.get("/api/ai/recommendations/{child_id}")
 def recommendations(child_id: int, user: dict = Depends(get_current_user)) -> dict:
+    ensure_child_access(child_id, user)
+    ensure_analytics_consent(child_id)
     data = progress_data(child_id, user)
     practiced = [item for item in data["skill_progress"] if item["sessions"] > 0]
     if not practiced:
@@ -834,8 +955,8 @@ def recommendations(child_id: int, user: dict = Depends(get_current_user)) -> di
         "insufficient_data": False,
         "suggested_skill": weakest["skill"],
         "suggested_exercise": exercise,
-        "summary": f"В последних результатах больше практики требует навык «{weakest['label']}». Это учебная подсказка, а не медицинский вывод.",
-        "rationale": {"skill": weakest["label"], "average_score": weakest["value"], "completed_tasks": weakest["sessions"], "method": "выбран навык с наиболее низким средним результатом среди отработанных"},
+        "summary": f"Среди выполненных игровых заданий ниже средний результат в направлении «{weakest['label']}». Это подсказка для выбора практики, а не оценка речи или развития.",
+        "rationale": {"skill": weakest["label"], "average_game_score": weakest["value"], "completed_game_attempts": weakest["sessions"], "method": "выбрано направление с наиболее низким средним результатом выполненных игровых заданий"},
         "plan": [exercise["title"] if exercise else weakest["recommended_practice"], weakest["recommended_practice"], "Закончить занятие на успешной попытке"],
         "disclaimer": "Рекомендация носит информационный характер и должна быть согласована со специалистом.",
     }
@@ -843,6 +964,8 @@ def recommendations(child_id: int, user: dict = Depends(get_current_user)) -> di
 
 @app.post("/api/ai/recommendations/{child_id}/generate", status_code=201)
 def generate_recommendation(child_id: int, user: dict = Depends(require_roles("specialist"))) -> dict:
+    ensure_child_access(child_id, user)
+    ensure_analytics_consent(child_id)
     data = recommendations(child_id, user)
     if data["insufficient_data"]:
         return data
@@ -1008,6 +1131,7 @@ def save_homework_result(homework_id: int, payload: HomeworkResultUpdate, user: 
         row = db.execute("SELECT h.* FROM homework_assignments h JOIN children c ON c.id=h.child_id WHERE h.id=? AND c.parent_id=?", (homework_id, user["id"])).fetchone()
         if not row:
             raise HTTPException(404, "Домашнее задание не найдено")
+        ensure_privacy_consent(row["child_id"])
         db.execute("UPDATE homework_assignments SET result=?,parent_note=?,completed_at=? WHERE id=?", (payload.result, payload.parent_note, now_iso(), homework_id))
         updated = db.execute("SELECT * FROM homework_assignments WHERE id=?", (homework_id,)).fetchone()
     audit(user, "homework.result", "homework", homework_id, {"result": payload.result})
@@ -1015,26 +1139,50 @@ def save_homework_result(homework_id: int, payload: HomeworkResultUpdate, user: 
 
 
 @app.get("/api/children/{child_id}/consent")
-def get_consent(child_id: int, user: dict = Depends(require_roles("parent"))) -> dict:
+def get_consent(child_id: int, user: dict = Depends(require_roles("parent", "student"))) -> dict:
     ensure_child_access(child_id, user)
-    with connect() as db:
-        row = db.execute("SELECT * FROM child_consents WHERE child_id=?", (child_id,)).fetchone()
-    if not row:
-        return {"child_id": child_id, "privacy_accepted": False, "camera_processing": False, "specialist_sharing": True, "version": "2026-10", "updated_at": None}
-    return {**dict(row), "privacy_accepted": bool(row["privacy_accepted"]), "camera_processing": bool(row["camera_processing"]), "specialist_sharing": bool(row["specialist_sharing"])}
+    return consent_record(child_id)
 
 
 @app.put("/api/children/{child_id}/consent")
 def update_consent(child_id: int, payload: ConsentUpdate, user: dict = Depends(require_roles("parent"))) -> dict:
     ensure_child_access(child_id, user)
+    if not payload.privacy_accepted and (payload.camera_processing or payload.specialist_sharing or payload.analytics_processing):
+        raise HTTPException(422, "Дополнительные разрешения можно включить только после принятия обязательных условий")
+    previous = consent_record(child_id)
+    stamp = now_iso()
+    accepted_at = lambda key, enabled: (previous.get(f"{key}_at") or stamp) if enabled else None
     with connect() as db:
         db.execute(
-            """INSERT INTO child_consents(child_id,parent_id,privacy_accepted,camera_processing,specialist_sharing,version,updated_at)
-               VALUES(?,?,?,?,?,'2026-10',?) ON CONFLICT(child_id) DO UPDATE SET privacy_accepted=excluded.privacy_accepted,
-               camera_processing=excluded.camera_processing,specialist_sharing=excluded.specialist_sharing,updated_at=excluded.updated_at""",
-            (child_id, user["id"], int(payload.privacy_accepted), int(payload.camera_processing), int(payload.specialist_sharing), now_iso()),
+            """INSERT INTO child_consents(
+                   child_id,parent_id,privacy_accepted,camera_processing,specialist_sharing,analytics_processing,
+                   consented_by_user_id,privacy_accepted_at,camera_processing_at,specialist_sharing_at,
+                   analytics_processing_at,version,updated_at)
+               VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(child_id) DO UPDATE SET
+                   parent_id=excluded.parent_id,privacy_accepted=excluded.privacy_accepted,
+                   camera_processing=excluded.camera_processing,specialist_sharing=excluded.specialist_sharing,
+                   analytics_processing=excluded.analytics_processing,consented_by_user_id=excluded.consented_by_user_id,
+                   privacy_accepted_at=excluded.privacy_accepted_at,camera_processing_at=excluded.camera_processing_at,
+                   specialist_sharing_at=excluded.specialist_sharing_at,
+                   analytics_processing_at=excluded.analytics_processing_at,
+                   version=excluded.version,updated_at=excluded.updated_at""",
+            (
+                child_id, user["id"], int(payload.privacy_accepted), int(payload.camera_processing),
+                int(payload.specialist_sharing), int(payload.analytics_processing), user["id"],
+                accepted_at("privacy_accepted", payload.privacy_accepted),
+                accepted_at("camera_processing", payload.camera_processing),
+                accepted_at("specialist_sharing", payload.specialist_sharing),
+                accepted_at("analytics_processing", payload.analytics_processing),
+                CONSENT_VERSION, stamp,
+            ),
         )
-    audit(user, "consent.update", "child", child_id, {"privacy": payload.privacy_accepted, "camera": payload.camera_processing, "sharing": payload.specialist_sharing})
+    audit(user, "consent.update", "child", child_id, {
+        "privacy": payload.privacy_accepted,
+        "camera": payload.camera_processing,
+        "sharing": payload.specialist_sharing,
+        "analytics": payload.analytics_processing,
+        "version": CONSENT_VERSION,
+    })
     return get_consent(child_id, user)
 
 
@@ -1098,6 +1246,12 @@ def create_specialist_assignment(payload: SpecialistAssignmentCreate, admin: dic
         child = db.execute("SELECT id FROM children WHERE id=?", (payload.child_id,)).fetchone()
         if not specialist or not child:
             raise HTTPException(422, "Проверьте специалиста и профиль ребёнка")
+        consent = db.execute(
+            "SELECT privacy_accepted,specialist_sharing FROM child_consents WHERE child_id=?",
+            (payload.child_id,),
+        ).fetchone()
+        if not consent or not consent["privacy_accepted"] or not consent["specialist_sharing"]:
+            raise HTTPException(409, "Родитель ещё не разрешил передачу данных специалисту")
         db.execute(
             "INSERT INTO specialist_children(specialist_id,child_id,assigned_at) VALUES(?,?,?) ON CONFLICT(specialist_id,child_id) DO NOTHING",
             (payload.specialist_id, payload.child_id, now_iso()),
@@ -1120,7 +1274,7 @@ def admin_stats(_: dict = Depends(require_roles("admin"))) -> dict:
         return {
             "users": db.execute("SELECT (SELECT COUNT(*) FROM users) + (SELECT COUNT(*) FROM student_accounts) count").fetchone()["count"],
             "children": db.execute("SELECT COUNT(*) count FROM children").fetchone()["count"],
-            "sessions": db.execute("SELECT COUNT(*) count FROM sessions WHERE measurement_version=1").fetchone()["count"],
+            "sessions": db.execute("SELECT COUNT(*) count FROM sessions WHERE measurement_version>=1").fetchone()["count"],
             "exercises": db.execute("SELECT COUNT(*) count FROM exercises WHERE is_active=1").fetchone()["count"],
         }
 
