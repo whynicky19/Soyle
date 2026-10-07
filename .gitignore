@@ -25,3 +25,12 @@ backend/skills-lock.json
 # Local files generated while running the frontend for pitch review
 /frontend/AGENTS.md
 /frontend/CLAUDE.md
+
+# Local audit, review, and planning notes
+/AAC_LINGUISTIC_REVIEW.md
+/ACCESSIBILITY_CHECKLIST.md
+/AUDIT_SOYLE_2026-10-07.md
+/EXERCISE_CONTENT_MATRIX.md
+/IMPLEMENTATION_ROADMAP.md
+/LOCALIZATION_STATUS.md
+/PILOT_READINESS.md
