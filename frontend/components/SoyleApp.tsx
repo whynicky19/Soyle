@@ -6,6 +6,7 @@ import {
   ArrowUp,
   Apple,
   Activity,
+  Angry,
   Armchair,
   Backpack,
   Banana,
@@ -13,6 +14,7 @@ import {
   BarChart3,
   BedDouble,
   Bed,
+  Building2,
   BookOpen,
   Bell,
   Blocks,
@@ -23,24 +25,29 @@ import {
   Check,
   ChevronRight,
   Circle,
+  CircleCheck,
+  CircleX,
   CircleUserRound,
   CircleHelp,
   Coffee,
   Contact,
+  CookingPot,
+  Croissant,
   CupSoda,
   CreditCard,
   Dog,
-  Droplets,
   Ear,
   Eye,
   EyeOff,
   Fish,
   Flame,
   Frown,
+  FerrisWheel,
   Gamepad2,
   GlassWater,
   Glasses,
   Hand,
+  HandHeart,
   HandHelping,
   Heart,
   HeartPulse,
@@ -49,34 +56,43 @@ import {
   KeyRound,
   LampDesk,
   Languages,
+  Laugh,
   LayoutDashboard,
   LockKeyhole,
   LogOut,
   Menu,
   MapPin,
+  Meh,
   MessageCircle,
   Milk,
   Mic2,
   Parentheses,
   Pause,
+  Paintbrush,
+  PackageOpen,
   PersonStanding,
   Play,
   Plus,
   RotateCcw,
   School,
-  Sandwich,
+  ShoppingCart,
   Search,
   Settings,
   Shirt,
+  ShieldAlert,
   ShieldCheck,
   Smile,
   Snowflake,
   Soup,
   Sparkles,
   Star,
+  TableProperties,
   Target,
   Timer,
+  ThermometerSnowflake,
+  ThermometerSun,
   Toilet,
+  Puzzle,
   Trees,
   TrendingUp,
   Trophy,
@@ -84,8 +100,8 @@ import {
   Users,
   UserRound,
   UserRoundCheck,
+  Volleyball,
   Volume2,
-  Wheat,
   X,
   type LucideIcon,
 } from "lucide-react";
@@ -908,19 +924,19 @@ const aacCategories = [
 ] as const;
 
 const aacIconByLabel: Record<string, LucideIcon> = {
-  "Помоги": HandHelping, "Больно": HeartPulse, "Перерыв": Pause, "Не хочу": X,
-  "Ещё": Plus, "Хочу": Heart, "Пить": GlassWater, "Есть": Utensils, "Туалет": Toilet, "Отдых": Bed,
-  "Я": CircleUserRound, "Мама": Contact, "Папа": UserRound, "Бабушка": Glasses, "Дедушка": Contact,
-  "Брат": PersonStanding, "Сестра": Baby, "Сок": CupSoda, "Вода": Droplets, "Чай": Coffee,
-  "Яблоко": Apple, "Банан": Banana, "Хлеб": Sandwich, "Суп": Soup, "Каша": Wheat,
-  "Мяч": Circle, "Машинка": Car, "Кукла": UserRound, "Книга": BookOpen, "Пазл": Blocks, "Кот": Cat,
-  "Люблю": Heart, "Вижу": Eye, "Иду": UserRound, "Играю": Gamepad2, "Рисовать": Activity,
-  "Читать": BookOpen, "Спать": Bed, "Гулять": Trees, "Играл": Gamepad2, "Гулял": Trees,
-  "Да": Check, "Нет": X, "Весело": Smile, "Грустно": Frown, "Устал": Bed, "Спокойно": Heart,
-  "Злюсь": Flame, "Страшно": ShieldCheck, "Жарко": Flame, "Холодно": Snowflake,
-  "Домой": House, "Школа": School, "Площадка": Gamepad2, "Магазин": MapPin, "Детский сад": House,
-  "Привет": Hand, "Где?": CircleHelp, "Что это?": CircleHelp, "На столе": ArrowUp,
-  "В коробке": Blocks, "Под стулом": ArrowDown, "Вчера": Timer,
+  "Помоги": HandHelping, "Больно": HeartPulse, "Перерыв": Pause, "Не хочу": CircleX,
+  "Ещё": Plus, "Хочу": HandHeart, "Пить": GlassWater, "Есть": Utensils, "Туалет": Toilet, "Отдых": Armchair,
+  "Я": CircleUserRound, "Мама": Contact, "Папа": UserRoundCheck, "Бабушка": Glasses, "Дедушка": UserRound,
+  "Брат": PersonStanding, "Сестра": Baby, "Сок": CupSoda, "Вода": GlassWater, "Чай": Coffee,
+  "Яблоко": Apple, "Банан": Banana, "Хлеб": Croissant, "Суп": Soup, "Каша": CookingPot,
+  "Мяч": Volleyball, "Машинка": Car, "Кукла": Baby, "Книга": BookOpen, "Пазл": Puzzle, "Кот": Cat,
+  "Люблю": HandHeart, "Вижу": Eye, "Иду": PersonStanding, "Играю": Gamepad2, "Рисовать": Paintbrush,
+  "Читать": BookOpen, "Спать": BedDouble, "Гулять": Trees, "Играл": Gamepad2, "Гулял": PersonStanding,
+  "Да": CircleCheck, "Нет": CircleX, "Весело": Laugh, "Грустно": Frown, "Устал": Meh, "Спокойно": Smile,
+  "Злюсь": Angry, "Страшно": ShieldAlert, "Жарко": ThermometerSun, "Холодно": ThermometerSnowflake,
+  "Домой": House, "Школа": School, "Площадка": FerrisWheel, "Магазин": ShoppingCart, "Детский сад": Building2,
+  "Привет": Hand, "Где?": CircleHelp, "Что это?": CircleHelp, "На столе": TableProperties,
+  "В коробке": PackageOpen, "Под стулом": Armchair, "Вчера": Timer,
 };
 
 const aacCategoryIcons: Record<string, LucideIcon> = {
@@ -928,9 +944,28 @@ const aacCategoryIcons: Record<string, LucideIcon> = {
   people: Users, food: Apple, play: Gamepad2, places: MapPin, actions: Play,
 };
 
+const aacPictogramByLabel: Record<string, string> = {
+  "Помоги": "help", "Больно": "pain", "Перерыв": "break", "Не хочу": "dont-want",
+  "Ещё": "more", "Хочу": "want", "Пить": "drink", "Есть": "eat", "Туалет": "toilet", "Отдых": "rest",
+  "Я": "me", "Мама": "mother", "Папа": "father", "Бабушка": "grandmother", "Дедушка": "grandfather",
+  "Брат": "brother", "Сестра": "sister", "Привет": "hello",
+  "Сок": "juice", "Вода": "water", "Чай": "tea", "Яблоко": "apple", "Банан": "banana",
+  "Хлеб": "bread", "Суп": "soup", "Каша": "porridge",
+  "Мяч": "ball", "Машинка": "toy-car", "Кукла": "doll", "Книга": "book", "Пазл": "puzzle", "Кот": "cat",
+  "Да": "yes", "Нет": "no", "Весело": "happy", "Грустно": "sad", "Устал": "tired", "Спокойно": "calm",
+  "Злюсь": "angry", "Страшно": "scared", "Жарко": "hot", "Холодно": "cold",
+  "Люблю": "love", "Вижу": "see", "Иду": "go", "Играю": "play", "Рисовать": "draw", "Читать": "read",
+  "Спать": "sleep", "Гулять": "walk", "Что это?": "what-is-this", "Вчера": "yesterday", "Играл": "played", "Гулял": "walked",
+  "Домой": "home", "Школа": "school", "Площадка": "playground", "Где?": "where", "На столе": "on-table",
+  "В коробке": "in-box", "Под стулом": "under-chair", "Магазин": "shop", "Детский сад": "kindergarten",
+};
+
 function AACVisual({ card, compact = false }: { card: AACCard; compact?: boolean }) {
+  const pictogram = aacPictogramByLabel[card.label];
   const Icon = aacIconByLabel[card.label] || aacCategoryIcons[card.category] || MessageCircle;
-  return <span className={`aac-visual aac-${card.category} ${compact ? "compact" : ""}`} data-label={card.label} aria-hidden="true"><Icon strokeWidth={1.7}/></span>;
+  const relation = card.label === "На столе" ? "above" : card.label === "В коробке" ? "inside" : card.label === "Под стулом" ? "below" : "";
+  const past = ["Вчера", "Играл", "Гулял"].includes(card.label);
+  return <span className={`aac-visual aac-${card.category} ${!pictogram && relation ? `relation-${relation}` : ""} ${compact ? "compact" : ""}`} data-label={card.label} aria-hidden="true">{pictogram ? <Image className="aac-pictogram-image" src={`/aac-pictograms/${pictogram}.png`} alt="" width={128} height={128}/> : <><Icon strokeWidth={1.75}/>{relation && <i className="aac-relation-dot"/>}{past && <i className="aac-past-mark"/>}</>}</span>;
 }
 
 function PhraseGame({ childId, canManage, exercise, soundEnabled, onBack, onComplete }: { childId?: number; canManage: boolean; exercise?: Exercise; soundEnabled: boolean; onBack: () => void; onComplete: (score: number, phrase: string, exerciseId: number) => void }) {
@@ -991,7 +1026,7 @@ function PhraseGame({ childId, canManage, exercise, soundEnabled, onBack, onComp
       <aside className="aac-category-panel"><div><span className="kicker">КАТЕГОРИИ</span><h3>Найди нужное слово</h3></div><nav className="aac-tabs">{aacCategories.map((item) => { const Icon = item.icon; const count = item.id === "favorites" ? cards.filter((card) => card.favorite || card.is_core).length : cards.filter((card) => card.category === item.id).length; return <button key={item.id} className={category === item.id ? "active" : ""} onClick={() => { setCategory(item.id); setCardQuery(""); }}><Icon size={18}/><span>{item.label}</span><small>{count}</small></button>; })}</nav>{history.length > 0 && <div className="aac-history"><span className="kicker">НЕДАВНИЕ</span>{history.slice(0,3).map((item) => <button key={item.id} onClick={() => replayHistory(item.phrase)}><RotateCcw size={14}/><span>{item.phrase}</span></button>)}</div>}</aside>
       <section className="aac-board"><div className="aac-toolbar"><div><span className="kicker">{category === "favorites" ? "БЫСТРЫЙ ДОСТУП" : "КАТЕГОРИЯ"}</span><h3>{activeCategory.label}</h3></div><div className="aac-tools"><label className="aac-search"><Search size={16}/><input value={cardQuery} onChange={(event) => setCardQuery(event.target.value)} placeholder="Найти слово" aria-label="Найти слово"/></label><button className="small-button" onClick={() => document.querySelector<HTMLElement>(".aac-page")?.requestFullscreen?.()}><LayoutDashboard size={15}/> На весь экран</button>{canManage && <button className="small-button" onClick={() => setCustomOpen((value) => !value)}><Plus size={15}/> Своя карточка</button>}</div></div>
         {customOpen && <form className="aac-custom-form" onSubmit={createCustom}><input value={custom.label} onChange={(e) => setCustom({...custom,label:e.target.value})} placeholder="Короткая подпись" required/><input value={custom.speech} onChange={(e) => setCustom({...custom,speech:e.target.value})} placeholder="Что должна сказать карточка" required/><select value={custom.category} onChange={(e) => setCustom({...custom,category:e.target.value})}>{aacCategories.filter((item) => item.id !== "favorites").map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select><button className="primary-button">Добавить</button></form>}
-        <div className="aac-card-grid">{visibleCards.map((card) => <div className={`aac-card ${card.is_core ? "core" : ""}`} key={card.id}><button className="aac-card-main" onClick={() => addCard(card)}><AACVisual card={card}/><strong>{card.label}</strong><small>{card.speech}</small></button><button className={`aac-favorite ${card.favorite ? "active" : ""}`} onClick={() => toggleFavorite(card)} aria-label={card.favorite ? `Убрать ${card.label} из избранного` : `Добавить ${card.label} в избранное`}><Star size={15} fill={card.favorite ? "currentColor" : "none"}/></button></div>)}</div>
+        <div className="aac-card-grid">{visibleCards.map((card) => <div className={`aac-card aac-card-${card.category} ${card.is_core ? "core" : ""}`} key={card.id}><button className="aac-card-main" onClick={() => addCard(card)}><AACVisual card={card}/><strong>{card.label}</strong><small>{card.speech}</small></button><button className={`aac-favorite ${card.favorite ? "active" : ""}`} onClick={() => toggleFavorite(card)} aria-label={card.favorite ? `Убрать ${card.label} из избранного` : `Добавить ${card.label} в избранное`}><Star size={15} fill={card.favorite ? "currentColor" : "none"}/></button></div>)}</div>
         {!visibleCards.length && <div className="aac-empty"><Search size={24}/><strong>Карточки не найдены</strong><span>Измените поиск или выберите другую категорию.</span></div>}
       </section>
     </div>

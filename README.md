@@ -42,7 +42,7 @@
 - Node.js 20 или новее;
 - `npm` и `curl`.
 
-### Быстрый запуск — рекомендуемый способ
+### Быстрый запуск фронтенда и бэкенда одной командой
 
 Откройте терминал, перейдите в корневую папку проекта и выполните:
 
@@ -72,28 +72,59 @@ chmod +x start.sh
 ./start.sh
 ```
 
-### Раздельный запуск
+### Раздельный запуск фронтенда и бэкенда
 
-Этот вариант удобен для разработки. Сначала запустите backend в первом терминале:
+Этот вариант удобен для разработки: backend и frontend будут работать в двух отдельных терминалах.
+
+#### Терминал 1 — backend
+
+При первом запуске выполните:
 
 ```bash
-cd backend
+cd /путь/к/Soyle/backend
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
 export SOYLE_SECRET_KEY="local-development-secret-change-me"
 python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8010
 ```
 
-Затем запустите frontend во втором терминале:
+При следующих запусках достаточно:
 
 ```bash
-cd frontend
+cd /путь/к/Soyle/backend
+source .venv/bin/activate
+export SOYLE_SECRET_KEY="local-development-secret-change-me"
+python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8010
+```
+
+Backend будет доступен по адресам:
+
+- API: http://127.0.0.1:8010;
+- документация API: http://127.0.0.1:8010/docs;
+- проверка состояния: http://127.0.0.1:8010/health.
+
+#### Терминал 2 — frontend
+
+При первом запуске выполните:
+
+```bash
+cd /путь/к/Soyle/frontend
 npm install
+cp .env.local.example .env.local
 npm run dev
 ```
 
-Frontend по умолчанию подключается к API по адресу `http://127.0.0.1:8010`.
+Если файл `frontend/.env.local` уже существует, команду `cp` выполнять не нужно.
+
+При следующих запусках достаточно:
+
+```bash
+cd /путь/к/Soyle/frontend
+npm run dev
+```
+
+Frontend откроется на http://localhost:3000 и подключится к API по адресу `http://127.0.0.1:8010`. Сначала запускайте backend, затем frontend. Каждый сервер останавливается сочетанием `Ctrl+C` в его терминале.
 
 ### Если приложение не запускается
 
