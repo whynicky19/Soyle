@@ -1351,26 +1351,80 @@ function Badge({ icon, image, title, text, unlocked = false }: { icon?: React.Re
 
 function AIParentScreen({ child, consent, onOpenConsent }: { child?: Child; consent: ChildConsent | null; onOpenConsent: () => void }) {
   const [question, setQuestion] = useState("");
+  const [submittedQuestion, setSubmittedQuestion] = useState("");
   const [answer, setAnswer] = useState<AIAnswer | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const quickQuestions = ["Как мягко начать занятие?", "Что делать, если ребёнок отказывается?", "Как использовать AAC дома?"];
+  const questionRef = useRef<HTMLTextAreaElement>(null);
+  const quickQuestions = [
+    { title: "Мягко начать занятие", question: "Как мягко начать короткое занятие без давления?" },
+    { title: "Ребёнок отказывается", question: "Что делать, если ребёнок отказывается от занятия?" },
+    { title: "AAC дома", question: "Как использовать AAC-карточки в обычных домашних ситуациях?" },
+  ];
   const ask = async (event?: React.FormEvent, preparedQuestion?: string) => {
     event?.preventDefault();
     const value = (preparedQuestion || question).trim();
     if (!child || value.length < 3 || loading) return;
-    setQuestion(value); setLoading(true); setError(""); setAnswer(null);
+    setSubmittedQuestion(value); setQuestion(""); setLoading(true); setError(""); setAnswer(null);
     try {
       setAnswer(await api<AIAnswer>(`/api/ai/ask/${child.id}`, { method: "POST", body: JSON.stringify({ question: value }) }));
-    } catch (cause) { setError(cause instanceof Error ? cause.message : "Не удалось получить ответ"); }
+    } catch (cause) { setQuestion(value); setError(cause instanceof Error ? cause.message : "Не удалось получить ответ"); }
     finally { setLoading(false); }
   };
-  return <div className="page-enter stack-xl ai-parent-page">
-    <section className="ai-hero"><div className="ai-orb"><Bot size={32}/></div><div><span className="kicker">SÖYLE AI</span><h1>Помощник для родителя</h1><p>Объяснит, как провести короткую практику без давления, предложит безопасные шаги и поможет разобраться с AAC.</p></div><span className="ai-model">gpt-4o-mini</span></section>
-    {!consent?.ai_processing ? <section className="admin-card ai-consent-callout"><ShieldCheck size={28}/><div><h3>Нужно отдельное разрешение</h3><p>Перед отправкой вопроса в OpenAI включите «Söyle AI» в настройках приватности ребёнка. Имя ребёнка и точная дата рождения модели не передаются.</p></div><button className="primary-button" onClick={onOpenConsent}>Открыть настройки</button></section> : <>
-      <section className="admin-card ai-chat-card"><div className="admin-card-head"><div><span className="kicker">ВАШ ВОПРОС</span><h3>Что подсказать сегодня?</h3></div></div><div className="ai-quick-questions">{quickQuestions.map((item) => <button key={item} onClick={() => void ask(undefined, item)}>{item}</button>)}</div><form onSubmit={ask}><textarea value={question} onChange={(event) => setQuestion(event.target.value)} minLength={3} maxLength={600} placeholder="Например: ребёнок быстро устает и отворачивается — как сократить занятие?"/><button className="primary-button" disabled={loading || question.trim().length < 3}><Sparkles size={17}/>{loading ? "Думаю…" : "Спросить Söyle AI"}</button></form>{error && <div className="inline-error" role="alert">{error}</div>}</section>
-      {answer && <section className="admin-card ai-answer-card"><div className="ai-answer-head"><span><Bot size={21}/></span><div><strong>Ответ Söyle AI</strong><small>{answer.generated_by === "openai" ? "Ответ создан ИИ" : "Безопасная резервная подсказка"}</small></div></div>{answer.provider_message && <div className="inline-error ai-provider-error" role="status"><ShieldAlert size={17} aria-hidden="true"/><span>{answer.provider_message}</span></div>}<p>{answer.answer}</p>{answer.suggested_actions.length > 0 && <ol>{answer.suggested_actions.map((item) => <li key={item}>{item}</li>)}</ol>}<div className={answer.needs_professional_help ? "ai-safety warning" : "ai-safety"}><ShieldCheck size={18} aria-hidden="true"/><span>{answer.safety_note}</span></div><small>{answer.disclaimer}</small></section>}
-    </>}
+  const chooseQuestion = (value: string) => {
+    setQuestion(value);
+    setError("");
+    requestAnimationFrame(() => questionRef.current?.focus());
+  };
+  const resetConversation = () => {
+    setAnswer(null);
+    setSubmittedQuestion("");
+    setError("");
+    requestAnimationFrame(() => questionRef.current?.focus());
+  };
+  return <div className="page-enter ai-parent-page redesigned-ai">
+    <header className="ai-page-heading">
+      <div className="ai-page-title"><span className="ai-mark"><Bot size={24}/></span><div><span className="kicker">SÖYLE AI · ДЛЯ РОДИТЕЛЯ</span><h1>Спокойно разберём ситуацию</h1><p>Короткие безопасные подсказки для домашней практики и AAC. Решение всегда остаётся за вами.</p></div></div>
+      <span className={`ai-status ${consent?.ai_processing ? "ready" : "off"}`}><i/>{consent?.ai_processing ? "AI включён" : "Нужно разрешение"}</span>
+    </header>
+
+    {!consent?.ai_processing ? <section className="ai-consent-callout"><span className="ai-consent-icon"><ShieldCheck size={25}/></span><div><span className="kicker">ПРИВАТНОСТЬ</span><h2>Разрешите AI-подсказки отдельно</h2><p>В OpenAI отправляется вопрос, возраст и обезличенная сводка занятий. Имя ребёнка и точная дата рождения не передаются.</p></div><button className="primary-button" onClick={onOpenConsent}>Открыть разрешения</button></section> : <div className="ai-chat-layout">
+      <aside className="ai-prompt-panel" aria-label="Готовые вопросы">
+        <div><span className="kicker">С ЧЕГО НАЧАТЬ</span><h2>Готовые вопросы</h2><p>Выберите тему — вопрос появится в поле, и его можно изменить перед отправкой.</p></div>
+        <div className="ai-quick-questions">{quickQuestions.map((item) => <button type="button" key={item.title} onClick={() => chooseQuestion(item.question)}><span><MessageCircle size={17}/></span><strong>{item.title}</strong><ChevronRight size={16}/></button>)}</div>
+        <div className="ai-privacy-note"><ShieldCheck size={18}/><div><strong>Без имени и даты рождения</strong><span>Не пишите в вопросе адрес, контакты и другие лишние личные данные.</span></div></div>
+        <div className="ai-limits"><strong>Что умеет помощник</strong><ul><li>Объясняет результаты простыми словами</li><li>Предлагает короткие безопасные шаги</li><li>Помогает использовать AAC дома</li></ul><small>Не ставит диагноз и не заменяет специалиста.</small></div>
+      </aside>
+
+      <section className="ai-conversation" aria-label="Диалог с Söyle AI">
+        <div className="ai-conversation-head"><div><span className="ai-mini-avatar"><Bot size={18}/></span><span><strong>Söyle AI</strong><small>Может ошибаться — проверяйте важные рекомендации</small></span></div>{(answer || submittedQuestion) && <button type="button" className="ai-new-chat" onClick={resetConversation} disabled={loading}><Plus size={16}/>Новый вопрос</button>}</div>
+
+        <div className={`ai-thread ${!answer && !loading ? "empty" : ""}`} aria-live="polite" aria-busy={loading}>
+          {!answer && !loading && !submittedQuestion && <div className="ai-welcome"><span><Bot size={28}/></span><h2>Чем помочь сегодня?</h2><p>Опишите одну конкретную ситуацию. Чем проще вопрос, тем понятнее будет ответ.</p><div><ShieldCheck size={16}/> Ответ не является медицинской рекомендацией</div></div>}
+
+          {submittedQuestion && <div className="ai-message user-message"><small>Вы</small><p>{submittedQuestion}</p></div>}
+
+          {loading && <div className="ai-message assistant-message ai-thinking" role="status"><div className="ai-message-meta"><span><Bot size={16}/></span><strong>Söyle AI</strong></div><div className="ai-thinking-row"><i/><i/><i/><span>Готовлю короткий ответ…</span></div></div>}
+
+          {answer && <article className="ai-message assistant-message ai-answer-card">
+            <div className="ai-message-meta"><span><Bot size={16}/></span><div><strong>Söyle AI</strong><small>{answer.generated_by === "openai" ? `Ответ создан ИИ${answer.model ? ` · ${answer.model}` : ""}` : "Безопасная резервная подсказка"}</small></div></div>
+            {answer.provider_message && <div className="inline-error ai-provider-error" role="status"><ShieldAlert size={17} aria-hidden="true"/><span>{answer.provider_message}</span></div>}
+            <p className="ai-answer-text">{answer.answer}</p>
+            {answer.suggested_actions.length > 0 && <div className="ai-action-plan"><strong>Что можно попробовать</strong><ol>{answer.suggested_actions.map((item, index) => <li key={item}><span>{index + 1}</span><p>{item}</p></li>)}</ol></div>}
+            <div className={answer.needs_professional_help ? "ai-safety warning" : "ai-safety"}><ShieldCheck size={18} aria-hidden="true"/><span>{answer.safety_note}</span></div>
+            <small className="ai-disclaimer">{answer.disclaimer}</small>
+            <div className="ai-answer-actions"><button type="button" onClick={() => void ask(undefined, submittedQuestion)} disabled={loading}><RotateCcw size={15}/>Получить другой ответ</button><button type="button" onClick={resetConversation}><Plus size={15}/>Спросить ещё</button></div>
+          </article>}
+        </div>
+
+        {error && <div className="inline-error ai-chat-error" role="alert"><CircleAlert size={17}/><span>{error}</span></div>}
+        <form className="ai-composer" onSubmit={ask}>
+          <label className="sr-only" htmlFor="ai-parent-question">Вопрос для Söyle AI</label>
+          <textarea id="ai-parent-question" ref={questionRef} value={question} onChange={(event) => setQuestion(event.target.value)} minLength={3} maxLength={600} rows={2} placeholder="Опишите ситуацию или задайте вопрос…"/>
+          <div className="ai-composer-footer"><span>{question.length}/600 · Не указывайте личные данные</span><button className="primary-button" aria-label="Отправить вопрос" disabled={loading || question.trim().length < 3}><ArrowUp size={19}/><span>Отправить</span></button></div>
+        </form>
+      </section>
+    </div>}
   </div>;
 }
 
