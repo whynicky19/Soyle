@@ -37,16 +37,11 @@ def parent_headers(client):
         response = client.put(f"/api/children/{child['id']}/consent", headers=headers, json={
             "privacy_accepted": True,
             "camera_processing": True,
-            "specialist_sharing": True,
+            "ai_processing": True,
             "analytics_processing": True,
         })
         assert response.status_code == 200, response.text
     return headers
-
-
-@pytest.fixture(scope="session")
-def specialist_headers(client):
-    return login(client, "specialist", "Specialist123!")
 
 
 @pytest.fixture(scope="session")

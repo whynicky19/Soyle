@@ -3,12 +3,12 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Söyle — играем, общаемся, растём",
-  description: "Поддерживаемая коммуникация, игровые задания и назначенная домашняя практика",
+  description: "Поддерживаемая коммуникация, игровые задания и короткие планы с Söyle AI",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="ru">
+    <html lang="ru" data-scroll-behavior="smooth">
       <body>{children}</body>
     </html>
   );

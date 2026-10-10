@@ -259,6 +259,7 @@ def init_db() -> None:
         CREATE TABLE IF NOT EXISTS usage_events (
             id {id_column},
             user_id BIGINT,
+            actor_type TEXT NOT NULL DEFAULT 'user',
             child_id BIGINT REFERENCES children(id) ON DELETE SET NULL,
             provider TEXT NOT NULL,
             model TEXT NOT NULL,
@@ -351,11 +352,13 @@ def init_db() -> None:
             privacy_accepted INTEGER NOT NULL DEFAULT 0,
             camera_processing INTEGER NOT NULL DEFAULT 0,
             specialist_sharing INTEGER NOT NULL DEFAULT 0,
+            ai_processing INTEGER NOT NULL DEFAULT 0,
             analytics_processing INTEGER NOT NULL DEFAULT 0,
             consented_by_user_id BIGINT REFERENCES users(id) ON DELETE SET NULL,
             privacy_accepted_at TEXT,
             camera_processing_at TEXT,
             specialist_sharing_at TEXT,
+            ai_processing_at TEXT,
             analytics_processing_at TEXT,
             version TEXT NOT NULL DEFAULT '2026-10',
             updated_at TEXT NOT NULL
@@ -449,15 +452,25 @@ def init_db() -> None:
         if "language" not in settings_columns:
             db.execute("ALTER TABLE user_settings ADD COLUMN language TEXT NOT NULL DEFAULT 'ru'")
         if db.backend == "postgresql":
+            usage_columns = {row["column_name"] for row in db.execute("SELECT column_name FROM information_schema.columns WHERE table_schema='public' AND table_name='usage_events'").fetchall()}
+        else:
+            usage_columns = {row["name"] for row in db.execute("PRAGMA table_info(usage_events)").fetchall()}
+        if "actor_type" not in usage_columns:
+            db.execute("ALTER TABLE usage_events ADD COLUMN actor_type TEXT NOT NULL DEFAULT 'user'")
+        db.execute("CREATE INDEX IF NOT EXISTS idx_usage_events_created_at ON usage_events(created_at)")
+        db.execute("CREATE INDEX IF NOT EXISTS idx_usage_events_actor ON usage_events(actor_type,user_id,created_at)")
+        if db.backend == "postgresql":
             consent_columns = {row["column_name"] for row in db.execute("SELECT column_name FROM information_schema.columns WHERE table_schema='public' AND table_name='child_consents'").fetchall()}
         else:
             consent_columns = {row["name"] for row in db.execute("PRAGMA table_info(child_consents)").fetchall()}
         consent_additions = {
             "analytics_processing": "INTEGER NOT NULL DEFAULT 0",
+            "ai_processing": "INTEGER NOT NULL DEFAULT 0",
             "consented_by_user_id": "BIGINT REFERENCES users(id) ON DELETE SET NULL",
             "privacy_accepted_at": "TEXT",
             "camera_processing_at": "TEXT",
             "specialist_sharing_at": "TEXT",
+            "ai_processing_at": "TEXT",
             "analytics_processing_at": "TEXT",
         }
         for column, definition in consent_additions.items():
@@ -466,6 +479,7 @@ def init_db() -> None:
         # Older builds defaulted specialist access to on. It cannot be treated as
         # informed consent when the required privacy consent was never accepted.
         db.execute("UPDATE child_consents SET specialist_sharing=0,specialist_sharing_at=NULL WHERE privacy_accepted=0")
+        db.execute("UPDATE users SET is_active=0 WHERE role='specialist'")
         if db.backend == "postgresql":
             db.execute("ALTER TABLE child_consents ALTER COLUMN specialist_sharing SET DEFAULT 0")
         db.execute("INSERT INTO schema_migrations(version,applied_at) VALUES(1,?) ON CONFLICT(version) DO NOTHING", (now_iso(),))
@@ -475,6 +489,7 @@ def init_db() -> None:
         db.execute("INSERT INTO schema_migrations(version,applied_at) VALUES(5,?) ON CONFLICT(version) DO NOTHING", (now_iso(),))
         db.execute("INSERT INTO schema_migrations(version,applied_at) VALUES(6,?) ON CONFLICT(version) DO NOTHING", (now_iso(),))
         db.execute("INSERT INTO schema_migrations(version,applied_at) VALUES(7,?) ON CONFLICT(version) DO NOTHING", (now_iso(),))
+        db.execute("INSERT INTO schema_migrations(version,applied_at) VALUES(8,?) ON CONFLICT(version) DO NOTHING", (now_iso(),))
 
         seed_demo = env_enabled("SOYLE_SEED_DEMO_DATA", default=False)
         if IS_PRODUCTION and seed_demo:
@@ -484,7 +499,6 @@ def init_db() -> None:
             db.executemany("INSERT INTO users(email,username,password_hash,full_name,role,created_at) VALUES(?,?,?,?,?,?)", [
                 ("admin@local.soyle", "admin", hash_password("Admin123!"), "Администратор Söyle", "admin", created),
                 ("parent@local.soyle", "parent", hash_password("Parent123!"), "Айгерим Садыкова", "parent", created),
-                ("specialist@local.soyle", "specialist", hash_password("Specialist123!"), "Гульнар Ким", "specialist", created),
             ])
             parent_id = db.execute("SELECT id FROM users WHERE username='parent'").fetchone()["id"]
             db.execute("INSERT INTO children(parent_id,name,birth_date,primary_module,avatar_color) VALUES(?,?,?,?,?)", (parent_id, "Алихан", date(2020, 4, 12).isoformat(), "mixed", "#f07d68"))
@@ -500,11 +514,6 @@ def init_db() -> None:
         if seed_demo and not db.execute("SELECT 1 FROM student_accounts LIMIT 1").fetchone():
             child_id = db.execute("SELECT id FROM children ORDER BY id LIMIT 1").fetchone()["id"]
             db.execute("INSERT INTO student_accounts(child_id,username,pin_hash,created_at) VALUES(?,?,?,?)", (child_id, "alikhan", hash_password("1234"), now_iso()))
-        if seed_demo and not db.execute("SELECT 1 FROM specialist_children LIMIT 1").fetchone():
-            specialist = db.execute("SELECT id FROM users WHERE role='specialist' ORDER BY id LIMIT 1").fetchone()
-            child = db.execute("SELECT id FROM children ORDER BY id LIMIT 1").fetchone()
-            if specialist and child:
-                db.execute("INSERT INTO specialist_children(specialist_id,child_id,assigned_at) VALUES(?,?,?)", (specialist["id"], child["id"], now_iso()))
         existing_targets = {row["target"] for row in db.execute("SELECT target FROM exercises").fetchall()}
         missing_exercises = [exercise for exercise in EXERCISES if exercise[4] not in existing_targets]
         if missing_exercises:

@@ -16,8 +16,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 
 from .database import connect, init_db, now_iso
-from .schemas import AACCardCreate, AACComposeRequest, AACFavoriteUpdate, AACPhraseCreate, ActiveUpdate, AssignedExerciseCreate, ChildCreate, ChildDeleteRequest, ChildGoalCreate, ConsentUpdate, ExerciseCreate, GoalStatusUpdate, HomeworkCreate, HomeworkResultUpdate, LearningSessionCreate, LoginRequest, RecommendationReview, RegisterRequest, RoleUpdate, SessionCreate, SpecialistAssignmentCreate, SpecialistRecommendationCreate, StudentAccountCreate, StudentLoginRequest, TTSRequest, UserSettingsUpdate
+from .schemas import AACCardCreate, AACComposeRequest, AACFavoriteUpdate, AACPhraseCreate, ActiveUpdate, AIAskRequest, AIPlanRequest, AssignedExerciseCreate, ChildCreate, ChildDeleteRequest, ChildGoalCreate, ConsentUpdate, ExerciseCreate, GoalStatusUpdate, HomeworkCreate, HomeworkResultUpdate, LearningSessionCreate, LoginRequest, RecommendationReview, RegisterRequest, RoleUpdate, SessionCreate, SpecialistAssignmentCreate, SpecialistRecommendationCreate, StudentAccountCreate, StudentLoginRequest, TTSRequest, UserSettingsUpdate
 from .aac_grammar import compose_aac_phrase
+from .ai_assistant import MODEL as OPENAI_MODEL, answer_parent, generate_plan, provider_error_details
 from .security import AUTH_COOKIE_NAME, CSRF_COOKIE_NAME, IS_PRODUCTION, clear_auth_cookies, create_access_token, create_student_access_token, get_current_user, hash_password, require_roles, set_auth_cookies, verify_password
 
 
@@ -28,7 +29,7 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(title="Söyle API", version="1.0.0", lifespan=lifespan)
-CONSENT_VERSION = "2026-10-pilot-1"
+CONSENT_VERSION = "2026-10-ai-1"
 allowed_origins = [origin.strip() for origin in os.getenv(
     "SOYLE_ALLOWED_ORIGINS",
     "http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,http://127.0.0.1:3001",
@@ -101,17 +102,6 @@ def ensure_child_access(child_id: int, user: dict) -> dict:
         raise HTTPException(403, "Нет доступа к профилю ребёнка")
     if user["role"] == "student" and child["id"] != user["child_id"]:
         raise HTTPException(403, "Нет доступа к профилю ребёнка")
-    if user["role"] == "specialist":
-        with connect() as db:
-            assignment = db.execute(
-                """SELECT 1 FROM specialist_children sc
-                   JOIN child_consents cc ON cc.child_id=sc.child_id
-                   WHERE sc.specialist_id=? AND sc.child_id=?
-                   AND cc.privacy_accepted=1 AND cc.specialist_sharing=1""",
-                (user["id"], child_id),
-            ).fetchone()
-        if not assignment:
-            raise HTTPException(403, "Родитель ещё не разрешил доступ специалисту или отозвал его")
     return dict(child)
 
 
@@ -123,20 +113,30 @@ def consent_record(child_id: int) -> dict:
             "child_id": child_id,
             "privacy_accepted": False,
             "camera_processing": False,
-            "specialist_sharing": False,
+            "ai_processing": False,
             "analytics_processing": False,
             "version": CONSENT_VERSION,
             "updated_at": None,
             "consented_by_user_id": None,
             "privacy_accepted_at": None,
             "camera_processing_at": None,
-            "specialist_sharing_at": None,
+            "ai_processing_at": None,
             "analytics_processing_at": None,
         }
-    result = dict(row)
-    for key in ("privacy_accepted", "camera_processing", "specialist_sharing", "analytics_processing"):
-        result[key] = bool(result.get(key, False))
-    return result
+    return {
+        "child_id": row["child_id"],
+        "privacy_accepted": bool(row["privacy_accepted"]),
+        "camera_processing": bool(row["camera_processing"]),
+        "ai_processing": bool(row["ai_processing"]),
+        "analytics_processing": bool(row["analytics_processing"]),
+        "version": row["version"],
+        "updated_at": row["updated_at"],
+        "consented_by_user_id": row["consented_by_user_id"],
+        "privacy_accepted_at": row["privacy_accepted_at"],
+        "camera_processing_at": row["camera_processing_at"],
+        "ai_processing_at": row["ai_processing_at"],
+        "analytics_processing_at": row["analytics_processing_at"],
+    }
 
 
 def ensure_privacy_consent(child_id: int) -> dict:
@@ -153,28 +153,53 @@ def ensure_analytics_consent(child_id: int) -> dict:
     return consent
 
 
+def ensure_ai_consent(child_id: int) -> dict:
+    consent = ensure_privacy_consent(child_id)
+    if not consent["ai_processing"]:
+        raise HTTPException(403, "Сначала родителю нужно отдельно разрешить обработку запроса с помощью Söyle AI")
+    return consent
+
+
 def ensure_motor_assignment(db, child_id: int, exercise: dict) -> None:
     if exercise["module"] != "motor":
         return
-    assigned = db.execute(
-        "SELECT 1 FROM assigned_exercises WHERE child_id=? AND exercise_id=? LIMIT 1",
-        (child_id, exercise["id"]),
-    ).fetchone()
-    if not assigned:
-        raise HTTPException(403, "Моторное упражнение доступно только по явному назначению специалиста")
+    raise HTTPException(403, "Моторные упражнения недоступны в текущей версии Söyle")
 
 
 def eligible_exercise_rows(db, child_id: int) -> list[dict]:
     return [dict(row) for row in db.execute(
-        """SELECT e.* FROM exercises e
-           WHERE e.is_active=1 AND (
-             e.module<>'motor' OR EXISTS (
-               SELECT 1 FROM assigned_exercises a
-               WHERE a.child_id=? AND a.exercise_id=e.id
-             )
-           ) ORDER BY e.module,e.difficulty,e.id""",
-        (child_id,),
+        "SELECT e.* FROM exercises e WHERE e.is_active=1 AND e.module<>'motor' ORDER BY e.module,e.difficulty,e.id",
     ).fetchall()]
+
+
+def enforce_ai_limit(user: dict) -> None:
+    cutoff = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
+    actor_type = "student" if user.get("role") == "student" else "user"
+    try:
+        configured_limit = int(os.getenv("SOYLE_AI_REQUESTS_PER_HOUR", "30"))
+    except ValueError:
+        configured_limit = 30
+    limit = max(1, min(configured_limit, 120))
+    with connect() as db:
+        count = db.execute(
+            "SELECT COUNT(*) count FROM usage_events WHERE actor_type=? AND user_id=? AND provider='openai' AND created_at>=?",
+            (actor_type, user["id"], cutoff),
+        ).fetchone()["count"]
+    if count >= limit:
+        raise HTTPException(429, "Лимит Söyle AI на этот час исчерпан. Попробуйте позже")
+
+
+def record_ai_usage(user: dict, child_id: int, feature: str, usage: dict) -> None:
+    input_tokens = int(usage.get("input_tokens", 0))
+    output_tokens = int(usage.get("output_tokens", 0))
+    actor_type = "student" if user.get("role") == "student" else "user"
+    cost = (input_tokens * 0.15 + output_tokens * 0.60) / 1_000_000 if OPENAI_MODEL == "gpt-4o-mini" else 0
+    with connect() as db:
+        db.execute(
+            """INSERT INTO usage_events(user_id,actor_type,child_id,provider,model,feature,input_tokens,output_tokens,estimated_cost_usd,created_at)
+               VALUES(?,?,?,?,?,?,?,?,?,?)""",
+            (user["id"], actor_type, child_id, "openai", OPENAI_MODEL, feature, input_tokens, output_tokens, cost, now_iso()),
+        )
 
 
 def calculate_game_score(correct_answers: int, attempts_count: int) -> int:
@@ -297,7 +322,7 @@ def create_module_notification(db, child_id: int, exercise_id: int) -> None:
         (
             child["parent_id"], child_id, f"module_complete:{child_id}:{unit['id']}",
             f"{unit['label']}: {unit['title']} завершён",
-            f"{child['name']}: модуль отмечен пройденным. Следующий домашний шаг при необходимости назначит специалист.",
+            f"{child['name']}: модуль отмечен пройденным. Söyle AI может предложить следующий короткий шаг для дома.",
             json.dumps({"unit_id": unit["id"], "unit_label": unit["label"], "unit_title": unit["title"]}, ensure_ascii=False),
             now_iso(),
         ),
@@ -334,6 +359,9 @@ def login(payload: LoginRequest, request: Request, response: Response) -> dict:
     if not row or not verify_password(payload.password, row["password_hash"]):
         record_login_attempt(identifiers, False)
         raise HTTPException(401, "Неверный логин или пароль")
+    if row["role"] == "specialist":
+        record_login_attempt(identifiers, False)
+        raise HTTPException(403, "Роль специалиста больше не используется в Söyle")
     if not row["is_active"]:
         record_login_attempt(identifiers, False)
         raise HTTPException(403, "Аккаунт отключён администратором")
@@ -464,16 +492,6 @@ def list_children(user: dict = Depends(get_current_user)) -> list[dict]:
             rows = db.execute("SELECT * FROM children WHERE parent_id=? ORDER BY id", (user["id"],)).fetchall()
         elif user["role"] == "student":
             rows = db.execute("SELECT * FROM children WHERE id=?", (user["child_id"],)).fetchall()
-        elif user["role"] == "specialist":
-            rows = db.execute(
-                """SELECT c.*,u.full_name parent_name,u.username parent_username
-                   FROM specialist_children sc JOIN children c ON c.id=sc.child_id
-                   JOIN users u ON u.id=c.parent_id
-                   JOIN child_consents cc ON cc.child_id=c.id
-                   WHERE sc.specialist_id=? AND cc.privacy_accepted=1
-                   AND cc.specialist_sharing=1 ORDER BY c.id""",
-                (user["id"],),
-            ).fetchall()
         else:
             rows = db.execute("SELECT c.*,u.full_name parent_name,u.username parent_username FROM children c JOIN users u ON u.id=c.parent_id ORDER BY c.id").fetchall()
     return [dict(row) for row in rows]
@@ -520,8 +538,8 @@ def save_student_account(child_id: int, payload: StudentAccountCreate, user: dic
 @app.get("/api/exercises")
 def list_exercises(module: str | None = Query(default=None), child_id: int | None = Query(default=None), user: dict = Depends(get_current_user)) -> list[dict]:
     with connect() as db:
-        if user["role"] in {"admin", "specialist"}:
-            rows = [dict(row) for row in db.execute("SELECT * FROM exercises WHERE is_active=1 ORDER BY module,difficulty,id").fetchall()]
+        if user["role"] == "admin":
+            rows = [dict(row) for row in db.execute("SELECT * FROM exercises WHERE is_active=1 AND module<>'motor' ORDER BY module,difficulty,id").fetchall()]
         elif child_id is not None:
             ensure_child_access(child_id, user)
             rows = eligible_exercise_rows(db, child_id)
@@ -886,25 +904,11 @@ def session_plan(child_id: int, minutes: int = Query(default=5), user: dict = De
         raise HTTPException(422, "Продолжительность занятия: 3, 5 или 10 минут")
     child = ensure_child_access(child_id, user)
     with connect() as db:
-        assigned = db.execute(
-            """SELECT e.* FROM assigned_exercises a JOIN exercises e ON e.id=a.exercise_id
-               WHERE a.child_id=? AND a.status='assigned' AND e.is_active=1 ORDER BY a.id LIMIT 2""",
-            (child_id,),
-        ).fetchall()
         all_exercises = db.execute("SELECT * FROM exercises WHERE is_active=1 AND module<>'motor' ORDER BY difficulty,id").fetchall()
     # Keep transitions low: each exercise is a complete activity, not a single tap.
     target_count = {3: 2, 5: 3, 10: 5}[minutes]
     selected: list[dict] = []
     seen: set[int] = set()
-    # Обязательные назначения специалиста всегда идут первыми и не фильтруются по модулю.
-    for row in assigned:
-        item = dict(row)
-        if item["id"] in seen:
-            continue
-        selected.append(item)
-        seen.add(item["id"])
-        if len(selected) == target_count:
-            break
     candidates = [dict(row) for row in all_exercises if row["id"] not in seen]
     while candidates and len(selected) < target_count:
         module_counts = {name: sum(1 for item in selected if item["module"] == name) for name in ("motor", "sensory", "mixed")}
@@ -912,7 +916,7 @@ def session_plan(child_id: int, minutes: int = Query(default=5), user: dict = De
         item = candidates.pop(0)
         selected.append(item)
         seen.add(item["id"])
-    return {"child": child, "focus_skill": None, "selection_method": "specialist_assignments_then_safe_variety", "estimated_minutes": minutes, "exercises": selected}
+    return {"child": child, "focus_skill": None, "selection_method": "safe_local_variety", "estimated_minutes": minutes, "exercises": selected}
 
 
 @app.post("/api/learning-sessions", status_code=201)
@@ -1005,30 +1009,130 @@ def get_active_learning_session(child_id: int, user: dict = Depends(get_current_
     return session
 
 
-@app.get("/api/ai/recommendations/{child_id}")
-def recommendations(child_id: int, user: dict = Depends(get_current_user)) -> dict:
-    ensure_child_access(child_id, user)
-    ensure_analytics_consent(child_id)
-    return {
-        "generated_at": datetime.now(timezone.utc).isoformat(),
-        "confidence": None,
-        "insufficient_data": True,
-        "suggested_skill": None,
-        "suggested_exercise": None,
-        "summary": "Автоматические клинические рекомендации отключены. Игровые результаты и участие доступны специалисту только как описательная история.",
-        "plan": ["Просмотреть контекст попыток", "Согласовать функциональную цель с семьёй", "Назначить подходящее упражнение вручную"],
-        "disclaimer": "Выбор целей и упражнений выполняет квалифицированный специалист.",
+@app.post("/api/ai/plan/{child_id}")
+def ai_plan(child_id: int, payload: AIPlanRequest, user: dict = Depends(get_current_user)) -> dict:
+    child = ensure_child_access(child_id, user)
+    fallback = session_plan(child_id, payload.target_minutes, user)
+    fallback.update({
+        "title": "Спокойная практика на сегодня",
+        "reason": "Задания чередуют понимание речи и доступную коммуникацию без моторных упражнений.",
+        "parent_tip": "Предлагайте выбор, ждите ответ не меньше пяти секунд и спокойно завершайте занятие после отказа.",
+        "generated_by": "local_fallback",
+        "model": None,
+        "needs_ai_consent": False,
+        "disclaimer": "Söyle AI не ставит диагноз и не заменяет врача или логопеда.",
+    })
+    consent = consent_record(child_id)
+    if not consent["privacy_accepted"] or not consent["ai_processing"]:
+        fallback["needs_ai_consent"] = True
+        return fallback
+    enforce_ai_limit(user)
+    with connect() as db:
+        # Keep prompts predictable and inexpensive as the exercise library grows.
+        allowed = eligible_exercise_rows(db, child_id)[:40]
+    target_count = {3: 2, 5: 3, 10: 5}[payload.target_minutes]
+    born = date.fromisoformat(child["birth_date"])
+    age_years = max(0, date.today().year - born.year - ((date.today().month, date.today().day) < (born.month, born.day)))
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=14)).isoformat()
+    with connect() as db:
+        recent = db.execute(
+            """SELECT COUNT(*) attempts,
+                      SUM(CASE WHEN attempt_status='refused' THEN 1 ELSE 0 END) refusals,
+                      SUM(CASE WHEN attempt_status='break' THEN 1 ELSE 0 END) breaks,
+                      SUM(CASE WHEN module='sensory' THEN 1 ELSE 0 END) sensory_attempts,
+                      SUM(CASE WHEN module='mixed' THEN 1 ELSE 0 END) communication_attempts
+               FROM sessions WHERE child_id=? AND created_at>=?""",
+            (child_id, cutoff),
+        ).fetchone()
+    context = {
+        "target_minutes": payload.target_minutes,
+        "target_count": target_count,
+        "child_age_years": age_years,
+        "recent_14_days": dict(recent),
+        "allowed_exercises": [
+            {"id": item["id"], "title": item["title"], "instruction": item["instruction"], "module": item["module"], "skill": item["skill"]}
+            for item in allowed
+        ],
     }
+    try:
+        generated = generate_plan(context)
+        if generated is None:
+            fallback.update({
+                "provider_error": "not_configured",
+                "provider_message": "OPENAI_API_KEY не настроен на сервере. Использован безопасный локальный план.",
+            })
+            return fallback
+        result, usage = generated
+        allowed_by_id = {item["id"]: item for item in allowed}
+        selected_ids = []
+        for item_id in result.get("exercise_ids", []):
+            if item_id in allowed_by_id and item_id not in selected_ids:
+                selected_ids.append(item_id)
+        for item in allowed:
+            if len(selected_ids) >= target_count:
+                break
+            if item["id"] not in selected_ids:
+                selected_ids.append(item["id"])
+        selected_ids = selected_ids[:target_count]
+        record_ai_usage(user, child_id, "home_practice_plan", usage)
+        audit(user, "ai.plan", "child", child_id, {"model": OPENAI_MODEL, "target_minutes": payload.target_minutes})
+        return {
+            **fallback,
+            "title": str(result.get("title") or fallback["title"])[:120],
+            "reason": str(result.get("reason") or fallback["reason"])[:500],
+            "parent_tip": str(result.get("parent_tip") or fallback["parent_tip"])[:500],
+            "exercises": [allowed_by_id[item_id] for item_id in selected_ids],
+            "generated_by": "openai",
+            "model": OPENAI_MODEL,
+        }
+    except Exception as error:
+        fallback.update(provider_error_details(error))
+        return fallback
 
 
-@app.post("/api/ai/recommendations/{child_id}/generate", status_code=201)
-def generate_recommendation(child_id: int, user: dict = Depends(require_roles("specialist"))) -> dict:
-    ensure_child_access(child_id, user)
-    ensure_analytics_consent(child_id)
-    return recommendations(child_id, user)
+@app.post("/api/ai/ask/{child_id}")
+def ai_ask(child_id: int, payload: AIAskRequest, user: dict = Depends(require_roles("parent"))) -> dict:
+    child = ensure_child_access(child_id, user)
+    ensure_ai_consent(child_id)
+    enforce_ai_limit(user)
+    born = date.fromisoformat(child["birth_date"])
+    age_years = max(0, date.today().year - born.year - ((date.today().month, date.today().day) < (born.month, born.day)))
+    fallback = {
+        "answer": "Söyle AI пока не подключён. Для безопасной домашней практики предложите ребёнку простой выбор из двух вариантов, дайте время ответить и примите жест, карточку или отказ как сообщение.",
+        "suggested_actions": ["Уберите лишние отвлекающие предметы", "Покажите два понятных варианта", "Подождите ответ не меньше пяти секунд"],
+        "needs_professional_help": False,
+        "safety_note": "При боли, проблемах с дыханием или глотанием, внезапной потере навыков обратитесь к врачу.",
+        "generated_by": "local_fallback",
+        "model": None,
+        "disclaimer": "Söyle AI не ставит диагноз и не заменяет врача или логопеда.",
+    }
+    try:
+        generated = answer_parent({"child_age_years": age_years, "parent_question": payload.question})
+        if generated is None:
+            fallback.update({
+                "provider_error": "not_configured",
+                "provider_message": "OPENAI_API_KEY не настроен на сервере. Использована безопасная резервная подсказка.",
+            })
+            return fallback
+        result, usage = generated
+        actions = [str(item)[:240] for item in result.get("suggested_actions", [])[:3]]
+        record_ai_usage(user, child_id, "parent_support_answer", usage)
+        audit(user, "ai.ask", "child", child_id, {"model": OPENAI_MODEL})
+        return {
+            "answer": str(result.get("answer") or fallback["answer"])[:1600],
+            "suggested_actions": actions,
+            "needs_professional_help": bool(result.get("needs_professional_help", False)),
+            "safety_note": str(result.get("safety_note") or fallback["safety_note"])[:600],
+            "generated_by": "openai",
+            "model": OPENAI_MODEL,
+            "disclaimer": fallback["disclaimer"],
+        }
+    except Exception as error:
+        fallback.update(provider_error_details(error))
+        return fallback
 
 
-@app.get("/api/specialist/children/{child_id}")
+@app.get("/api/specialist/children/{child_id}", include_in_schema=False)
 def specialist_child(child_id: int, user: dict = Depends(require_roles("specialist"))) -> dict:
     dashboard_data = dashboard(child_id, user)
     progress_details = progress_data(child_id, user)
@@ -1049,7 +1153,7 @@ def specialist_child(child_id: int, user: dict = Depends(require_roles("speciali
     return {"dashboard": dashboard_data, "support_metrics": progress_details["support_metrics"], "assigned_exercises": [dict(row) for row in assigned], "recommendations": [dict(row) for row in reviews], "goals": goal_items, "homework": [dict(row) for row in homework]}
 
 
-@app.post("/api/specialist/assigned-exercises", status_code=201)
+@app.post("/api/specialist/assigned-exercises", status_code=201, include_in_schema=False)
 def assign_exercise(payload: AssignedExerciseCreate, user: dict = Depends(require_roles("specialist"))) -> dict:
     ensure_child_access(payload.child_id, user)
     with connect() as db:
@@ -1064,7 +1168,7 @@ def assign_exercise(payload: AssignedExerciseCreate, user: dict = Depends(requir
     return dict(row)
 
 
-@app.post("/api/specialist/recommendations", status_code=201)
+@app.post("/api/specialist/recommendations", status_code=201, include_in_schema=False)
 def create_specialist_recommendation(payload: SpecialistRecommendationCreate, user: dict = Depends(require_roles("specialist"))) -> dict:
     ensure_child_access(payload.child_id, user)
     with connect() as db:
@@ -1084,7 +1188,7 @@ def create_specialist_recommendation(payload: SpecialistRecommendationCreate, us
     return dict(row)
 
 
-@app.get("/api/goals/{child_id}")
+@app.get("/api/goals/{child_id}", include_in_schema=False)
 def list_goals(child_id: int, user: dict = Depends(get_current_user)) -> list[dict]:
     ensure_child_access(child_id, user)
     with connect() as db:
@@ -1102,7 +1206,7 @@ def list_goals(child_id: int, user: dict = Depends(get_current_user)) -> list[di
     return result
 
 
-@app.post("/api/specialist/goals", status_code=201)
+@app.post("/api/specialist/goals", status_code=201, include_in_schema=False)
 def create_goal(payload: ChildGoalCreate, user: dict = Depends(require_roles("specialist"))) -> dict:
     ensure_child_access(payload.child_id, user)
     if payload.due_date:
@@ -1136,7 +1240,7 @@ def create_goal(payload: ChildGoalCreate, user: dict = Depends(require_roles("sp
     return result
 
 
-@app.patch("/api/specialist/goals/{goal_id}")
+@app.patch("/api/specialist/goals/{goal_id}", include_in_schema=False)
 def update_goal_status(goal_id: int, payload: GoalStatusUpdate, user: dict = Depends(require_roles("specialist"))) -> dict:
     with connect() as db:
         row = db.execute("SELECT * FROM child_goals WHERE id=? AND specialist_id=?", (goal_id, user["id"])).fetchone()
@@ -1151,7 +1255,7 @@ def update_goal_status(goal_id: int, payload: GoalStatusUpdate, user: dict = Dep
     return result
 
 
-@app.get("/api/homework/{child_id}")
+@app.get("/api/homework/{child_id}", include_in_schema=False)
 def list_homework(child_id: int, user: dict = Depends(get_current_user)) -> list[dict]:
     ensure_child_access(child_id, user)
     with connect() as db:
@@ -1159,7 +1263,7 @@ def list_homework(child_id: int, user: dict = Depends(get_current_user)) -> list
     return [dict(row) for row in rows]
 
 
-@app.post("/api/specialist/homework", status_code=201)
+@app.post("/api/specialist/homework", status_code=201, include_in_schema=False)
 def create_homework(payload: HomeworkCreate, user: dict = Depends(require_roles("specialist"))) -> dict:
     ensure_child_access(payload.child_id, user)
     with connect() as db:
@@ -1175,7 +1279,7 @@ def create_homework(payload: HomeworkCreate, user: dict = Depends(require_roles(
     return dict(row)
 
 
-@app.patch("/api/homework/{homework_id}/result")
+@app.patch("/api/homework/{homework_id}/result", include_in_schema=False)
 def save_homework_result(homework_id: int, payload: HomeworkResultUpdate, user: dict = Depends(require_roles("parent"))) -> dict:
     with connect() as db:
         row = db.execute("SELECT h.* FROM homework_assignments h JOIN children c ON c.id=h.child_id WHERE h.id=? AND c.parent_id=?", (homework_id, user["id"])).fetchone()
@@ -1197,7 +1301,7 @@ def get_consent(child_id: int, user: dict = Depends(require_roles("parent", "stu
 @app.put("/api/children/{child_id}/consent")
 def update_consent(child_id: int, payload: ConsentUpdate, user: dict = Depends(require_roles("parent"))) -> dict:
     ensure_child_access(child_id, user)
-    if not payload.privacy_accepted and (payload.camera_processing or payload.specialist_sharing or payload.analytics_processing):
+    if not payload.privacy_accepted and (payload.camera_processing or payload.ai_processing or payload.analytics_processing):
         raise HTTPException(422, "Дополнительные разрешения можно включить только после принятия обязательных условий")
     previous = consent_record(child_id)
     stamp = now_iso()
@@ -1205,23 +1309,24 @@ def update_consent(child_id: int, payload: ConsentUpdate, user: dict = Depends(r
     with connect() as db:
         db.execute(
             """INSERT INTO child_consents(
-                   child_id,parent_id,privacy_accepted,camera_processing,specialist_sharing,analytics_processing,
-                   consented_by_user_id,privacy_accepted_at,camera_processing_at,specialist_sharing_at,
+                   child_id,parent_id,privacy_accepted,camera_processing,specialist_sharing,ai_processing,analytics_processing,
+                   consented_by_user_id,privacy_accepted_at,camera_processing_at,specialist_sharing_at,ai_processing_at,
                    analytics_processing_at,version,updated_at)
-               VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(child_id) DO UPDATE SET
+               VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(child_id) DO UPDATE SET
                    parent_id=excluded.parent_id,privacy_accepted=excluded.privacy_accepted,
-                   camera_processing=excluded.camera_processing,specialist_sharing=excluded.specialist_sharing,
+                   camera_processing=excluded.camera_processing,specialist_sharing=0,ai_processing=excluded.ai_processing,
                    analytics_processing=excluded.analytics_processing,consented_by_user_id=excluded.consented_by_user_id,
                    privacy_accepted_at=excluded.privacy_accepted_at,camera_processing_at=excluded.camera_processing_at,
-                   specialist_sharing_at=excluded.specialist_sharing_at,
+                   specialist_sharing_at=NULL,ai_processing_at=excluded.ai_processing_at,
                    analytics_processing_at=excluded.analytics_processing_at,
                    version=excluded.version,updated_at=excluded.updated_at""",
             (
                 child_id, user["id"], int(payload.privacy_accepted), int(payload.camera_processing),
-                int(payload.specialist_sharing), int(payload.analytics_processing), user["id"],
+                0, int(payload.ai_processing), int(payload.analytics_processing), user["id"],
                 accepted_at("privacy_accepted", payload.privacy_accepted),
                 accepted_at("camera_processing", payload.camera_processing),
-                accepted_at("specialist_sharing", payload.specialist_sharing),
+                None,
+                accepted_at("ai_processing", payload.ai_processing),
                 accepted_at("analytics_processing", payload.analytics_processing),
                 CONSENT_VERSION, stamp,
             ),
@@ -1229,7 +1334,7 @@ def update_consent(child_id: int, payload: ConsentUpdate, user: dict = Depends(r
     audit(user, "consent.update", "child", child_id, {
         "privacy": payload.privacy_accepted,
         "camera": payload.camera_processing,
-        "sharing": payload.specialist_sharing,
+        "ai_processing": payload.ai_processing,
         "analytics": payload.analytics_processing,
         "version": CONSENT_VERSION,
     })
@@ -1267,6 +1372,11 @@ def export_child_data(child_id: int, user: dict = Depends(require_roles("parent"
             "settings": [dict(row) for row in db.execute(f"SELECT * FROM user_settings WHERE user_key IN ({setting_placeholders}) ORDER BY user_key", tuple(setting_keys)).fetchall()],
             "sessions": session_rows,
             "learning_sessions": learning_rows,
+            "ai_usage": [dict(row) for row in db.execute(
+                """SELECT provider,model,feature,input_tokens,output_tokens,estimated_cost_usd,created_at
+                   FROM usage_events WHERE child_id=? ORDER BY id""",
+                (child_id,),
+            ).fetchall()],
             "assigned_exercises": [dict(row) for row in db.execute("SELECT * FROM assigned_exercises WHERE child_id=? ORDER BY id", (child_id,)).fetchall()],
             "specialist_access": [dict(row) for row in db.execute("SELECT * FROM specialist_children WHERE child_id=? ORDER BY assigned_at", (child_id,)).fetchall()],
             "specialist_recommendations": [dict(row) for row in db.execute("SELECT * FROM specialist_recommendations WHERE child_id=? ORDER BY id", (child_id,)).fetchall()],
@@ -1293,7 +1403,7 @@ def delete_child_data(child_id: int, payload: ChildDeleteRequest, user: dict = D
     audit(user, "child.delete", "child", child_id)
 
 
-@app.patch("/api/specialist/recommendations/{recommendation_id}")
+@app.patch("/api/specialist/recommendations/{recommendation_id}", include_in_schema=False)
 def review_recommendation(recommendation_id: int, payload: RecommendationReview, user: dict = Depends(require_roles("specialist"))) -> dict:
     with connect() as db:
         row = db.execute("SELECT * FROM specialist_recommendations WHERE id=? AND specialist_id=?", (recommendation_id, user["id"])).fetchone()
@@ -1309,7 +1419,7 @@ def review_recommendation(recommendation_id: int, payload: RecommendationReview,
     return dict(updated)
 
 
-@app.get("/api/admin/specialist-assignments")
+@app.get("/api/admin/specialist-assignments", include_in_schema=False)
 def specialist_assignments(_: dict = Depends(require_roles("admin"))) -> list[dict]:
     with connect() as db:
         rows = db.execute(
@@ -1320,7 +1430,7 @@ def specialist_assignments(_: dict = Depends(require_roles("admin"))) -> list[di
     return [dict(row) for row in rows]
 
 
-@app.post("/api/admin/specialist-assignments", status_code=201)
+@app.post("/api/admin/specialist-assignments", status_code=201, include_in_schema=False)
 def create_specialist_assignment(payload: SpecialistAssignmentCreate, admin: dict = Depends(require_roles("admin"))) -> dict:
     with connect() as db:
         specialist = db.execute("SELECT id FROM users WHERE id=? AND role='specialist' AND is_active=1", (payload.specialist_id,)).fetchone()
@@ -1342,7 +1452,7 @@ def create_specialist_assignment(payload: SpecialistAssignmentCreate, admin: dic
     return dict(row)
 
 
-@app.delete("/api/admin/specialist-assignments/{specialist_id}/{child_id}", status_code=204)
+@app.delete("/api/admin/specialist-assignments/{specialist_id}/{child_id}", status_code=204, include_in_schema=False)
 def delete_specialist_assignment(specialist_id: int, child_id: int, admin: dict = Depends(require_roles("admin"))):
     with connect() as db:
         db.execute("DELETE FROM specialist_children WHERE specialist_id=? AND child_id=?", (specialist_id, child_id))
@@ -1353,7 +1463,7 @@ def delete_specialist_assignment(specialist_id: int, child_id: int, admin: dict 
 def admin_stats(_: dict = Depends(require_roles("admin"))) -> dict:
     with connect() as db:
         return {
-            "users": db.execute("SELECT (SELECT COUNT(*) FROM users) + (SELECT COUNT(*) FROM student_accounts) count").fetchone()["count"],
+            "users": db.execute("SELECT (SELECT COUNT(*) FROM users WHERE role<>'specialist') + (SELECT COUNT(*) FROM student_accounts) count").fetchone()["count"],
             "children": db.execute("SELECT COUNT(*) count FROM children").fetchone()["count"],
             "sessions": db.execute("SELECT COUNT(*) count FROM sessions WHERE measurement_version>=1").fetchone()["count"],
             "exercises": db.execute("SELECT COUNT(*) count FROM exercises WHERE is_active=1").fetchone()["count"],
@@ -1363,7 +1473,7 @@ def admin_stats(_: dict = Depends(require_roles("admin"))) -> dict:
 @app.get("/api/admin/users")
 def admin_users(_: dict = Depends(require_roles("admin"))) -> list[dict]:
     with connect() as db:
-        return [public_user(row) for row in db.execute("SELECT * FROM users ORDER BY created_at DESC").fetchall()]
+        return [public_user(row) for row in db.execute("SELECT * FROM users WHERE role<>'specialist' ORDER BY created_at DESC").fetchall()]
 
 
 @app.get("/api/admin/students")
@@ -1374,13 +1484,74 @@ def admin_students(_: dict = Depends(require_roles("admin"))) -> list[dict]:
 
 
 @app.get("/api/admin/usage")
-def admin_usage(days: int = Query(default=30, ge=1, le=365), _: dict = Depends(require_roles("admin"))) -> dict:
-    cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+def admin_usage(
+    days: int = Query(default=30, ge=1, le=365),
+    limit: int = Query(default=50, ge=1, le=200),
+    _: dict = Depends(require_roles("admin")),
+) -> dict:
+    today = datetime.now(timezone.utc).date()
+    cutoff = datetime.combine(today - timedelta(days=days - 1), datetime.min.time(), tzinfo=timezone.utc).isoformat()
     with connect() as db:
-        totals = db.execute("SELECT COUNT(*) requests,COALESCE(SUM(input_tokens),0) input_tokens,COALESCE(SUM(output_tokens),0) output_tokens,COALESCE(SUM(estimated_cost_usd),0) cost FROM usage_events WHERE created_at >= ?", (cutoff,)).fetchone()
-        breakdown = db.execute("SELECT provider,model,feature,COUNT(*) requests,SUM(input_tokens) input_tokens,SUM(output_tokens) output_tokens,SUM(estimated_cost_usd) cost FROM usage_events WHERE created_at >= ? GROUP BY provider,model,feature ORDER BY requests DESC", (cutoff,)).fetchall()
-        recent = db.execute("SELECT provider,model,feature,input_tokens,output_tokens,estimated_cost_usd,created_at FROM usage_events ORDER BY id DESC LIMIT 20").fetchall()
-    return {"period_days": days, "requests": totals["requests"], "input_tokens": totals["input_tokens"], "output_tokens": totals["output_tokens"], "total_tokens": totals["input_tokens"] + totals["output_tokens"], "estimated_cost_usd": round(totals["cost"], 6), "breakdown": [dict(row) for row in breakdown], "recent": [dict(row) for row in recent], "note": "Камера работает только как локальное зеркало и не расходует токены. Стоимость облачных моделей будет рассчитана при их подключении."}
+        totals = db.execute("SELECT COUNT(*) requests,COALESCE(SUM(input_tokens),0) input_tokens,COALESCE(SUM(output_tokens),0) output_tokens,COALESCE(SUM(estimated_cost_usd),0) cost FROM usage_events WHERE provider='openai' AND created_at >= ?", (cutoff,)).fetchone()
+        breakdown = db.execute("SELECT provider,model,feature,COUNT(*) requests,SUM(input_tokens) input_tokens,SUM(output_tokens) output_tokens,SUM(estimated_cost_usd) cost FROM usage_events WHERE provider='openai' AND created_at >= ? GROUP BY provider,model,feature ORDER BY requests DESC", (cutoff,)).fetchall()
+        daily_rows = db.execute(
+            """SELECT substr(created_at,1,10) day,COUNT(*) requests,
+                      COALESCE(SUM(input_tokens),0) input_tokens,
+                      COALESCE(SUM(output_tokens),0) output_tokens,
+                      COALESCE(SUM(estimated_cost_usd),0) cost
+               FROM usage_events WHERE provider='openai' AND created_at >= ?
+               GROUP BY substr(created_at,1,10) ORDER BY day""",
+            (cutoff,),
+        ).fetchall()
+        recent = db.execute(
+            """SELECT e.id,e.user_id actor_id,e.actor_type,e.child_id,e.provider,e.model,e.feature,
+                      e.input_tokens,e.output_tokens,e.input_tokens+e.output_tokens total_tokens,
+                      e.estimated_cost_usd,e.created_at,
+                      CASE WHEN e.actor_type='student'
+                           THEN COALESCE(c.name,s.username,'Ученик')
+                           ELSE COALESCE(u.full_name,'Удалённый пользователь') END actor_name,
+                      CASE WHEN e.actor_type='student'
+                           THEN COALESCE(s.username,'')
+                           ELSE COALESCE(u.username,'') END actor_username,
+                      CASE WHEN e.actor_type='student'
+                           THEN 'student'
+                           ELSE COALESCE(u.role,'unknown') END actor_role,
+                      c.name child_name
+               FROM usage_events e
+               LEFT JOIN users u ON e.actor_type='user' AND u.id=e.user_id
+               LEFT JOIN student_accounts s ON e.actor_type='student' AND s.id=e.user_id
+               LEFT JOIN children c ON c.id=e.child_id
+               WHERE e.provider='openai' AND e.created_at >= ?
+               ORDER BY e.id DESC LIMIT ?""",
+            (cutoff, limit),
+        ).fetchall()
+    daily_by_date = {row["day"]: dict(row) for row in daily_rows}
+    daily = []
+    for days_ago in range(days - 1, -1, -1):
+        day = (today - timedelta(days=days_ago)).isoformat()
+        row = daily_by_date.get(day, {})
+        input_tokens = int(row.get("input_tokens", 0))
+        output_tokens = int(row.get("output_tokens", 0))
+        daily.append({
+            "date": day,
+            "requests": int(row.get("requests", 0)),
+            "input_tokens": input_tokens,
+            "output_tokens": output_tokens,
+            "total_tokens": input_tokens + output_tokens,
+            "estimated_cost_usd": round(float(row.get("cost", 0)), 6),
+        })
+    return {
+        "period_days": days,
+        "requests": totals["requests"],
+        "input_tokens": totals["input_tokens"],
+        "output_tokens": totals["output_tokens"],
+        "total_tokens": totals["input_tokens"] + totals["output_tokens"],
+        "estimated_cost_usd": round(totals["cost"], 6),
+        "breakdown": [dict(row) for row in breakdown],
+        "daily": daily,
+        "recent": [dict(row) for row in recent],
+        "note": "Учитываются только успешные запросы к OpenAI. Локальные резервные ответы и функции без AI токены не расходуют.",
+    }
 
 
 @app.get("/api/admin/audit")
@@ -1418,6 +1589,8 @@ def update_active(user_id: int, payload: ActiveUpdate, admin: dict = Depends(req
 
 @app.post("/api/admin/exercises", status_code=201)
 def create_exercise(payload: ExerciseCreate, _: dict = Depends(require_roles("admin"))) -> dict:
+    if payload.module == "motor":
+        raise HTTPException(422, "Моторные упражнения отключены в текущей версии Söyle")
     skill = payload.skill or {"motor": "articulation", "sensory": "vocabulary", "mixed": "phrase_building"}[payload.module]
     with connect() as db:
         cursor = db.execute("INSERT INTO exercises(module,title,instruction,difficulty,target,icon,skill,is_active) VALUES(?,?,?,?,?,?,?,?) RETURNING id", (payload.module, payload.title, payload.instruction, payload.difficulty, payload.target, payload.icon, skill, int(payload.is_active)))
@@ -1427,6 +1600,8 @@ def create_exercise(payload: ExerciseCreate, _: dict = Depends(require_roles("ad
 
 @app.put("/api/admin/exercises/{exercise_id}")
 def update_exercise(exercise_id: int, payload: ExerciseCreate, _: dict = Depends(require_roles("admin"))) -> dict:
+    if payload.module == "motor":
+        raise HTTPException(422, "Моторные упражнения отключены в текущей версии Söyle")
     skill = payload.skill or {"motor": "articulation", "sensory": "vocabulary", "mixed": "phrase_building"}[payload.module]
     with connect() as db:
         db.execute("UPDATE exercises SET module=?,title=?,instruction=?,difficulty=?,target=?,icon=?,skill=?,is_active=? WHERE id=?", (payload.module, payload.title, payload.instruction, payload.difficulty, payload.target, payload.icon, skill, int(payload.is_active), exercise_id))

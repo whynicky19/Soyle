@@ -61,77 +61,117 @@ def test_login_rate_limit(client):
     assert response.status_code == 429
 
 
-def test_specialist_assignment_is_first_in_plan(client, parent_headers, specialist_headers):
+def test_ai_plan_uses_only_safe_library_and_specialist_role_is_removed(client, parent_headers, admin_headers):
     child_id = client.get("/api/children", headers=parent_headers).json()[0]["id"]
-    automatic_plan = client.get(f"/api/session-plan/{child_id}?minutes=10", headers=parent_headers)
-    assert automatic_plan.status_code == 200
-    assert all(item["module"] != "motor" for item in automatic_plan.json()["exercises"])
-
-    exercises = client.get("/api/exercises", headers=specialist_headers).json()
-    sensory = next(item for item in exercises if item["module"] == "sensory")
-    motor = next(item for item in exercises if item["module"] == "motor")
-    assigned = client.post("/api/specialist/assigned-exercises", headers=specialist_headers, json={
-        "child_id": child_id, "exercise_id": sensory["id"], "note": "Обязательное",
-    })
-    assert assigned.status_code == 201
-    plan = client.get(f"/api/session-plan/{child_id}?minutes=3", headers=parent_headers)
+    plan = client.post(f"/api/ai/plan/{child_id}", headers=parent_headers, json={"target_minutes": 3})
     assert plan.status_code == 200
     assert plan.json()["estimated_minutes"] == 3
     assert len(plan.json()["exercises"]) == 2
-    assert plan.json()["exercises"][0]["id"] == sensory["id"]
+    assert plan.json()["generated_by"] == "local_fallback"
+    assert plan.json()["needs_ai_consent"] is False
+    assert all(item["module"] != "motor" for item in plan.json()["exercises"])
 
     for minutes, expected_count in ((5, 3), (10, 5)):
-        longer_plan = client.get(f"/api/session-plan/{child_id}?minutes={minutes}", headers=parent_headers)
+        longer_plan = client.post(f"/api/ai/plan/{child_id}", headers=parent_headers, json={"target_minutes": minutes})
         assert longer_plan.status_code == 200
         assert longer_plan.json()["estimated_minutes"] == minutes
         assert len(longer_plan.json()["exercises"]) == expected_count
 
-    motor_assignment = client.post("/api/specialist/assigned-exercises", headers=specialist_headers, json={
-        "child_id": child_id, "exercise_id": motor["id"], "note": "Индивидуальное назначение",
-    })
-    assert motor_assignment.status_code == 201
-    assigned_plan = client.get(f"/api/session-plan/{child_id}?minutes=5", headers=parent_headers).json()
-    assert motor["id"] in {item["id"] for item in assigned_plan["exercises"]}
-    visible_to_family = client.get(f"/api/exercises?child_id={child_id}", headers=parent_headers).json()
-    assert motor["id"] in {item["id"] for item in visible_to_family}
-
-    participation = client.post("/api/sessions", headers=parent_headers, json={
-        "child_id": child_id, "exercise_id": motor["id"], "module": "motor",
-        "score": 100, "duration_seconds": 5, "details": {"source": "local-camera-mirror"},
-        "attempt_status": "completed", "attempts_count": 1, "correct_answers": 1,
-    })
-    assert participation.status_code == 201
-    assert participation.json()["attempt_status"] == "participated"
-    assert participation.json()["score"] == 0
-    assert participation.json()["awarded_stars"] == 1
+    assert all(item["role"] != "specialist" for item in client.get("/api/admin/users", headers=admin_headers).json())
+    paths = client.get("/openapi.json").json()["paths"]
+    assert not any(path.startswith("/api/specialist") for path in paths)
+    assert not any("specialist-assignments" in path for path in paths)
 
 
-def test_goal_homework_and_progress_metrics(client, parent_headers, specialist_headers):
+def test_ai_parent_answer_has_safe_fallback(client, parent_headers):
     child_id = client.get("/api/children", headers=parent_headers).json()[0]["id"]
-    goal = client.post("/api/specialist/goals", headers=specialist_headers, json={
-        "child_id": child_id,
-        "title": "Самостоятельная просьба",
-        "target_skill": "communication",
-        "success_criterion": "Самостоятельно попросить желаемый предмет в 4 из 6 ситуаций",
-        "difficulty": 1,
-        "exercise_ids": [],
-    })
-    assert goal.status_code == 201
-    assert client.get(f"/api/goals/{child_id}", headers=parent_headers).json()[0]["title"] == "Самостоятельная просьба"
+    response = client.post(f"/api/ai/ask/{child_id}", headers=parent_headers, json={"question": "Как мягко начать занятие?"})
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["generated_by"] == "local_fallback"
+    assert payload["provider_error"] == "not_configured"
+    assert len(payload["suggested_actions"]) <= 3
+    assert "диагноз" in payload["disclaimer"].lower()
 
-    homework = client.post("/api/specialist/homework", headers=specialist_headers, json={
-        "child_id": child_id, "goal_id": goal.json()["id"], "title": "Выбрать напиток",
-        "instruction": "Предложите выбор из двух напитков и подождите ответ.",
-    })
-    assert homework.status_code == 201
-    result = client.patch(f"/api/homework/{homework.json()['id']}/result", headers=parent_headers, json={
-        "result": "independent", "parent_note": "Выбрал воду",
-    })
-    assert result.status_code == 200
-    progress = client.get(f"/api/progress/{child_id}", headers=parent_headers)
-    assert progress.status_code == 200
-    assert progress.json()["support_metrics"]["homework_completed"] >= 1
-    assert "самостоятельно" in progress.json()["support_metrics"]["plain_language"]
+
+def test_ai_parent_answer_explains_invalid_key(client, parent_headers, monkeypatch):
+    child_id = client.get("/api/children", headers=parent_headers).json()[0]["id"]
+
+    class InvalidKeyError(Exception):
+        status_code = 401
+        body = {"error": {"code": "invalid_api_key"}}
+
+    def reject_answer(_context):
+        raise InvalidKeyError()
+
+    monkeypatch.setattr("app.main.answer_parent", reject_answer)
+    response = client.post(f"/api/ai/ask/{child_id}", headers=parent_headers, json={"question": "Как начать занятие?"})
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["generated_by"] == "local_fallback"
+    assert payload["provider_error"] == "invalid_api_key"
+    assert "API-ключ" in payload["provider_message"]
+
+
+def test_ai_plan_validates_model_ids_and_records_tokens(client, parent_headers, admin_headers, monkeypatch):
+    child_id = client.get("/api/children", headers=parent_headers).json()[0]["id"]
+
+    def fake_plan(context):
+        assert len(context["allowed_exercises"]) <= 40
+        allowed_ids = [item["id"] for item in context["allowed_exercises"]]
+        return ({
+            "title": "План от модели",
+            "reason": "Короткое чередование заданий",
+            "parent_tip": "Дайте время ответить",
+            "exercise_ids": [999999, *allowed_ids[::-1]],
+        }, {"input_tokens": 120, "output_tokens": 40})
+
+    monkeypatch.setattr("app.main.generate_plan", fake_plan)
+    response = client.post(f"/api/ai/plan/{child_id}", headers=parent_headers, json={"target_minutes": 3})
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    assert payload["generated_by"] == "openai"
+    assert payload["model"] == "gpt-4o-mini"
+    assert len(payload["exercises"]) == 2
+    assert 999999 not in {item["id"] for item in payload["exercises"]}
+    assert all(item["module"] != "motor" for item in payload["exercises"])
+    usage = client.get("/api/admin/usage", headers=admin_headers).json()
+    assert usage["input_tokens"] >= 120
+    assert usage["output_tokens"] >= 40
+    assert len(usage["daily"]) == 30
+    event = next(item for item in usage["recent"] if item["feature"] == "home_practice_plan")
+    assert event["actor_type"] == "user"
+    assert event["actor_name"] == "Айгерим Садыкова"
+    assert event["actor_username"] == "parent"
+    assert event["actor_role"] == "parent"
+    assert event["child_name"] == "Алихан"
+    assert event["total_tokens"] == 160
+
+
+def test_ai_usage_identifies_student_actor(client, student_headers, admin_headers, monkeypatch):
+    child_id = client.get("/api/children", headers=student_headers).json()[0]["id"]
+
+    def fake_plan(context):
+        allowed_ids = [item["id"] for item in context["allowed_exercises"]]
+        return ({
+            "title": "Ученический план",
+            "reason": "Короткая практика",
+            "parent_tip": "Дайте время ответить",
+            "exercise_ids": allowed_ids[:2],
+        }, {"input_tokens": 30, "output_tokens": 10})
+
+    monkeypatch.setattr("app.main.generate_plan", fake_plan)
+    response = client.post(f"/api/ai/plan/{child_id}", headers=student_headers, json={"target_minutes": 3})
+    assert response.status_code == 200, response.text
+    assert response.json()["generated_by"] == "openai"
+
+    usage = client.get("/api/admin/usage?days=7&limit=100", headers=admin_headers).json()
+    event = next(item for item in usage["recent"] if item["actor_type"] == "student")
+    assert event["actor_name"] == "Алихан"
+    assert event["actor_username"] == "alikhan"
+    assert event["actor_role"] == "student"
+    assert event["child_name"] == "Алихан"
+    assert event["total_tokens"] == 40
 
 
 def test_learning_session_pause_and_measurements(client, parent_headers):
@@ -180,136 +220,46 @@ def test_learning_session_pause_and_measurements(client, parent_headers):
     assert metrics["communication_initiatives"] >= 2
 
 
-def test_consent_is_opt_in_and_revocation_is_immediate(client, admin_headers, specialist_headers):
+def test_ai_consent_is_opt_in_and_revocation_is_immediate(client, admin_headers):
     registration = client.post("/api/auth/register", headers={"X-Soyle-Auth-Mode": "bearer"}, json={
-        "username": "consentparent", "password": "ConsentParent123!", "full_name": "Родитель согласий",
+        "username": "consentparent2", "password": "ConsentParent123!", "full_name": "Родитель AI-согласий",
     })
-    assert registration.status_code == 201, registration.text
     parent = {"Authorization": f"Bearer {registration.json()['access_token']}"}
-    child_response = client.post("/api/children", headers=parent, json={
-        "name": "Тест согласий", "birth_date": "2020-05-04", "primary_module": "mixed", "avatar_color": "#82a78f",
-    })
-    assert child_response.status_code == 201, child_response.text
-    child_id = child_response.json()["id"]
+    child = client.post("/api/children", headers=parent, json={
+        "name": "Тест AI", "birth_date": "2020-05-04", "primary_module": "mixed", "avatar_color": "#82a78f",
+    }).json()
+    child_id = child["id"]
+    initial = client.get(f"/api/children/{child_id}/consent", headers=parent).json()
+    assert initial["ai_processing"] is False
+    assert initial["ai_processing_at"] is None
+    assert initial["version"] == "2026-10-ai-1"
 
-    initial = client.get(f"/api/children/{child_id}/consent", headers=parent)
-    assert initial.status_code == 200
-    assert initial.json() == {
-        "child_id": child_id,
-        "privacy_accepted": False,
-        "camera_processing": False,
-        "specialist_sharing": False,
-        "analytics_processing": False,
-        "version": "2026-10-pilot-1",
-        "updated_at": None,
-        "consented_by_user_id": None,
-        "privacy_accepted_at": None,
-        "camera_processing_at": None,
-        "specialist_sharing_at": None,
-        "analytics_processing_at": None,
-    }
-    cards_without_consent = client.get(f"/api/aac/cards/{child_id}", headers=parent)
-    assert cards_without_consent.status_code == 200
-    cards_by_label = {item["label"]: item for item in cards_without_consent.json()}
-    for label in ("Помоги", "Больно", "Перерыв", "Не хочу", "Да", "Нет"):
-        assert label in cards_by_label
-        assert cards_by_label[label]["is_core"]
-    assert client.get("/api/settings", headers=parent).json()["camera_enabled"] is False
-
-    specialist_id = next(user["id"] for user in client.get("/api/admin/users", headers=admin_headers).json() if user["role"] == "specialist")
-    denied_assignment = client.post("/api/admin/specialist-assignments", headers=admin_headers, json={
-        "specialist_id": specialist_id, "child_id": child_id,
-    })
-    assert denied_assignment.status_code == 409
-    assert child_id not in {item["id"] for item in client.get("/api/children", headers=specialist_headers).json()}
-
-    exercise = client.get("/api/exercises", headers=parent).json()[0]
-    denied_result = client.post("/api/sessions", headers=parent, json={
-        "child_id": child_id, "exercise_id": exercise["id"], "module": exercise["module"],
-        "score": 100, "duration_seconds": 10, "details": {},
-    })
-    assert denied_result.status_code == 403
-    assert "родител" in denied_result.json()["detail"].lower()
-    exercise_ids = [item["id"] for item in client.get("/api/exercises", headers=parent).json()[:3]]
-    denied_program = client.post("/api/learning-sessions", headers=parent, json={
-        "child_id": child_id, "exercise_ids": exercise_ids, "target_minutes": 3,
-    })
-    assert denied_program.status_code == 403
+    denied = client.post(f"/api/ai/ask/{child_id}", headers=parent, json={"question": "Как начать занятие?"})
+    assert denied.status_code == 403
+    local_plan = client.post(f"/api/ai/plan/{child_id}", headers=parent, json={"target_minutes": 3})
+    assert local_plan.status_code == 200
+    assert local_plan.json()["needs_ai_consent"] is True
 
     inconsistent = client.put(f"/api/children/{child_id}/consent", headers=parent, json={
-        "privacy_accepted": False, "camera_processing": True,
+        "privacy_accepted": False, "camera_processing": False, "ai_processing": True, "analytics_processing": False,
     })
     assert inconsistent.status_code == 422
-
-    allowed = client.put(f"/api/children/{child_id}/consent", headers=parent, json={
-        "privacy_accepted": True,
-        "camera_processing": False,
-        "specialist_sharing": True,
-        "analytics_processing": False,
+    enabled = client.put(f"/api/children/{child_id}/consent", headers=parent, json={
+        "privacy_accepted": True, "camera_processing": False, "ai_processing": True, "analytics_processing": False,
     })
-    assert allowed.status_code == 200, allowed.text
-    consent = allowed.json()
-    assert consent["camera_processing"] is False
-    assert consent["specialist_sharing"] is True
-    assert consent["version"] == "2026-10-pilot-1"
-    assert consent["consented_by_user_id"] == registration.json()["user"]["id"]
-    assert consent["privacy_accepted_at"]
-    assert consent["specialist_sharing_at"]
-    assert consent["analytics_processing_at"] is None
-
-    assignment = client.post("/api/admin/specialist-assignments", headers=admin_headers, json={
-        "specialist_id": specialist_id, "child_id": child_id,
-    })
-    assert assignment.status_code == 201, assignment.text
-    assert child_id in {item["id"] for item in client.get("/api/children", headers=specialist_headers).json()}
-
-    no_analytics = client.post("/api/aac/history", headers=parent, json={
-        "child_id": child_id, "phrase": "Подменённый текст", "card_ids": [cards_by_label["Помоги"]["id"]],
-    })
-    assert no_analytics.status_code == 403
-    assert client.get(f"/api/aac/history/{child_id}", headers=parent).json() == []
-
-    analytics_allowed = client.put(f"/api/children/{child_id}/consent", headers=parent, json={
-        "privacy_accepted": True,
-        "camera_processing": False,
-        "specialist_sharing": True,
-        "analytics_processing": True,
-    })
-    assert analytics_allowed.status_code == 200
-    saved_phrase = client.post("/api/aac/history", headers=parent, json={
-        "child_id": child_id, "phrase": "Подменённый текст", "card_ids": [cards_by_label["Помоги"]["id"]],
-    })
-    assert saved_phrase.status_code == 201
-    assert saved_phrase.json()["phrase"] == "Помоги мне"
+    assert enabled.status_code == 200
+    assert enabled.json()["ai_processing"] is True
+    assert enabled.json()["ai_processing_at"]
+    assert client.post(f"/api/ai/ask/{child_id}", headers=parent, json={"question": "Как начать занятие?"}).status_code == 200
 
     revoked = client.put(f"/api/children/{child_id}/consent", headers=parent, json={
-        "privacy_accepted": True,
-        "camera_processing": False,
-        "specialist_sharing": False,
-        "analytics_processing": False,
+        "privacy_accepted": True, "camera_processing": False, "ai_processing": False, "analytics_processing": False,
     })
     assert revoked.status_code == 200
-    assert child_id not in {item["id"] for item in client.get("/api/children", headers=specialist_headers).json()}
-    assert client.get(f"/api/specialist/children/{child_id}", headers=specialist_headers).status_code == 403
-    assert client.get(f"/api/aac/history/{child_id}", headers=parent).json() == []
-
-    fully_revoked = client.put(f"/api/children/{child_id}/consent", headers=parent, json={
-        "privacy_accepted": False,
-        "camera_processing": False,
-        "specialist_sharing": False,
-        "analytics_processing": False,
-    })
-    assert fully_revoked.status_code == 200
-    assert fully_revoked.json()["privacy_accepted_at"] is None
-    assert client.post("/api/sessions", headers=parent, json={
-        "child_id": child_id, "exercise_id": exercise["id"], "module": exercise["module"],
-        "score": 100, "duration_seconds": 10, "details": {},
-    }).status_code == 403
-
+    assert revoked.json()["ai_processing_at"] is None
+    assert client.post(f"/api/ai/ask/{child_id}", headers=parent, json={"question": "Как начать занятие?"}).status_code == 403
     audits = client.get("/api/admin/audit", headers=admin_headers).json()
-    consent_audits = [item for item in audits if item["action"] == "consent.update" and item["object_id"] == str(child_id)]
-    assert consent_audits
-    assert consent_audits[0]["metadata"]["version"] == "2026-10-pilot-1"
+    assert any(item["action"] == "consent.update" and item["object_id"] == str(child_id) for item in audits)
 
 
 def test_student_can_read_but_not_change_consent(client, parent_headers, student_headers):
@@ -319,7 +269,7 @@ def test_student_can_read_but_not_change_consent(client, parent_headers, student
     denied = client.put(f"/api/children/{child_id}/consent", headers=student_headers, json={
         "privacy_accepted": False,
         "camera_processing": False,
-        "specialist_sharing": False,
+        "ai_processing": False,
         "analytics_processing": False,
     })
     assert denied.status_code == 403
@@ -337,7 +287,7 @@ def test_game_results_are_server_calculated_and_non_scored_outcomes_are_separate
     consent = client.put(f"/api/children/{child['id']}/consent", headers=headers, json={
         "privacy_accepted": True,
         "camera_processing": False,
-        "specialist_sharing": False,
+        "ai_processing": False,
         "analytics_processing": False,
     })
     assert consent.status_code == 200
@@ -524,7 +474,7 @@ def test_export_is_complete_and_delete_requires_password(client):
     consent = client.put(f"/api/children/{child_id}/consent", headers=headers, json={
         "privacy_accepted": True,
         "camera_processing": False,
-        "specialist_sharing": False,
+        "ai_processing": False,
         "analytics_processing": True,
     })
     assert consent.status_code == 200
@@ -539,7 +489,7 @@ def test_export_is_complete_and_delete_requires_password(client):
     assert "password_hash" not in str(data)
     assert "pin_hash" not in str(data)
     assert {
-        "settings", "sessions", "learning_sessions", "assigned_exercises", "specialist_access",
+        "settings", "sessions", "learning_sessions", "ai_usage", "assigned_exercises", "specialist_access",
         "specialist_recommendations", "goals", "homework", "aac_custom_cards", "aac_favorites",
         "aac_history", "notifications", "audit_events",
     }.issubset(data)

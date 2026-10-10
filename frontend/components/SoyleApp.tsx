@@ -27,6 +27,7 @@ import {
   Check,
   ChevronRight,
   Circle,
+  CircleAlert,
   CircleCheck,
   CircleX,
   CircleUserRound,
@@ -114,27 +115,17 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { api, AACCard, API_URL, AppSettings, Child, ChildConsent, clearLegacyAuth, Dashboard, Exercise, getCsrfToken, LearningSession, NotificationsData, Role, SkillProgress, User } from "@/lib/api";
+import { api, AACCard, AIAnswer, AIPlan, API_URL, AppSettings, Child, ChildConsent, clearLegacyAuth, Dashboard, Exercise, getCsrfToken, LearningSession, NotificationsData, Role, SkillProgress, User } from "@/lib/api";
 import { composeAACMessage } from "@/lib/aacGrammar";
 import { supportedInterfaceLanguages, useInterfaceLanguage } from "@/lib/i18n";
 
-type Screen = "home" | "games" | "session" | "exercise-complete" | "motor" | "sensory" | "mixed" | "aac" | "progress" | "parent" | "profile" | "settings" | "admin" | "specialist";
+type Screen = "home" | "games" | "session" | "exercise-complete" | "motor" | "sensory" | "mixed" | "aac" | "ai" | "progress" | "parent" | "profile" | "settings" | "admin";
 type ModuleName = "motor" | "sensory" | "mixed";
 type GameMeasurement = { attempts_count?: number; correct_answers?: number; prompts_used?: number; attempt_status?: "completed" | "participated" | "refused" | "break" | "technical_error"; independence?: number; prompt_level?: "independent" | "minimal" | "full"; response_ms?: number; communication_initiatives?: number };
 type ExerciseCompletion = { title: string; message: string; nextExercise: Exercise | null; sessionMode: boolean; sessionFinished: boolean };
 const defaultSettings: AppSettings = { camera_enabled: false, sound_enabled: true, calm_mode: false, theme: "peach", language: "ru" };
 
 const modules = [
-  {
-    id: "motor" as const,
-    title: "Визуальное зеркало",
-    eyebrow: "Только по назначению",
-    description: "Практика назначенного движения без оценки правильности",
-    icon: "/illustrations/module-articulation-fox.png",
-    accent: "coral",
-    progress: 0,
-    time: "5 минут",
-  },
   {
     id: "sensory" as const,
     title: "Слушай и находи",
@@ -201,7 +192,7 @@ export function SoyleApp() {
 }
 
 function AuthenticatedApp({ user, onLogout }: { user: User; onLogout: () => void }) {
-  const [screen, setScreen] = useState<Screen>(() => user.role === "admin" ? "admin" : user.role === "specialist" ? "specialist" : "home");
+  const [screen, setScreen] = useState<Screen>(() => user.role === "admin" ? "admin" : "home");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [children, setChildren] = useState<Child[]>([]);
   const [selectedChildId, setSelectedChildId] = useState<number | null>(user.child_id || null);
@@ -239,14 +230,13 @@ function AuthenticatedApp({ user, onLogout }: { user: User; onLogout: () => void
 
   const navigation: { id: Screen; label: string; icon: typeof Home }[] = user.role === "admin"
     ? [{ id: "admin", label: "Админ-панель", icon: LayoutDashboard }, { id: "settings", label: "Настройки", icon: Settings }]
-    : user.role === "specialist"
-      ? [{ id: "specialist", label: "Кабинет специалиста", icon: Users }, { id: "progress", label: "Прогресс детей", icon: BarChart3 }, { id: "settings", label: "Настройки", icon: Settings }]
-      : user.role === "student"
+    : user.role === "student"
         ? [{ id: "home", label: "Главная", icon: Home }, { id: "games", label: "Занятия", icon: Gamepad2 }, { id: "aac", label: "Сказать", icon: Parentheses }, { id: "settings", label: "Настройки", icon: Settings }]
       : [
           { id: "home", label: "Главная", icon: Home },
           { id: "games", label: "Занятия", icon: Gamepad2 },
           { id: "aac", label: "Сказать", icon: Parentheses },
+          { id: "ai", label: "Söyle AI", icon: Bot },
           { id: "progress", label: "Прогресс", icon: BarChart3 },
           ...(user.role === "parent" ? [{ id: "parent" as Screen, label: "Для родителей", icon: UserRound }] : []),
           { id: "settings", label: "Настройки", icon: Settings },
@@ -340,7 +330,7 @@ function AuthenticatedApp({ user, onLogout }: { user: User; onLogout: () => void
         setScreen("session");
         return;
       }
-      const plan = await api<{ exercises: Exercise[] }>(`/api/session-plan/${child.id}?minutes=${dailyMinutes}`);
+      const plan = await api<AIPlan>(`/api/ai/plan/${child.id}`, { method: "POST", body: JSON.stringify({ target_minutes: dailyMinutes }) });
       const created = await api<LearningSession>("/api/learning-sessions", { method: "POST", body: JSON.stringify({ child_id: child.id, exercise_ids: plan.exercises.map((item) => item.id), target_minutes: dailyMinutes }) });
       setActiveSession({ ...created, results: [] });
       setScreen("session");
@@ -483,7 +473,7 @@ function AuthenticatedApp({ user, onLogout }: { user: User; onLogout: () => void
           <div className="top-actions">
             <button className="language" data-i18n-native onClick={() => openScreen("settings")} aria-label={{ ru: "Язык интерфейса: русский", en: "Interface language: English", kk: "Интерфейс тілі: қазақша" }[settings.language]}><Languages size={17} /> {{ ru: "RU", en: "EN", kk: "ҚАЗ" }[settings.language]}</button>
             <div className="stars"><Star size={18} fill="currentColor" /> {dashboard?.stars || 0}</div>
-            {user.role === "parent" && <div className="notification-wrap"><button className="notification-button" onClick={() => setNotificationsOpen((value) => !value)} aria-label="Уведомления"><Bell size={19}/>{notifications.unread > 0 && <i>{notifications.unread}</i>}</button>{notificationsOpen && <div className="notification-panel"><div className="notification-head"><div><span className="kicker">УВЕДОМЛЕНИЯ</span><strong>События программы</strong></div>{notifications.unread > 0 && <button onClick={markAllNotificationsRead}>Прочитать все</button>}</div><div className="notification-list">{notifications.items.length ? notifications.items.map((item) => <button key={item.id} className={item.is_read ? "read" : "unread"} onClick={() => markNotificationRead(item.id)}><span className="notification-symbol"><Trophy size={18}/></span><div><strong>{item.title}</strong><p>{item.message}</p><small>{new Date(item.created_at).toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}</small></div>{!item.is_read && <i/>}</button>) : <div className="notification-empty"><Bell size={24}/><strong>Пока всё спокойно</strong><span>Здесь появятся отметки о программе; домашние задания назначает специалист.</span></div>}</div></div>}</div>}
+            {user.role === "parent" && <div className="notification-wrap"><button className="notification-button" onClick={() => setNotificationsOpen((value) => !value)} aria-label="Уведомления"><Bell size={19}/>{notifications.unread > 0 && <i>{notifications.unread}</i>}</button>{notificationsOpen && <div className="notification-panel"><div className="notification-head"><div><span className="kicker">УВЕДОМЛЕНИЯ</span><strong>События программы</strong></div>{notifications.unread > 0 && <button onClick={markAllNotificationsRead}>Прочитать все</button>}</div><div className="notification-list">{notifications.items.length ? notifications.items.map((item) => <button key={item.id} className={item.is_read ? "read" : "unread"} onClick={() => markNotificationRead(item.id)}><span className="notification-symbol"><Trophy size={18}/></span><div><strong>{item.title}</strong><p>{item.message}</p><small>{new Date(item.created_at).toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}</small></div>{!item.is_read && <i/>}</button>) : <div className="notification-empty"><Bell size={24}/><strong>Пока всё спокойно</strong><span>Здесь появятся отметки о занятиях и новых шагах программы.</span></div>}</div></div>}</div>}
             <button className="avatar small avatar-button" onClick={() => openScreen("profile")} aria-label="Открыть профиль">{user.full_name[0]}</button>
           </div>
         </header>
@@ -497,12 +487,12 @@ function AuthenticatedApp({ user, onLogout }: { user: User; onLogout: () => void
           {screen === "motor" && <MotorGame exercises={exercises.filter((item) => item.module === "motor")} initialExercise={selectedExercise} cameraEnabled={settings.camera_enabled && Boolean(consent?.privacy_accepted && consent?.camera_processing)} cameraConsentGranted={Boolean(consent?.privacy_accepted && consent?.camera_processing)} onBack={() => sessionExerciseActive && activeSession ? setScreen("session") : openScreen("games")} onComplete={(score, exerciseId, measurement, details) => saveSession(exerciseId, "motor", score, details || { source: "manual" }, measurement)} />}
           {screen === "sensory" && <SensoryGame key={selectedExercise?.id || "sensory"} exercise={selectedExercise?.module === "sensory" ? selectedExercise : exercises.find((item) => item.module === "sensory")} soundEnabled={settings.sound_enabled} onBack={() => sessionExerciseActive && activeSession ? setScreen("session") : openScreen("games")} onComplete={(score, exerciseId, measurement, details) => saveSession(exerciseId, "sensory", score, { rounds: 5, ...details }, measurement)} />}
           {screen === "aac" && <PhraseGame key="free-aac" childId={child?.id} canManage={user.role === "parent"} freeMode soundEnabled={settings.sound_enabled} onBack={() => openScreen("home")} />}
+          {screen === "ai" && user.role === "parent" && <AIParentScreen child={child} consent={consent} onOpenConsent={() => openScreen("parent")} />}
           {screen === "mixed" && <PhraseGame key={selectedExercise?.id || "mixed"} childId={child?.id} canManage={user.role === "parent"} exercise={selectedExercise?.module === "mixed" ? selectedExercise : exercises.find((item) => item.module === "mixed")} soundEnabled={settings.sound_enabled} onBack={() => sessionExerciseActive && activeSession ? setScreen("session") : openScreen("games")} onComplete={(score, phrase, exerciseId, measurement) => saveSession(exerciseId, "mixed", score, { phrase }, measurement)} />}
           {screen === "progress" && <ProgressScreen childId={child?.id} dashboard={dashboard} />}
           {screen === "parent" && <ParentScreen child={child} childProfiles={children} onSelectChild={setSelectedChildId} onDeleted={(id) => { const remaining = children.filter((item) => item.id !== id); setChildren(remaining); setSelectedChildId(remaining[0]?.id || null); setScreen("home"); }} dashboard={dashboard} onConsentChange={setConsent} />}
           {screen === "profile" && <ProfileScreen user={user} child={child} dashboard={dashboard} settings={settings} onOpen={openScreen} onLogout={onLogout}/>}
           {screen === "admin" && <AdminScreen />}
-          {screen === "specialist" && <SpecialistScreen />}
           {screen === "settings" && <SettingsScreen settings={settings} onChange={changeSettings} onLogout={onLogout} />}
         </div>
       </main>
@@ -518,11 +508,11 @@ function RewardCelebration({ stars }: { stars: number }) {
 function ChildOnboarding({ user, onCreated, onLogout }: { user: User; onCreated: (child: Child) => void; onLogout: () => void }) {
   const [name, setName] = useState(""); const [birthDate, setBirthDate] = useState(""); const [module, setModule] = useState<ModuleName>("mixed"); const [error, setError] = useState("");
   const submit = async (event: React.FormEvent) => { event.preventDefault(); setError(""); try { const child = await api<Child>("/api/children", { method: "POST", body: JSON.stringify({ name, birth_date: birthDate, primary_module: module, avatar_color: "#f07d68" }) }); onCreated(child); } catch (cause) { setError(cause instanceof Error ? cause.message : "Не удалось создать профиль"); } };
-  return <div className="onboarding-page"><div className="onboarding-card"><div className="brand"><div className="brand-mark"><BrandIcon /></div><div><strong>Söyle</strong><span>первичная настройка</span></div></div><span className="kicker">ДОБРО ПОЖАЛОВАТЬ, {user.full_name.toUpperCase()}</span><h1>Создадим профиль ребёнка</h1><p>Это поможет сохранять историю практики. Индивидуальные цели и моторные упражнения назначает специалист.</p><form onSubmit={submit}><label>Имя ребёнка<input value={name} onChange={(e) => setName(e.target.value)} placeholder="Алихан" required minLength={2}/></label><label>Дата рождения<input type="date" max={new Date().toISOString().slice(0,10)} value={birthDate} onChange={(e) => setBirthDate(e.target.value)} required/></label><label>Стартовое направление<select value={module} onChange={(e) => setModule(e.target.value as ModuleName)}><option value="sensory">Игровые задания на слух</option><option value="mixed">AAC-коммуникация и смешанная практика</option></select></label>{error && <div className="auth-error">{error}</div>}<button className="primary-button">Создать профиль <ChevronRight size={18}/></button></form><button className="auth-switch" onClick={onLogout}>Выйти из аккаунта</button></div></div>;
+  return <div className="onboarding-page"><div className="onboarding-card"><div className="brand"><div className="brand-mark"><BrandIcon /></div><div><strong>Söyle</strong><span>первичная настройка</span></div></div><span className="kicker">ДОБРО ПОЖАЛОВАТЬ, {user.full_name.toUpperCase()}</span><h1>Создадим профиль ребёнка</h1><p>Это поможет сохранять историю практики и готовить короткие планы с Söyle AI.</p><form onSubmit={submit}><label>Имя ребёнка<input value={name} onChange={(e) => setName(e.target.value)} placeholder="Алихан" required minLength={2}/></label><label>Дата рождения<input type="date" max={new Date().toISOString().slice(0,10)} value={birthDate} onChange={(e) => setBirthDate(e.target.value)} required/></label><label>Стартовое направление<select value={module} onChange={(e) => setModule(e.target.value as ModuleName)}><option value="sensory">Игровые задания на слух</option><option value="mixed">AAC-коммуникация и смешанная практика</option></select></label>{error && <div className="auth-error">{error}</div>}<button className="primary-button">Создать профиль <ChevronRight size={18}/></button></form><button className="auth-switch" onClick={onLogout}>Выйти из аккаунта</button></div></div>;
 }
 
 function roleLabel(role: Role) {
-  return { admin: "Администратор", parent: "Родитель", specialist: "Специалист", student: "Ученик" }[role];
+  return { admin: "Администратор", parent: "Родитель", student: "Ученик" }[role];
 }
 
 function AuthScreen({ onAuthenticated }: { onAuthenticated: (user: User) => void }) {
@@ -553,7 +543,7 @@ function AuthScreen({ onAuthenticated }: { onAuthenticated: (user: User) => void
     <div className="auth-visual">
       <div className="auth-brand"><div className="brand-mark"><BrandIcon /></div><strong>Söyle</strong></div>
       <div className="auth-copy"><span className="pill"><ShieldCheck size={15}/> Спокойная ежедневная практика</span><h1>Помогаем ребёнку<br/><em>понимать и общаться</em></h1><p>Короткие игровые задания на слуховое различение и поддерживаемую коммуникацию.</p><div className="auth-benefits"><span><Check/> Пошаговая программа</span><span><Check/> История практики</span><span><Check/> Отдельный вход ребёнка</span></div></div>
-      <div className="auth-orbs"><i><ModuleGlyph module="motor"/></i><i><ModuleGlyph module="sensory"/></i><i><ModuleGlyph module="mixed"/></i></div>
+      <div className="auth-orbs"><i><Bot/></i><i><ModuleGlyph module="sensory"/></i><i><ModuleGlyph module="mixed"/></i></div>
     </div>
     <div className="auth-form-wrap"><Link href="/" className="auth-back-home"><ArrowLeft size={17}/> На главную</Link><form className="auth-card" onSubmit={submit}>
       <div className="auth-role-tabs" aria-label="Тип входа"><button type="button" className={mode !== "student" ? "active" : ""} onClick={() => switchMode("login")}><UserRoundCheck size={18}/> Взрослый</button><button type="button" className={mode === "student" ? "active" : ""} onClick={() => switchMode("student")}><Backpack size={18}/> Ребёнок</button></div>
@@ -576,41 +566,52 @@ function HomeScreen({ onOpen, onStartSession, onResume, activeSession, activeSes
     <div className="stack-xl page-enter">
       {!consent?.privacy_accepted && <section className="consent-banner" role="status">
         <ShieldAlert size={24}/>
-        <div><strong>Сохранение программы и результатов выключено</strong><p>{userRole === "parent" ? "Разрешения включаются отдельно и только вами в кабинете родителя." : "Можно посмотреть задания, но для сохранения занятий нужно разрешение взрослого."}</p></div>
+        <div><strong>{userRole === "parent" ? "Сохранение программы и результатов выключено" : "Попроси взрослого включить сохранение"}</strong><p>{userRole === "parent" ? "Разрешения включаются отдельно и только вами в кабинете родителя." : "Задания можно посмотреть, но результат пока не сохранится."}</p></div>
         {userRole === "parent" && <button className="secondary-button" onClick={() => onOpen("parent")}>Открыть согласия</button>}
       </section>}
-      <section className="hero">
-        <div className="hero-copy">
-          <div className="pill"><Sparkles size={15} /> Добрый день, {child?.name || "друг"}!</div>
-          <h1>Учимся понимать<br /><em>и общаться</em></h1>
-          <p>Выбери комфортную продолжительность. Сначала план покажет назначения специалиста, затем — безопасные игровые задания.</p>
-          <div className="duration-picker" aria-label="Продолжительность занятия">{([3,5,10] as const).map((value) => <button key={value} className={dailyMinutes === value ? "active" : ""} aria-pressed={dailyMinutes === value} onClick={() => onMinutesChange(value)}>{value} мин</button>)}</div>
-          {activeSession && activeSession.status !== "completed" ? <button className="primary-button" onClick={onResume} disabled={!consent?.privacy_accepted}><Play size={18} fill="currentColor" /> {consent?.privacy_accepted ? "Продолжить занятие" : "Сначала включите сохранение"}</button> : <button className="primary-button" onClick={onStartSession} disabled={sessionLoading || activeSessionLoading}><Play size={18} fill="currentColor" /> {activeSessionLoading ? "Восстанавливаем занятие…" : sessionLoading ? "Готовим занятие…" : "Начать занятие"}</button>}
-          {sessionError && <div className="inline-error" role="alert">{sessionError}</div>}
-        </div>
-        <div className="hero-art" aria-hidden="true">
-          <div className="mascot"><Image src="/illustrations/mascot-parrot.png" alt="" width={360} height={360} priority /></div>
-          <div className="hero-badge"><Trophy size={22} /><span><b>{dashboard?.today_sessions || 0} заданий</b><small>выполнено сегодня</small></span></div>
-        </div>
-      </section>
+      <div className="home-overview">
+        <section className="hero">
+          <div className="hero-copy">
+            <div className="pill"><Sparkles size={15} /> Привет, {child?.name || "друг"}!</div>
+            <h1>Готов к новому<br /><em>приключению?</em></h1>
+            <p>Выбери удобное время и начни короткое занятие. Мы покажем каждый шаг по очереди.</p>
+            <div className="duration-picker" aria-label="Продолжительность занятия">{([3,5,10] as const).map((value) => <button key={value} className={dailyMinutes === value ? "active" : ""} aria-pressed={dailyMinutes === value} onClick={() => onMinutesChange(value)}>{value} мин</button>)}</div>
+            {activeSession && activeSession.status !== "completed" ? <button className="primary-button hero-primary" onClick={onResume} disabled={!consent?.privacy_accepted}><Play size={18} fill="currentColor" /> {consent?.privacy_accepted ? "Продолжить занятие" : "Сначала включите сохранение"}</button> : <button className="primary-button hero-primary" onClick={onStartSession} disabled={sessionLoading || activeSessionLoading}><Play size={18} fill="currentColor" /> {activeSessionLoading ? "Восстанавливаем занятие…" : sessionLoading ? "Готовим занятие…" : "Начать занятие"}</button>}
+            {sessionError && <div className="inline-error" role="alert">{sessionError}</div>}
+          </div>
+          <div className="hero-art" aria-hidden="true">
+            <div className="mascot"><Image src="/illustrations/mascot-parrot.png" alt="" width={360} height={360} priority /></div>
+          </div>
+        </section>
+
+        <aside className="daily-panel" aria-label="Цель на сегодня">
+          <div className="daily-panel-head"><span className="daily-icon"><Target size={21}/></span><div><small>ЦЕЛЬ НА СЕГОДНЯ</small><strong>Маленький шаг</strong></div></div>
+          <div className="daily-progress-ring" style={{"--daily-progress": `${Math.min((dashboard?.today_sessions || 0) / 3 * 100, 100)}%`} as React.CSSProperties}>
+            <span><b>{Math.min(dashboard?.today_sessions || 0, 3)}</b><small>из 3</small></span>
+          </div>
+          <p>{(dashboard?.today_sessions || 0) >= 3 ? "Цель выполнена — здорово!" : "Выполни три коротких задания в удобном темпе."}</p>
+          <div className="daily-streak"><Flame size={18}/><span><b>{dashboard?.streak_days || 0} дней</b><small>серия занятий</small></span></div>
+          <div className="week-dots" aria-label={`${dashboard?.week_sessions || 0} занятий на этой неделе`}>{[0,1,2,3,4,5,6].map((day) => <i key={day} className={day < Math.min(dashboard?.week_sessions || 0, 7) ? "done" : ""}>{day < Math.min(dashboard?.week_sessions || 0, 7) ? <Check size={13}/> : null}</i>)}</div>
+        </aside>
+      </div>
 
       <section>
-        <div className="section-heading"><div><span className="kicker">МОЙ ПЛАН</span><h2>Куда отправимся сегодня?</h2></div><button className="text-button" onClick={() => onOpen("games")}>Все занятия <ChevronRight size={17} /></button></div>
+        <div className="section-heading"><div><span className="kicker">МОЙ ПЛАН</span><h2>Выбери, что хочется</h2></div><button className="text-button" onClick={() => onOpen("games")}>Все занятия <ChevronRight size={17} /></button></div>
         <div className="module-grid">
-          {modules.filter((module) => module.id !== "motor" || Boolean(dashboard?.active_exercises.motor)).map((module, index) => <ModuleCard key={module.id} module={{...module, progress: dashboard?.module_completion[module.id] || 0}} completed={dashboard?.module_completed[module.id] || 0} total={dashboard?.active_exercises[module.id] || 0} onClick={() => onOpen(module.id)} index={index + 1} />)}
+          {modules.map((module, index) => <ModuleCard key={module.id} module={{...module, progress: dashboard?.module_completion[module.id] || 0}} completed={dashboard?.module_completed[module.id] || 0} total={dashboard?.active_exercises[module.id] || 0} onClick={() => onOpen(module.id)} index={index + 1} />)}
         </div>
       </section>
 
-      <section className="recommended-today"><div className="recommend-icon"><Target/></div><div><span className="kicker">БЕЗОПАСНЫЙ ПЛАН</span><h3>Назначения специалиста и спокойное разнообразие</h3><p>Автоматическая клиническая оценка отключена. Сначала идут явные назначения специалиста, затем безопасные игровые задания.</p></div><button className="secondary-button" onClick={onStartSession}>Открыть план <ChevronRight size={17}/></button></section>
+      <section className="recommended-today"><div className="recommend-icon"><Bot/></div><div><span className="kicker">{userRole === "student" ? "ПЛАН НА СЕГОДНЯ" : "SÖYLE AI"}</span><h3>{userRole === "student" ? "Задания идут по порядку" : "Короткий план под текущий темп"}</h3><p>{userRole === "student" ? "План состоит из спокойных игровых заданий и фраз для общения." : "AI выбирает только из проверенной библиотеки, не ставит диагноз и не добавляет моторные упражнения."}</p></div><button className="secondary-button" onClick={onStartSession}>{userRole === "student" ? "Посмотреть план" : "Собрать план"} <ChevronRight size={17}/></button></section>
 
-      <section className="today-row">
+      {userRole !== "student" && <section className="today-row">
         <div className="today-card">
           <div className="calendar-tile"><span>{month}</span><strong>{today.getDate()}</strong></div>
           <div><span className="kicker">СЕГОДНЯ</span><h3>Ты уже позанимался {dashboard?.today_minutes || 0} минут</h3><p>За неделю: {dashboard?.week_sessions || 0} занятий и {dashboard?.week_minutes || 0} минут практики.</p></div>
           <div className="goal-ring"><span>{Math.min(dashboard?.today_sessions || 0, 3)}/3</span></div>
         </div>
         <div className="privacy-card"><ShieldCheck size={26} /><div><strong>Безопасно для ребёнка</strong><span>Видео с камеры не анализируется, не отправляется и не сохраняется</span></div></div>
-      </section>
+      </section>}
     </div>
   );
 }
@@ -669,7 +670,6 @@ const courseUnits = [
   { id: "play", number: "МОДУЛЬ 3", title: "Игра", description: "Слушаем и находим знакомые игрушки", color: "lavender", targets: ["toys"] },
   { id: "actions", number: "МОДУЛЬ 4", title: "Действия и мой день", description: "Знакомые действия и события", color: "coral", targets: ["routine", "past_event"] },
   { id: "feelings", number: "МОДУЛЬ 5", title: "Диалог и состояние", description: "Состояния, ответы и вопросы", color: "mint", targets: ["feelings", "answer", "question"] },
-  { id: "motor", number: "ПО НАЗНАЧЕНИЮ", title: "Визуальное зеркало", description: "Только упражнения, выбранные специалистом", color: "blue", targets: ["smile", "tube", "open", "teeth", "cheeks", "sequence"] },
 ] as const;
 
 function GamesScreen({ onOpen, onExercise, dashboard, exercises, childMode }: { onOpen: (screen: Screen) => void; onExercise: (exercise: Exercise) => void; dashboard: Dashboard | null; exercises: Exercise[]; childMode: boolean }) {
@@ -678,7 +678,7 @@ function GamesScreen({ onOpen, onExercise, dashboard, exercises, childMode }: { 
       <PageTitle eyebrow="ИГРОВАЯ КОМНАТА" title="Выбери приключение" subtitle="Каждая игра развивает отдельный навык. Занимайся понемногу, но регулярно." />
       <LearningPath exercises={exercises} completedIds={dashboard?.completed_exercise_ids || []} onExercise={onExercise} />
       {!childMode && <><div className="section-heading"><div><span className="kicker">СВОБОДНАЯ ПРАКТИКА</span><h2>Тренировка по направлениям</h2></div></div>
-      <div className="module-grid large">{modules.filter((module) => module.id !== "motor" || exercises.some((exercise) => exercise.module === "motor")).map((m, i) => <ModuleCard key={m.id} module={{...m, progress: dashboard?.module_completion[m.id] || 0}} completed={dashboard?.module_completed[m.id] || 0} total={dashboard?.active_exercises[m.id] || 0} index={i + 1} onClick={() => onOpen(m.id)} />)}</div>
+      <div className="module-grid large">{modules.map((m, i) => <ModuleCard key={m.id} module={{...m, progress: dashboard?.module_completion[m.id] || 0}} completed={dashboard?.module_completed[m.id] || 0} total={dashboard?.active_exercises[m.id] || 0} index={i + 1} onClick={() => onOpen(m.id)} />)}</div>
       <ExerciseLibrary items={exercises} onExercise={onExercise} /></>}
       <div className="tip-banner"><div className="tip-icon"><Sparkles/></div><div><strong>Подсказка для взрослых</strong><p>Одного занятия по 5–10 минут достаточно. Заканчивайте игру, пока ребёнку ещё интересно.</p></div></div>
     </div>
@@ -705,7 +705,7 @@ function ExerciseLibrary({ items, onExercise }: { items: Exercise[]; onExercise:
   const normalizedQuery = query.trim().toLocaleLowerCase("ru");
   const filtered = items.filter((item) => (filter === "all" || item.module === filter) && (!normalizedQuery || `${item.title} ${item.instruction}`.toLocaleLowerCase("ru").includes(normalizedQuery)));
   const labels = { motor: "Артикуляция", sensory: "Понимание", mixed: "Фразы" };
-  return <section className="exercise-library"><div className="section-heading"><div><span className="kicker">БИБЛИОТЕКА</span><h2>Все задания</h2></div><div className="library-controls"><label className="exercise-search"><Search size={16}/><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Найти задание" aria-label="Найти задание"/></label><div className="filter-tabs">{(["all","motor","sensory","mixed"] as const).map((value) => <button key={value} className={filter === value ? "active" : ""} onClick={() => setFilter(value)}>{value === "all" ? "Все" : labels[value]}</button>)}</div></div></div><div className="exercise-grid">{filtered.map((exercise) => <button key={exercise.id} className={`exercise-card ${exercise.module}`} onClick={() => onExercise(exercise)}><span className="exercise-emoji"><ModuleGlyph module={exercise.module} size={24}/></span><div><small>{labels[exercise.module]} · уровень {exercise.difficulty}</small><strong>{exercise.title}</strong><p>{exercise.instruction}</p></div><ChevronRight size={18}/></button>)}</div>{!filtered.length && <div className="empty-state large"><Search size={28}/><strong>Ничего не найдено</strong><span>Измените запрос или выберите другой раздел.</span></div>}</section>;
+  return <section className="exercise-library"><div className="section-heading"><div><span className="kicker">БИБЛИОТЕКА</span><h2>Все задания</h2></div><div className="library-controls"><label className="exercise-search"><Search size={16}/><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Найти задание" aria-label="Найти задание"/></label><div className="filter-tabs">{(["all","sensory","mixed"] as const).map((value) => <button key={value} className={filter === value ? "active" : ""} onClick={() => setFilter(value)}>{value === "all" ? "Все" : labels[value]}</button>)}</div></div></div><div className="exercise-grid">{filtered.map((exercise) => <button key={exercise.id} className={`exercise-card ${exercise.module}`} onClick={() => onExercise(exercise)}><span className="exercise-emoji"><ModuleGlyph module={exercise.module} size={24}/></span><div><small>{labels[exercise.module]} · уровень {exercise.difficulty}</small><strong>{exercise.title}</strong><p>{exercise.instruction}</p></div><ChevronRight size={18}/></button>)}</div>{!filtered.length && <div className="empty-state large"><Search size={28}/><strong>Ничего не найдено</strong><span>Измените запрос или выберите другой раздел.</span></div>}</section>;
 }
 
 function PageTitle({ eyebrow, title, subtitle }: { eyebrow: string; title: string; subtitle: string }) {
@@ -795,7 +795,7 @@ function MotorGame({ exercises, initialExercise, cameraEnabled, cameraConsentGra
     if (result && status === "break") onBack();
   };
 
-  if (!exercise) return <div className="empty-state large"><ShieldAlert size={28}/><strong>Нужно назначение специалиста</strong><span>Практика перед зеркалом не входит в автоматические занятия.</span><button className="secondary-button" onClick={onBack}>Вернуться к занятиям</button></div>;
+  if (!exercise) return <div className="empty-state large"><ShieldAlert size={28}/><strong>Раздел недоступен</strong><span>Моторные упражнения не входят в текущую версию Söyle.</span><button className="secondary-button" onClick={onBack}>Вернуться к занятиям</button></div>;
 
   return (
     <div className="page-enter game-page">
@@ -1314,7 +1314,7 @@ function PhraseGame({ childId, canManage, exercise, freeMode = false, soundEnabl
       </section>
       {safetyCards.length > 0 && <section className="aac-guided-safety" aria-label="Важные сообщения"><div><span className="kicker">МОЖНО СКАЗАТЬ В ЛЮБОЙ МОМЕНТ</span><strong>Помощь, перерыв или отказ</strong></div><div>{safetyCards.map((card) => <button key={card.id} onClick={() => sendQuickMessage(card)}><AACVisual card={card} compact/><span>{card.label}</span></button>)}</div></section>}
     </div> : <div className="aac-workspace">
-      <aside className="aac-category-panel"><div><span className="kicker">КАТЕГОРИИ</span><h3>Найди нужное слово</h3></div><nav className="aac-tabs" aria-label="Категории карточек">{aacCategories.map((item) => { const Icon = item.icon; const count = item.id === "favorites" ? availableCards.filter((card) => card.favorite || card.is_core).length : availableCards.filter((card) => card.category === item.id).length; return <button key={item.id} className={category === item.id ? "active" : ""} aria-pressed={category === item.id} onClick={() => { setCategory(item.id); setCardQuery(""); }}><Icon size={18}/><span>{item.label}</span><small>{count}</small></button>; })}</nav>{history.length > 0 && <div className="aac-history"><span className="kicker">НЕДАВНИЕ</span>{history.slice(0,3).map((item) => <button key={item.id} onClick={() => replayHistory(item.phrase)}><RotateCcw size={14}/><span>{item.phrase}</span></button>)}</div>}</aside>
+      <aside className="aac-category-panel"><div><span className="kicker">КАТЕГОРИИ</span><h3>Выбери слово или фразу</h3></div><nav className="aac-tabs" aria-label="Категории карточек">{aacCategories.map((item) => { const Icon = item.icon; const count = item.id === "favorites" ? availableCards.filter((card) => card.favorite || card.is_core).length : availableCards.filter((card) => card.category === item.id).length; return <button key={item.id} className={category === item.id ? "active" : ""} aria-pressed={category === item.id} onClick={() => { setCategory(item.id); setCardQuery(""); }}><Icon size={18}/><span>{item.label}</span><small>{count}</small></button>; })}</nav>{history.length > 0 && <div className="aac-history"><span className="kicker">НЕДАВНИЕ</span>{history.slice(0,3).map((item) => <button key={item.id} onClick={() => replayHistory(item.phrase)}><RotateCcw size={14}/><span>{item.phrase}</span></button>)}</div>}</aside>
       <section className="aac-board"><div className="aac-toolbar"><div><span className="kicker">{category === "favorites" ? "БЫСТРЫЙ ДОСТУП" : "КАТЕГОРИЯ"}</span><h3>{activeCategory.label}</h3></div><div className="aac-tools"><label className="aac-search"><Search size={16}/><input value={cardQuery} onChange={(event) => setCardQuery(event.target.value)} placeholder="Найти слово" aria-label="Найти слово"/></label><button className="small-button" onClick={() => document.querySelector<HTMLElement>(".aac-page")?.requestFullscreen?.()}><LayoutDashboard size={15}/> На весь экран</button>{canManage && freeMode && <button className="small-button" onClick={() => setCustomOpen((value) => !value)}><Plus size={15}/> Своя карточка</button>}</div></div>
         {customOpen && <form className="aac-custom-form" onSubmit={createCustom}><input value={custom.label} onChange={(e) => setCustom({...custom,label:e.target.value})} placeholder="Короткая подпись" required/><input value={custom.speech} onChange={(e) => setCustom({...custom,speech:e.target.value})} placeholder="Что должна сказать карточка" required/><select value={custom.category} onChange={(e) => setCustom({...custom,category:e.target.value})}>{aacCategories.filter((item) => item.id !== "favorites").map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select><button className="primary-button">Добавить</button></form>}
         <div className="aac-card-grid">{visibleCards.map((card) => <div className={`aac-card aac-card-${card.category} ${card.is_core ? "core" : ""}`} key={card.id}><button className="aac-card-main" onClick={() => addCard(card)}><AACVisual card={card}/><strong>{card.label}</strong><small>{card.speech}</small></button><button className={`aac-favorite ${card.favorite ? "active" : ""}`} onClick={() => toggleFavorite(card)} aria-label={card.favorite ? `Убрать ${card.label} из избранного` : `Добавить ${card.label} в избранное`}><Star size={15} fill={card.favorite ? "currentColor" : "none"}/></button></div>)}</div>
@@ -1339,7 +1339,7 @@ function ProgressScreen({ childId, dashboard }: { childId?: number; dashboard: D
       <div className="stats-row"><StatCard icon={<TrendingUp/>} value={`${dashboard?.overall ?? data?.overall ?? 0}%`} label="пройдено программы" /><StatCard icon={<Timer/>} value={String(dashboard?.total_minutes || 0)} label="минут практики" /><StatCard icon={<Star/>} value={String(dashboard?.stars || 0)} label="звёзд за игры" /><StatCard icon={<Target/>} value={String(dashboard?.total_sessions ?? data?.total_sessions ?? 0)} label="игровых попыток" /></div>
       <div className="progress-grid">
         <section className="chart-card"><div className="card-heading"><div><span className="kicker">ИГРОВЫЕ ПОПЫТКИ</span><h3>Ответы в заданиях на слух за 7 дней</h3></div></div><div className="chart-area"><div className="chart-lines"><i/><i/><i/><i/></div>{daysWithData ? <><svg viewBox="0 0 700 230" preserveAspectRatio="none" aria-label="График ответов в заданиях на слух">{daysWithData >= 3 && <polyline points={chartPoints("sensory")} className="line blue-line"/>}{chartCoordinates("sensory").map((point, index) => <circle key={`sensory-${index}`} cx={point.x} cy={point.y} r="6" className="chart-point sensory-point"/>)}</svg>{daysWithData < 3 && <div className="chart-sparse-note">Пока есть результаты за {daysWithData === 1 ? "один день" : "два дня"}. Это история конкретной игры, а не оценка понимания речи.</div>}</> : <div className="chart-empty">Завершите задание на слух — здесь появится история ответов</div>}<div className="chart-labels">{chartDays.map((point) => <span key={point.date}>{point.label}</span>)}</div></div><div className="legend"><span><i className="blue-dot"/>Доля правильных выборов в игре</span></div></section>
-        <section className="skills-card"><span className="kicker">ПРАКТИКА ПО НАПРАВЛЕНИЯМ</span><h3>Игровые ответы и участие</h3>{skills.length ? skills.map((skill) => <div className="skill" key={skill.skill}><div><span>{skill.label}<small>{skill.average_game_score !== null ? `среднее по ${skill.sessions} игровым попыткам` : skill.participations ? "отмечено участие без оценки правильности" : "ещё нет попыток"}</small></span><strong>{skill.average_game_score !== null ? `${skill.average_game_score}% в игре` : `${skill.participations} участий`}</strong></div></div>) : <div className="empty-state">Завершите первое игровое задание — здесь появится история.</div>}<div className="specialist-note"><ShieldCheck size={19}/><p>Направление дальнейшей практики выбирает специалист по функциональным целям ребёнка, а не по автоматическому рейтингу.</p></div></section>
+        <section className="skills-card"><span className="kicker">ПРАКТИКА ПО НАПРАВЛЕНИЯМ</span><h3>Игровые ответы и участие</h3>{skills.length ? skills.map((skill) => <div className="skill" key={skill.skill}><div><span>{skill.label}<small>{skill.average_game_score !== null ? `среднее по ${skill.sessions} игровым попыткам` : skill.participations ? "отмечено участие без оценки правильности" : "ещё нет попыток"}</small></span><strong>{skill.average_game_score !== null ? `${skill.average_game_score}% в игре` : `${skill.participations} участий`}</strong></div></div>) : <div className="empty-state">Завершите первое игровое задание — здесь появится история.</div>}<div className="insight-note"><ShieldCheck size={19}/><p>Söyle AI может объяснить эти данные простыми словами, но не оценивает развитие речи и не ставит диагноз.</p></div></section>
       </div>
       <section className="achievements"><div className="section-heading"><div><span className="kicker">ДОСТИЖЕНИЯ</span><h2>Значки за регулярную практику</h2></div></div><div className="badges"><Badge icon={<Star/>} title="Первая пятёрка" text="5 игровых попыток" unlocked={dashboard?.achievements.first_five}/><Badge image="/illustrations/module-listening.png" title="Чуткое ушко" text="5 заданий на понимание" unlocked={dashboard?.achievements.good_listener}/><Badge image="/illustrations/module-phrases.png" title="Мастер фраз" text="5 игр с фразами" unlocked={dashboard?.achievements.phrase_master}/><Badge icon={<Trophy/>} title="Неделя практики" text="7 дней подряд" unlocked={dashboard?.achievements.week_streak}/></div></section>
     </div>
@@ -1349,24 +1349,41 @@ function ProgressScreen({ childId, dashboard }: { childId?: number; dashboard: D
 function StatCard({ icon, value, label }: { icon: React.ReactNode; value: string; label: string }) { return <div className="stat-card"><span>{icon}</span><div><strong>{value}</strong><small>{label}</small></div></div>; }
 function Badge({ icon, image, title, text, unlocked = false }: { icon?: React.ReactNode; image?: string; title: string; text: string; unlocked?: boolean }) { return <div className={`badge-card ${unlocked ? "unlocked" : "locked"}`}><span>{unlocked ? (image ? <Image src={image} alt="" width={42} height={42}/> : icon) : <LockKeyhole/>}</span><div><strong>{title}</strong><small>{unlocked ? "Получено" : text}</small></div></div>; }
 
+function AIParentScreen({ child, consent, onOpenConsent }: { child?: Child; consent: ChildConsent | null; onOpenConsent: () => void }) {
+  const [question, setQuestion] = useState("");
+  const [answer, setAnswer] = useState<AIAnswer | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const quickQuestions = ["Как мягко начать занятие?", "Что делать, если ребёнок отказывается?", "Как использовать AAC дома?"];
+  const ask = async (event?: React.FormEvent, preparedQuestion?: string) => {
+    event?.preventDefault();
+    const value = (preparedQuestion || question).trim();
+    if (!child || value.length < 3 || loading) return;
+    setQuestion(value); setLoading(true); setError(""); setAnswer(null);
+    try {
+      setAnswer(await api<AIAnswer>(`/api/ai/ask/${child.id}`, { method: "POST", body: JSON.stringify({ question: value }) }));
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "Не удалось получить ответ"); }
+    finally { setLoading(false); }
+  };
+  return <div className="page-enter stack-xl ai-parent-page">
+    <section className="ai-hero"><div className="ai-orb"><Bot size={32}/></div><div><span className="kicker">SÖYLE AI</span><h1>Помощник для родителя</h1><p>Объяснит, как провести короткую практику без давления, предложит безопасные шаги и поможет разобраться с AAC.</p></div><span className="ai-model">gpt-4o-mini</span></section>
+    {!consent?.ai_processing ? <section className="admin-card ai-consent-callout"><ShieldCheck size={28}/><div><h3>Нужно отдельное разрешение</h3><p>Перед отправкой вопроса в OpenAI включите «Söyle AI» в настройках приватности ребёнка. Имя ребёнка и точная дата рождения модели не передаются.</p></div><button className="primary-button" onClick={onOpenConsent}>Открыть настройки</button></section> : <>
+      <section className="admin-card ai-chat-card"><div className="admin-card-head"><div><span className="kicker">ВАШ ВОПРОС</span><h3>Что подсказать сегодня?</h3></div></div><div className="ai-quick-questions">{quickQuestions.map((item) => <button key={item} onClick={() => void ask(undefined, item)}>{item}</button>)}</div><form onSubmit={ask}><textarea value={question} onChange={(event) => setQuestion(event.target.value)} minLength={3} maxLength={600} placeholder="Например: ребёнок быстро устает и отворачивается — как сократить занятие?"/><button className="primary-button" disabled={loading || question.trim().length < 3}><Sparkles size={17}/>{loading ? "Думаю…" : "Спросить Söyle AI"}</button></form>{error && <div className="inline-error" role="alert">{error}</div>}</section>
+      {answer && <section className="admin-card ai-answer-card"><div className="ai-answer-head"><span><Bot size={21}/></span><div><strong>Ответ Söyle AI</strong><small>{answer.generated_by === "openai" ? "Ответ создан ИИ" : "Безопасная резервная подсказка"}</small></div></div>{answer.provider_message && <div className="inline-error ai-provider-error" role="status"><ShieldAlert size={17} aria-hidden="true"/><span>{answer.provider_message}</span></div>}<p>{answer.answer}</p>{answer.suggested_actions.length > 0 && <ol>{answer.suggested_actions.map((item) => <li key={item}>{item}</li>)}</ol>}<div className={answer.needs_professional_help ? "ai-safety warning" : "ai-safety"}><ShieldCheck size={18} aria-hidden="true"/><span>{answer.safety_note}</span></div><small>{answer.disclaimer}</small></section>}
+    </>}
+  </div>;
+}
+
 function ParentScreen({ child, childProfiles, onSelectChild, onDeleted, dashboard, onConsentChange }: { child?: Child; childProfiles: Child[]; onSelectChild: (id: number) => void; onDeleted: (id: number) => void; dashboard: Dashboard | null; onConsentChange: (consent: ChildConsent) => void }) {
-  type Goal = { id: number; title: string; target_skill: SkillProgress["skill"]; due_date?: string; success_criterion: string; status: string; specialist_name: string };
-  type Homework = { id: number; title: string; instruction: string; result: string | null; parent_note: string; created_at: string };
-  const [recommendation, setRecommendation] = useState<{ summary: string; plan: string[] } | null>(null);
-  const [goals, setGoals] = useState<Goal[]>([]);
-  const [homework, setHomework] = useState<Homework[]>([]);
   const [student, setStudent] = useState<{ username: string } | null>(null);
   const [studentForm, setStudentForm] = useState({ username: "", pin: "" });
   const [accountMessage, setAccountMessage] = useState("");
-  const [consent, setConsent] = useState<ChildConsent>({ child_id: child?.id || 0, privacy_accepted: false, camera_processing: false, specialist_sharing: false, analytics_processing: false, version: "", updated_at: null });
+  const [consent, setConsent] = useState<ChildConsent>({ child_id: child?.id || 0, privacy_accepted: false, camera_processing: false, ai_processing: false, analytics_processing: false, version: "", updated_at: null });
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deletePassword, setDeletePassword] = useState("");
   const [dataMessage, setDataMessage] = useState("");
   useEffect(() => {
     if (!child?.id) return;
-    api<{ summary: string; plan: string[] }>(`/api/ai/recommendations/${child.id}`).then(setRecommendation).catch(() => undefined);
-    api<Goal[]>(`/api/goals/${child.id}`).then(setGoals).catch(() => setGoals([]));
-    api<Homework[]>(`/api/homework/${child.id}`).then(setHomework).catch(() => setHomework([]));
     api<ChildConsent>(`/api/children/${child.id}/consent`).then((value) => { setConsent(value); onConsentChange(value); }).catch(() => undefined);
     api<{ username: string } | null>(`/api/children/${child.id}/student-account`).then((value) => { setStudent(value); if (value) setStudentForm((current) => ({ ...current, username: value.username })); }).catch(() => undefined);
   }, [child?.id, onConsentChange]);
@@ -1378,10 +1395,6 @@ function ParentScreen({ child, childProfiles, onSelectChild, onDeleted, dashboar
       setStudent(result); setStudentForm((current) => ({ ...current, pin: "" })); setAccountMessage("Логин и PIN сохранены");
     } catch (cause) { setAccountMessage(cause instanceof Error ? cause.message : "Не удалось сохранить"); }
   };
-  const saveHomeworkResult = async (id: number, result: string) => {
-    const updated = await api<Homework>(`/api/homework/${id}/result`, { method: "PATCH", body: JSON.stringify({ result, parent_note: "" }) });
-    setHomework((items) => items.map((item) => item.id === id ? updated : item));
-  };
   const exportData = async () => {
     if (!child) return;
     const data = await api<Record<string, unknown>>(`/api/children/${child.id}/export`);
@@ -1392,7 +1405,7 @@ function ParentScreen({ child, childProfiles, onSelectChild, onDeleted, dashboar
     if (!child) return;
     setDataMessage("");
     try {
-      const value = await api<ChildConsent>(`/api/children/${child.id}/consent`, { method: "PUT", body: JSON.stringify({ privacy_accepted: consent.privacy_accepted, camera_processing: consent.camera_processing, specialist_sharing: consent.specialist_sharing, analytics_processing: consent.analytics_processing }) });
+      const value = await api<ChildConsent>(`/api/children/${child.id}/consent`, { method: "PUT", body: JSON.stringify({ privacy_accepted: consent.privacy_accepted, camera_processing: consent.camera_processing, ai_processing: consent.ai_processing, analytics_processing: consent.analytics_processing }) });
       setConsent(value); onConsentChange(value); setDataMessage("Настройки приватности сохранены");
     } catch (cause) { setDataMessage(cause instanceof Error ? cause.message : "Не удалось сохранить настройки"); }
   };
@@ -1404,221 +1417,127 @@ function ParentScreen({ child, childProfiles, onSelectChild, onDeleted, dashboar
   const age = child ? (() => { const born = new Date(child.birth_date); const now = new Date(); let years = now.getFullYear() - born.getFullYear(); if (now.getMonth() < born.getMonth() || (now.getMonth() === born.getMonth() && now.getDate() < born.getDate())) years -= 1; return Math.max(0, years); })() : 0;
   const sessionLabels = { motor: ["/illustrations/module-articulation-fox.png", "Практика перед зеркалом"], sensory: ["/illustrations/module-listening.png", "Слушай и находи"], mixed: ["/illustrations/module-phrases.png", "Собери фразу"] } as const;
   return <div className="page-enter stack-xl">
-    <PageTitle eyebrow="КАБИНЕТ РОДИТЕЛЯ" title={`Вместе поддерживаем ${child?.name || "ребёнка"}`} subtitle="История практики, назначения специалиста и управление доступом ребёнка." />
+    <PageTitle eyebrow="КАБИНЕТ РОДИТЕЛЯ" title={`Вместе поддерживаем ${child?.name || "ребёнка"}`} subtitle="История практики, ученический вход и понятные настройки приватности." />
     {childProfiles.length > 1 && <div className="child-switcher" aria-label="Выбор профиля ребёнка">{childProfiles.map((item) => <button key={item.id} className={item.id === child?.id ? "active" : ""} onClick={() => onSelectChild(item.id)}><span className="avatar" style={{background:item.avatar_color}}>{item.name[0]}</span><strong>{item.name}</strong></button>)}</div>}
     <div className="parent-hero"><div className="parent-profile"><div className="avatar large">{child?.name[0] || "Р"}</div><div><span>ПРОФИЛЬ РЕБЁНКА</span><h2>{child?.name || "Ребёнок"}, {age} лет</h2><p>{dashboard?.total_sessions || 0} игровых попыток · {dashboard?.total_minutes || 0} минут</p></div></div><div className="overall"><div className="large-ring"><strong>{dashboard?.overall || 0}%</strong><span>пройдено программы</span></div><div><b>{dashboard?.streak_days || 0} дн.</b><span>дней практики</span></div></div></div>
-    <div className="stats-row"><StatCard icon={<Check/>} value={String(dashboard?.today_sessions || 0)} label="заданий сегодня"/><StatCard icon={<Gamepad2/>} value={String(dashboard?.week_sessions || 0)} label="заданий за неделю"/><StatCard icon={<Timer/>} value={`${dashboard?.week_minutes || 0} мин`} label="практики за неделю"/><StatCard icon={<ShieldCheck/>} value="Отключено" label="автоматическое ранжирование"/></div>
+    <div className="stats-row"><StatCard icon={<Check/>} value={String(dashboard?.today_sessions || 0)} label="заданий сегодня"/><StatCard icon={<Gamepad2/>} value={String(dashboard?.week_sessions || 0)} label="заданий за неделю"/><StatCard icon={<Timer/>} value={`${dashboard?.week_minutes || 0} мин`} label="практики за неделю"/><StatCard icon={<Bot/>} value={consent.ai_processing ? "Включён" : "Выключен"} label="Söyle AI"/></div>
     <section className="admin-card family-support-guide"><div className="admin-card-head"><div><span className="kicker">КАК БЫТЬ РЯДОМ</span><h3>Короткая памятка для занятия</h3><p>Цель — дать ребёнку понятный способ ответить, а не добиться ответа любой ценой.</p></div></div><div><article><span>1</span><div><strong>Подготовьте</strong><p>Проверьте звук, уберите лишние раздражители и предложите выбрать длительность.</p></div></article><article><span>2</span><div><strong>Подождите</strong><p>После инструкции оставьте не меньше пяти спокойных секунд на ответ.</p></div></article><article><span>3</span><div><strong>Помогайте по одному шагу</strong><p>Сначала повторите, затем сократите выбор. Не ведите руку ребёнка без согласия.</p></div></article><article className="stop"><Pause size={18}/><div><strong>Остановитесь сразу</strong><p>«Нет», «не хочу», «перерыв», боль, усталость или заметный дискомфорт — достаточная причина завершить действие без ошибки и уговоров.</p></div></article></div></section>
     <div className="parent-grid">
-      <section className="recommend-card"><div className="recommend-icon"><ShieldCheck /></div><span className="kicker">БЕЗОПАСНЫЙ ПОДБОР</span><h2>Цели задаёт специалист</h2><p>{recommendation?.summary || "Автоматические клинические рекомендации отключены."}</p><ul>{recommendation?.plan.map((item) => <li key={item}><Check size={16}/>{item}</li>)}</ul></section>
+      <section className="recommend-card"><div className="recommend-icon"><Bot /></div><span className="kicker">SÖYLE AI</span><h2>Подсказки для родителя</h2><p>AI собирает короткий план только из безопасной библиотеки и объясняет, как поддержать ребёнка без давления.</p><ul><li><Check size={16}/>Не ставит диагноз</li><li><Check size={16}/>Не назначает моторные упражнения</li><li><Check size={16}/>Уважает отказ и AAC-ответ</li></ul></section>
       <section className="sessions-card"><div className="card-heading"><div><span className="kicker">ПОСЛЕДНИЕ ПОПЫТКИ</span><h3>История игровых заданий</h3></div></div>{dashboard?.recent.length ? dashboard.recent.map((item) => <div className="session-row" key={item.id}><span><Image src={sessionLabels[item.module][0]} alt="" width={42} height={42}/></span><div><strong>{sessionLabels[item.module][1]}</strong><small>{new Date(item.created_at).toLocaleString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}{item.attempts_count ? ` · ${item.correct_answers || 0} из ${item.attempts_count}` : ""}</small></div><b>{item.attempt_status === "technical_error" ? "Техническая ошибка" : item.attempt_status === "participated" ? "Участие отмечено" : item.attempt_status === "refused" ? "Отказ" : item.attempt_status === "break" ? "Перерыв" : `${item.score}% в игре`}</b></div>) : <p>Игровых попыток пока нет.</p>}</section>
     </div>
-    <div className="parent-grid care-plan-grid">
-      <section className="admin-card"><div className="admin-card-head"><div><span className="kicker">ЦЕЛИ РЕБЁНКА</span><h3>Согласовано со специалистом</h3></div></div>{goals.length ? goals.map((goal) => <div className="care-item" key={goal.id}><span className={`status ${goal.status === "active" ? "active" : "blocked"}`}>{goal.status === "active" ? "В работе" : goal.status === "paused" ? "Пауза" : "Завершена"}</span><div><strong>{goal.title}</strong><p>{goal.success_criterion}</p><small>{goal.specialist_name}{goal.due_date ? ` · до ${new Date(goal.due_date).toLocaleDateString("ru-RU")}` : ""}</small></div></div>) : <div className="empty-state">Специалист пока не добавил индивидуальные цели.</div>}</section>
-      <section className="admin-card"><div className="admin-card-head"><div><span className="kicker">ДОМАШНЯЯ ПРАКТИКА</span><h3>Один короткий шаг</h3></div></div>{homework.length ? homework.slice(0,3).map((item) => <div className="homework-item" key={item.id}><div><strong>{item.title}</strong><p>{item.instruction}</p></div>{item.result ? <span className="homework-saved"><Check size={15}/> Результат сохранён</span> : <div className="homework-results" aria-label="Как получилось"><button onClick={() => saveHomeworkResult(item.id,"independent")}>Самостоятельно</button><button onClick={() => saveHomeworkResult(item.id,"minimal_prompt")}>С подсказкой</button><button onClick={() => saveHomeworkResult(item.id,"full_prompt")}>Полная помощь</button><button onClick={() => saveHomeworkResult(item.id,"failed")}>Не получилось</button><button onClick={() => saveHomeworkResult(item.id,"refused")}>Отказался</button></div>}</div>) : <div className="empty-state">Специалист пока не назначил домашнюю практику.</div>}</section>
-    </div>
-    <section className="admin-card student-access"><div className="admin-card-head"><div><span className="kicker">ДОСТУП РЕБЁНКА</span><h3>{student ? "Изменить ученический вход" : "Создать вход для ученика"}</h3></div><span className="period-pill">Без электронной почты</span></div><p>Ребёнок входит отдельно по простому логину и цифровому PIN. Роли администратора и специалиста назначаются только в админ-панели.</p><form className="exercise-form" onSubmit={saveStudent}><input value={studentForm.username} onChange={(e) => setStudentForm({...studentForm, username:e.target.value})} placeholder="Логин ученика" pattern="[A-Za-z0-9_.-]+" minLength={3} required/><input value={studentForm.pin} onChange={(e) => setStudentForm({...studentForm, pin:e.target.value.replace(/\D/g, "")})} placeholder="Новый PIN (4–12 цифр)" inputMode="numeric" minLength={4} maxLength={12} required/><button className="primary-button">Сохранить доступ</button></form>{accountMessage && <div className="usage-note"><Check size={18}/><p>{accountMessage}</p></div>}</section>
-    <section className="admin-card privacy-control"><div className="admin-card-head"><div><span className="kicker">ПРИВАТНОСТЬ И ДАННЫЕ</span><h3>Согласие законного представителя</h3><p>Каждое необязательное разрешение включается отдельно и может быть отозвано в любой момент.</p></div></div><div className="consent-options"><label><input type="checkbox" checked={consent.privacy_accepted} onChange={(e)=>setConsent(e.target.checked ? {...consent,privacy_accepted:true} : {...consent,privacy_accepted:false,camera_processing:false,specialist_sharing:false,analytics_processing:false})}/><span><b>Сохранение программы и результатов</b><small>Необходимо для учебных сессий и истории игровых попыток.</small></span></label><label className={!consent.privacy_accepted ? "disabled" : ""}><input type="checkbox" disabled={!consent.privacy_accepted} checked={consent.camera_processing} onChange={(e)=>setConsent({...consent,camera_processing:e.target.checked})}/><span><b>Локальная камера-зеркало</b><small>Видео показывается только на устройстве, не анализируется, не отправляется и не сохраняется.</small></span></label><label className={!consent.privacy_accepted ? "disabled" : ""}><input type="checkbox" disabled={!consent.privacy_accepted} checked={consent.specialist_sharing} onChange={(e)=>setConsent({...consent,specialist_sharing:e.target.checked})}/><span><b>Доступ назначенного специалиста</b><small>Открывает профиль только специалисту, которого назначил администратор.</small></span></label><label className={!consent.privacy_accepted ? "disabled" : ""}><input type="checkbox" disabled={!consent.privacy_accepted} checked={consent.analytics_processing} onChange={(e)=>setConsent({...consent,analytics_processing:e.target.checked})}/><span><b>Описательная история и AAC</b><small>Разрешает сохранять историю AAC-фраз и показатели участия без клинических выводов.</small></span></label></div><button className="secondary-button" onClick={saveConsent}>Сохранить настройки</button>{consent.updated_at && <small className="consent-updated">Последнее изменение: {new Date(consent.updated_at).toLocaleString("ru-RU")}</small>}</section>
-    <section className="data-control"><div><ShieldCheck/><span><strong>Данные ребёнка принадлежат семье</strong><small>Экспорт включает профиль, согласия, настройки, занятия, назначения, цели, пользовательские AAC-карточки, избранное и историю.</small></span></div><div className="data-actions"><button className="secondary-button" onClick={exportData}>Скачать данные</button><button className="small-button danger-button" onClick={() => setDeleteOpen(!deleteOpen)}>Удалить данные</button></div></section>{deleteOpen && <form className="delete-data-form" onSubmit={deleteData}><div><strong>Удалить профиль и все связанные данные?</strong><p>Действие необратимо. Введите пароль родительского аккаунта для подтверждения.</p></div><input type="password" value={deletePassword} onChange={(e)=>setDeletePassword(e.target.value)} placeholder="Пароль" required/><button className="small-button danger-button">Удалить навсегда</button></form>}{dataMessage && <div className="usage-note"><Check size={18}/><p>{dataMessage}</p></div>}
+    <section className="admin-card student-access"><div className="admin-card-head"><div><span className="kicker">ДОСТУП РЕБЁНКА</span><h3>{student ? "Изменить ученический вход" : "Создать вход для ученика"}</h3></div><span className="period-pill">Без электронной почты</span></div><p>Ребёнок входит отдельно по простому логину и цифровому PIN. Управление аккаунтом остаётся у родителя.</p><form className="exercise-form" onSubmit={saveStudent}><input value={studentForm.username} onChange={(e) => setStudentForm({...studentForm, username:e.target.value})} placeholder="Логин ученика" pattern="[A-Za-z0-9_.-]+" minLength={3} required/><input value={studentForm.pin} onChange={(e) => setStudentForm({...studentForm, pin:e.target.value.replace(/\D/g, "")})} placeholder="Новый PIN (4–12 цифр)" inputMode="numeric" minLength={4} maxLength={12} required/><button className="primary-button">Сохранить доступ</button></form>{accountMessage && <div className="usage-note"><Check size={18}/><p>{accountMessage}</p></div>}</section>
+    <section className="admin-card privacy-control"><div className="admin-card-head"><div><span className="kicker">ПРИВАТНОСТЬ И ДАННЫЕ</span><h3>Согласие законного представителя</h3><p>Каждое необязательное разрешение включается отдельно и может быть отозвано в любой момент.</p></div></div><div className="consent-options"><label><input type="checkbox" checked={consent.privacy_accepted} onChange={(e)=>setConsent(e.target.checked ? {...consent,privacy_accepted:true} : {...consent,privacy_accepted:false,camera_processing:false,ai_processing:false,analytics_processing:false})}/><span><b>Сохранение программы и результатов</b><small>Необходимо для учебных сессий и истории игровых попыток.</small></span></label><label className={!consent.privacy_accepted ? "disabled" : ""}><input type="checkbox" disabled={!consent.privacy_accepted} checked={consent.ai_processing} onChange={(e)=>setConsent({...consent,ai_processing:e.target.checked})}/><span><b>Söyle AI через OpenAI</b><small>Передаёт вопрос, возраст в полных годах и обезличенную сводку занятий. Имя и точная дата рождения не отправляются.</small></span></label><label className={!consent.privacy_accepted ? "disabled" : ""}><input type="checkbox" disabled={!consent.privacy_accepted} checked={consent.analytics_processing} onChange={(e)=>setConsent({...consent,analytics_processing:e.target.checked})}/><span><b>Описательная история и AAC</b><small>Разрешает сохранять историю AAC-фраз и показатели участия без клинических выводов.</small></span></label></div><button className="secondary-button" onClick={saveConsent}>Сохранить настройки</button>{consent.updated_at && <small className="consent-updated">Последнее изменение: {new Date(consent.updated_at).toLocaleString("ru-RU")}</small>}</section>
+    <section className="data-control"><div><ShieldCheck/><span><strong>Данные ребёнка принадлежат семье</strong><small>Экспорт включает профиль, согласия, настройки, занятия, пользовательские AAC-карточки, избранное и историю.</small></span></div><div className="data-actions"><button className="secondary-button" onClick={exportData}>Скачать данные</button><button className="small-button danger-button" onClick={() => setDeleteOpen(!deleteOpen)}>Удалить данные</button></div></section>{deleteOpen && <form className="delete-data-form" onSubmit={deleteData}><div><strong>Удалить профиль и все связанные данные?</strong><p>Действие необратимо. Введите пароль родительского аккаунта для подтверждения.</p></div><input type="password" value={deletePassword} onChange={(e)=>setDeletePassword(e.target.value)} placeholder="Пароль" required/><button className="small-button danger-button">Удалить навсегда</button></form>}{dataMessage && <div className="usage-note"><Check size={18}/><p>{dataMessage}</p></div>}
     <div className="medical-note"><ShieldCheck size={25}/><div><strong>Söyle — помощник, а не врач</strong><p>Платформа не ставит диагноз и не заменяет занятия с логопедом или консультацию специалиста.</p></div></div>
   </div>;
 }
 
-function LegacyAdminScreen() {
-  type StudentAccount = { id: number; username: string; child_name: string; parent_name: string; is_active: number | boolean };
-  type UsageData = { requests: number; input_tokens: number; output_tokens: number; total_tokens: number; estimated_cost_usd: number; note: string; breakdown: Array<{ provider: string; model: string; feature: string; requests: number; input_tokens: number; output_tokens: number; cost: number }> };
-  const [stats, setStats] = useState({ users: 0, children: 0, sessions: 0, exercises: 0 });
-  const [users, setUsers] = useState<User[]>([]);
-  const [students, setStudents] = useState<StudentAccount[]>([]);
-  const [usage, setUsage] = useState<UsageData>({ requests: 0, input_tokens: 0, output_tokens: 0, total_tokens: 0, estimated_cost_usd: 0, note: "", breakdown: [] });
-  const [exercises, setExercises] = useState<Exercise[]>([]);
-  const [tab, setTab] = useState<"users" | "exercises" | "usage">("users");
-  const [formOpen, setFormOpen] = useState(false);
-  const [form, setForm] = useState({ module: "motor", skill: "articulation" as SkillProgress["skill"], title: "", instruction: "", difficulty: 1, target: "custom", icon: "/illustrations/module-articulation-fox.png", is_active: true });
-  const load = useCallback(() => { api<typeof stats>("/api/admin/stats").then(setStats); api<User[]>("/api/admin/users").then(setUsers); api<StudentAccount[]>("/api/admin/students").then(setStudents); api<UsageData>("/api/admin/usage").then(setUsage); api<Exercise[]>("/api/exercises").then(setExercises); }, []);
-  useEffect(load, [load]);
-  const changeRole = async (id: number, role: Role) => { await api(`/api/admin/users/${id}/role`, { method: "PATCH", body: JSON.stringify({ role }) }); load(); };
-  const toggleUser = async (item: User) => { await api(`/api/admin/users/${item.id}/active`, { method: "PATCH", body: JSON.stringify({ is_active: !item.is_active }) }); load(); };
-  const addExercise = async (event: React.FormEvent) => { event.preventDefault(); const payload = { ...form, icon: moduleImages[form.module as ModuleName] }; await api("/api/admin/exercises", { method: "POST", body: JSON.stringify(payload) }); setFormOpen(false); setForm({ module: "motor", skill: "articulation", title: "", instruction: "", difficulty: 1, target: "custom", icon: "/illustrations/module-articulation-fox.png", is_active: true }); load(); };
-  const archiveExercise = async (id: number) => { await api(`/api/admin/exercises/${id}`, { method: "DELETE" }); load(); };
-  return <div className="page-enter stack-xl"><PageTitle eyebrow="УПРАВЛЕНИЕ ПЛАТФОРМОЙ" title="Админ-панель" subtitle="Пользователи, роли, контент и ключевые показатели Söyle."/><div className="stats-row"><StatCard icon={<Users/>} value={String(stats.users)} label="пользователей"/><StatCard icon={<UserRound/>} value={String(stats.children)} label="профилей детей"/><StatCard icon={<Target/>} value={String(stats.sessions)} label="занятий пройдено"/><StatCard icon={<Gamepad2/>} value={String(stats.exercises)} label="активных заданий"/></div><div className="admin-tabs"><button className={tab === "users" ? "active" : ""} onClick={() => setTab("users")}><Users size={17}/>Пользователи</button><button className={tab === "exercises" ? "active" : ""} onClick={() => setTab("exercises")}><Gamepad2 size={17}/>Задания</button></div>{tab === "users" ? <section className="admin-card"><div className="admin-card-head"><div><span className="kicker">ДОСТУП И РОЛИ</span><h3>Пользователи</h3></div></div><div className="data-table"><div className="table-row header"><span>Пользователь</span><span>Роль</span><span>Статус</span><span>Действие</span></div>{users.map((item) => <div className="table-row" key={item.id}><span><b>{item.full_name}</b><small>{item.email}</small></span><span><select value={item.role} onChange={(e) => changeRole(item.id, e.target.value as Role)}><option value="parent">Родитель</option><option value="specialist">Специалист</option><option value="admin">Администратор</option></select></span><span><i className={`status ${item.is_active ? "active" : "blocked"}`}>{item.is_active ? "Активен" : "Отключён"}</i></span><span><button className="small-button" onClick={() => toggleUser(item)}>{item.is_active ? "Отключить" : "Включить"}</button></span></div>)}</div></section> : <section className="admin-card"><div className="admin-card-head"><div><span className="kicker">КОНТЕНТ</span><h3>Библиотека заданий</h3></div><button className="primary-button" onClick={() => setFormOpen(!formOpen)}>+ Добавить</button></div>{formOpen && <form className="exercise-form" onSubmit={addExercise}><select value={form.module} onChange={(e) => setForm({...form,module:e.target.value})}><option value="motor">Моторный</option><option value="sensory">Сенсорный</option><option value="mixed">Смешанный</option></select><input placeholder="Название" value={form.title} onChange={(e) => setForm({...form,title:e.target.value})} required/><input placeholder="Инструкция" value={form.instruction} onChange={(e) => setForm({...form,instruction:e.target.value})} required/><button className="primary-button">Сохранить</button></form>}<div className="admin-exercises">{exercises.map((item) => <div key={item.id}><span><Image src={moduleImages[item.module]} alt="" width={42} height={42}/></span><div><strong>{item.title}</strong><small>{item.module} · уровень {item.difficulty}</small></div><button onClick={() => archiveExercise(item.id)}>В архив</button></div>)}</div></section>}</div>;
-}
-
 function AdminScreen() {
   type StudentAccount = { id: number; username: string; child_name: string; parent_name: string; is_active: number | boolean };
-  type SpecialistAssignment = { specialist_id: number; child_id: number; specialist_name: string; child_name: string };
-  type UsageData = { requests: number; input_tokens: number; output_tokens: number; total_tokens: number; estimated_cost_usd: number; note: string; breakdown: Array<{ provider: string; model: string; feature: string; requests: number; input_tokens: number; output_tokens: number; cost: number }> };
+  type UsageDaily = { date: string; requests: number; input_tokens: number; output_tokens: number; total_tokens: number; estimated_cost_usd: number };
+  type UsageEvent = { id: number; actor_id: number; actor_type: "user" | "student"; actor_name: string; actor_username: string; actor_role: Role | "unknown"; child_id: number | null; child_name: string | null; provider: string; model: string; feature: string; input_tokens: number; output_tokens: number; total_tokens: number; estimated_cost_usd: number; created_at: string };
+  type UsageData = { period_days: number; requests: number; input_tokens: number; output_tokens: number; total_tokens: number; estimated_cost_usd: number; note: string; breakdown: Array<{ provider: string; model: string; feature: string; requests: number; input_tokens: number; output_tokens: number; cost: number }>; daily: UsageDaily[]; recent: UsageEvent[] };
   type AuditEvent = { id: number; actor_key: string; action: string; object_type: string; object_id: string | null; metadata: Record<string, unknown>; created_at: string };
   const [stats, setStats] = useState({ users: 0, children: 0, sessions: 0, exercises: 0 });
   const [users, setUsers] = useState<User[]>([]);
   const [students, setStudents] = useState<StudentAccount[]>([]);
-  const [adminChildren, setAdminChildren] = useState<Child[]>([]);
-  const [assignments, setAssignments] = useState<SpecialistAssignment[]>([]);
-  const [assignmentForm, setAssignmentForm] = useState({ specialist_id: "", child_id: "" });
   const [exercises, setExercises] = useState<Exercise[]>([]);
-  const [usage, setUsage] = useState<UsageData>({ requests: 0, input_tokens: 0, output_tokens: 0, total_tokens: 0, estimated_cost_usd: 0, note: "", breakdown: [] });
+  const [usage, setUsage] = useState<UsageData>({ period_days: 30, requests: 0, input_tokens: 0, output_tokens: 0, total_tokens: 0, estimated_cost_usd: 0, note: "", breakdown: [], daily: [], recent: [] });
+  const [usageDays, setUsageDays] = useState<7 | 30 | 90>(30);
+  const [usageLoading, setUsageLoading] = useState(false);
+  const [usageError, setUsageError] = useState("");
   const [auditEvents, setAuditEvents] = useState<AuditEvent[]>([]);
   const [tab, setTab] = useState<"users" | "exercises" | "usage" | "audit">("users");
   const [formOpen, setFormOpen] = useState(false);
-  const [form, setForm] = useState({ module: "motor", skill: "articulation" as SkillProgress["skill"], title: "", instruction: "", difficulty: 1, target: "custom", icon: "/illustrations/module-articulation-fox.png", is_active: true });
+  const [form, setForm] = useState({ module: "sensory", skill: "speech_comprehension" as SkillProgress["skill"], title: "", instruction: "", difficulty: 1, target: "custom", icon: "/illustrations/module-listening.png", is_active: true });
   const load = useCallback(() => {
     api<typeof stats>("/api/admin/stats").then(setStats);
     api<User[]>("/api/admin/users").then(setUsers);
     api<StudentAccount[]>("/api/admin/students").then(setStudents);
-    api<Child[]>("/api/children").then(setAdminChildren);
-    api<SpecialistAssignment[]>("/api/admin/specialist-assignments").then(setAssignments);
     api<Exercise[]>("/api/exercises").then(setExercises);
-    api<UsageData>("/api/admin/usage").then(setUsage);
     api<AuditEvent[]>("/api/admin/audit").then(setAuditEvents);
   }, []);
   useEffect(load, [load]);
+  const loadUsage = useCallback(async (days: 7 | 30 | 90) => {
+    setUsageLoading(true);
+    setUsageError("");
+    try {
+      setUsage(await api<UsageData>(`/api/admin/usage?days=${days}&limit=50`));
+    } catch (error) {
+      setUsageError(error instanceof Error ? error.message : "Не удалось загрузить расход токенов");
+    } finally {
+      setUsageLoading(false);
+    }
+  }, []);
   const changeRole = async (id: number, role: Exclude<Role, "student">) => { await api(`/api/admin/users/${id}/role`, { method: "PATCH", body: JSON.stringify({ role }) }); load(); };
   const toggleUser = async (item: User) => { await api(`/api/admin/users/${item.id}/active`, { method: "PATCH", body: JSON.stringify({ is_active: !item.is_active }) }); load(); };
-  const addExercise = async (event: React.FormEvent) => { event.preventDefault(); const payload = { ...form, icon: moduleImages[form.module as ModuleName] }; await api("/api/admin/exercises", { method: "POST", body: JSON.stringify(payload) }); setFormOpen(false); setForm({ module: "motor", skill: "articulation", title: "", instruction: "", difficulty: 1, target: "custom", icon: "/illustrations/module-articulation-fox.png", is_active: true }); load(); };
+  const addExercise = async (event: React.FormEvent) => { event.preventDefault(); const payload = { ...form, icon: moduleImages[form.module as ModuleName] }; await api("/api/admin/exercises", { method: "POST", body: JSON.stringify(payload) }); setFormOpen(false); setForm({ module: "sensory", skill: "speech_comprehension", title: "", instruction: "", difficulty: 1, target: "custom", icon: "/illustrations/module-listening.png", is_active: true }); load(); };
   const archiveExercise = async (id: number) => { await api(`/api/admin/exercises/${id}`, { method: "DELETE" }); load(); };
-  const saveAssignment = async (event: React.FormEvent) => { event.preventDefault(); await api("/api/admin/specialist-assignments", { method: "POST", body: JSON.stringify({ specialist_id: Number(assignmentForm.specialist_id), child_id: Number(assignmentForm.child_id) }) }); setAssignmentForm({ specialist_id: "", child_id: "" }); load(); };
-  const removeAssignment = async (item: SpecialistAssignment) => { await api(`/api/admin/specialist-assignments/${item.specialist_id}/${item.child_id}`, { method: "DELETE" }); load(); };
+  const featureLabel = (feature: string) => ({ home_practice_plan: "План занятия", parent_support_answer: "Ответ родителю" }[feature] || feature);
+  const actorRoleLabel = (role: UsageEvent["actor_role"]) => ({ parent: "родитель", student: "ученик", admin: "администратор", specialist: "специалист", unknown: "аккаунт удалён" }[role]);
+  const formatTokens = (value: number) => value.toLocaleString("ru-RU");
+  const formatCost = (value: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 4, maximumFractionDigits: 6 }).format(value);
+  const maxDailyTokens = Math.max(0, ...usage.daily.map((item) => item.total_tokens));
   return <div className="page-enter stack-xl">
     <PageTitle eyebrow="УПРАВЛЕНИЕ ПЛАТФОРМОЙ" title="Админ-панель" subtitle="Пользователи, контент и прозрачный учёт автоматических функций."/>
     <div className="stats-row"><StatCard icon={<Users/>} value={String(stats.users)} label="аккаунтов"/><StatCard icon={<UserRound/>} value={String(stats.children)} label="профилей детей"/><StatCard icon={<Target/>} value={String(stats.sessions)} label="занятий пройдено"/><StatCard icon={<Gamepad2/>} value={String(stats.exercises)} label="активных заданий"/></div>
-    <div className="admin-tabs"><button className={tab === "users" ? "active" : ""} onClick={() => setTab("users")}><Users size={17}/>Пользователи</button><button className={tab === "exercises" ? "active" : ""} onClick={() => setTab("exercises")}><Gamepad2 size={17}/>Задания</button><button className={tab === "usage" ? "active" : ""} onClick={() => setTab("usage")}><BarChart3 size={17}/>Ресурсы</button><button className={tab === "audit" ? "active" : ""} onClick={() => setTab("audit")}><ShieldCheck size={17}/>Журнал</button></div>
-    {tab === "users" && <section className="admin-card"><div className="admin-card-head"><div><span className="kicker">ДОСТУП И РОЛИ</span><h3>Взрослые аккаунты</h3></div></div><div className="data-table"><div className="table-row header"><span>Пользователь</span><span>Роль</span><span>Статус</span><span>Действие</span></div>{users.map((item) => <div className="table-row" key={item.id}><span><b>{item.full_name}</b><small>{item.email}</small></span><span><select value={item.role} onChange={(e) => changeRole(item.id, e.target.value as Exclude<Role,"student">)}><option value="parent">Родитель</option><option value="specialist">Специалист</option><option value="admin">Администратор</option></select></span><span><i className={`status ${item.is_active ? "active" : "blocked"}`}>{item.is_active ? "Активен" : "Отключён"}</i></span><span><button className="small-button" onClick={() => toggleUser(item)}>{item.is_active ? "Отключить" : "Включить"}</button></span></div>)}</div><div className="assignment-admin"><span className="kicker">ДОСТУП СПЕЦИАЛИСТОВ</span><form onSubmit={saveAssignment}><select value={assignmentForm.specialist_id} onChange={(event) => setAssignmentForm({...assignmentForm,specialist_id:event.target.value})} required><option value="">Специалист</option>{users.filter((item) => item.role === "specialist" && item.is_active).map((item) => <option key={item.id} value={item.id}>{item.full_name}</option>)}</select><select value={assignmentForm.child_id} onChange={(event) => setAssignmentForm({...assignmentForm,child_id:event.target.value})} required><option value="">Ребёнок</option>{adminChildren.map((item) => <option key={item.id} value={item.id}>{item.name} · {item.parent_name}</option>)}</select><button className="primary-button">Назначить</button></form><div>{assignments.map((item) => <span className="assignment-chip" key={`${item.specialist_id}-${item.child_id}`}>{item.specialist_name} → {item.child_name}<button onClick={() => removeAssignment(item)} aria-label="Удалить назначение"><X size={14}/></button></span>)}</div></div><div className="student-accounts"><span className="kicker">УЧЕНИЧЕСКИЕ АККАУНТЫ</span>{students.map((item) => <div key={item.id}><span className="student-icon"><Backpack/></span><div><strong>{item.child_name}</strong><small>Логин: {item.username} · родитель: {item.parent_name}</small></div><i className="status active">Ученик</i></div>)}</div></section>}
-    {tab === "exercises" && <section className="admin-card"><div className="admin-card-head"><div><span className="kicker">КОНТЕНТ</span><h3>Библиотека заданий</h3></div><button className="primary-button" onClick={() => setFormOpen(!formOpen)}>+ Добавить</button></div>{formOpen && <form className="exercise-form" onSubmit={addExercise}><select value={form.module} onChange={(e) => setForm({...form,module:e.target.value})}><option value="motor">Моторный</option><option value="sensory">Сенсорный</option><option value="mixed">Смешанный</option></select><input placeholder="Название" value={form.title} onChange={(e) => setForm({...form,title:e.target.value})} required/><input placeholder="Инструкция" value={form.instruction} onChange={(e) => setForm({...form,instruction:e.target.value})} required/><button className="primary-button">Сохранить</button></form>}<div className="admin-exercises">{exercises.map((item) => <div key={item.id}><span><Image src={moduleImages[item.module]} alt="" width={42} height={42}/></span><div><strong>{item.title}</strong><small>{item.module} · уровень {item.difficulty}</small></div><button onClick={() => archiveExercise(item.id)}>В архив</button></div>)}</div></section>}
-    {tab === "usage" && <section className="usage-dashboard"><div className="usage-cards"><StatCard icon={<Bot/>} value={String(usage.requests)} label="автоматических операций"/><StatCard icon={<ArrowUp/>} value={usage.input_tokens.toLocaleString("ru-RU")} label="входных токенов"/><StatCard icon={<ArrowDown/>} value={usage.output_tokens.toLocaleString("ru-RU")} label="выходных токенов"/><StatCard icon={<CreditCard/>} value={`$${usage.estimated_cost_usd.toFixed(4)}`} label="расчётная стоимость"/></div><div className="admin-card"><div className="admin-card-head"><div><span className="kicker">РАЗБИВКА ПО ФУНКЦИЯМ</span><h3>На что расходуются ресурсы</h3></div><span className="period-pill">Последние 30 дней</span></div><div className="usage-table"><div className="usage-row header"><span>Функция и модель</span><span>Запросы</span><span>Токены</span><span>Стоимость</span></div>{usage.breakdown.map((item) => <div className="usage-row" key={`${item.model}-${item.feature}`}><span><b>{item.feature}</b><small>{item.provider} · {item.model}</small></span><span>{item.requests}</span><span>{(item.input_tokens + item.output_tokens).toLocaleString("ru-RU")}</span><span>${Number(item.cost || 0).toFixed(4)}</span></div>)}</div><div className="usage-note"><Sparkles size={19}/><p>{usage.note}</p></div></div></section>}
+    <div className="admin-tabs"><button className={tab === "users" ? "active" : ""} onClick={() => setTab("users")}><Users size={17}/>Пользователи</button><button className={tab === "exercises" ? "active" : ""} onClick={() => setTab("exercises")}><Gamepad2 size={17}/>Задания</button><button className={tab === "usage" ? "active" : ""} onClick={() => { setTab("usage"); void loadUsage(usageDays); }}><BarChart3 size={17}/>AI и токены</button><button className={tab === "audit" ? "active" : ""} onClick={() => setTab("audit")}><ShieldCheck size={17}/>Журнал</button></div>
+    {tab === "users" && <section className="admin-card"><div className="admin-card-head"><div><span className="kicker">ДОСТУП И РОЛИ</span><h3>Взрослые аккаунты</h3></div></div><div className="data-table"><div className="table-row header"><span>Пользователь</span><span>Роль</span><span>Статус</span><span>Действие</span></div>{users.map((item) => <div className="table-row" key={item.id}><span><b>{item.full_name}</b><small>{item.email}</small></span><span><select value={item.role} onChange={(e) => changeRole(item.id, e.target.value as Exclude<Role,"student">)}><option value="parent">Родитель</option><option value="admin">Администратор</option></select></span><span><i className={`status ${item.is_active ? "active" : "blocked"}`}>{item.is_active ? "Активен" : "Отключён"}</i></span><span><button className="small-button" onClick={() => toggleUser(item)}>{item.is_active ? "Отключить" : "Включить"}</button></span></div>)}</div><div className="student-accounts"><span className="kicker">УЧЕНИЧЕСКИЕ АККАУНТЫ</span>{students.map((item) => <div key={item.id}><span className="student-icon"><Backpack/></span><div><strong>{item.child_name}</strong><small>Логин: {item.username} · родитель: {item.parent_name}</small></div><i className="status active">Ученик</i></div>)}</div></section>}
+    {tab === "exercises" && <section className="admin-card"><div className="admin-card-head"><div><span className="kicker">КОНТЕНТ</span><h3>Библиотека заданий</h3></div><button className="primary-button" onClick={() => setFormOpen(!formOpen)}>+ Добавить</button></div>{formOpen && <form className="exercise-form" onSubmit={addExercise}><select value={form.module} onChange={(e) => setForm({...form,module:e.target.value})}><option value="sensory">Понимание речи</option><option value="mixed">Коммуникация и фразы</option></select><input placeholder="Название" value={form.title} onChange={(e) => setForm({...form,title:e.target.value})} required/><input placeholder="Инструкция" value={form.instruction} onChange={(e) => setForm({...form,instruction:e.target.value})} required/><button className="primary-button">Сохранить</button></form>}<div className="admin-exercises">{exercises.map((item) => <div key={item.id}><span><Image src={moduleImages[item.module]} alt="" width={42} height={42}/></span><div><strong>{item.title}</strong><small>{item.module === "sensory" ? "понимание речи" : "коммуникация"} · уровень {item.difficulty}</small></div><button onClick={() => archiveExercise(item.id)}>В архив</button></div>)}</div></section>}
+    {tab === "usage" && <section className="usage-dashboard" aria-busy={usageLoading}>
+      <div className="usage-toolbar">
+        <div><span className="kicker">OPENAI API</span><h2>Расход токенов</h2><p>Сколько токенов использовано, когда был запрос и кто его запустил.</p></div>
+        <div className="usage-periods" aria-label="Период отчёта">{([7, 30, 90] as const).map((days) => <button key={days} className={usageDays === days ? "active" : ""} aria-pressed={usageDays === days} onClick={() => { setUsageDays(days); void loadUsage(days); }}>{days} дней</button>)}</div>
+      </div>
+      {usageLoading ? <div className="admin-card usage-loading" role="status"><span className="sr-only">Загрузка статистики токенов</span>{[1,2,3,4].map((item) => <i key={item}/>)}</div> : usageError ? <div className="admin-card usage-error" role="alert"><CircleAlert/><div><strong>Не удалось загрузить статистику</strong><p>{usageError}</p></div><button className="secondary-button" onClick={() => void loadUsage(usageDays)}><RotateCcw size={16}/>Повторить</button></div> : <>
+        <div className="usage-cards">
+          <StatCard icon={<Bot/>} value={formatTokens(usage.requests)} label="успешных AI-запросов"/>
+          <StatCard icon={<BarChart3/>} value={formatTokens(usage.total_tokens)} label="токенов всего"/>
+          <StatCard icon={<ArrowUp/>} value={formatTokens(usage.input_tokens)} label="входных токенов"/>
+          <StatCard icon={<ArrowDown/>} value={formatTokens(usage.output_tokens)} label="выходных токенов"/>
+          <StatCard icon={<CreditCard/>} value={formatCost(usage.estimated_cost_usd)} label="примерная стоимость"/>
+        </div>
+        <div className="usage-insights-grid">
+          <section className="admin-card usage-chart-card">
+            <div className="admin-card-head"><div><span className="kicker">КОГДА ТРАТИЛИСЬ ТОКЕНЫ</span><h3>Расход по дням</h3></div><span className="period-pill">{usage.period_days} дней</span></div>
+            {maxDailyTokens > 0 ? <figure className="usage-chart" role="img" aria-label={`Расход токенов по дням. Максимум за день: ${formatTokens(maxDailyTokens)}`}>
+              <div className="usage-chart-bars">{usage.daily.map((item) => {
+                const label = new Date(item.date).toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
+                const height = item.total_tokens ? Math.max(3, Math.round(item.total_tokens / maxDailyTokens * 100)) : 0;
+                return <span className="usage-chart-day" key={item.date} title={`${label}: ${formatTokens(item.total_tokens)} токенов, ${item.requests} запросов`}><i style={{height: `${height}%`}}/><small>{label}</small></span>;
+              })}</div>
+              <figcaption>Высота столбца — общее число входных и выходных токенов за день.</figcaption>
+            </figure> : <div className="usage-empty"><BarChart3/><strong>За этот период запросов не было</strong><p>Статистика появится после успешного ответа Söyle AI через OpenAI.</p></div>}
+          </section>
+          <section className="admin-card usage-breakdown-card">
+            <div className="admin-card-head"><div><span className="kicker">НА ЧТО УШЛИ ТОКЕНЫ</span><h3>По функциям</h3></div></div>
+            {usage.breakdown.length ? <div className="usage-table"><div className="usage-row header"><span>Функция и модель</span><span>Запросы</span><span>Токены</span><span>Стоимость</span></div>{usage.breakdown.map((item) => <div className="usage-row" key={`${item.model}-${item.feature}`}><span><b>{featureLabel(item.feature)}</b><small>{item.provider} · {item.model}</small></span><span>{formatTokens(item.requests)}</span><span>{formatTokens(item.input_tokens + item.output_tokens)}</span><span>{formatCost(Number(item.cost || 0))}</span></div>)}</div> : <div className="usage-empty compact"><PackageOpen/><strong>Нет данных для разбивки</strong></div>}
+          </section>
+        </div>
+        <section className="admin-card usage-history-card">
+          <div className="admin-card-head"><div><span className="kicker">КТО И КОГДА</span><h3>Последние AI-запросы</h3><p>Показаны последние {usage.recent.length} событий за выбранный период.</p></div><button className="small-button" onClick={() => void loadUsage(usageDays)} aria-label="Обновить расход токенов"><RotateCcw size={15}/>Обновить</button></div>
+          {usage.recent.length ? <div className="usage-history-wrap"><table className="usage-history-table"><caption className="sr-only">История расхода токенов OpenAI по пользователям и времени</caption><thead><tr><th scope="col">Когда</th><th scope="col">Кто запустил</th><th scope="col">Профиль ребёнка</th><th scope="col">Функция</th><th scope="col">Токены</th><th scope="col">Стоимость</th></tr></thead><tbody>{usage.recent.map((event) => <tr key={event.id}>
+            <td data-label="Когда"><time dateTime={event.created_at}>{new Date(event.created_at).toLocaleString("ru-RU", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}</time></td>
+            <td data-label="Кто запустил"><strong>{event.actor_name}</strong><small>{event.actor_username ? `@${event.actor_username} · ` : ""}{actorRoleLabel(event.actor_role)}</small></td>
+            <td data-label="Профиль ребёнка">{event.child_name || "Профиль удалён"}</td>
+            <td data-label="Функция"><strong>{featureLabel(event.feature)}</strong><small>{event.provider} · {event.model}</small></td>
+            <td data-label="Токены"><strong>{formatTokens(event.total_tokens)}</strong><small>{formatTokens(event.input_tokens)} вход · {formatTokens(event.output_tokens)} выход</small></td>
+            <td data-label="Стоимость">{formatCost(event.estimated_cost_usd)}</td>
+          </tr>)}</tbody></table></div> : <div className="usage-empty"><Bot/><strong>История пока пуста</strong><p>Локальные резервные ответы сюда не попадают и ничего не стоят.</p></div>}
+          <div className="usage-note"><Sparkles size={19}/><p>{usage.note}</p></div>
+        </section>
+      </>}
+    </section>}
     {tab === "audit" && <section className="admin-card"><div className="admin-card-head"><div><span className="kicker">БЕЗОПАСНОСТЬ</span><h3>Журнал критичных действий</h3></div><span className="period-pill">Последние 100 записей</span></div><div className="data-table audit-table"><div className="table-row header"><span>Действие</span><span>Объект</span><span>Автор</span><span>Время</span></div>{auditEvents.length ? auditEvents.map((event) => <div className="table-row" key={event.id}><span><b>{event.action}</b><small>{Object.keys(event.metadata).length ? JSON.stringify(event.metadata) : "Без дополнительных данных"}</small></span><span>{event.object_type}{event.object_id ? ` #${event.object_id}` : ""}</span><span>{event.actor_key}</span><span>{new Date(event.created_at).toLocaleString("ru-RU", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</span></div>) : <div className="empty-state">Критичных действий пока не было.</div>}</div></section>}
   </div>;
 }
-
-type SupportMetrics = {
-  average_independence: number | null;
-  average_response_ms: number | null;
-  communication_initiatives: number;
-  homework_completed: number;
-  plain_language: string | null;
-  prompt_breakdown: Record<"independent" | "minimal" | "full" | "refused", number>;
-  attempts_count: number;
-  correct_answers: number;
-  prompts_used: number;
-  refusals: number;
-  breaks: number;
-  technical_errors: number;
-  participations: number;
-  game_result_average: number | null;
-};
-
-function SpecialistSupportReport({ metrics }: { metrics: SupportMetrics }) {
-  return <section className="admin-card support-report"><div className="admin-card-head"><div><span className="kicker">КОНТЕКСТ ВЫПОЛНЕНИЯ</span><h3>Поддержка, автономия и остановки</h3><p>Описательные данные попыток. Не являются оценкой развития или заключением.</p></div></div><div className="support-report-grid"><div><strong>{metrics.average_independence === null ? "—" : `${metrics.average_independence}%`}</strong><span>ответов без помощи</span></div><div><strong>{metrics.prompts_used}</strong><span>подсказок использовано</span></div><div><strong>{metrics.communication_initiatives}</strong><span>инициатив общения</span></div><div><strong>{metrics.participations}</strong><span>моторных участий без оценки</span></div></div><div className="support-breakdown"><span>Самостоятельно: <b>{metrics.prompt_breakdown.independent}</b></span><span>Небольшая подсказка: <b>{metrics.prompt_breakdown.minimal}</b></span><span>Полная помощь: <b>{metrics.prompt_breakdown.full}</b></span><span>Отказ: <b>{metrics.refusals}</b></span><span>Перерыв: <b>{metrics.breaks}</b></span><span>Техническая ошибка: <b>{metrics.technical_errors}</b></span></div><div className="progress-plain"><ShieldCheck size={17}/>Сопоставляйте эти числа с контекстом занятия и наблюдениями семьи. Не сравнивайте детей между собой.</div></section>;
-}
-
-function SpecialistScreen() {
-  return <SpecialistWorkspace/>;
-}
-
-function SpecialistWorkspace() {
-  type Review = { id: number; status: string; comment: string; exercise_title?: string; suggested_skill: SkillProgress["skill"] };
-  type Goal = { id: number; title: string; target_skill: SkillProgress["skill"]; success_criterion: string; status: "active" | "paused" | "completed"; due_date?: string };
-  type Homework = { id: number; title: string; instruction: string; result: string | null };
-  type Detail = {
-    dashboard: Dashboard;
-    support_metrics: SupportMetrics;
-    assigned_exercises: Array<{ id: number; title: string; status: string; note: string; skill: SkillProgress["skill"] }>;
-    recommendations: Review[];
-    goals: Goal[];
-    homework: Homework[];
-  };
-
-  const [children, setChildren] = useState<Child[]>([]);
-  const [selected, setSelected] = useState<number | null>(null);
-  const [detail, setDetail] = useState<Detail | null>(null);
-  const [exercises, setExercises] = useState<Exercise[]>([]);
-  const [exerciseId, setExerciseId] = useState("");
-  const [note, setNote] = useState("");
-  const [message, setMessage] = useState("");
-  const [goalForm, setGoalForm] = useState({ title: "", target_skill: "communication" as SkillProgress["skill"], success_criterion: "", due_date: "" });
-  const [homeworkForm, setHomeworkForm] = useState({ title: "", instruction: "" });
-  const [loading, setLoading] = useState(true);
-
-  const loadDetail = useCallback(() => {
-    if (!selected) return;
-    api<Detail>(`/api/specialist/children/${selected}`)
-      .then(setDetail)
-      .catch(() => setDetail(null))
-      .finally(() => setLoading(false));
-  }, [selected]);
-
-  useEffect(() => {
-    api<Child[]>("/api/children").then((items) => {
-      setChildren(items);
-      if (items[0]) setSelected(items[0].id);
-    }).finally(() => setLoading(false));
-    api<Exercise[]>("/api/exercises").then(setExercises);
-  }, []);
-  useEffect(loadDetail, [loadDetail]);
-
-  const assign = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!selected || !exerciseId) return;
-    await api("/api/specialist/assigned-exercises", { method: "POST", body: JSON.stringify({ child_id: selected, exercise_id: Number(exerciseId), note }) });
-    setExerciseId("");
-    setNote("");
-    setMessage("Упражнение назначено вручную");
-    loadDetail();
-  };
-  const createGoal = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!selected) return;
-    await api("/api/specialist/goals", { method: "POST", body: JSON.stringify({ ...goalForm, child_id: selected, due_date: goalForm.due_date || null, difficulty: 1, exercise_ids: [] }) });
-    setGoalForm({ title: "", target_skill: "communication", success_criterion: "", due_date: "" });
-    setMessage("Цель добавлена в персональную программу");
-    loadDetail();
-  };
-  const setGoalStatus = async (id: number, status: Goal["status"]) => {
-    await api(`/api/specialist/goals/${id}`, { method: "PATCH", body: JSON.stringify({ status }) });
-    loadDetail();
-  };
-  const createHomework = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!selected) return;
-    await api("/api/specialist/homework", { method: "POST", body: JSON.stringify({ ...homeworkForm, child_id: selected }) });
-    setHomeworkForm({ title: "", instruction: "" });
-    setMessage("Домашняя практика отправлена родителю");
-    loadDetail();
-  };
-
-  if (!children.length && !loading) {
-    return <div className="page-enter stack-xl"><PageTitle eyebrow="КАБИНЕТ СПЕЦИАЛИСТА" title="Наблюдение и назначения" subtitle="Здесь появятся дети, доступ к которым назначит администратор."/><div className="empty-state large"><Users size={32}/><strong>Нет назначенных детей</strong><span>Администратор должен связать специалиста с профилем ребёнка.</span></div></div>;
-  }
-
-  return <div className="page-enter stack-xl">
-    <PageTitle eyebrow="КАБИНЕТ СПЕЦИАЛИСТА" title="Наблюдение и назначения" subtitle="Игровые данные помогают описать занятие, но не измеряют речь, развитие или эффективность помощи."/>
-    <div className="medical-note"><ShieldCheck size={25}/><div><strong>Автоматические клинические рекомендации отключены</strong><p>Моторные задания, цели и домашнюю практику назначает специалист. Проценты ниже относятся только к заданиям с однозначным игровым ответом; для остальных действий показывается число участий.</p></div></div>
-    <div className="specialist-layout">
-      <section className="children-list"><span className="kicker">МОИ ПОДОПЕЧНЫЕ</span>{children.map((child) => <button key={child.id} className={selected === child.id ? "active" : ""} onClick={() => setSelected(child.id)}><div className="avatar" style={{background:child.avatar_color}}>{child.name[0]}</div><div><strong>{child.name}</strong><small>{child.parent_name || "Родитель"}</small></div><ChevronRight size={17}/></button>)}</section>
-      <div className="specialist-detail">
-        {loading ? <div className="empty-state">Загружаем описательные данные…</div> : detail ? <>
-          <div className="stats-row compact"><StatCard icon={<Target/>} value={`${detail.dashboard.overall}%`} label="охват доступных заданий"/><StatCard icon={<Gamepad2/>} value={String(detail.dashboard.week_sessions)} label="занятий за неделю"/><StatCard icon={<Timer/>} value={`${detail.dashboard.week_minutes} мин`} label="в приложении"/></div>
-          <section className="skills-card specialist-skills"><span className="kicker">ИГРОВЫЕ РЕЗУЛЬТАТЫ И УЧАСТИЕ</span>{detail.dashboard.skill_progress.map((skill, index) => {
-            const hasGameScore = skill.measurement === "game_result" && skill.value !== null;
-            const displayValue = hasGameScore ? `${skill.value}%` : `${skill.participations} участий`;
-            return <div className="skill" key={skill.skill}><div><span>{skill.label}<small>{skill.sessions ? `${skill.sessions} записей занятий` : "ещё нет данных"}</small></span><strong>{displayValue}</strong></div><div className="skill-track"><i className={["coral","blue","mint"][index % 3]} style={{width:hasGameScore ? `${skill.value}%` : "0%"}}/></div></div>;
-          })}{detail.support_metrics.plain_language && <div className="progress-plain"><Check size={17}/>{detail.support_metrics.plain_language}</div>}</section>
-          <SpecialistSupportReport metrics={detail.support_metrics}/>
-          <section className="admin-card"><div className="admin-card-head"><div><span className="kicker">ИНДИВИДУАЛЬНЫЕ ЦЕЛИ</span><h3>Персональная программа</h3></div></div><form className="goal-form" onSubmit={createGoal}><input value={goalForm.title} onChange={(event)=>setGoalForm({...goalForm,title:event.target.value})} placeholder="Название цели" required/><select value={goalForm.target_skill} onChange={(event)=>setGoalForm({...goalForm,target_skill:event.target.value as SkillProgress["skill"]})}>{detail.dashboard.skill_progress.map((item)=><option value={item.skill} key={item.skill}>{item.label}</option>)}</select><input value={goalForm.success_criterion} onChange={(event)=>setGoalForm({...goalForm,success_criterion:event.target.value})} placeholder="Наблюдаемый критерий" required/><input type="date" value={goalForm.due_date} onChange={(event)=>setGoalForm({...goalForm,due_date:event.target.value})}/><button className="primary-button">Добавить цель</button></form><div className="goal-list">{detail.goals.map((goal)=><div key={goal.id}><div><strong>{goal.title}</strong><small>{goal.success_criterion}</small></div><select value={goal.status} onChange={(event)=>setGoalStatus(goal.id,event.target.value as Goal["status"])}><option value="active">В работе</option><option value="paused">Пауза</option><option value="completed">Завершена</option></select></div>)}</div></section>
-          <section className="admin-card"><div className="admin-card-head"><div><span className="kicker">ПЕРСОНАЛЬНЫЙ ПЛАН</span><h3>Назначить упражнение</h3><p>Моторные упражнения доступны ребёнку только после такого назначения.</p></div></div><form className="specialist-assignment" onSubmit={assign}><select value={exerciseId} onChange={(event) => setExerciseId(event.target.value)} required><option value="">Выберите упражнение</option>{exercises.map((item) => <option key={item.id} value={item.id}>{skillLabel(item.skill)} — {item.title}</option>)}</select><input value={note} onChange={(event) => setNote(event.target.value)} placeholder="Комментарий для родителя (необязательно)"/><button className="primary-button">Назначить</button></form><div className="assigned-list">{detail.assigned_exercises.length ? detail.assigned_exercises.map((item) => <div key={item.id}><Check size={17}/><div><strong>{item.title}</strong><small>{item.note || skillLabel(item.skill)} · {item.status === "completed" ? "отмечено выполненным" : "назначено"}</small></div></div>) : <div className="empty-state">Назначенных упражнений пока нет.</div>}</div></section>
-          <section className="admin-card"><div className="admin-card-head"><div><span className="kicker">ДОМАШНЯЯ ПРАКТИКА</span><h3>Задание для семьи</h3></div></div><form className="specialist-assignment" onSubmit={createHomework}><input value={homeworkForm.title} onChange={(event)=>setHomeworkForm({...homeworkForm,title:event.target.value})} placeholder="Короткое название" required/><input value={homeworkForm.instruction} onChange={(event)=>setHomeworkForm({...homeworkForm,instruction:event.target.value})} placeholder="Одна понятная бытовая ситуация" required/><button className="primary-button">Отправить</button></form><div className="assigned-list">{detail.homework.slice(0,5).map((item)=><div key={item.id}><Check size={17}/><div><strong>{item.title}</strong><small>{item.result ? `Наблюдение семьи: ${item.result}` : "Ожидает выполнения дома"}</small></div></div>)}</div></section>
-          {message && <div className="usage-note"><Check size={18}/><p>{message}</p></div>}
-        </> : <div className="empty-state">Не удалось загрузить профиль ребёнка.</div>}
-      </div>
-    </div>
-  </div>;
-}
-
 
 function ProfileScreen({ user, child, dashboard, settings, onOpen, onLogout }: { user: User; child?: Child; dashboard: Dashboard | null; settings: AppSettings; onOpen: (screen: Screen) => void; onLogout: () => void }) {
   const age = child ? Math.max(0, new Date().getFullYear() - new Date(child.birth_date).getFullYear() - (new Date() < new Date(new Date().getFullYear(), new Date(child.birth_date).getMonth(), new Date(child.birth_date).getDate()) ? 1 : 0)) : null;
   const primaryModule = child ? modules.find((item) => item.id === child.primary_module)?.title : null;
   const languageName = { ru: "Русский", en: "English", kk: "Қазақша" }[settings.language];
-  const themeName = { peach: "Шалфей", ocean: "Океан", lavender: "Лаванда", contrast: "Высокий контраст" }[settings.theme];
+  const themeName = { peach: "Базовая", ocean: "Мягкий океан", lavender: "Лаванда", contrast: "Высокий контраст" }[settings.theme];
   return <div className="page-enter profile-page">
     <PageTitle eyebrow="ПРОФИЛЬ" title="Личный кабинет" subtitle="Информация об аккаунте, ребёнке и текущих настройках."/>
     <section className="profile-hero-card">
@@ -1635,10 +1554,10 @@ function ProfileScreen({ user, child, dashboard, settings, onOpen, onLogout }: {
 }
 
 function SettingsScreen({ settings, onChange, onLogout }: { settings: AppSettings; onChange: (settings: AppSettings) => void; onLogout: () => void }) {
-  const themes = [{id:"peach",name:"Шалфей",colors:["#557b68","#d9ead2","#fffaf1"]},{id:"ocean",name:"Океан",colors:["#266f91","#a8d8eb","#f2fbff"]},{id:"lavender",name:"Лаванда",colors:["#715a91","#d5c2e8","#fbf7ff"]},{id:"contrast",name:"Высокий контраст",colors:["#10271f","#ffd75a","#ffffff"]}];
+  const themes = [{id:"peach",name:"Базовая",colors:["#2f7deb","#eaf3ff","#ffffff"]},{id:"ocean",name:"Мягкий океан",colors:["#347f91","#e3f3f6","#ffffff"]},{id:"lavender",name:"Лаванда",colors:["#7468c5","#f0edff","#ffffff"]},{id:"contrast",name:"Высокий контраст",colors:["#15355f","#ffd35a","#ffffff"]}];
   const languages = [{id:"ru",short:"RU",name:"Русский — проверенная версия"}] as const;
   const update = <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => onChange({ ...settings, [key]: value });
-  return <div className="page-enter settings-page"><PageTitle eyebrow="НАСТРОЙКИ" title="Комфортный режим" subtitle="Настройте занятия под потребности ребёнка. Изменения сохраняются в аккаунте."/><div className="settings-card"><section className="settings-section language-setting"><div><span className="kicker">ЯЗЫК ИНТЕРФЕЙСА И КОНТЕНТА</span><h3>Русская проверенная версия</h3><p>Казахская и английская версии скрыты до проверки носителями языка, AAC-специалистом и тестирования озвучивания.</p></div><div className="language-options">{languages.map((item) => <button key={item.id} className={settings.language === item.id ? "active" : ""} aria-pressed={settings.language === item.id} onClick={() => update("language", item.id)}><b>{item.short}</b><span>{item.name}</span>{settings.language === item.id && <Check size={16}/>}</button>)}</div></section><section className="settings-section theme-setting"><div><span className="kicker">ЦВЕТОВАЯ ТЕМА</span><h3>Выберите оформление</h3></div><div className="theme-options">{themes.map((item) => <button key={item.id} className={settings.theme === item.id ? "active" : ""} onClick={() => update("theme", item.id as AppSettings["theme"])}><span>{item.colors.map((color) => <i key={color} style={{background:color}}/>)}</span><strong>{item.name}</strong>{settings.theme === item.id && <Check size={16}/>}</button>)}</div></section><section className="settings-section preference-setting"><span className="kicker">ЗАНЯТИЯ И ДОСТУПНОСТЬ</span><SettingRow icon={<Camera/>} title="Камера-зеркало" text="Показывает видео локально без анализа, отправки и сохранения" value={settings.camera_enabled} onChange={(value) => update("camera_enabled", value)}/><SettingRow icon={<Volume2/>} title="Звуковые подсказки" text="Голос и мягкие сигналы успеха" value={settings.sound_enabled} onChange={(value) => update("sound_enabled", value)}/><SettingRow icon={<Sparkles/>} title="Спокойный режим" text="Меньше анимации и визуальных эффектов" value={settings.calm_mode} onChange={(value) => update("calm_mode", value)}/></section><section className="settings-section account-setting"><div className="setting-row"><div className="setting-icon"><LockKeyhole/></div><div><strong>Данные и приватность</strong><span>Видео не сохраняется; результаты хранятся в профиле ребёнка</span></div><span className="status active">Защищено</span></div><div className="setting-row"><div className="setting-icon danger"><LogOut/></div><div><strong>Выйти из аккаунта</strong><span>На этом устройстве потребуется повторный вход</span></div><button className="small-button" onClick={onLogout}>Выйти</button></div></section></div></div>;
+  return <div className="page-enter settings-page"><PageTitle eyebrow="НАСТРОЙКИ" title="Комфортный режим" subtitle="Настройте занятия под потребности ребёнка. Изменения сохраняются в аккаунте."/><div className="settings-card"><section className="settings-section language-setting"><div><span className="kicker">ЯЗЫК ИНТЕРФЕЙСА И КОНТЕНТА</span><h3>Русская проверенная версия</h3><p>Казахская и английская версии скрыты до проверки носителями языка, AAC-специалистом и тестирования озвучивания.</p></div><div className="language-options">{languages.map((item) => <button key={item.id} className={settings.language === item.id ? "active" : ""} aria-pressed={settings.language === item.id} onClick={() => update("language", item.id)}><b>{item.short}</b><span>{item.name}</span>{settings.language === item.id && <Check size={16}/>}</button>)}</div></section><section className="settings-section theme-setting"><div><span className="kicker">ЦВЕТОВАЯ ТЕМА</span><h3>Выберите оформление</h3></div><div className="theme-options">{themes.map((item) => <button key={item.id} className={settings.theme === item.id ? "active" : ""} onClick={() => update("theme", item.id as AppSettings["theme"])}><span>{item.colors.map((color) => <i key={color} style={{background:color}}/>)}</span><strong>{item.name}</strong>{settings.theme === item.id && <Check size={16}/>}</button>)}</div></section><section className="settings-section preference-setting"><span className="kicker">ЗАНЯТИЯ И ДОСТУПНОСТЬ</span><SettingRow icon={<Volume2/>} title="Звуковые подсказки" text="Голос и мягкие сигналы успеха" value={settings.sound_enabled} onChange={(value) => update("sound_enabled", value)}/><SettingRow icon={<Sparkles/>} title="Спокойный режим" text="Меньше анимации и визуальных эффектов" value={settings.calm_mode} onChange={(value) => update("calm_mode", value)}/></section><section className="settings-section account-setting"><div className="setting-row"><div className="setting-icon"><LockKeyhole/></div><div><strong>Данные и приватность</strong><span>Видео не сохраняется; результаты хранятся в профиле ребёнка</span></div><span className="status active">Защищено</span></div><div className="setting-row"><div className="setting-icon danger"><LogOut/></div><div><strong>Выйти из аккаунта</strong><span>На этом устройстве потребуется повторный вход</span></div><button className="small-button" onClick={onLogout}>Выйти</button></div></section></div></div>;
 }
 
 function SettingRow({ icon, title, text, value, onChange }: { icon: React.ReactNode; title: string; text: string; value: boolean; onChange: (v: boolean) => void }) {

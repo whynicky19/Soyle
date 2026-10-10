@@ -86,7 +86,7 @@ def get_current_user(request: Request, bearer_token: str | None = Depends(oauth2
         raise error
     with connect() as db:
         row = db.execute("SELECT id,username,full_name,role,is_active,created_at FROM users WHERE id=?", (user_id,)).fetchone()
-    if not row or not row["is_active"]:
+    if not row or not row["is_active"] or row["role"] == "specialist":
         raise error
     return dict(row)
 

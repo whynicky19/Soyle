@@ -1,4 +1,4 @@
-export type Role = "admin" | "parent" | "specialist" | "student";
+export type Role = "admin" | "parent" | "student";
 export type SkillName = "articulation" | "vocabulary" | "speech_comprehension" | "word_repetition" | "phrase_building" | "communication";
 
 export type SkillProgress = {
@@ -64,15 +64,41 @@ export type ChildConsent = {
   child_id: number;
   privacy_accepted: boolean;
   camera_processing: boolean;
-  specialist_sharing: boolean;
+  ai_processing: boolean;
   analytics_processing: boolean;
   version: string;
   updated_at: string | null;
   consented_by_user_id?: number | null;
   privacy_accepted_at?: string | null;
   camera_processing_at?: string | null;
-  specialist_sharing_at?: string | null;
+  ai_processing_at?: string | null;
   analytics_processing_at?: string | null;
+};
+
+export type AIPlan = {
+  title: string;
+  reason: string;
+  parent_tip: string;
+  estimated_minutes: 3 | 5 | 10;
+  exercises: Exercise[];
+  generated_by: "openai" | "local_fallback";
+  model: string | null;
+  needs_ai_consent: boolean;
+  disclaimer: string;
+  provider_error?: string;
+  provider_message?: string;
+};
+
+export type AIAnswer = {
+  answer: string;
+  suggested_actions: string[];
+  needs_professional_help: boolean;
+  safety_note: string;
+  generated_by: "openai" | "local_fallback";
+  model: string | null;
+  disclaimer: string;
+  provider_error?: string;
+  provider_message?: string;
 };
 
 export type Child = {

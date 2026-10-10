@@ -2,7 +2,7 @@ from datetime import date
 from typing import Any, Literal
 from pydantic import BaseModel, Field
 
-Role = Literal["admin", "parent", "specialist"]
+Role = Literal["admin", "parent"]
 ModuleName = Literal["motor", "sensory", "mixed"]
 SkillName = Literal["articulation", "vocabulary", "speech_comprehension", "word_repetition", "phrase_building", "communication"]
 
@@ -150,8 +150,14 @@ class HomeworkResultUpdate(BaseModel):
 class ConsentUpdate(BaseModel):
     privacy_accepted: bool
     camera_processing: bool = False
-    specialist_sharing: bool = False
+    ai_processing: bool = False
     analytics_processing: bool = False
+
+class AIPlanRequest(BaseModel):
+    target_minutes: Literal[3, 5, 10] = 5
+
+class AIAskRequest(BaseModel):
+    question: str = Field(min_length=3, max_length=600)
 
 class ChildDeleteRequest(BaseModel):
     password: str = Field(min_length=1, max_length=128)
