@@ -4,12 +4,14 @@ export type SkillName = "articulation" | "vocabulary" | "speech_comprehension" |
 export type SkillProgress = {
   skill: SkillName;
   label: string;
-  value: number;
+  value: number | null;
+  average_game_score: number | null;
+  measurement: "game_result" | "participation";
   recent_change: number | null;
   sessions: number;
+  participations: number;
   completed_exercises: number;
   total_exercises: number;
-  recommended_practice: string;
 };
 
 export type User = {
@@ -35,7 +37,7 @@ export type Dashboard = {
   stars: number;
   overall: number;
   module_progress: Record<"motor" | "sensory" | "mixed", number>;
-  module_accuracy: Record<"motor" | "sensory" | "mixed", number>;
+  module_accuracy: Record<"motor" | "sensory" | "mixed", number | null>;
   module_completion: Record<"motor" | "sensory" | "mixed", number>;
   module_completed: Record<"motor" | "sensory" | "mixed", number>;
   completed_exercise_ids: number[];
@@ -44,7 +46,7 @@ export type Dashboard = {
   skill_progress: SkillProgress[];
   weakest_skill: SkillProgress | null;
   recommended_exercise: Exercise | null;
-  progress_delta: number;
+  progress_delta: number | null;
   daily: Array<{ date: string; label: string; motor: number | null; sensory: number | null; mixed: number | null }>;
   achievements: { first_five: boolean; good_listener: boolean; phrase_master: boolean; week_streak: boolean };
   recent: Array<{ id: number; module: "motor" | "sensory" | "mixed"; score: number; duration_seconds: number; attempts_count?: number | null; correct_answers?: number | null; prompts_used?: number; attempt_status?: "completed" | "participated" | "refused" | "break" | "technical_error"; created_at: string }>;
@@ -134,38 +136,45 @@ export type NotificationItem = {
 
 export type NotificationsData = { unread: number; items: NotificationItem[] };
 
-export const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8010";
+export const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8010";
+let csrfTokenMemory = "";
 
-export function getToken() {
-  if (typeof window === "undefined") return null;
-  return localStorage.getItem("soyle-token");
+export function clearLegacyAuth() {
+  if (typeof window !== "undefined") localStorage.removeItem("soyle-token");
 }
 
-export function setToken(token: string | null) {
-  if (typeof window === "undefined") return;
-  if (token) localStorage.setItem("soyle-token", token);
-  else localStorage.removeItem("soyle-token");
+export function getCsrfToken() {
+  if (csrfTokenMemory) return csrfTokenMemory;
+  if (typeof document === "undefined") return "";
+  const value = document.cookie.split("; ").find((item) => item.startsWith("soyle_csrf=") || item.startsWith("__Host-soyle_csrf="));
+  return value ? decodeURIComponent(value.split("=", 2)[1] || "") : "";
 }
 
 export async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const token = getToken();
   const headers = new Headers(options.headers);
   if (!headers.has("Content-Type") && options.body) headers.set("Content-Type", "application/json");
-  if (token) headers.set("Authorization", `Bearer ${token}`);
+  if (["POST", "PUT", "PATCH", "DELETE"].includes((options.method || "GET").toUpperCase())) {
+    const csrfToken = getCsrfToken();
+    if (csrfToken) headers.set("X-CSRF-Token", csrfToken);
+  }
   let response: Response;
   const controller = new AbortController();
   const timeout = window.setTimeout(() => controller.abort(), 8000);
   if (options.signal) options.signal.addEventListener("abort", () => controller.abort(), { once: true });
   try {
-    response = await fetch(`${API_URL}${path}`, { ...options, headers, signal: controller.signal });
+    response = await fetch(`${API_URL}${path}`, { ...options, headers, credentials: "include", signal: controller.signal });
   } catch (cause) {
     if (cause instanceof DOMException && cause.name === "AbortError") throw new Error("Сервер Söyle отвечает слишком долго. Попробуйте ещё раз через несколько секунд.");
     throw new Error("Сервер Söyle временно недоступен. Проверьте подключение и попробуйте ещё раз.");
   } finally {
     window.clearTimeout(timeout);
   }
-  if (response.status === 204) return undefined as T;
+  if (response.status === 204) {
+    if (path === "/api/auth/logout") csrfTokenMemory = "";
+    return undefined as T;
+  }
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(data.detail || "Не удалось выполнить запрос");
+  if (typeof data.csrf_token === "string" && data.csrf_token) csrfTokenMemory = data.csrf_token;
   return data as T;
 }

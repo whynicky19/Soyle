@@ -1,3 +1,4 @@
+from datetime import date
 from typing import Any, Literal
 from pydantic import BaseModel, Field
 
@@ -11,12 +12,12 @@ class RegisterRequest(BaseModel):
     full_name: str = Field(min_length=2, max_length=100)
 
 class LoginRequest(BaseModel):
-    username: str = Field(min_length=3, max_length=40)
-    password: str
+    username: str = Field(min_length=3, max_length=40, pattern=r"^[a-zA-Z0-9_.-]+$")
+    password: str = Field(min_length=1, max_length=128)
 
 class StudentLoginRequest(BaseModel):
-    username: str = Field(min_length=3, max_length=40)
-    pin: str = Field(min_length=4, max_length=12)
+    username: str = Field(min_length=3, max_length=40, pattern=r"^[a-zA-Z0-9_.-]+$")
+    pin: str = Field(min_length=4, max_length=12, pattern=r"^[0-9]+$")
 
 class StudentAccountCreate(BaseModel):
     username: str = Field(min_length=3, max_length=40, pattern=r"^[a-zA-Z0-9_.-]+$")
@@ -24,9 +25,9 @@ class StudentAccountCreate(BaseModel):
 
 class ChildCreate(BaseModel):
     name: str = Field(min_length=2, max_length=60)
-    birth_date: str
+    birth_date: date
     primary_module: ModuleName = "mixed"
-    avatar_color: str = "#f07d68"
+    avatar_color: str = Field(default="#f07d68", pattern=r"^#[0-9a-fA-F]{6}$")
 
 class SessionCreate(BaseModel):
     child_id: int
@@ -48,7 +49,7 @@ class SessionCreate(BaseModel):
 
 class LearningSessionCreate(BaseModel):
     child_id: int
-    exercise_ids: list[int] = Field(default_factory=list, min_length=3, max_length=10)
+    exercise_ids: list[int] = Field(default_factory=list, min_length=1, max_length=5)
     target_minutes: Literal[3, 5, 10] = 5
 
 class ExerciseCreate(BaseModel):
@@ -91,12 +92,12 @@ class UserSettingsUpdate(BaseModel):
     sound_enabled: bool
     calm_mode: bool
     theme: Literal["peach", "ocean", "lavender", "contrast"]
-    language: Literal["ru", "en", "kk"] = "ru"
+    language: Literal["ru"] = "ru"
 
 class TTSRequest(BaseModel):
     text: str = Field(min_length=1, max_length=300)
     rate: float = Field(default=0.78, ge=0.6, le=1.1)
-    language: Literal["ru", "kk", "en"] = "ru"
+    language: Literal["ru"] = "ru"
 
 class AACCardCreate(BaseModel):
     child_id: int
@@ -106,7 +107,7 @@ class AACCardCreate(BaseModel):
     image: str = Field(default="/soyle-icon.png", min_length=1, max_length=200)
     lemma: str | None = Field(default=None, max_length=80)
     grammatical_role: Literal["subject", "action", "object", "ready_message"] = "ready_message"
-    language: Literal["ru", "kk", "en"] = "ru"
+    language: Literal["ru"] = "ru"
     pictogram: str | None = Field(default=None, max_length=200)
 
 class AACFavoriteUpdate(BaseModel):
@@ -114,13 +115,13 @@ class AACFavoriteUpdate(BaseModel):
 
 class AACPhraseCreate(BaseModel):
     child_id: int
-    phrase: str = Field(min_length=1, max_length=300)
-    card_ids: list[int] = Field(default_factory=list, max_length=12)
+    phrase: str | None = Field(default=None, min_length=1, max_length=300)
+    card_ids: list[int] = Field(min_length=1, max_length=8)
 
 class AACComposeRequest(BaseModel):
     child_id: int
     card_ids: list[int] = Field(min_length=1, max_length=8)
-    language: Literal["ru", "kk", "en"] = "ru"
+    language: Literal["ru"] = "ru"
 
 class ChildGoalCreate(BaseModel):
     child_id: int

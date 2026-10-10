@@ -15,9 +15,14 @@ self.addEventListener("activate", (event) => {
 });
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
+  const requestUrl = new URL(event.request.url);
+  if (requestUrl.pathname.startsWith("/api/") || event.request.headers.has("authorization")) return;
   event.respondWith(fetch(event.request).then((response) => {
-    const copy = response.clone();
-    if (new URL(event.request.url).origin === self.location.origin) caches.open(CACHE).then((cache) => cache.put(event.request, copy));
+    const cacheControl = response.headers.get("cache-control") || "";
+    if (response.ok && requestUrl.origin === self.location.origin && !/(private|no-store)/i.test(cacheControl)) {
+      const copy = response.clone();
+      caches.open(CACHE).then((cache) => cache.put(event.request, copy));
+    }
     return response;
   }).catch(() => caches.match(event.request).then((cached) => {
     if (cached) return cached;

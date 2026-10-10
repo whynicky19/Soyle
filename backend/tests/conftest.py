@@ -24,7 +24,7 @@ def client():
 
 
 def login(client: TestClient, username: str, password: str) -> dict[str, str]:
-    response = client.post("/api/auth/login", json={"username": username, "password": password})
+    response = client.post("/api/auth/login", headers={"X-Soyle-Auth-Mode": "bearer"}, json={"username": username, "password": password})
     assert response.status_code == 200, response.text
     return {"Authorization": f"Bearer {response.json()['access_token']}"}
 
@@ -56,6 +56,6 @@ def admin_headers(client):
 
 @pytest.fixture(scope="session")
 def student_headers(client):
-    response = client.post("/api/auth/student-login", json={"username": "alikhan", "pin": "1234"})
+    response = client.post("/api/auth/student-login", headers={"X-Soyle-Auth-Mode": "bearer"}, json={"username": "alikhan", "pin": "1234"})
     assert response.status_code == 200, response.text
     return {"Authorization": f"Bearer {response.json()['access_token']}"}

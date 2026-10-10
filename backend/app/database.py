@@ -13,6 +13,8 @@ except ImportError:  # PostgreSQL driver is only required when DATABASE_URL is s
 
 DB_PATH = Path(os.getenv("SOYLE_DB_PATH", Path(__file__).resolve().parents[1] / "soyle.db"))
 DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
+DEPLOYMENT_MARKERS = ("VERCEL", "RAILWAY_ENVIRONMENT", "RENDER", "FLY_APP_NAME", "K_SERVICE")
+IS_PRODUCTION = os.getenv("SOYLE_ENV", "").lower() in {"production", "staging"} or any(os.getenv(name) for name in DEPLOYMENT_MARKERS)
 
 
 class DatabaseConnection:
@@ -474,7 +476,9 @@ def init_db() -> None:
         db.execute("INSERT INTO schema_migrations(version,applied_at) VALUES(6,?) ON CONFLICT(version) DO NOTHING", (now_iso(),))
         db.execute("INSERT INTO schema_migrations(version,applied_at) VALUES(7,?) ON CONFLICT(version) DO NOTHING", (now_iso(),))
 
-        seed_demo = env_enabled("SOYLE_SEED_DEMO_DATA", default=not bool(DATABASE_URL))
+        seed_demo = env_enabled("SOYLE_SEED_DEMO_DATA", default=False)
+        if IS_PRODUCTION and seed_demo:
+            raise RuntimeError("SOYLE_SEED_DEMO_DATA must be disabled outside local development")
         if seed_demo and not db.execute("SELECT 1 FROM users LIMIT 1").fetchone():
             created = now_iso()
             db.executemany("INSERT INTO users(email,username,password_hash,full_name,role,created_at) VALUES(?,?,?,?,?,?)", [
@@ -529,9 +533,3 @@ def init_db() -> None:
         supported_sensory_sets = ("animals", "food", "toys")
         sensory_placeholders = ",".join("?" for _ in supported_sensory_sets)
         db.execute(f"UPDATE exercises SET is_active=0 WHERE module='sensory' AND target NOT IN ({sensory_placeholders})", supported_sensory_sets)
-        if seed_demo and not db.execute("SELECT 1 FROM usage_events LIMIT 1").fetchone():
-            child_id = db.execute("SELECT id FROM children ORDER BY id LIMIT 1").fetchone()["id"]
-            db.executemany("INSERT INTO usage_events(child_id,provider,model,feature,input_tokens,output_tokens,estimated_cost_usd,created_at) VALUES(?,?,?,?,?,?,?,?)", [
-                (child_id, "local", "MediaPipe Face Landmarker", "Анализ артикуляции", 0, 0, 0, now_iso()),
-                (child_id, "local", "Söyle Rules v1", "Персональная рекомендация", 0, 0, 0, now_iso()),
-            ])

@@ -30,7 +30,7 @@ if curl -fsS http://127.0.0.1:8010/health >/dev/null 2>&1; then
 else
   echo "Запускаю FastAPI: http://127.0.0.1:8010"
   cd "$BACKEND_DIR"
-  "$VENV_PYTHON" -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8010 &
+  env SOYLE_SEED_DEMO_DATA="${SOYLE_SEED_DEMO_DATA:-true}" "$VENV_PYTHON" -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8010 &
   BACKEND_PID=$!
   BACKEND_READY=0
   for _ in {1..40}; do

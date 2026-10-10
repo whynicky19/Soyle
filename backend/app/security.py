@@ -1,7 +1,8 @@
 import os
+import secrets
 from datetime import datetime, timedelta, timezone
 import jwt
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, Response, status
 from fastapi.security import OAuth2PasswordBearer
 from jwt import InvalidTokenError
 from pwdlib import PasswordHash
@@ -13,9 +14,17 @@ DEPLOYMENT_MARKERS = ("VERCEL", "RAILWAY_ENVIRONMENT", "RENDER", "FLY_APP_NAME",
 IS_PRODUCTION = os.getenv("SOYLE_ENV", "").lower() in {"production", "staging"} or any(os.getenv(name) for name in DEPLOYMENT_MARKERS)
 if IS_PRODUCTION and (SECRET_KEY == DEFAULT_SECRET_KEY or len(SECRET_KEY.encode()) < 32):
     raise RuntimeError("SOYLE_SECRET_KEY must be unique and at least 32 bytes in production")
+COOKIE_SAMESITE = os.getenv("SOYLE_COOKIE_SAMESITE", "lax").strip().lower()
+if COOKIE_SAMESITE not in {"lax", "strict", "none"}:
+    raise RuntimeError("SOYLE_COOKIE_SAMESITE must be lax, strict, or none")
+if COOKIE_SAMESITE == "none" and not IS_PRODUCTION:
+    raise RuntimeError("SameSite=None cookies require a secure production environment")
 ALGORITHM = "HS256"
+AUTH_COOKIE_NAME = "__Host-soyle_access" if IS_PRODUCTION else "soyle_access"
+CSRF_COOKIE_NAME = "__Host-soyle_csrf" if IS_PRODUCTION else "soyle_csrf"
+COOKIE_MAX_AGE_SECONDS = 24 * 60 * 60
 password_hash = PasswordHash.recommended()
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login", auto_error=False)
 
 def hash_password(password: str) -> str:
     return password_hash.hash(password)
@@ -31,8 +40,31 @@ def create_student_access_token(student_id: int) -> str:
     expires = datetime.now(timezone.utc) + timedelta(hours=12)
     return jwt.encode({"sub": f"student:{student_id}", "role": "student", "exp": expires}, SECRET_KEY, algorithm=ALGORITHM)
 
-def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
+
+def set_auth_cookies(response: Response, token: str, *, max_age: int = COOKIE_MAX_AGE_SECONDS) -> str:
+    csrf_token = secrets.token_urlsafe(32)
+    cookie_options = {
+        "secure": IS_PRODUCTION,
+        "samesite": COOKIE_SAMESITE,
+        "path": "/",
+        "max_age": max_age,
+    }
+    response.set_cookie(AUTH_COOKIE_NAME, token, httponly=True, **cookie_options)
+    response.set_cookie(CSRF_COOKIE_NAME, csrf_token, httponly=False, **cookie_options)
+    return csrf_token
+
+
+def clear_auth_cookies(response: Response) -> None:
+    cookie_options = {"secure": IS_PRODUCTION, "samesite": COOKIE_SAMESITE, "path": "/"}
+    response.delete_cookie(AUTH_COOKIE_NAME, **cookie_options)
+    response.delete_cookie(CSRF_COOKIE_NAME, **cookie_options)
+
+
+def get_current_user(request: Request, bearer_token: str | None = Depends(oauth2_scheme)) -> dict:
     error = HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Не удалось подтвердить авторизацию", headers={"WWW-Authenticate": "Bearer"})
+    token = bearer_token or request.cookies.get(AUTH_COOKIE_NAME)
+    if not token:
+        raise error
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         subject = str(payload.get("sub", ""))

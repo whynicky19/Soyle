@@ -1,12 +1,47 @@
+from datetime import date, timedelta
+
+from fastapi.testclient import TestClient
+
 from app.aac_grammar import compose_aac_phrase
 from app.database import connect
+from app.main import app, auth_identifier
+
+
+def test_cookie_session_csrf_origin_and_logout():
+    with TestClient(app) as browser:
+        login = browser.post("/api/auth/login", json={"username": "parent", "password": "Parent123!"})
+        assert login.status_code == 200, login.text
+        assert "access_token" not in login.json()
+        assert browser.cookies.get("soyle_access")
+        csrf_token = browser.cookies.get("soyle_csrf")
+        assert csrf_token
+        assert "HttpOnly" in login.headers["set-cookie"]
+        assert "SameSite=lax" in login.headers["set-cookie"]
+        assert login.headers["cache-control"] == "no-store"
+        current = browser.get("/api/auth/me")
+        assert current.status_code == 200
+        assert current.json()["csrf_token"] == csrf_token
+
+        payload = {"camera_enabled": False, "sound_enabled": True, "calm_mode": False, "theme": "peach", "language": "ru"}
+        assert browser.put("/api/settings", json=payload).status_code == 403
+        assert browser.put("/api/settings", headers={"X-CSRF-Token": csrf_token}, json=payload).status_code == 200
+        assert browser.put("/api/settings", headers={"Origin": "https://attacker.invalid", "X-CSRF-Token": csrf_token}, json=payload).status_code == 403
+
+        logout = browser.post("/api/auth/logout", headers={"X-CSRF-Token": csrf_token})
+        assert logout.status_code == 204
+        assert browser.get("/api/auth/me").status_code == 401
+
+
+def test_login_identifier_isolated_by_client():
+    assert auth_identifier("adult", "victim", "198.51.100.10") != auth_identifier("adult", "victim", "203.0.113.9")
+    assert auth_identifier("adult", "victim", "198.51.100.10") != auth_identifier("adult", "other", "198.51.100.10")
 
 
 def test_auth_roles_and_child_access(client, parent_headers, admin_headers):
     assert client.get("/api/admin/stats", headers=parent_headers).status_code == 403
     assert client.get("/api/admin/stats", headers=admin_headers).status_code == 200
 
-    registration = client.post("/api/auth/register", json={
+    registration = client.post("/api/auth/register", headers={"X-Soyle-Auth-Mode": "bearer"}, json={
         "username": "secondparent", "password": "SecondParent123!", "full_name": "Второй родитель",
     })
     assert registration.status_code == 201
@@ -28,8 +63,13 @@ def test_login_rate_limit(client):
 
 def test_specialist_assignment_is_first_in_plan(client, parent_headers, specialist_headers):
     child_id = client.get("/api/children", headers=parent_headers).json()[0]["id"]
+    automatic_plan = client.get(f"/api/session-plan/{child_id}?minutes=10", headers=parent_headers)
+    assert automatic_plan.status_code == 200
+    assert all(item["module"] != "motor" for item in automatic_plan.json()["exercises"])
+
     exercises = client.get("/api/exercises", headers=specialist_headers).json()
     sensory = next(item for item in exercises if item["module"] == "sensory")
+    motor = next(item for item in exercises if item["module"] == "motor")
     assigned = client.post("/api/specialist/assigned-exercises", headers=specialist_headers, json={
         "child_id": child_id, "exercise_id": sensory["id"], "note": "Обязательное",
     })
@@ -37,8 +77,33 @@ def test_specialist_assignment_is_first_in_plan(client, parent_headers, speciali
     plan = client.get(f"/api/session-plan/{child_id}?minutes=3", headers=parent_headers)
     assert plan.status_code == 200
     assert plan.json()["estimated_minutes"] == 3
-    assert len(plan.json()["exercises"]) == 5
+    assert len(plan.json()["exercises"]) == 2
     assert plan.json()["exercises"][0]["id"] == sensory["id"]
+
+    for minutes, expected_count in ((5, 3), (10, 5)):
+        longer_plan = client.get(f"/api/session-plan/{child_id}?minutes={minutes}", headers=parent_headers)
+        assert longer_plan.status_code == 200
+        assert longer_plan.json()["estimated_minutes"] == minutes
+        assert len(longer_plan.json()["exercises"]) == expected_count
+
+    motor_assignment = client.post("/api/specialist/assigned-exercises", headers=specialist_headers, json={
+        "child_id": child_id, "exercise_id": motor["id"], "note": "Индивидуальное назначение",
+    })
+    assert motor_assignment.status_code == 201
+    assigned_plan = client.get(f"/api/session-plan/{child_id}?minutes=5", headers=parent_headers).json()
+    assert motor["id"] in {item["id"] for item in assigned_plan["exercises"]}
+    visible_to_family = client.get(f"/api/exercises?child_id={child_id}", headers=parent_headers).json()
+    assert motor["id"] in {item["id"] for item in visible_to_family}
+
+    participation = client.post("/api/sessions", headers=parent_headers, json={
+        "child_id": child_id, "exercise_id": motor["id"], "module": "motor",
+        "score": 100, "duration_seconds": 5, "details": {"source": "local-camera-mirror"},
+        "attempt_status": "completed", "attempts_count": 1, "correct_answers": 1,
+    })
+    assert participation.status_code == 201
+    assert participation.json()["attempt_status"] == "participated"
+    assert participation.json()["score"] == 0
+    assert participation.json()["awarded_stars"] == 1
 
 
 def test_goal_homework_and_progress_metrics(client, parent_headers, specialist_headers):
@@ -95,16 +160,28 @@ def test_learning_session_pause_and_measurements(client, parent_headers):
         "child_id": child_id, "exercise_id": exercise["id"], "module": exercise["module"],
         "score": 80, "duration_seconds": 22, "details": {}, "learning_session_id": session["id"],
         "sequence_index": 0, "independence": 75, "prompt_level": "minimal", "response_ms": 1800,
-        "communication_initiatives": 2,
+        "communication_initiatives": 2, "attempts_count": 5, "correct_answers": 4,
     })
     assert saved.status_code == 201
+    for index, exercise in enumerate(session["exercises"][1:], start=1):
+        response = client.post("/api/sessions", headers=parent_headers, json={
+            "child_id": child_id, "exercise_id": exercise["id"], "module": exercise["module"],
+            "score": 80, "duration_seconds": 20, "details": {}, "learning_session_id": session["id"],
+            "sequence_index": index, "independence": 75, "prompt_level": "minimal",
+            "communication_initiatives": 1, "attempts_count": 5, "correct_answers": 4,
+        })
+        assert response.status_code == 201, response.text
+    finished = client.get(f"/api/learning-sessions/{session['id']}", headers=parent_headers)
+    assert finished.json()["status"] == "completed"
+    homework = client.get(f"/api/homework/{child_id}", headers=parent_headers).json()
+    assert not any(item["title"].startswith("Домашняя практика:") for item in homework)
     metrics = client.get(f"/api/progress/{child_id}", headers=parent_headers).json()["support_metrics"]
     assert metrics["average_independence"] == 75
     assert metrics["communication_initiatives"] >= 2
 
 
 def test_consent_is_opt_in_and_revocation_is_immediate(client, admin_headers, specialist_headers):
-    registration = client.post("/api/auth/register", json={
+    registration = client.post("/api/auth/register", headers={"X-Soyle-Auth-Mode": "bearer"}, json={
         "username": "consentparent", "password": "ConsentParent123!", "full_name": "Родитель согласий",
     })
     assert registration.status_code == 201, registration.text
@@ -187,7 +264,7 @@ def test_consent_is_opt_in_and_revocation_is_immediate(client, admin_headers, sp
     assert child_id in {item["id"] for item in client.get("/api/children", headers=specialist_headers).json()}
 
     no_analytics = client.post("/api/aac/history", headers=parent, json={
-        "child_id": child_id, "phrase": "Помоги", "card_ids": [],
+        "child_id": child_id, "phrase": "Подменённый текст", "card_ids": [cards_by_label["Помоги"]["id"]],
     })
     assert no_analytics.status_code == 403
     assert client.get(f"/api/aac/history/{child_id}", headers=parent).json() == []
@@ -200,9 +277,10 @@ def test_consent_is_opt_in_and_revocation_is_immediate(client, admin_headers, sp
     })
     assert analytics_allowed.status_code == 200
     saved_phrase = client.post("/api/aac/history", headers=parent, json={
-        "child_id": child_id, "phrase": "Помоги", "card_ids": [],
+        "child_id": child_id, "phrase": "Подменённый текст", "card_ids": [cards_by_label["Помоги"]["id"]],
     })
     assert saved_phrase.status_code == 201
+    assert saved_phrase.json()["phrase"] == "Помоги мне"
 
     revoked = client.put(f"/api/children/{child_id}/consent", headers=parent, json={
         "privacy_accepted": True,
@@ -248,7 +326,7 @@ def test_student_can_read_but_not_change_consent(client, parent_headers, student
 
 
 def test_game_results_are_server_calculated_and_non_scored_outcomes_are_separate(client):
-    registration = client.post("/api/auth/register", json={
+    registration = client.post("/api/auth/register", headers={"X-Soyle-Auth-Mode": "bearer"}, json={
         "username": "metricsparent", "password": "MetricsParent123!", "full_name": "Родитель метрик",
     })
     assert registration.status_code == 201, registration.text
@@ -276,7 +354,7 @@ def test_game_results_are_server_calculated_and_non_scored_outcomes_are_separate
         })
         assert response.status_code == 201, response.text
         saved_scores.append(response.json()["score"])
-        assert response.json()["measurement_version"] == 2
+        assert response.json()["measurement_version"] == 3
         if correct == 4:
             assert response.json()["details"]["prompt_types"] == ["repeat_audio"]
     assert saved_scores == [0, 20, 80, 100]
@@ -302,17 +380,16 @@ def test_game_results_are_server_calculated_and_non_scored_outcomes_are_separate
         assert response.json()["score"] == 0
         assert response.json()["awarded_stars"] == 0
 
-    motor_exercises = [item for item in client.get("/api/exercises", headers=headers).json() if item["module"] == "motor"]
-    motor_exercise = motor_exercises[0]
-    participated = client.post("/api/sessions", headers=headers, json={
+    assert not [item for item in client.get("/api/exercises", headers=headers).json() if item["module"] == "motor"]
+    with connect() as db:
+        motor_exercise = dict(db.execute("SELECT * FROM exercises WHERE module='motor' AND is_active=1 ORDER BY id LIMIT 1").fetchone())
+    denied_motor = client.post("/api/sessions", headers=headers, json={
         "child_id": child["id"], "exercise_id": motor_exercise["id"], "module": "motor",
         "score": 99, "duration_seconds": 8,
-        "details": {"source": "manual", "movement_signal_seen": False},
+        "details": {"source": "manual"},
         "attempt_status": "participated", "independence": 100, "prompt_level": "independent",
     })
-    assert participated.status_code == 201, participated.text
-    assert participated.json()["score"] == 0
-    assert participated.json()["awarded_stars"] == 1
+    assert denied_motor.status_code == 403
 
     invalid = client.post("/api/sessions", headers=headers, json={
         "child_id": child["id"], "exercise_id": exercise["id"], "module": "sensory",
@@ -330,28 +407,20 @@ def test_game_results_are_server_calculated_and_non_scored_outcomes_are_separate
     assert metrics["technical_errors"] == 1
     assert metrics["refusals"] == 1
     assert metrics["breaks"] == 1
-    assert metrics["participations"] == 1
+    assert metrics["participations"] == 0
     assert metrics["game_result_average"] == 50
 
     dashboard = client.get(f"/api/dashboard/{child['id']}", headers=headers).json()
     assert dashboard["module_accuracy"]["sensory"] == 50
-    assert dashboard["module_accuracy"]["motor"] == 0
-    assert dashboard["module_completed"]["motor"] == 1
-    assert motor_exercise["id"] in dashboard["completed_exercise_ids"]
-    assert dashboard["recent"][0]["attempt_status"] == "participated"
+    assert dashboard["module_accuracy"]["motor"] is None
+    assert dashboard["module_completed"]["motor"] == 0
+    assert motor_exercise["id"] not in dashboard["completed_exercise_ids"]
     assert next(item for item in dashboard["recent"] if item["attempt_status"] == "break")["score"] == 0
     assert next(item for item in dashboard["recent"] if item["attempt_status"] == "technical_error")["score"] == 0
 
-    for remaining_motor_exercise in motor_exercises[1:]:
-        response = client.post("/api/sessions", headers=headers, json={
-            "child_id": child["id"], "exercise_id": remaining_motor_exercise["id"], "module": "motor",
-            "score": 100, "duration_seconds": 5, "details": {"source": "manual"},
-            "attempt_status": "participated", "independence": 100, "prompt_level": "independent",
-        })
-        assert response.status_code == 201, response.text
-    notifications = client.get("/api/notifications", headers=headers)
-    assert notifications.status_code == 200
-    assert any(item["metadata"].get("unit_id") == "motor" for item in notifications.json()["items"])
+    assert dashboard["weakest_skill"] is None
+    assert dashboard["recommended_exercise"] is None
+    assert dashboard["progress_delta"] is None
 
 
 def test_aac_grammar_uses_safe_language_specific_templates(client, parent_headers):
@@ -424,7 +493,59 @@ def test_only_sensory_sets_with_eight_stimuli_are_active(client, parent_headers)
 
 
 def test_tts_rejects_unknown_language_before_audio_generation(client, parent_headers):
-    response = client.post("/api/tts", headers=parent_headers, json={
-        "text": "test", "rate": 0.8, "language": "de",
+    for language in ("de", "en", "kk"):
+        response = client.post("/api/tts", headers=parent_headers, json={
+            "text": "test", "rate": 0.8, "language": language,
+        })
+        assert response.status_code == 422
+
+
+def test_future_birth_date_is_rejected(client, parent_headers):
+    response = client.post("/api/children", headers=parent_headers, json={
+        "name": "Ребёнок из будущего",
+        "birth_date": (date.today() + timedelta(days=1)).isoformat(),
+        "primary_module": "mixed",
+        "avatar_color": "#82a78f",
     })
     assert response.status_code == 422
+
+
+def test_export_is_complete_and_delete_requires_password(client):
+    registration = client.post("/api/auth/register", headers={"X-Soyle-Auth-Mode": "bearer"}, json={
+        "username": "exportparent", "password": "ExportParent123!", "full_name": "Родитель выгрузки",
+    })
+    assert registration.status_code == 201, registration.text
+    headers = {"Authorization": f"Bearer {registration.json()['access_token']}"}
+    created = client.post("/api/children", headers=headers, json={
+        "name": "Тест выгрузки", "birth_date": "2020-04-03", "primary_module": "mixed", "avatar_color": "#82a78f",
+    })
+    assert created.status_code == 201, created.text
+    child_id = created.json()["id"]
+    consent = client.put(f"/api/children/{child_id}/consent", headers=headers, json={
+        "privacy_accepted": True,
+        "camera_processing": False,
+        "specialist_sharing": False,
+        "analytics_processing": True,
+    })
+    assert consent.status_code == 200
+
+    exported = client.get(f"/api/children/{child_id}/export", headers=headers)
+    assert exported.status_code == 200
+    assert exported.headers["content-type"].startswith("application/json")
+    assert f"soyle-child-{child_id}.json" in exported.headers["content-disposition"]
+    data = exported.json()
+    assert data["child"]["id"] == child_id
+    assert data["consent"]["privacy_accepted"] == 1
+    assert "password_hash" not in str(data)
+    assert "pin_hash" not in str(data)
+    assert {
+        "settings", "sessions", "learning_sessions", "assigned_exercises", "specialist_access",
+        "specialist_recommendations", "goals", "homework", "aac_custom_cards", "aac_favorites",
+        "aac_history", "notifications", "audit_events",
+    }.issubset(data)
+
+    denied = client.request("DELETE", f"/api/children/{child_id}", headers=headers, json={"password": "wrong-password"})
+    assert denied.status_code == 403
+    deleted = client.request("DELETE", f"/api/children/{child_id}", headers=headers, json={"password": "ExportParent123!"})
+    assert deleted.status_code == 204
+    assert child_id not in {item["id"] for item in client.get("/api/children", headers=headers).json()}
