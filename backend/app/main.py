@@ -30,6 +30,7 @@ async def lifespan(_: FastAPI):
 
 app = FastAPI(title="Söyle API", version="1.0.0", lifespan=lifespan)
 CONSENT_VERSION = "2026-10-ai-1"
+LOCAL_MIRROR_TARGETS = frozenset({"smile", "tube", "open", "teeth", "cheeks", "sequence"})
 allowed_origins = [origin.strip() for origin in os.getenv(
     "SOYLE_ALLOWED_ORIGINS",
     "http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,http://127.0.0.1:3001",
@@ -160,13 +161,20 @@ def ensure_ai_consent(child_id: int) -> dict:
     return consent
 
 
-def ensure_motor_assignment(db, child_id: int, exercise: dict) -> None:
+def ensure_local_mirror_exercise(exercise: dict) -> None:
     if exercise["module"] != "motor":
         return
-    raise HTTPException(403, "Моторные упражнения недоступны в текущей версии Söyle")
+    if exercise["target"] not in LOCAL_MIRROR_TARGETS:
+        raise HTTPException(403, "Это движение не входит в проверенную библиотеку локального зеркала")
 
 
-def eligible_exercise_rows(db, child_id: int) -> list[dict]:
+def active_exercise_rows(db) -> list[dict]:
+    return [dict(row) for row in db.execute(
+        "SELECT e.* FROM exercises e WHERE e.is_active=1 ORDER BY e.module,e.difficulty,e.id",
+    ).fetchall()]
+
+
+def ai_eligible_exercise_rows(db) -> list[dict]:
     return [dict(row) for row in db.execute(
         "SELECT e.* FROM exercises e WHERE e.is_active=1 AND e.module<>'motor' ORDER BY e.module,e.difficulty,e.id",
     ).fetchall()]
@@ -542,9 +550,9 @@ def list_exercises(module: str | None = Query(default=None), child_id: int | Non
             rows = [dict(row) for row in db.execute("SELECT * FROM exercises WHERE is_active=1 AND module<>'motor' ORDER BY module,difficulty,id").fetchall()]
         elif child_id is not None:
             ensure_child_access(child_id, user)
-            rows = eligible_exercise_rows(db, child_id)
+            rows = active_exercise_rows(db)
         else:
-            rows = [dict(row) for row in db.execute("SELECT * FROM exercises WHERE is_active=1 AND module<>'motor' ORDER BY module,difficulty,id").fetchall()]
+            rows = active_exercise_rows(db)
     if module:
         rows = [row for row in rows if row["module"] == module]
     return rows
@@ -664,12 +672,12 @@ def create_session(payload: SessionCreate, user: dict = Depends(get_current_user
         raise HTTPException(422, "Правильных ответов не может быть больше числа попыток")
     attempt_status = "refused" if payload.prompt_level == "refused" and payload.attempt_status == "completed" else payload.attempt_status
     with connect() as db:
-        exercise = db.execute("SELECT id,module,is_active FROM exercises WHERE id=?", (payload.exercise_id,)).fetchone()
+        exercise = db.execute("SELECT id,module,target,is_active FROM exercises WHERE id=?", (payload.exercise_id,)).fetchone()
         if not exercise or not exercise["is_active"]:
             raise HTTPException(422, "Задание не найдено или находится в архиве")
         if exercise["module"] != payload.module:
             raise HTTPException(422, "Задание не относится к выбранному модулю")
-        ensure_motor_assignment(db, payload.child_id, exercise)
+        ensure_local_mirror_exercise(exercise)
         if exercise["module"] in {"motor", "mixed"} and attempt_status == "completed":
             attempt_status = "participated"
         if attempt_status == "completed" and (payload.attempts_count is None or payload.correct_answers is None):
@@ -738,7 +746,7 @@ def progress_data(child_id: int, user: dict) -> dict:
     child = ensure_child_access(child_id, user)
     with connect() as db:
         rows = db.execute("SELECT * FROM sessions WHERE child_id=? AND measurement_version>=1 ORDER BY created_at,id", (child_id,)).fetchall()
-        exercise_rows = eligible_exercise_rows(db, child_id)
+        exercise_rows = active_exercise_rows(db)
     rows = [dict(row) for row in rows]
     scored_rows = [row for row in rows if row.get("attempt_status", "completed") == "completed"]
     completion_rows = [row for row in rows if row.get("attempt_status", "completed") in {"completed", "participated"}]
@@ -808,7 +816,7 @@ def dashboard(child_id: int, user: dict = Depends(get_current_user)) -> dict:
     child = ensure_child_access(child_id, user)
     with connect() as db:
         rows = db.execute("SELECT id,exercise_id,module,score,duration_seconds,attempts_count,correct_answers,prompts_used,attempt_status,created_at FROM sessions WHERE child_id=? AND measurement_version>=1 ORDER BY created_at,id", (child_id,)).fetchall()
-        exercise_rows = eligible_exercise_rows(db, child_id)
+        exercise_rows = active_exercise_rows(db)
     scored_rows = [row for row in rows if row["attempt_status"] == "completed"]
     completion_rows = [row for row in rows if row["attempt_status"] in {"completed", "participated"}]
     activity_statuses = {"completed", "participated", "refused"}
@@ -953,7 +961,7 @@ def create_learning_session(payload: LearningSessionCreate, user: dict = Depends
         if len(exercises) != len(unique_ids):
             raise HTTPException(422, "Одно из заданий недоступно")
         for exercise in exercises:
-            ensure_motor_assignment(db, payload.child_id, exercise)
+            ensure_local_mirror_exercise(exercise)
         cursor = db.execute(
             "INSERT INTO learning_sessions(child_id,status,exercise_ids,current_index,target_minutes,started_at) VALUES(?,'in_progress',?,0,?,?) RETURNING id",
             (payload.child_id, json.dumps(unique_ids), payload.target_minutes, now_iso()),
@@ -1043,7 +1051,7 @@ def ai_plan(child_id: int, payload: AIPlanRequest, user: dict = Depends(get_curr
     enforce_ai_limit(user)
     with connect() as db:
         # Keep prompts predictable and inexpensive as the exercise library grows.
-        allowed = eligible_exercise_rows(db, child_id)[:40]
+        allowed = ai_eligible_exercise_rows(db)[:40]
     target_count = {3: 2, 5: 3, 10: 5}[payload.target_minutes]
     born = date.fromisoformat(child["birth_date"])
     age_years = max(0, date.today().year - born.year - ((date.today().month, date.today().day) < (born.month, born.day)))

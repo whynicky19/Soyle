@@ -24,6 +24,10 @@ test("camera is a local mirror without MediaPipe analysis", async () => {
   assert.doesNotMatch(app, /FaceLandmarker|@mediapipe|detectForVideo/);
   assert.doesNotMatch(packageJson, /@mediapipe/);
   assert.match(app, /local-camera-mirror/);
+  assert.match(app, /checked=\{consent\.camera_processing\}/);
+  assert.match(app, /navigator\.mediaDevices\?\.getUserMedia/);
+  assert.doesNotMatch(app, /cameraEnabled=/);
+  assert.match(app, /Видео не анализируется, не записывается и не отправляется/);
 });
 
 test("only the reviewed Russian interface is selectable", async () => {

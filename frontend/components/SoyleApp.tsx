@@ -127,6 +127,16 @@ const defaultSettings: AppSettings = { camera_enabled: false, sound_enabled: tru
 
 const modules = [
   {
+    id: "motor" as const,
+    title: "Зеркало движений",
+    eyebrow: "Локальная практика",
+    description: "Повторяй движение перед зеркалом без записи и автоматической оценки",
+    icon: "/illustrations/module-articulation-fox.png",
+    accent: "coral",
+    progress: 0,
+    time: "3 минуты",
+  },
+  {
     id: "sensory" as const,
     title: "Слушай и находи",
     eyebrow: "Сенсорный модуль",
@@ -484,7 +494,7 @@ function AuthenticatedApp({ user, onLogout }: { user: User; onLogout: () => void
           {screen === "session" && activeSession && <SessionScreen session={activeSession} onContinue={continueSession} onPause={pauseSession} onFinish={() => { setActiveSession(null); refreshDashboard(); setScreen("home"); }} />}
           {screen === "exercise-complete" && exerciseCompletion && <ExerciseCompletionScreen completion={exerciseCompletion} onContinue={continueAfterExercise} onFinish={() => openScreen(exerciseCompletion.sessionMode ? "session" : "games")} />}
           {sessionError && ["motor", "sensory", "mixed"].includes(screen) && <div className="game-error" role="alert"><ShieldAlert size={18}/><span>{sessionError}</span></div>}
-          {screen === "motor" && <MotorGame exercises={exercises.filter((item) => item.module === "motor")} initialExercise={selectedExercise} cameraEnabled={settings.camera_enabled && Boolean(consent?.privacy_accepted && consent?.camera_processing)} cameraConsentGranted={Boolean(consent?.privacy_accepted && consent?.camera_processing)} onBack={() => sessionExerciseActive && activeSession ? setScreen("session") : openScreen("games")} onComplete={(score, exerciseId, measurement, details) => saveSession(exerciseId, "motor", score, details || { source: "manual" }, measurement)} />}
+          {screen === "motor" && <MotorGame exercises={exercises.filter((item) => item.module === "motor")} initialExercise={selectedExercise} cameraConsentGranted={Boolean(consent?.privacy_accepted && consent?.camera_processing)} canManageConsent={user.role === "parent"} onOpenConsent={() => openScreen("parent")} onBack={() => sessionExerciseActive && activeSession ? setScreen("session") : openScreen("games")} onComplete={(score, exerciseId, measurement, details) => saveSession(exerciseId, "motor", score, details || { source: "manual" }, measurement)} />}
           {screen === "sensory" && <SensoryGame key={selectedExercise?.id || "sensory"} exercise={selectedExercise?.module === "sensory" ? selectedExercise : exercises.find((item) => item.module === "sensory")} soundEnabled={settings.sound_enabled} onBack={() => sessionExerciseActive && activeSession ? setScreen("session") : openScreen("games")} onComplete={(score, exerciseId, measurement, details) => saveSession(exerciseId, "sensory", score, { rounds: 5, ...details }, measurement)} />}
           {screen === "aac" && <PhraseGame key="free-aac" childId={child?.id} canManage={user.role === "parent"} freeMode soundEnabled={settings.sound_enabled} onBack={() => openScreen("home")} />}
           {screen === "ai" && user.role === "parent" && <AIParentScreen child={child} consent={consent} onOpenConsent={() => openScreen("parent")} />}
@@ -711,7 +721,7 @@ function ExerciseLibrary({ items, onExercise }: { items: Exercise[]; onExercise:
   const normalizedQuery = query.trim().toLocaleLowerCase("ru");
   const filtered = items.filter((item) => (filter === "all" || item.module === filter) && (!normalizedQuery || `${item.title} ${item.instruction}`.toLocaleLowerCase("ru").includes(normalizedQuery)));
   const labels = { motor: "Артикуляция", sensory: "Понимание", mixed: "Фразы" };
-  return <section className="exercise-library"><div className="section-heading"><div><span className="kicker">БИБЛИОТЕКА</span><h2>Все задания</h2></div><div className="library-controls"><label className="exercise-search"><Search size={16}/><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Найти задание" aria-label="Найти задание"/></label><div className="filter-tabs">{(["all","sensory","mixed"] as const).map((value) => <button key={value} className={filter === value ? "active" : ""} onClick={() => setFilter(value)}>{value === "all" ? "Все" : labels[value]}</button>)}</div></div></div><div className="exercise-grid">{filtered.map((exercise) => <button key={exercise.id} className={`exercise-card ${exercise.module}`} onClick={() => onExercise(exercise)}><span className="exercise-emoji"><ModuleGlyph module={exercise.module} size={24}/></span><div><small>{labels[exercise.module]} · уровень {exercise.difficulty}</small><strong>{exercise.title}</strong><p>{exercise.instruction}</p></div><ChevronRight size={18}/></button>)}</div>{!filtered.length && <div className="empty-state large"><Search size={28}/><strong>Ничего не найдено</strong><span>Измените запрос или выберите другой раздел.</span></div>}</section>;
+  return <section className="exercise-library"><div className="section-heading"><div><span className="kicker">БИБЛИОТЕКА</span><h2>Все задания</h2></div><div className="library-controls"><label className="exercise-search"><Search size={16}/><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Найти задание" aria-label="Найти задание"/></label><div className="filter-tabs">{(["all","motor","sensory","mixed"] as const).map((value) => <button key={value} className={filter === value ? "active" : ""} onClick={() => setFilter(value)}>{value === "all" ? "Все" : labels[value]}</button>)}</div></div></div><div className="exercise-grid">{filtered.map((exercise) => <button key={exercise.id} className={`exercise-card ${exercise.module}`} onClick={() => onExercise(exercise)}><span className="exercise-emoji"><ModuleGlyph module={exercise.module} size={24}/></span><div><small>{labels[exercise.module]} · уровень {exercise.difficulty}</small><strong>{exercise.title}</strong><p>{exercise.instruction}</p></div><ChevronRight size={18}/></button>)}</div>{!filtered.length && <div className="empty-state large"><Search size={28}/><strong>Ничего не найдено</strong><span>Измените запрос или выберите другой раздел.</span></div>}</section>;
 }
 
 function PageTitle({ eyebrow, title, subtitle }: { eyebrow: string; title: string; subtitle: string }) {
@@ -737,21 +747,25 @@ const motorExercises = [
   { id: "sequence", title: "Улыбка - трубочка", text: "Сначала широко улыбнись, затем сложи губы трубочкой." },
 ] as const;
 type MotorExercise = typeof motorExercises[number]["id"];
+type MotorPracticePhase = "idle" | "prepare" | "hold" | "complete";
 
 function MouthGuide({ type }: { type: MotorExercise }) {
   if (type === "sequence") return <div className="mouth-sequence" aria-label="Сначала улыбка, затем губы трубочкой"><MouthGuide type="smile"/><ChevronRight/><MouthGuide type="tube"/></div>;
   return <div className={`mouth-guide ${type}`} aria-hidden="true"><i className="guide-eye left"/><i className="guide-eye right"/><span className="guide-mouth">{type === "teeth" && <b><i/><i/><i/><i/></b>}</span>{type === "cheeks" && <><i className="guide-cheek left"/><i className="guide-cheek right"/></>}</div>;
 }
 
-function MotorGame({ exercises, initialExercise, cameraEnabled, cameraConsentGranted, onBack, onComplete }: { exercises: Exercise[]; initialExercise: Exercise | null; cameraEnabled: boolean; cameraConsentGranted: boolean; onBack: () => void; onComplete: (score: number, exerciseId: number, measurement: GameMeasurement, details?: Record<string, unknown>) => Promise<unknown> | void }) {
+function MotorGame({ exercises, initialExercise, cameraConsentGranted, canManageConsent, onOpenConsent, onBack, onComplete }: { exercises: Exercise[]; initialExercise: Exercise | null; cameraConsentGranted: boolean; canManageConsent: boolean; onOpenConsent: () => void; onBack: () => void; onComplete: (score: number, exerciseId: number, measurement: GameMeasurement, details?: Record<string, unknown>) => Promise<unknown> | void }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const [cameraState, setCameraState] = useState<"idle" | "loading" | "ready" | "error">("idle");
+  const [cameraError, setCameraError] = useState<string | null>(null);
   const availableMotorExercises = motorExercises.filter((item) => exercises.some((exercise) => exercise.target === item.id) || initialExercise?.target === item.id);
   const initialIndex = Math.max(0, availableMotorExercises.findIndex((item) => item.id === initialExercise?.target));
   const [exerciseIndex, setExerciseIndex] = useState(initialIndex);
   const [saved, setSaved] = useState<"independent" | "supported" | null>(null);
   const exercise = availableMotorExercises[exerciseIndex] || availableMotorExercises[0];
+  const holdDuration = exercise?.id === "sequence" ? 4 : 3;
+  const [practice, setPractice] = useState<{ phase: MotorPracticePhase; seconds: number }>({ phase: "idle", seconds: 0 });
 
   const stopCamera = useCallback(() => {
     streamRef.current?.getTracks().forEach((track) => track.stop());
@@ -760,32 +774,71 @@ function MotorGame({ exercises, initialExercise, cameraEnabled, cameraConsentGra
 
   useEffect(() => stopCamera, [stopCamera]);
 
+  useEffect(() => {
+    if (practice.phase !== "prepare" && practice.phase !== "hold") return;
+    const timer = window.setTimeout(() => {
+      setPractice((current) => {
+        if (current.phase !== "prepare" && current.phase !== "hold") return current;
+        if (current.seconds > 1) return { ...current, seconds: current.seconds - 1 };
+        if (current.phase === "prepare") return { phase: "hold", seconds: holdDuration };
+        return { phase: "complete", seconds: 0 };
+      });
+    }, 1000);
+    return () => window.clearTimeout(timer);
+  }, [holdDuration, practice.phase, practice.seconds]);
+
   const startCamera = async () => {
-    if (!cameraEnabled || !cameraConsentGranted) return;
+    if (!cameraConsentGranted) return;
     setCameraState("loading");
+    setCameraError(null);
     stopCamera();
     try {
+      if (!navigator.mediaDevices?.getUserMedia) throw new Error("camera_api_unavailable");
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user", width: 720, height: 540 }, audio: false });
       streamRef.current = stream;
-      if (!videoRef.current) return;
+      if (!videoRef.current) throw new Error("video_element_unavailable");
       videoRef.current.srcObject = stream;
       await videoRef.current.play();
       setCameraState("ready");
-    } catch {
+    } catch (cause) {
       stopCamera();
       setCameraState("error");
+      const name = cause instanceof DOMException ? cause.name : "";
+      if (["NotAllowedError", "SecurityError"].includes(name)) {
+        setCameraError("Доступ к камере запрещён в браузере. Разрешите камеру для этого сайта и попробуйте снова.");
+      } else if (["NotFoundError", "DevicesNotFoundError"].includes(name)) {
+        setCameraError("Камера не найдена. Подключите её или выберите другое устройство.");
+      } else if (["NotReadableError", "TrackStartError"].includes(name)) {
+        setCameraError("Камера занята другим приложением. Закройте его и попробуйте снова.");
+      } else {
+        setCameraError("Браузер не смог включить камеру. Проверьте разрешение камеры и откройте сайт через HTTPS или localhost.");
+      }
     }
   };
+
+  const disableCamera = () => {
+    stopCamera();
+    setCameraState("idle");
+    setCameraError(null);
+  };
+
+  const startPractice = () => {
+    setSaved(null);
+    setPractice({ phase: "prepare", seconds: 3 });
+  };
+
+  const resetPractice = () => setPractice({ phase: "idle", seconds: 0 });
 
   const changeExercise = () => {
     const nextIndex = (exerciseIndex + 1) % Math.max(availableMotorExercises.length, 1);
     setExerciseIndex(nextIndex);
     setSaved(null);
+    resetPractice();
   };
 
   const finishWithoutScoring = async (support: "independent" | "supported") => {
     const completedExerciseId = exercises.find((item) => item.target === exercise?.id)?.id;
-    if (!completedExerciseId || saved) return;
+    if (!completedExerciseId || saved || practice.phase !== "complete") return;
     const result = await onComplete(0, completedExerciseId, {
       attempt_status: "participated",
       independence: support === "independent" ? 100 : 50,
@@ -801,16 +854,16 @@ function MotorGame({ exercises, initialExercise, cameraEnabled, cameraConsentGra
     if (result && status === "break") onBack();
   };
 
-  if (!exercise) return <div className="empty-state large"><ShieldAlert size={28}/><strong>Раздел недоступен</strong><span>Моторные упражнения не входят в текущую версию Söyle.</span><button className="secondary-button" onClick={onBack}>Вернуться к занятиям</button></div>;
+  if (!exercise) return <div className="empty-state large"><ShieldAlert size={28}/><strong>Задания для зеркала пока не загрузились</strong><span>Вернитесь к занятиям, обновите страницу и попробуйте снова.</span><button className="secondary-button" onClick={onBack}>Вернуться к занятиям</button></div>;
 
   return (
     <div className="page-enter game-page">
-      <GameHeader title="Повтори назначенное движение" subtitle="Визуальное зеркало" step={`${exerciseIndex + 1} из ${availableMotorExercises.length}`} onBack={onBack} />
+      <GameHeader title="Повтори движение перед зеркалом" subtitle="Локальное зеркало" step={`${exerciseIndex + 1} из ${availableMotorExercises.length}`} onBack={onBack} />
       <div className="game-layout">
         <div className="camera-panel">
-          <video ref={videoRef} playsInline muted className={cameraState === "ready" ? "visible" : ""} />
-          {cameraState !== "ready" && <div className="camera-placeholder"><div className="face-guide"><UserRound strokeWidth={1.4}/></div><h3>{!cameraConsentGranted ? "Нужно разрешение родителя" : !cameraEnabled ? "Камера отключена в настройках" : cameraState === "loading" ? "Включаем зеркало…" : cameraState === "error" ? "Камеру не удалось запустить" : "Расположи лицо в рамке"}</h3><p>{!cameraConsentGranted ? "Камера не запустится, пока родитель отдельно не разрешит её локальное использование." : cameraEnabled ? "Это обычное локальное зеркало. Видео не анализируется, не отправляется и не сохраняется." : "Включите камеру в настройках, чтобы использовать визуальное зеркало."}</p><button className="primary-button" onClick={startCamera} disabled={cameraState === "loading" || !cameraEnabled || !cameraConsentGranted}><Camera size={19} /> {cameraState === "error" ? "Попробовать ещё раз" : "Включить зеркало"}</button></div>}
-          {cameraState === "ready" && <><div className="face-frame" /><div className="camera-label"><span className="live-dot" /> Локальное зеркало включено</div></>}
+          <video ref={videoRef} playsInline muted aria-hidden="true" className={cameraState === "ready" ? "visible" : ""} />
+          {cameraState !== "ready" && <div className="camera-placeholder" aria-live="polite"><div className="face-guide"><UserRound strokeWidth={1.4}/></div><h3>{!cameraConsentGranted ? "Нужно разрешение родителя" : cameraState === "loading" ? "Включаем зеркало…" : cameraState === "error" ? "Камеру не удалось запустить" : "Зеркало готово к включению"}</h3><p>{!cameraConsentGranted ? canManageConsent ? "Разрешите локальное зеркало в кабинете родителя. Камера не включится автоматически." : "Попроси родителя включить «Локальное зеркало с камерой» в своём кабинете." : cameraState === "error" ? "Исправьте указанную ниже причину и повторите попытку." : "После нажатия браузер отдельно спросит доступ к камере. Видео не анализируется, не отправляется и не сохраняется."}</p>{cameraError && <div className="camera-error" role="alert"><ShieldAlert size={17}/><span>{cameraError}</span></div>}{!cameraConsentGranted ? canManageConsent && <button className="primary-button" onClick={onOpenConsent}><ShieldCheck size={19}/> Открыть разрешения</button> : <button className="primary-button" onClick={startCamera} disabled={cameraState === "loading"}><Camera size={19} /> {cameraState === "error" ? "Попробовать ещё раз" : "Включить зеркало"}</button>}</div>}
+          {cameraState === "ready" && <><div className="face-frame" /><div className="camera-label"><span className="live-dot" /> Локальное зеркало включено</div><button className="camera-stop-button" onClick={disableCamera}><CircleX size={15}/> Выключить зеркало</button>{practice.phase !== "idle" && !saved && <div className={`motor-attempt-overlay ${practice.phase}`} aria-hidden="true"><div>{practice.phase === "prepare" ? <><small>ПРИГОТОВЬСЯ</small><strong>{practice.seconds}</strong></> : practice.phase === "hold" ? <><small>УДЕРЖИВАЙ</small><strong>{practice.seconds}</strong></> : <><Check size={54}/><strong>Готово!</strong></>}</div></div>}</>}
         </div>
         <div className="instruction-panel">
           <span className="kicker">ТВОЁ ЗАДАНИЕ</span>
@@ -818,9 +871,12 @@ function MotorGame({ exercises, initialExercise, cameraEnabled, cameraConsentGra
           <h2>{exercise.title}</h2>
           <p>{exercise.text}</p>
           <div className="motor-camera-note"><ShieldCheck size={18}/><span>Камера работает только как локальное зеркало. Она не определяет правильность движения и не ставит оценку.</span></div>
-          {cameraState === "ready" && <div className="coach-note"><Sparkles size={18} /> Смотри на пример и попробуй в своём темпе. Камера ничего не оценивает.</div>}
-          {saved ? <div className="success-box"><Check size={20}/><div><strong>Попытка отмечена</strong><span>Без оценки правильности. Звезда - за участие.</span></div></div> : <div className="motor-finish-actions"><button className="primary-button" onClick={() => finishWithoutScoring("independent")}><Check size={17}/> Я попробовал сам</button><button className="secondary-button" onClick={() => finishWithoutScoring("supported")}>Попробовал с помощью</button><button className="small-button" onClick={() => stopExercise("break")}><Pause size={15}/> Перерыв</button><button className="small-button" onClick={() => stopExercise("refused")}><CircleX size={15}/> Не хочу</button></div>}
-          {availableMotorExercises.length > 1 && <button className="secondary-button wide" onClick={changeExercise}>{saved ? "Следующее назначенное движение" : "Другое назначенное движение"}<ChevronRight size={18} /></button>}
+          <div className="coach-note"><Sparkles size={18} /> {cameraState === "ready" ? "Нажми «Начать попытку»: появится обратный отсчёт и таймер удержания." : "Можно включить зеркало слева или выполнять движение перед обычным зеркалом."}</div>
+          <div className="motor-practice-flow" aria-live="polite" aria-atomic="true">
+            {saved ? <div className="success-box"><Check size={20}/><div><strong>Попытка отмечена</strong><span>Без оценки правильности. Звезда - за участие.</span></div></div> : practice.phase === "idle" ? <button className="primary-button motor-start-button" onClick={startPractice}><Play size={18} fill="currentColor"/> Начать попытку</button> : practice.phase === "prepare" || practice.phase === "hold" ? <div className={`motor-practice-status ${practice.phase}`}><span>{practice.seconds}</span><div><strong>{practice.phase === "prepare" ? "Приготовься" : "Удерживай движение"}</strong><small>{practice.phase === "prepare" ? "После счёта начнётся упражнение" : "Продолжай в удобном темпе"}</small></div><button className="small-button" onClick={resetPractice}>Остановить</button></div> : <><div className="success-box"><Check size={20}/><div><strong>Время закончилось</strong><span>Как получилось выполнить движение?</span></div></div><div className="motor-finish-actions"><button className="primary-button" onClick={() => finishWithoutScoring("independent")}><Check size={17}/> Самостоятельно</button><button className="secondary-button" onClick={() => finishWithoutScoring("supported")}>С помощью</button></div><button className="secondary-button motor-repeat-button" onClick={startPractice}><RotateCcw size={16}/> Повторить попытку</button></>}
+          </div>
+          {!saved && <div className="motor-stop-actions"><button className="small-button" onClick={() => stopExercise("break")}><Pause size={15}/> Перерыв</button><button className="small-button" onClick={() => stopExercise("refused")}><CircleX size={15}/> Не хочу</button></div>}
+          {availableMotorExercises.length > 1 && <button className="secondary-button wide" onClick={changeExercise}>{saved ? "Следующее движение" : "Другое движение"}<ChevronRight size={18} /></button>}
         </div>
       </div>
     </div>
@@ -1491,7 +1547,7 @@ function ParentScreen({ child, childProfiles, onSelectChild, onDeleted, dashboar
     </div>
     <div className="parent-management-grid">
       <section className="admin-card student-access"><div className="admin-card-head"><div><span className="kicker">ДОСТУП РЕБЁНКА</span><h3>{student ? "Изменить ученический вход" : "Создать вход для ученика"}</h3><p>Отдельный безопасный вход без электронной почты.</p></div><span className="period-pill">Только логин и PIN</span></div><form className="student-access-form" onSubmit={saveStudent}><label>Логин ученика<input value={studentForm.username} onChange={(e) => setStudentForm({...studentForm, username:e.target.value})} placeholder="Например, alikhan" pattern="[A-Za-z0-9_.-]+" minLength={3} required/></label><label>Новый PIN<input value={studentForm.pin} onChange={(e) => setStudentForm({...studentForm, pin:e.target.value.replace(/\D/g, "")})} placeholder="4-12 цифр" inputMode="numeric" minLength={4} maxLength={12} required/></label><button className="primary-button">Сохранить доступ</button></form>{accountMessage && <div className="usage-note" role="status"><Check size={18}/><p>{accountMessage}</p></div>}</section>
-      <section className="admin-card privacy-control"><div className="admin-card-head"><div><span className="kicker">ПРИВАТНОСТЬ И ДАННЫЕ</span><h3>Разрешения семьи</h3><p>Каждое необязательное разрешение включается отдельно и может быть отозвано.</p></div></div><div className="consent-options"><label><input type="checkbox" checked={consent.privacy_accepted} onChange={(e)=>setConsent(e.target.checked ? {...consent,privacy_accepted:true} : {...consent,privacy_accepted:false,camera_processing:false,ai_processing:false,analytics_processing:false})}/><span><b>Сохранение программы и результатов</b><small>Нужно для занятий и истории игровых попыток.</small></span></label><label className={!consent.privacy_accepted ? "disabled" : ""}><input type="checkbox" disabled={!consent.privacy_accepted} checked={consent.ai_processing} onChange={(e)=>setConsent({...consent,ai_processing:e.target.checked})}/><span><b>Söyle AI через OpenAI</b><small>Передаёт вопрос, возраст и обезличенную сводку - без имени и даты рождения.</small></span></label><label className={!consent.privacy_accepted ? "disabled" : ""}><input type="checkbox" disabled={!consent.privacy_accepted} checked={consent.analytics_processing} onChange={(e)=>setConsent({...consent,analytics_processing:e.target.checked})}/><span><b>Описательная история и AAC</b><small>Сохраняет AAC-фразы и участие без клинических выводов.</small></span></label></div><div className="privacy-actions"><button className="primary-button" onClick={saveConsent}>Сохранить разрешения</button>{consent.updated_at && <small className="consent-updated">Изменено {new Date(consent.updated_at).toLocaleString("ru-RU")}</small>}</div></section>
+      <section className="admin-card privacy-control"><div className="admin-card-head"><div><span className="kicker">ПРИВАТНОСТЬ И ДАННЫЕ</span><h3>Разрешения семьи</h3><p>Каждое необязательное разрешение включается отдельно и может быть отозвано.</p></div></div><div className="consent-options"><label><input type="checkbox" checked={consent.privacy_accepted} onChange={(e)=>setConsent(e.target.checked ? {...consent,privacy_accepted:true} : {...consent,privacy_accepted:false,camera_processing:false,ai_processing:false,analytics_processing:false})}/><span><b>Сохранение программы и результатов</b><small>Нужно для занятий и истории игровых попыток.</small></span></label><label className={!consent.privacy_accepted ? "disabled" : ""}><input type="checkbox" disabled={!consent.privacy_accepted} checked={consent.camera_processing} onChange={(e)=>setConsent({...consent,camera_processing:e.target.checked})}/><span><b>Локальное зеркало с камерой</b><small>Разрешает включить камеру только на этом устройстве. Видео не анализируется, не записывается и не отправляется.</small></span></label><label className={!consent.privacy_accepted ? "disabled" : ""}><input type="checkbox" disabled={!consent.privacy_accepted} checked={consent.ai_processing} onChange={(e)=>setConsent({...consent,ai_processing:e.target.checked})}/><span><b>Söyle AI через OpenAI</b><small>Передаёт вопрос, возраст и обезличенную сводку - без имени и даты рождения.</small></span></label><label className={!consent.privacy_accepted ? "disabled" : ""}><input type="checkbox" disabled={!consent.privacy_accepted} checked={consent.analytics_processing} onChange={(e)=>setConsent({...consent,analytics_processing:e.target.checked})}/><span><b>Описательная история и AAC</b><small>Сохраняет AAC-фразы и участие без клинических выводов.</small></span></label></div><div className="privacy-actions"><button className="primary-button" onClick={saveConsent}>Сохранить разрешения</button>{consent.updated_at && <small className="consent-updated">Изменено {new Date(consent.updated_at).toLocaleString("ru-RU")}</small>}</div></section>
     </div>
     <section className="data-control"><div><ShieldCheck/><span><strong>Данные ребёнка принадлежат семье</strong><small>Экспорт включает профиль, согласия, настройки, занятия, пользовательские AAC-карточки, избранное и историю.</small></span></div><div className="data-actions"><button className="secondary-button" onClick={exportData}>Скачать данные</button><button className="small-button danger-button" onClick={() => setDeleteOpen(!deleteOpen)}>Удалить данные</button></div></section>{deleteOpen && <form className="delete-data-form" onSubmit={deleteData}><div><strong>Удалить профиль и все связанные данные?</strong><p>Действие необратимо. Введите пароль родительского аккаунта для подтверждения.</p></div><input type="password" value={deletePassword} onChange={(e)=>setDeletePassword(e.target.value)} placeholder="Пароль" required/><button className="small-button danger-button">Удалить навсегда</button></form>}{dataMessage && <div className="usage-note"><Check size={18}/><p>{dataMessage}</p></div>}
     <div className="medical-note"><ShieldCheck size={25}/><div><strong>Söyle - помощник, а не врач</strong><p>Платформа не ставит диагноз и не заменяет занятия с логопедом или консультацию специалиста.</p></div></div>

@@ -275,6 +275,35 @@ def test_student_can_read_but_not_change_consent(client, parent_headers, student
     assert denied.status_code == 403
 
 
+def test_camera_consent_is_explicit_and_can_be_revoked(client):
+    registration = client.post("/api/auth/register", headers={"X-Soyle-Auth-Mode": "bearer"}, json={
+        "username": "cameraparent", "password": "CameraParent123!", "full_name": "Родитель камеры",
+    })
+    headers = {"Authorization": f"Bearer {registration.json()['access_token']}"}
+    child = client.post("/api/children", headers=headers, json={
+        "name": "Тест камеры", "birth_date": "2020-05-04", "primary_module": "motor", "avatar_color": "#82a78f",
+    }).json()
+    child_id = child["id"]
+
+    initial = client.get(f"/api/children/{child_id}/consent", headers=headers).json()
+    assert initial["camera_processing"] is False
+    assert initial["camera_processing_at"] is None
+
+    enabled = client.put(f"/api/children/{child_id}/consent", headers=headers, json={
+        "privacy_accepted": True, "camera_processing": True, "ai_processing": False, "analytics_processing": False,
+    })
+    assert enabled.status_code == 200
+    assert enabled.json()["camera_processing"] is True
+    assert enabled.json()["camera_processing_at"]
+
+    revoked = client.put(f"/api/children/{child_id}/consent", headers=headers, json={
+        "privacy_accepted": True, "camera_processing": False, "ai_processing": False, "analytics_processing": False,
+    })
+    assert revoked.status_code == 200
+    assert revoked.json()["camera_processing"] is False
+    assert revoked.json()["camera_processing_at"] is None
+
+
 def test_game_results_are_server_calculated_and_non_scored_outcomes_are_separate(client):
     registration = client.post("/api/auth/register", headers={"X-Soyle-Auth-Mode": "bearer"}, json={
         "username": "metricsparent", "password": "MetricsParent123!", "full_name": "Родитель метрик",
@@ -330,16 +359,19 @@ def test_game_results_are_server_calculated_and_non_scored_outcomes_are_separate
         assert response.json()["score"] == 0
         assert response.json()["awarded_stars"] == 0
 
-    assert not [item for item in client.get("/api/exercises", headers=headers).json() if item["module"] == "motor"]
-    with connect() as db:
-        motor_exercise = dict(db.execute("SELECT * FROM exercises WHERE module='motor' AND is_active=1 ORDER BY id LIMIT 1").fetchone())
-    denied_motor = client.post("/api/sessions", headers=headers, json={
+    motor_exercises = [item for item in client.get("/api/exercises", headers=headers).json() if item["module"] == "motor"]
+    assert {item["target"] for item in motor_exercises} == {"smile", "tube", "open", "teeth", "cheeks", "sequence"}
+    motor_exercise = motor_exercises[0]
+    saved_motor = client.post("/api/sessions", headers=headers, json={
         "child_id": child["id"], "exercise_id": motor_exercise["id"], "module": "motor",
         "score": 99, "duration_seconds": 8,
         "details": {"source": "manual"},
         "attempt_status": "participated", "independence": 100, "prompt_level": "independent",
     })
-    assert denied_motor.status_code == 403
+    assert saved_motor.status_code == 201
+    assert saved_motor.json()["attempt_status"] == "participated"
+    assert saved_motor.json()["score"] == 0
+    assert saved_motor.json()["awarded_stars"] == 1
 
     invalid = client.post("/api/sessions", headers=headers, json={
         "child_id": child["id"], "exercise_id": exercise["id"], "module": "sensory",
@@ -357,22 +389,22 @@ def test_game_results_are_server_calculated_and_non_scored_outcomes_are_separate
     assert metrics["technical_errors"] == 1
     assert metrics["refusals"] == 1
     assert metrics["breaks"] == 1
-    assert metrics["participations"] == 0
+    assert metrics["participations"] == 1
     assert metrics["game_result_average"] == 50
 
     dashboard = client.get(f"/api/dashboard/{child['id']}", headers=headers).json()
     assert dashboard["module_accuracy"]["sensory"] == 50
     assert dashboard["module_accuracy"]["motor"] is None
-    assert dashboard["module_completed"]["motor"] == 0
-    assert motor_exercise["id"] not in dashboard["completed_exercise_ids"]
+    assert dashboard["module_completed"]["motor"] == 1
+    assert motor_exercise["id"] in dashboard["completed_exercise_ids"]
     assert next(item for item in dashboard["recent"] if item["attempt_status"] == "break")["score"] == 0
     assert next(item for item in dashboard["recent"] if item["attempt_status"] == "technical_error")["score"] == 0
-    assert dashboard["today_sessions"] == 5
-    assert dashboard["week_sessions"] == 5
+    assert dashboard["today_sessions"] == 6
+    assert dashboard["week_sessions"] == 6
     assert len(dashboard["week_activity"]) == 7
     today_activity = next(item for item in dashboard["week_activity"] if item["today"])
     assert today_activity["active"] is True
-    assert today_activity["sessions"] == 5
+    assert today_activity["sessions"] == 6
     assert sum(item["active"] for item in dashboard["week_activity"]) == 1
     assert dashboard["streak_days"] == 1
 
