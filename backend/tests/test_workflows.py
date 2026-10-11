@@ -232,7 +232,7 @@ def test_ai_consent_is_opt_in_and_revocation_is_immediate(client, admin_headers)
     initial = client.get(f"/api/children/{child_id}/consent", headers=parent).json()
     assert initial["ai_processing"] is False
     assert initial["ai_processing_at"] is None
-    assert initial["version"] == "2026-10-ai-1"
+    assert initial["version"] == "2026-10-local-face-1"
 
     denied = client.post(f"/api/ai/ask/{child_id}", headers=parent, json={"question": "Как начать занятие?"})
     assert denied.status_code == 403
@@ -296,6 +296,20 @@ def test_camera_consent_is_explicit_and_can_be_revoked(client):
     assert enabled.json()["camera_processing"] is True
     assert enabled.json()["camera_processing_at"]
 
+    with connect() as db:
+        db.execute("UPDATE child_consents SET version='2026-10-mirror-only' WHERE child_id=?", (child_id,))
+    stale = client.get(f"/api/children/{child_id}/consent", headers=headers).json()
+    assert stale["privacy_accepted"] is True
+    assert stale["camera_processing"] is False
+    assert stale["camera_processing_at"] is None
+
+    renewed = client.put(f"/api/children/{child_id}/consent", headers=headers, json={
+        "privacy_accepted": True, "camera_processing": True, "ai_processing": False, "analytics_processing": False,
+    })
+    assert renewed.status_code == 200
+    assert renewed.json()["version"] == "2026-10-local-face-1"
+    assert renewed.json()["camera_processing"] is True
+
     revoked = client.put(f"/api/children/{child_id}/consent", headers=headers, json={
         "privacy_accepted": True, "camera_processing": False, "ai_processing": False, "analytics_processing": False,
     })
@@ -315,7 +329,7 @@ def test_game_results_are_server_calculated_and_non_scored_outcomes_are_separate
     }).json()
     consent = client.put(f"/api/children/{child['id']}/consent", headers=headers, json={
         "privacy_accepted": True,
-        "camera_processing": False,
+        "camera_processing": True,
         "ai_processing": False,
         "analytics_processing": False,
     })
@@ -362,16 +376,26 @@ def test_game_results_are_server_calculated_and_non_scored_outcomes_are_separate
     motor_exercises = [item for item in client.get("/api/exercises", headers=headers).json() if item["module"] == "motor"]
     assert {item["target"] for item in motor_exercises} == {"smile", "tube", "open", "teeth", "cheeks", "sequence"}
     motor_exercise = motor_exercises[0]
+    rejected_motor = client.post("/api/sessions", headers=headers, json={
+        "child_id": child["id"], "exercise_id": motor_exercise["id"], "module": "motor",
+        "score": 99, "duration_seconds": 8, "details": {"source": "manual"},
+        "attempt_status": "participated", "independence": 100, "prompt_level": "independent",
+    })
+    assert rejected_motor.status_code == 422
+
     saved_motor = client.post("/api/sessions", headers=headers, json={
         "child_id": child["id"], "exercise_id": motor_exercise["id"], "module": "motor",
         "score": 99, "duration_seconds": 8,
-        "details": {"source": "manual"},
+        "details": {"source": "local-face-movement-check", "movement_detected": True, "media_saved": False},
+        "attempts_count": 1, "correct_answers": 1,
         "attempt_status": "participated", "independence": 100, "prompt_level": "independent",
     })
     assert saved_motor.status_code == 201
     assert saved_motor.json()["attempt_status"] == "participated"
     assert saved_motor.json()["score"] == 0
     assert saved_motor.json()["awarded_stars"] == 1
+    assert saved_motor.json()["details"]["measurement_source"] == "local_automated_movement_check"
+    assert saved_motor.json()["details"]["media_saved"] is False
 
     invalid = client.post("/api/sessions", headers=headers, json={
         "child_id": child["id"], "exercise_id": exercise["id"], "module": "sensory",
@@ -383,7 +407,7 @@ def test_game_results_are_server_calculated_and_non_scored_outcomes_are_separate
     progress = client.get(f"/api/progress/{child['id']}", headers=headers)
     assert progress.status_code == 200
     metrics = progress.json()["support_metrics"]
-    assert metrics["attempts_count"] == 25
+    assert metrics["attempts_count"] == 26
     assert metrics["correct_answers"] == 10
     assert metrics["prompts_used"] == 10
     assert metrics["technical_errors"] == 1

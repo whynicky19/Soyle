@@ -16,18 +16,24 @@ test("child AAC vocabulary is not persisted in browser storage", async () => {
   assert.doesNotMatch(app, /localStorage[^\n]*soyle-aac|soyle-aac[^\n]*localStorage/);
 });
 
-test("camera is a local mirror without MediaPipe analysis", async () => {
-  const [app, packageJson] = await Promise.all([
+test("camera movement check stays local and cannot be completed by a timer", async () => {
+  const [app, detector, packageJson] = await Promise.all([
     readProjectFile("components/SoyleApp.tsx"),
+    readProjectFile("lib/motorDetection.ts"),
     readProjectFile("package.json"),
   ]);
-  assert.doesNotMatch(app, /FaceLandmarker|@mediapipe|detectForVideo/);
-  assert.doesNotMatch(packageJson, /@mediapipe/);
-  assert.match(app, /local-camera-mirror/);
+  assert.match(app, /FaceLandmarker|@mediapipe|detectForVideo/);
+  assert.match(packageJson, /@mediapipe\/tasks-vision/);
+  assert.match(app, /local-face-movement-check/);
   assert.match(app, /checked=\{consent\.camera_processing\}/);
   assert.match(app, /navigator\.mediaDevices\?\.getUserMedia/);
   assert.doesNotMatch(app, /cameraEnabled=/);
-  assert.match(app, /Видео не анализируется, не записывается и не отправляется/);
+  assert.match(app, /Кадры анализируются только в этом браузере/);
+  assert.match(app, /media_sent_to_server:\s*false/);
+  assert.match(app, /practice\.phase !== "matched"/);
+  assert.match(app, /Движение пока не найдено/);
+  assert.match(detector, /changeFromBaseline/);
+  assert.doesNotMatch(app, /storage\.googleapis|cdn\.jsdelivr|unpkg\.com/);
 });
 
 test("only the reviewed Russian interface is selectable", async () => {
@@ -53,6 +59,7 @@ test("security headers cover framing, MIME sniffing and browser capabilities", a
   assert.match(config, /X-Content-Type-Options/);
   assert.match(config, /Permissions-Policy/);
   assert.match(config, /object-src 'none'/);
+  assert.match(config, /wasm-unsafe-eval/);
 });
 
 test("daily goal renders real weekday activity instead of filling dots by attempt count", async () => {

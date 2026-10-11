@@ -4,7 +4,7 @@ const isDevelopment = process.env.NODE_ENV !== "production";
 const apiOrigin = new URL(process.env.NEXT_PUBLIC_API_URL || "http://localhost:8010").origin;
 const contentSecurityPolicy = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline'${isDevelopment ? " 'unsafe-eval'" : ""}`,
+  `script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'${isDevelopment ? " 'unsafe-eval'" : ""}`,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",
   "font-src 'self' data:",

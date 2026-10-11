@@ -29,7 +29,7 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(title="Söyle API", version="1.0.0", lifespan=lifespan)
-CONSENT_VERSION = "2026-10-ai-1"
+CONSENT_VERSION = "2026-10-local-face-1"
 LOCAL_MIRROR_TARGETS = frozenset({"smile", "tube", "open", "teeth", "cheeks", "sequence"})
 allowed_origins = [origin.strip() for origin in os.getenv(
     "SOYLE_ALLOWED_ORIGINS",
@@ -124,17 +124,18 @@ def consent_record(child_id: int) -> dict:
             "ai_processing_at": None,
             "analytics_processing_at": None,
         }
+    camera_consent_is_current = row["version"] == CONSENT_VERSION
     return {
         "child_id": row["child_id"],
         "privacy_accepted": bool(row["privacy_accepted"]),
-        "camera_processing": bool(row["camera_processing"]),
+        "camera_processing": bool(row["camera_processing"]) and camera_consent_is_current,
         "ai_processing": bool(row["ai_processing"]),
         "analytics_processing": bool(row["analytics_processing"]),
         "version": row["version"],
         "updated_at": row["updated_at"],
         "consented_by_user_id": row["consented_by_user_id"],
         "privacy_accepted_at": row["privacy_accepted_at"],
-        "camera_processing_at": row["camera_processing_at"],
+        "camera_processing_at": row["camera_processing_at"] if camera_consent_is_current else None,
         "ai_processing_at": row["ai_processing_at"],
         "analytics_processing_at": row["analytics_processing_at"],
     }
@@ -158,6 +159,13 @@ def ensure_ai_consent(child_id: int) -> dict:
     consent = ensure_privacy_consent(child_id)
     if not consent["ai_processing"]:
         raise HTTPException(403, "Сначала родителю нужно отдельно разрешить обработку запроса с помощью Söyle AI")
+    return consent
+
+
+def ensure_camera_processing_consent(child_id: int) -> dict:
+    consent = ensure_privacy_consent(child_id)
+    if not consent["camera_processing"]:
+        raise HTTPException(403, "Сначала родителю нужно отдельно разрешить локальную проверку движения камерой")
     return consent
 
 
@@ -680,6 +688,10 @@ def create_session(payload: SessionCreate, user: dict = Depends(get_current_user
         ensure_local_mirror_exercise(exercise)
         if exercise["module"] in {"motor", "mixed"} and attempt_status == "completed":
             attempt_status = "participated"
+        if exercise["module"] == "motor" and attempt_status == "participated":
+            ensure_camera_processing_consent(payload.child_id)
+            if payload.details.get("source") != "local-face-movement-check" or payload.details.get("movement_detected") is not True:
+                raise HTTPException(422, "Моторная попытка засчитывается только после локально распознанного движения")
         if attempt_status == "completed" and (payload.attempts_count is None or payload.correct_answers is None):
             raise HTTPException(422, "Для игрового результата укажите число попыток и правильных ответов")
         if attempt_status == "completed" and payload.attempts_count == 0:
@@ -692,13 +704,14 @@ def create_session(payload: SessionCreate, user: dict = Depends(get_current_user
             planned_ids = json.loads(learning["exercise_ids"])
             if payload.exercise_id not in planned_ids:
                 raise HTTPException(422, "Это упражнение не входит в текущее занятие")
+        measurement_source = "local_automated_movement_check" if payload.details.get("source") == "local-face-movement-check" else "caregiver_or_user_observation"
         cursor = db.execute(
             """INSERT INTO sessions(child_id,exercise_id,module,score,duration_seconds,details,measurement_version,
                learning_session_id,sequence_index,independence,prompt_level,response_ms,communication_initiatives,
                attempts_count,correct_answers,prompts_used,attempt_status,created_at)
                VALUES(?,?,?,?,?,?,3,?,?,?,?,?,?,?,?,?,?,?) RETURNING id""",
             (payload.child_id, payload.exercise_id, payload.module, game_score, payload.duration_seconds,
-             json.dumps({**payload.details, "measurement_source": "caregiver_or_user_observation"}, ensure_ascii=False), payload.learning_session_id, payload.sequence_index,
+             json.dumps({**payload.details, "measurement_source": measurement_source}, ensure_ascii=False), payload.learning_session_id, payload.sequence_index,
              payload.independence, payload.prompt_level, payload.response_ms, payload.communication_initiatives,
              payload.attempts_count, payload.correct_answers, payload.prompts_used, attempt_status, now_iso()),
         )
