@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Söyle — играем, общаемся, растём",
+  title: "Söyle - общение и практика",
   description: "Поддерживаемая коммуникация, игровые задания и короткие планы с Söyle AI",
 };
 

@@ -13,7 +13,7 @@ export function useInterfaceLanguage(language: Language) {
   useEffect(() => {
     const reviewedLanguage: Language = supportedInterfaceLanguages.includes(language) ? language : "ru";
     document.documentElement.lang = reviewedLanguage;
-    document.title = "Söyle — играем, общаемся, растём";
+    document.title = "Söyle - общение и практика";
     localStorage.setItem("soyle-language", reviewedLanguage);
   }, [language]);
 }
