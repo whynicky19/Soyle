@@ -563,6 +563,11 @@ function AuthScreen({ onAuthenticated }: { onAuthenticated: (user: User) => void
 function HomeScreen({ onOpen, onStartSession, onResume, activeSession, activeSessionLoading, dailyMinutes, onMinutesChange, sessionLoading, sessionError, child, dashboard, consent, userRole }: { onOpen: (screen: Screen) => void; onStartSession: () => void; onResume: () => void; activeSession: LearningSession | null; activeSessionLoading: boolean; dailyMinutes: 3 | 5 | 10; onMinutesChange: (value: 3 | 5 | 10) => void; sessionLoading: boolean; sessionError: string; child?: Child; dashboard: Dashboard | null; consent: ChildConsent | null; userRole: Role }) {
   const today = new Date();
   const month = today.toLocaleDateString("ru-RU", { month: "short" }).replace(".", "").toUpperCase();
+  const streakDays = dashboard?.streak_days || 0;
+  const streakLabel = streakDays % 10 === 1 && streakDays % 100 !== 11 ? "день" : [2, 3, 4].includes(streakDays % 10) && ![12, 13, 14].includes(streakDays % 100) ? "дня" : "дней";
+  const weekActivity = dashboard?.week_activity?.length === 7
+    ? dashboard.week_activity
+    : ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"].map((label) => ({ date: "", label, active: false, sessions: 0, today: false }));
   return (
     <div className="stack-xl page-enter">
       {!consent?.privacy_accepted && <section className="consent-banner" role="status">
@@ -591,8 +596,8 @@ function HomeScreen({ onOpen, onStartSession, onResume, activeSession, activeSes
             <span><b>{Math.min(dashboard?.today_sessions || 0, 3)}</b><small>из 3</small></span>
           </div>
           <p>{(dashboard?.today_sessions || 0) >= 3 ? "Цель выполнена - здорово!" : "Выполни три коротких задания в удобном темпе."}</p>
-          <div className="daily-streak"><Flame size={18}/><span><b>{dashboard?.streak_days || 0} дней</b><small>серия занятий</small></span></div>
-          <div className="week-dots" aria-label={`${dashboard?.week_sessions || 0} занятий на этой неделе`}>{[0,1,2,3,4,5,6].map((day) => <i key={day} className={day < Math.min(dashboard?.week_sessions || 0, 7) ? "done" : ""}>{day < Math.min(dashboard?.week_sessions || 0, 7) ? <Check size={13}/> : null}</i>)}</div>
+          <div className="daily-streak"><Flame size={18}/><span><b>{streakDays} {streakLabel}</b><small>серия занятий</small></span></div>
+          <div className="week-dots" aria-label={`${dashboard?.week_sessions || 0} заданий на этой неделе`}>{weekActivity.map((day) => <span className={day.today ? "today" : ""} key={day.date || day.label} aria-label={`${day.label}: ${day.sessions ? `${day.sessions} заданий` : "нет занятий"}`}><i className={day.active ? "done" : ""}>{day.active ? <Check size={13}/> : null}</i><small>{day.label}</small></span>)}</div>
         </aside>
       </div>
 

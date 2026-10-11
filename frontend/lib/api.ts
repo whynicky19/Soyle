@@ -33,6 +33,7 @@ export type Dashboard = {
   today_minutes: number;
   week_sessions: number;
   week_minutes: number;
+  week_activity: Array<{ date: string; label: string; active: boolean; sessions: number; today: boolean }>;
   streak_days: number;
   stars: number;
   overall: number;

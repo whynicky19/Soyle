@@ -811,6 +811,7 @@ def dashboard(child_id: int, user: dict = Depends(get_current_user)) -> dict:
         exercise_rows = eligible_exercise_rows(db, child_id)
     scored_rows = [row for row in rows if row["attempt_status"] == "completed"]
     completion_rows = [row for row in rows if row["attempt_status"] in {"completed", "participated"}]
+    activity_statuses = {"completed", "participated", "refused"}
 
     local_zone = ZoneInfo("Asia/Almaty")
     today = datetime.now(local_zone).date()
@@ -823,15 +824,27 @@ def dashboard(child_id: int, user: dict = Depends(get_current_user)) -> dict:
             continue
         parsed.append((row, stamp.astimezone(local_zone).date()))
 
-    active_dates = sorted({day for _, day in parsed}, reverse=True)
+    activity_rows = [(row, day) for row, day in parsed if row["attempt_status"] in activity_statuses]
+    active_dates = sorted({day for _, day in activity_rows}, reverse=True)
     streak = 0
     cursor = today if today in active_dates else today - timedelta(days=1)
     while cursor in active_dates:
         streak += 1
         cursor -= timedelta(days=1)
 
-    today_rows = [row for row, day in parsed if day == today]
-    week_rows = [row for row, day in parsed if week_start <= day <= today]
+    today_rows = [row for row, day in activity_rows if day == today]
+    week_rows = [row for row, day in activity_rows if week_start <= day <= today]
+    week_activity = []
+    for offset, label in enumerate(("Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс")):
+        day = week_start + timedelta(days=offset)
+        sessions = sum(1 for _, row_day in activity_rows if row_day == day)
+        week_activity.append({
+            "date": day.isoformat(),
+            "label": label,
+            "active": sessions > 0,
+            "sessions": sessions,
+            "today": day == today,
+        })
     by_module: dict[str, list[int]] = defaultdict(list)
     for row in scored_rows:
         by_module[row["module"]].append(row["score"])
@@ -873,6 +886,7 @@ def dashboard(child_id: int, user: dict = Depends(get_current_user)) -> dict:
         "today_minutes": round(today_seconds / 60, 1),
         "week_sessions": len(week_rows),
         "week_minutes": round(week_seconds / 60, 1),
+        "week_activity": week_activity,
         "streak_days": streak,
         "stars": sum(max(1, row["score"] // 20) for row in scored_rows) + sum(1 for row in completion_rows if row["attempt_status"] == "participated"),
         "overall": round(sum(module_completed.values()) / max(sum(exercise_counts.values()), 1) * 100),

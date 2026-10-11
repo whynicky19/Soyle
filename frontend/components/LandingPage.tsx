@@ -17,7 +17,7 @@ const features = [
     title: "Слышать задачу - без спешки и перегрузки",
     text: "Ребёнок получает один понятный шаг, слушает короткую инструкцию и выбирает ответ в своём темпе.",
     points: ["Без таймера и штрафов", "Повтор инструкции в любой момент"],
-    image: "/landing/listening-v2.webp",
+    image: "/landing/listening-v3.webp",
     alt: "Ребёнок в наушниках спокойно выбирает визуальную карточку рядом с планшетом",
   },
   {
@@ -25,7 +25,7 @@ const features = [
     title: "Важное можно сказать не только словами",
     text: "Визуальные карточки помогают попросить, отказаться, сообщить о самочувствии и составить короткую фразу.",
     points: ["Доступно до, во время и после занятия", "Выбор ребёнка не оценивается"],
-    image: "/landing/aac-v2.webp",
+    image: "/landing/aac-v3.webp",
     alt: "Вид сверху: ребёнок самостоятельно собирает фразу из визуальных карточек",
   },
   {
@@ -33,7 +33,7 @@ const features = [
     title: "Вместо потока данных - ясный следующий шаг",
     text: "История практики, настройки приватности и спокойные рекомендации собраны отдельно от детского режима.",
     points: ["Прогресс без диагностических выводов", "AI включается только с согласия"],
-    image: "/landing/parent-guidance-v2.webp",
+    image: "/landing/parent-guidance-v3.webp",
     alt: "Родитель вечером просматривает спокойную сводку занятия на планшете",
   },
 ];
@@ -135,11 +135,12 @@ export function LandingPage() {
 
             <figure className="hero-photo" data-reveal>
               <Image
-                src="/landing/soyle-hero-v2.webp"
+                src="/landing/soyle-hero-v3.webp"
                 alt="Папа слушает дочь, которая выбирает визуальную карточку дома"
-                width={1536}
-                height={1024}
+                width={1672}
+                height={941}
                 priority
+                quality={92}
                 sizes="(max-width: 980px) calc(100vw - 32px), 56vw"
               />
               <figcaption>Домашняя практика строится вокруг выбора ребёнка, а не результата.</figcaption>
@@ -167,7 +168,7 @@ export function LandingPage() {
                   <article className="feature-story" key={feature.label} data-reveal>
                     <span className="feature-index">0{index + 1}</span>
                     <figure className="story-media">
-                      <Image src={feature.image} alt={feature.alt} width={1536} height={1024} sizes="(max-width: 760px) calc(100vw - 32px), 54vw" />
+                      <Image src={feature.image} alt={feature.alt} width={1536} height={1024} quality={92} sizes="(max-width: 760px) calc(100vw - 32px), 54vw" />
                     </figure>
                     <div className="story-copy">
                       <span className="feature-label">{feature.label}</span>

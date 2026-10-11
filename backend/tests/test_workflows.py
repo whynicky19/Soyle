@@ -367,6 +367,14 @@ def test_game_results_are_server_calculated_and_non_scored_outcomes_are_separate
     assert motor_exercise["id"] not in dashboard["completed_exercise_ids"]
     assert next(item for item in dashboard["recent"] if item["attempt_status"] == "break")["score"] == 0
     assert next(item for item in dashboard["recent"] if item["attempt_status"] == "technical_error")["score"] == 0
+    assert dashboard["today_sessions"] == 5
+    assert dashboard["week_sessions"] == 5
+    assert len(dashboard["week_activity"]) == 7
+    today_activity = next(item for item in dashboard["week_activity"] if item["today"])
+    assert today_activity["active"] is True
+    assert today_activity["sessions"] == 5
+    assert sum(item["active"] for item in dashboard["week_activity"]) == 1
+    assert dashboard["streak_days"] == 1
 
     assert dashboard["weakest_skill"] is None
     assert dashboard["recommended_exercise"] is None
