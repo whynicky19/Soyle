@@ -11,6 +11,11 @@ test("authentication stays in HttpOnly cookies and unsafe requests send CSRF", a
   assert.match(api, /X-CSRF-Token/);
 });
 
+test("successful empty API responses do not crash session recovery", async () => {
+  const api = await readProjectFile("lib/api.ts");
+  assert.match(api, /data && typeof data === ["']object["'] && ["']csrf_token["'] in data/);
+});
+
 test("child AAC vocabulary is not persisted in browser storage", async () => {
   const app = await readProjectFile("components/SoyleApp.tsx");
   assert.doesNotMatch(app, /localStorage[^\n]*soyle-aac|soyle-aac[^\n]*localStorage/);
@@ -115,4 +120,56 @@ test("sensory stimuli come from the versioned exercise payload", async () => {
   assert.match(app, /exercise\?\.engine\?\.content\.stimuli/);
   assert.match(api, /version_id: number/);
   assert.match(api, /matching_stimulus_key|completion_rule/);
+});
+
+test("P1 family screens keep observations separate and drafts review-gated", async () => {
+  const [app, family, preview] = await Promise.all([
+    readProjectFile("components/SoyleApp.tsx"),
+    readProjectFile("components/FamilyPractice.tsx"),
+    readProjectFile("components/P1ExerciseRunners.tsx"),
+  ]);
+  assert.match(app, /FunctionalSkillMap/);
+  assert.match(app, /HomePracticeLibrary/);
+  assert.match(app, /P1ResultsSummary/);
+  assert.match(family, /Это не тест и не расчёт речевого возраста/);
+  assert.match(family, /методической проверке/);
+  assert.doesNotMatch(family, /процент развития речи/i);
+  assert.match(preview, /DRAFT · ТОЛЬКО ПРЕДПРОСМОТР/);
+  assert.match(preview, /Результат не сохраняется/);
+  assert.match(preview, /PublishedInstructionRunner/);
+  assert.match(app, /mechanic === "tap_instruction"/);
+});
+
+test("guided AAC requires a scenario-valid message and an explicit final action", async () => {
+  const app = await readProjectFile("components/SoyleApp.tsx");
+  assert.match(app, /evaluateAACScenario/);
+  assert.match(app, /!scenarioEvaluation\.complete/);
+  assert.match(app, /scenarioEvaluation\.actionLabel/);
+  assert.match(app, /Шаг 1 из 2|stepLabel/);
+  assert.doesNotMatch(app, /Засчитывается любое понятное сообщение/);
+});
+
+test("P2.1 goals use a deterministic review-gated planner instead of AI", async () => {
+  const [app, goals, api] = await Promise.all([
+    readProjectFile("components/SoyleApp.tsx"),
+    readProjectFile("components/GoalsAndPractice.tsx"),
+    readProjectFile("lib/api.ts"),
+  ]);
+  assert.match(app, /\/api\/adaptive-plans\/\$\{child\.id\}/);
+  assert.doesNotMatch(app, /api<AIPlan>\(`\/api\/ai\/plan/);
+  assert.match(goals, /Правила, не AI/);
+  assert.match(goals, /Домашние практические цели/);
+  assert.match(goals, /Черновики не используются/);
+  assert.match(goals, /Почему предложено/);
+  assert.doesNotMatch(goals, /речевой возраст|процент развития речи/i);
+  assert.match(api, /goal_version: number/);
+  assert.match(api, /difficulty_params: AdaptiveDifficultyParams/);
+  assert.match(api, /assignment_reason: AdaptiveAssignmentReason/);
+});
+
+test("adaptive runner applies the planned option count instead of a numeric label alone", async () => {
+  const app = await readProjectFile("components/SoyleApp.tsx");
+  assert.match(app, /exercise\?\.adaptive\?\.difficulty_params\.difficulty_level/);
+  assert.match(app, /Выбрано по домашней практической цели/);
+  assert.match(app, /exercise\.adaptive\.assignment_reason\.messages\[0\]/);
 });

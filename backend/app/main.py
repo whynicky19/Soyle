@@ -16,10 +16,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 
 from .database import connect, init_db, now_iso
-from .schemas import AACCardCreate, AACComposeRequest, AACFavoriteUpdate, AACPhraseCreate, ActiveUpdate, AIAskRequest, AIPlanRequest, AssignedExerciseCreate, ChildCreate, ChildDeleteRequest, ChildGoalCreate, ConsentUpdate, ExerciseDraftCreate, GoalStatusUpdate, HomeworkCreate, HomeworkResultUpdate, LearningSessionCreate, LoginRequest, RecommendationReview, RegisterRequest, RoleUpdate, SessionCreate, SpecialistAssignmentCreate, SpecialistRecommendationCreate, StudentAccountCreate, StudentLoginRequest, TTSRequest, UserSettingsUpdate
+from .schemas import AACCardCreate, AACComposeRequest, AACFavoriteUpdate, AACPhraseCreate, ActiveUpdate, AdaptivePlanRequest, AIAskRequest, AIPlanRequest, AssignedExerciseCreate, ChildCreate, ChildDeleteRequest, ChildGoalCreate, ConsentUpdate, ContentReviewCreate, ExerciseDraftCreate, GoalStatusUpdate, HomeActivityObservationCreate, HomeworkCreate, HomeworkResultUpdate, LearningSessionCreate, LoginRequest, PracticeGoalCreate, PracticeGoalObservationCreate, PracticeGoalUpdate, PracticePreferencesUpdate, RecommendationReview, RegisterRequest, RoleUpdate, SessionCreate, SkillObservationUpdate, SpecialistAssignmentCreate, SpecialistRecommendationCreate, StudentAccountCreate, StudentLoginRequest, TTSRequest, UserSettingsUpdate
 from .aac_grammar import compose_aac_phrase
 from .ai_assistant import MODEL as OPENAI_MODEL, answer_parent, generate_plan, provider_error_details
-from .exercise_engine import create_draft, preview_version, publish_version, published_exercise, published_exercise_rows
+from .exercise_engine import create_draft, preview_version, publish_version, published_exercise, published_exercise_rows, review_capabilities, review_workspace, submit_content_review
+from .family_practice import descriptive_results, home_library, save_home_observation, skill_map, upsert_skill_observation
+from .adaptive_planner import create_plan as create_adaptive_plan, get_plan as get_adaptive_plan, plan_history as adaptive_plan_history
+from .practice_goals import create_goal as create_practice_goal, get_preferences, list_goals as list_practice_goals, list_templates as list_practice_goal_templates, save_observation as save_practice_goal_observation, save_preferences, update_goal as update_practice_goal
 from .security import AUTH_COOKIE_NAME, CSRF_COOKIE_NAME, IS_PRODUCTION, clear_auth_cookies, create_access_token, create_student_access_token, get_current_user, hash_password, require_roles, set_auth_cookies, verify_password
 
 
@@ -179,6 +182,85 @@ def ensure_local_mirror_exercise(exercise: dict) -> None:
 
 def active_exercise_rows(db) -> list[dict]:
     return published_exercise_rows(db)
+
+
+SESSION_COMPLETION_STATUSES = {"completed", "participated", "refused"}
+
+
+def learning_session_payload(db, session_row) -> dict:
+    """Return a resumable view without re-exposing archived exercises.
+
+    Older plans may reference exercises that were archived after the session was
+    created. Keep those IDs in storage for audit/history, but build the active
+    runner from currently published exercises and put already completed items
+    before the first pending item so ``current_index`` remains meaningful.
+    """
+    session = dict(session_row)
+    planned_ids = json.loads(session["exercise_ids"])
+    exercise_rows = active_exercise_rows(db)
+    by_id = {row["id"]: dict(row) for row in exercise_rows}
+    adaptive_by_exercise: dict[int, dict] = {}
+    if session.get("adaptive_plan_id"):
+        for item_row in db.execute(
+            """SELECT i.*,g.title goal_title FROM adaptive_practice_plan_items i
+               JOIN parent_practice_goals g ON g.id=i.goal_id
+               WHERE i.plan_id=? ORDER BY i.position,i.id""",
+            (session["adaptive_plan_id"],),
+        ).fetchall():
+            item = dict(item_row)
+            adaptive_by_exercise[item["exercise_id"]] = {
+                "plan_item_id": item["id"],
+                "goal_id": item["goal_id"],
+                "goal_version": item["goal_version"],
+                "goal_title": item["goal_title"],
+                "exercise_version_id": item["exercise_version_id"],
+                "difficulty_params": json.loads(item["difficulty_params_json"]),
+                "assignment_reason": json.loads(item["assignment_reason_json"]),
+            }
+    available_ids = [exercise_id for exercise_id in planned_ids if exercise_id in by_id]
+    result_rows = db.execute(
+        """SELECT exercise_id,score,duration_seconds,attempts_count,correct_answers,prompts_used,
+                  attempt_status,created_at
+           FROM sessions
+           WHERE learning_session_id=? AND measurement_version>=1
+           ORDER BY sequence_index,id""",
+        (session["id"],),
+    ).fetchall()
+    completed_ids = {
+        row["exercise_id"]
+        for row in result_rows
+        if row["attempt_status"] in SESSION_COMPLETION_STATUSES
+    }
+    completed_available = [exercise_id for exercise_id in available_ids if exercise_id in completed_ids]
+    pending_available = [exercise_id for exercise_id in available_ids if exercise_id not in completed_ids]
+    runner_ids = completed_available + pending_available
+    current_index = len(completed_available)
+
+    if session["status"] in {"in_progress", "paused"}:
+        if not pending_available:
+            completed_at = session.get("completed_at") or now_iso()
+            db.execute(
+                "UPDATE learning_sessions SET status='completed',current_index=?,completed_at=? WHERE id=?",
+                (current_index, completed_at, session["id"]),
+            )
+            session["status"] = "completed"
+            session["completed_at"] = completed_at
+        elif session["current_index"] != current_index:
+            db.execute(
+                "UPDATE learning_sessions SET current_index=? WHERE id=?",
+                (current_index, session["id"]),
+            )
+        session["current_index"] = current_index
+
+    return {
+        **session,
+        "exercise_ids": planned_ids,
+        "exercises": [
+            {**by_id[exercise_id], "adaptive": adaptive_by_exercise.get(exercise_id)}
+            for exercise_id in runner_ids
+        ],
+        "results": [dict(row) for row in result_rows],
+    }
 
 
 def ai_eligible_exercise_rows(db) -> list[dict]:
@@ -348,7 +430,7 @@ def health() -> dict:
     with connect() as db:
         schema_version = db.execute("SELECT COALESCE(MAX(version),0) schema_version FROM schema_migrations").fetchone()["schema_version"]
     return {
-        "status": "ok" if schema_version >= 10 else "migration_required",
+        "status": "ok" if schema_version >= 14 else "migration_required",
         "service": "soyle-api",
         "schema_version": schema_version,
     }
@@ -687,6 +769,8 @@ def create_session(payload: SessionCreate, user: dict = Depends(get_current_user
         raise HTTPException(422, "Число попыток и правильных ответов нужно передавать вместе")
     if payload.attempts_count is not None and payload.correct_answers is not None and payload.correct_answers > payload.attempts_count:
         raise HTTPException(422, "Правильных ответов не может быть больше числа попыток")
+    if payload.attempts_count is not None and payload.independent_completions + payload.prompted_completions > payload.attempts_count:
+        raise HTTPException(422, "Самостоятельных и выполненных с подсказкой раундов не может быть больше общего числа раундов")
     attempt_status = "refused" if payload.prompt_level == "refused" and payload.attempt_status == "completed" else payload.attempt_status
     with connect() as db:
         exercise = published_exercise(db, payload.exercise_id)
@@ -705,6 +789,7 @@ def create_session(payload: SessionCreate, user: dict = Depends(get_current_user
         if attempt_status == "completed" and payload.attempts_count == 0:
             raise HTTPException(422, "Для завершённой игровой попытки укажите хотя бы один ответ")
         game_score = calculate_game_score(payload.correct_answers or 0, payload.attempts_count or 0) if attempt_status == "completed" else 0
+        adaptive_plan_item_id = None
         if payload.learning_session_id:
             learning = db.execute("SELECT * FROM learning_sessions WHERE id=? AND child_id=?", (payload.learning_session_id, payload.child_id)).fetchone()
             if not learning:
@@ -712,21 +797,43 @@ def create_session(payload: SessionCreate, user: dict = Depends(get_current_user
             planned_ids = json.loads(learning["exercise_ids"])
             if payload.exercise_id not in planned_ids:
                 raise HTTPException(422, "Это упражнение не входит в текущее занятие")
+            if learning["adaptive_plan_id"]:
+                adaptive_item = db.execute(
+                    """SELECT id,exercise_version_id FROM adaptive_practice_plan_items
+                       WHERE plan_id=? AND exercise_id=?""",
+                    (learning["adaptive_plan_id"], payload.exercise_id),
+                ).fetchone()
+                if not adaptive_item or adaptive_item["exercise_version_id"] != exercise["engine"]["version_id"]:
+                    raise HTTPException(409, "План ссылается на другую версию задания. Подготовьте новый план")
+                adaptive_plan_item_id = adaptive_item["id"]
         measurement_source = "local_automated_movement_check" if payload.details.get("source") == "local-face-movement-check" else "caregiver_or_user_observation"
         cursor = db.execute(
             """INSERT INTO sessions(child_id,exercise_id,exercise_version_id,module,score,duration_seconds,details,measurement_version,
                learning_session_id,sequence_index,independence,prompt_level,response_ms,communication_initiatives,
-               attempts_count,correct_answers,prompts_used,attempt_status,created_at)
-               VALUES(?,?,?,?,?,?,?,3,?,?,?,?,?,?,?,?,?,?,?) RETURNING id""",
+               attempts_count,correct_answers,prompts_used,gameplay_choices,independent_completions,prompted_completions,
+               attempt_status,adaptive_plan_item_id,created_at)
+               VALUES(?,?,?,?,?,?,?,3,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) RETURNING id""",
             (payload.child_id, payload.exercise_id, exercise["engine"]["version_id"], payload.module, game_score, payload.duration_seconds,
              json.dumps({**payload.details, "measurement_source": measurement_source}, ensure_ascii=False), payload.learning_session_id, payload.sequence_index,
              payload.independence, payload.prompt_level, payload.response_ms, payload.communication_initiatives,
-             payload.attempts_count, payload.correct_answers, payload.prompts_used, attempt_status, now_iso()),
+             payload.attempts_count, payload.correct_answers, payload.prompts_used, payload.gameplay_choices,
+             payload.independent_completions, payload.prompted_completions, attempt_status, adaptive_plan_item_id, now_iso()),
         )
         row = db.execute("SELECT * FROM sessions WHERE id=?", (cursor.fetchone()["id"],)).fetchone()
         if payload.learning_session_id:
-            completed_count = db.execute("SELECT COUNT(DISTINCT exercise_id) count FROM sessions WHERE learning_session_id=? AND measurement_version>=1 AND attempt_status IN ('completed','participated','refused')", (payload.learning_session_id,)).fetchone()["count"]
-            planned_count = len(json.loads(learning["exercise_ids"]))
+            published_ids = {item["id"] for item in active_exercise_rows(db)}
+            available_planned_ids = [exercise_id for exercise_id in planned_ids if exercise_id in published_ids]
+            completed_ids = {
+                item["exercise_id"]
+                for item in db.execute(
+                    """SELECT DISTINCT exercise_id FROM sessions
+                       WHERE learning_session_id=? AND measurement_version>=1
+                         AND attempt_status IN ('completed','participated','refused')""",
+                    (payload.learning_session_id,),
+                ).fetchall()
+            }
+            completed_count = sum(1 for exercise_id in available_planned_ids if exercise_id in completed_ids)
+            planned_count = len(available_planned_ids)
             if completed_count >= planned_count:
                 db.execute("UPDATE learning_sessions SET status='completed',current_index=?,completed_at=? WHERE id=?", (planned_count, now_iso(), payload.learning_session_id))
             else:
@@ -962,6 +1069,36 @@ def session_plan(child_id: int, minutes: int = Query(default=5), user: dict = De
     return {"child": child, "focus_skill": None, "selection_method": "safe_local_variety", "estimated_minutes": minutes, "exercises": selected}
 
 
+@app.post("/api/adaptive-plans/{child_id}", status_code=201)
+def prepare_adaptive_plan(child_id: int, payload: AdaptivePlanRequest, user: dict = Depends(get_current_user)) -> dict:
+    child = ensure_child_access(child_id, user)
+    ensure_privacy_consent(child_id)
+    creator_id = user["id"] if user["role"] == "parent" else child["parent_id"]
+    with connect() as db:
+        result = create_adaptive_plan(db, child_id, payload.target_minutes, creator_id)
+    audit(user, "adaptive_plan.prepare", "child", child_id, {
+        "plan_id": result["id"], "rules_version": result["rules_version"], "item_count": len(result["items"]),
+    })
+    return result
+
+
+@app.get("/api/adaptive-plans/{child_id}/history")
+def list_adaptive_plan_history(child_id: int, user: dict = Depends(require_roles("parent"))) -> list[dict]:
+    ensure_child_access(child_id, user)
+    with connect() as db:
+        return adaptive_plan_history(db, child_id)
+
+
+@app.get("/api/adaptive-plans/{child_id}/{plan_id}")
+def read_adaptive_plan(child_id: int, plan_id: int, user: dict = Depends(get_current_user)) -> dict:
+    ensure_child_access(child_id, user)
+    with connect() as db:
+        result = get_adaptive_plan(db, plan_id, child_id)
+    if not result:
+        raise HTTPException(404, "План не найден")
+    return result
+
+
 @app.post("/api/learning-sessions", status_code=201)
 def create_learning_session(payload: LearningSessionCreate, user: dict = Depends(get_current_user)) -> dict:
     ensure_child_access(payload.child_id, user)
@@ -976,19 +1113,42 @@ def create_learning_session(payload: LearningSessionCreate, user: dict = Depends
     unique_ids = list(dict.fromkeys(payload.exercise_ids))
     if len(unique_ids) != len(payload.exercise_ids):
         raise HTTPException(422, "В занятии не должно быть повторяющихся заданий")
-    placeholders = ",".join("?" for _ in unique_ids)
     with connect() as db:
         available = {item["id"]: item for item in active_exercise_rows(db)}
         if any(item_id not in available for item_id in unique_ids):
             raise HTTPException(422, "Одно из заданий не опубликовано или находится на проверке")
-        exercises = [available[item_id] for item_id in unique_ids]
+        if payload.adaptive_plan_id:
+            plan = db.execute(
+                "SELECT * FROM adaptive_practice_plans WHERE id=? AND child_id=?",
+                (payload.adaptive_plan_id, payload.child_id),
+            ).fetchone()
+            if not plan:
+                raise HTTPException(422, "Адаптивный план не найден")
+            plan_items = db.execute(
+                """SELECT exercise_id,exercise_version_id FROM adaptive_practice_plan_items
+                   WHERE plan_id=? ORDER BY position,id""",
+                (payload.adaptive_plan_id,),
+            ).fetchall()
+            planned_ids = [item["exercise_id"] for item in plan_items]
+            if unique_ids != planned_ids:
+                raise HTTPException(422, "Состав занятия не совпадает с подготовленным планом")
+            if any(available[item["exercise_id"]]["engine"]["version_id"] != item["exercise_version_id"] for item in plan_items):
+                raise HTTPException(409, "Версия одного из заданий изменилась. Подготовьте новый план")
         cursor = db.execute(
-            "INSERT INTO learning_sessions(child_id,status,exercise_ids,current_index,target_minutes,started_at) VALUES(?,'in_progress',?,0,?,?) RETURNING id",
-            (payload.child_id, json.dumps(unique_ids), payload.target_minutes, now_iso()),
+            """INSERT INTO learning_sessions(
+                   child_id,status,exercise_ids,current_index,target_minutes,started_at,adaptive_plan_id)
+               VALUES(?,'in_progress',?,0,?,?,?) RETURNING id""",
+            (payload.child_id, json.dumps(unique_ids), payload.target_minutes, now_iso(), payload.adaptive_plan_id),
         )
         session_id = cursor.fetchone()["id"]
-    by_id = {row["id"]: dict(row) for row in exercises}
-    return {"id": session_id, "child_id": payload.child_id, "status": "in_progress", "current_index": 0, "target_minutes": payload.target_minutes, "started_at": now_iso(), "exercises": [by_id[item_id] for item_id in unique_ids]}
+        if payload.adaptive_plan_id:
+            db.execute(
+                "UPDATE adaptive_practice_plans SET status='started',started_at=? WHERE id=?",
+                (now_iso(), payload.adaptive_plan_id),
+            )
+    with connect() as db:
+        session_row = db.execute("SELECT * FROM learning_sessions WHERE id=?", (session_id,)).fetchone()
+        return learning_session_payload(db, session_row)
 
 
 @app.patch("/api/learning-sessions/{session_id}/pause")
@@ -1011,12 +1171,7 @@ def get_learning_session(session_id: int, user: dict = Depends(get_current_user)
         if not session:
             raise HTTPException(404, "Занятие не найдено")
         ensure_child_access(session["child_id"], user)
-        exercise_ids = json.loads(session["exercise_ids"])
-        placeholders = ",".join("?" for _ in exercise_ids)
-        exercise_rows = active_exercise_rows(db)
-        result_rows = db.execute("SELECT exercise_id,score,duration_seconds,attempts_count,correct_answers,prompts_used,attempt_status,created_at FROM sessions WHERE learning_session_id=? AND measurement_version>=1 ORDER BY sequence_index,id", (session_id,)).fetchall()
-    by_id = {row["id"]: dict(row) for row in exercise_rows}
-    return {**dict(session), "exercise_ids": exercise_ids, "exercises": [by_id[item_id] for item_id in exercise_ids if item_id in by_id], "results": [dict(row) for row in result_rows]}
+        return learning_session_payload(db, session)
 
 
 @app.get("/api/children/{child_id}/active-session")
@@ -1030,20 +1185,22 @@ def get_active_learning_session(child_id: int, user: dict = Depends(get_current_
     if not row:
         return None
     session = get_learning_session(row["id"], user)
+    if session["status"] == "completed":
+        return None
     desired_count = {3: 2, 5: 3, 10: 5}.get(session["target_minutes"], 3)
-    current_ids = list(session["exercise_ids"])
-    if len(current_ids) < desired_count:
-        placeholders = ",".join("?" for _ in current_ids)
-        exclusion = f"AND id NOT IN ({placeholders})" if current_ids else ""
+    stored_ids = list(session["exercise_ids"])
+    available_ids = [exercise["id"] for exercise in session["exercises"]]
+    if len(available_ids) < desired_count and not session.get("adaptive_plan_id"):
         with connect() as db:
-            candidates = [item for item in active_exercise_rows(db) if item["id"] not in set(current_ids)]
-            while candidates and len(current_ids) < desired_count:
+            candidates = [item for item in active_exercise_rows(db) if item["id"] not in set(stored_ids)]
+            while candidates and len(available_ids) < desired_count:
                 module_counts = {name: sum(1 for exercise in session["exercises"] if exercise["module"] == name) for name in ("motor", "sensory", "mixed")}
                 candidates.sort(key=lambda item: (module_counts[item["module"]], item["id"]))
                 chosen = candidates.pop(0)
-                current_ids.append(chosen["id"])
+                stored_ids.append(chosen["id"])
+                available_ids.append(chosen["id"])
                 session["exercises"].append({"module": chosen["module"]})
-            db.execute("UPDATE learning_sessions SET exercise_ids=? WHERE id=?", (json.dumps(current_ids), row["id"]))
+            db.execute("UPDATE learning_sessions SET exercise_ids=? WHERE id=?", (json.dumps(stored_ids), row["id"]))
         session = get_learning_session(row["id"], user)
     return session
 
@@ -1331,6 +1488,145 @@ def save_homework_result(homework_id: int, payload: HomeworkResultUpdate, user: 
     return dict(updated)
 
 
+@app.get("/api/observations/{child_id}")
+def list_skill_observations(child_id: int, user: dict = Depends(require_roles("parent"))) -> list[dict]:
+    ensure_child_access(child_id, user)
+    with connect() as db:
+        return skill_map(db, child_id)
+
+
+@app.get("/api/practice-goal-templates")
+def practice_goal_templates(user: dict = Depends(require_roles("parent"))) -> list[dict]:
+    with connect() as db:
+        return list_practice_goal_templates(db)
+
+
+@app.get("/api/practice-goals/{child_id}")
+def practice_goals(child_id: int, user: dict = Depends(require_roles("parent"))) -> list[dict]:
+    ensure_child_access(child_id, user)
+    with connect() as db:
+        return list_practice_goals(db, child_id)
+
+
+@app.post("/api/practice-goals", status_code=201)
+def add_practice_goal(payload: PracticeGoalCreate, user: dict = Depends(require_roles("parent"))) -> dict:
+    ensure_child_access(payload.child_id, user)
+    ensure_privacy_consent(payload.child_id)
+    with connect() as db:
+        result = create_practice_goal(
+            db, payload.child_id, payload.template_key, payload.baseline, payload.help_level, user["id"]
+        )
+    audit(user, "practice_goal.create", "practice_goal", result["id"], {"child_id": payload.child_id})
+    return result
+
+
+@app.patch("/api/practice-goals/{goal_id}")
+def edit_practice_goal(goal_id: int, payload: PracticeGoalUpdate, user: dict = Depends(require_roles("parent"))) -> dict:
+    ensure_child_access(payload.child_id, user)
+    ensure_privacy_consent(payload.child_id)
+    changes = payload.model_dump(exclude={"child_id", "expected_version"}, exclude_none=True)
+    with connect() as db:
+        result = update_practice_goal(db, goal_id, payload.child_id, payload.expected_version, changes, user["id"])
+    audit(user, "practice_goal.update", "practice_goal", goal_id, {"child_id": payload.child_id, "version": result["version"]})
+    return result
+
+
+@app.post("/api/practice-goals/{goal_id}/observations", status_code=201)
+def add_practice_goal_observation(goal_id: int, payload: PracticeGoalObservationCreate, user: dict = Depends(require_roles("parent"))) -> dict:
+    ensure_child_access(payload.child_id, user)
+    ensure_privacy_consent(payload.child_id)
+    value = payload.model_dump(exclude={"child_id"})
+    if value.get("observed_at"):
+        value["observed_at"] = value["observed_at"].isoformat()
+    with connect() as db:
+        result = save_practice_goal_observation(db, goal_id, payload.child_id, value, user["id"])
+    audit(user, "practice_goal.observation", "practice_goal", goal_id, {"result_type": payload.result_type})
+    return result
+
+
+@app.put("/api/practice-goals/{goal_id}/observations/{observation_id}")
+def edit_practice_goal_observation(goal_id: int, observation_id: int, payload: PracticeGoalObservationCreate, user: dict = Depends(require_roles("parent"))) -> dict:
+    ensure_child_access(payload.child_id, user)
+    ensure_privacy_consent(payload.child_id)
+    value = payload.model_dump(exclude={"child_id"})
+    if value.get("observed_at"):
+        value["observed_at"] = value["observed_at"].isoformat()
+    with connect() as db:
+        result = save_practice_goal_observation(db, goal_id, payload.child_id, value, user["id"], observation_id)
+    audit(user, "practice_goal.observation_update", "practice_goal_observation", observation_id, {"goal_id": goal_id})
+    return result
+
+
+@app.get("/api/practice-preferences/{child_id}")
+def practice_preferences(child_id: int, user: dict = Depends(require_roles("parent"))) -> dict:
+    ensure_child_access(child_id, user)
+    with connect() as db:
+        return get_preferences(db, child_id)
+
+
+@app.put("/api/practice-preferences/{child_id}")
+def update_practice_preferences(child_id: int, payload: PracticePreferencesUpdate, user: dict = Depends(require_roles("parent"))) -> dict:
+    ensure_child_access(child_id, user)
+    ensure_privacy_consent(child_id)
+    with connect() as db:
+        result = save_preferences(db, child_id, payload.model_dump(), user["id"])
+    audit(user, "practice_preferences.update", "child", child_id, {})
+    return result
+
+
+@app.put("/api/observations/{child_id}/{category}")
+def save_skill_observation(child_id: int, category: str, payload: SkillObservationUpdate, user: dict = Depends(require_roles("parent"))) -> dict:
+    ensure_child_access(child_id, user)
+    ensure_privacy_consent(child_id)
+    value = payload.model_dump()
+    if value.get("observed_at"):
+        value["observed_at"] = value["observed_at"].isoformat()
+    with connect() as db:
+        result = upsert_skill_observation(db, child_id, category, value, user["id"])
+    audit(user, "observation.save", "child", child_id, {"category": category, "status": payload.status})
+    return result
+
+
+@app.get("/api/home-activities/{child_id}")
+def list_home_activities(child_id: int, user: dict = Depends(require_roles("parent"))) -> dict:
+    ensure_child_access(child_id, user)
+    with connect() as db:
+        return home_library(db, child_id)
+
+
+@app.post("/api/home-activities/{child_id}/observations", status_code=201)
+def create_home_activity_observation(child_id: int, payload: HomeActivityObservationCreate, user: dict = Depends(require_roles("parent"))) -> dict:
+    ensure_child_access(child_id, user)
+    ensure_privacy_consent(child_id)
+    value = payload.model_dump()
+    if value.get("observed_at"):
+        value["observed_at"] = value["observed_at"].isoformat()
+    with connect() as db:
+        result = save_home_observation(db, child_id, value, user["id"])
+    audit(user, "home_activity.observe", "home_activity_observation", result["id"], {"child_id": child_id, "outcome": payload.outcome})
+    return result
+
+
+@app.put("/api/home-activities/{child_id}/observations/{observation_id}")
+def update_home_activity_observation(child_id: int, observation_id: int, payload: HomeActivityObservationCreate, user: dict = Depends(require_roles("parent"))) -> dict:
+    ensure_child_access(child_id, user)
+    ensure_privacy_consent(child_id)
+    value = payload.model_dump()
+    if value.get("observed_at"):
+        value["observed_at"] = value["observed_at"].isoformat()
+    with connect() as db:
+        result = save_home_observation(db, child_id, value, user["id"], observation_id)
+    audit(user, "home_activity.observation.update", "home_activity_observation", observation_id, {"child_id": child_id, "outcome": payload.outcome})
+    return result
+
+
+@app.get("/api/results/{child_id}/summary")
+def results_summary(child_id: int, user: dict = Depends(require_roles("parent"))) -> dict:
+    ensure_child_access(child_id, user)
+    with connect() as db:
+        return descriptive_results(db, child_id)
+
+
 @app.get("/api/children/{child_id}/consent")
 def get_consent(child_id: int, user: dict = Depends(require_roles("parent", "student"))) -> dict:
     ensure_child_access(child_id, user)
@@ -1421,6 +1717,11 @@ def export_child_data(child_id: int, user: dict = Depends(require_roles("parent"
             "specialist_recommendations": [dict(row) for row in db.execute("SELECT * FROM specialist_recommendations WHERE child_id=? ORDER BY id", (child_id,)).fetchall()],
             "goals": goal_rows,
             "homework": [dict(row) for row in db.execute("SELECT * FROM homework_assignments WHERE child_id=? ORDER BY id", (child_id,)).fetchall()],
+            "skill_observations": [dict(row) for row in db.execute("SELECT * FROM skill_observations WHERE child_id=? ORDER BY id", (child_id,)).fetchall()],
+            "home_activity_observations": [dict(row) for row in db.execute("SELECT * FROM home_activity_observations WHERE child_id=? ORDER BY id", (child_id,)).fetchall()],
+            "practice_goals": list_practice_goals(db, child_id),
+            "practice_preferences": get_preferences(db, child_id),
+            "adaptive_practice_plans": adaptive_plan_history(db, child_id),
             "aac_custom_cards": [dict(row) for row in db.execute("SELECT * FROM aac_cards WHERE child_id=? ORDER BY id", (child_id,)).fetchall()],
             "aac_favorites": [dict(row) for row in db.execute("SELECT * FROM aac_favorites WHERE child_id=? ORDER BY card_id", (child_id,)).fetchall()],
             "aac_history": history_rows,
@@ -1656,9 +1957,52 @@ def create_exercise_draft(payload: ExerciseDraftCreate, admin: dict = Depends(re
 
 
 @app.get("/api/admin/exercise-drafts/{version_id}/preview")
-def preview_exercise_draft(version_id: int, _: dict = Depends(require_roles("admin"))) -> dict:
+def preview_exercise_draft(version_id: int, admin: dict = Depends(require_roles("admin"))) -> dict:
     with connect() as db:
-        return preview_version(db, version_id)
+        return review_workspace(db, version_id, admin["id"])
+
+
+@app.get("/api/admin/content-review/capabilities")
+def content_review_capabilities(admin: dict = Depends(require_roles("admin"))) -> dict:
+    with connect() as db:
+        return review_capabilities(db, admin["id"])
+
+
+@app.post("/api/admin/exercise-drafts/{version_id}/reviews")
+def review_exercise_draft(version_id: int, payload: ContentReviewCreate, admin: dict = Depends(require_roles("admin"))) -> dict:
+    with connect() as db:
+        result = submit_content_review(
+            db,
+            version_id,
+            admin["id"],
+            payload.stage,
+            payload.decision,
+            payload.comment,
+        )
+    audit(
+        admin,
+        "exercise.version.review",
+        "exercise_version",
+        version_id,
+        {"stage": payload.stage, "decision": payload.decision},
+    )
+    return result
+
+
+@app.get("/api/admin/home-activity-drafts")
+def list_home_activity_drafts(_: dict = Depends(require_roles("admin"))) -> list[dict]:
+    with connect() as db:
+        rows = db.execute(
+            "SELECT * FROM home_activity_templates WHERE publication_status='draft' ORDER BY position,id"
+        ).fetchall()
+    result = []
+    for row in rows:
+        item = dict(row)
+        for field in ("materials", "adult_instructions", "accepted_responses", "prompts", "stop_conditions"):
+            item[field] = json.loads(item.pop(f"{field}_json") or "[]")
+        item["method_card"] = json.loads(item.pop("method_card_json", "{}") or "{}")
+        result.append(item)
+    return result
 
 
 @app.post("/api/admin/exercise-drafts/{version_id}/publish")

@@ -125,10 +125,10 @@ export type Exercise = {
   engine?: {
     version_id: number;
     version: number;
-    mechanic: "auditory_choice" | "guided_aac";
+    mechanic: "auditory_choice" | "action_choice" | "tap_instruction" | "guided_aac";
     language: "ru";
     objective: string;
-    response_mode: "single_tap" | "aac_card_sequence";
+    response_mode: "single_tap" | "tap_sequence" | "aac_card_sequence";
     prompt_policy: Record<string, unknown>;
     completion_rule: Record<string, unknown>;
     content: {
@@ -140,13 +140,153 @@ export type Exercise = {
         media_ref?: string;
         visual_token?: string;
       }>;
+      difficulty_levels?: Array<{ level: 1 | 2 | 3; option_count: 2 | 3 | 4; rounds: number; max_attempts: number }>;
+      scenarios?: Array<{
+        key: string;
+        instruction: string;
+        speech: string;
+        objects: Array<{ key: string; label: string; role: "movable" | "target"; media_ref: string }>;
+        success: { object_key: string; target_key: string };
+      }>;
       scenario_key?: string;
       title?: string;
       labels?: string[];
+      instruction?: string;
+      steps?: string[];
+      criterion?: string;
+      empty_hint?: string;
+      incomplete_hint?: string;
+      success_hint?: string;
+      action_label?: string;
+      completion?: { type: "contains_any"; accepted_labels: string[] };
     };
     review_status: "approved";
     publication_status: "published";
   };
+  adaptive?: {
+    plan_item_id: number;
+    goal_id: number;
+    goal_version: number;
+    goal_title: string;
+    exercise_version_id: number;
+    difficulty_params: AdaptiveDifficultyParams;
+    assignment_reason: AdaptiveAssignmentReason;
+  } | null;
+};
+
+export type AdaptiveDifficultyParams = {
+  difficulty_level: 1 | 2 | 3;
+  option_count: 2 | 3 | 4 | null;
+  round_count: number;
+  instruction_step_count: 1;
+  action_count: 1;
+  prompt_mode: "model_and_visual" | "visual" | "on_request";
+  visual_diversity: "familiar" | "configured";
+  familiar_repetition: boolean;
+};
+
+export type AdaptiveAssignmentReason = {
+  codes: string[];
+  messages: string[];
+  evidence: {
+    recorded_sessions: number;
+    attempts: number;
+    accuracy: number | null;
+    independent_completions: number;
+    prompts_used: number;
+    refusals: number;
+    breaks: number;
+    technical_errors: number;
+    parent_observations: {
+      count: number;
+      latest_result: string | null;
+      latest_prompt_level: string | null;
+      independent: number;
+      with_help: number;
+      refusals: number;
+      breaks: number;
+    };
+  };
+};
+
+export type AdaptivePlanItem = {
+  id: number;
+  plan_id: number;
+  goal_id: number;
+  goal_version: number;
+  exercise_id: number;
+  exercise_version_id: number;
+  exercise_version: number;
+  exercise_title: string;
+  instruction: string;
+  module: "sensory" | "mixed";
+  target: string;
+  skill: SkillName | null;
+  position: number;
+  difficulty_params: AdaptiveDifficultyParams;
+  assignment_reason: AdaptiveAssignmentReason;
+};
+
+export type AdaptivePlan = {
+  id: number;
+  child_id: number;
+  status: "prepared" | "started";
+  rules_version: string;
+  target_minutes: 3 | 5 | 10;
+  summary: string;
+  notices: Array<{ goal_id: number | null; goal_title: string | null; message: string }>;
+  thresholds: Record<string, number>;
+  created_at: string;
+  started_at?: string | null;
+  items: AdaptivePlanItem[];
+};
+
+export type PracticeGoalTemplate = {
+  id: number;
+  template_key: string;
+  version: number;
+  title: string;
+  skill_category: string;
+  observable_behavior: string;
+  baseline_prompt: string;
+  target_outcome: string;
+  accepted_responses: string[];
+  default_help_level: "independent" | "minimal" | "full";
+  matching_targets: string[];
+  matching_mechanics: string[];
+  status: "available";
+};
+
+export type PracticeGoalObservation = {
+  id: number;
+  goal_id: number;
+  child_id: number;
+  goal_version: number;
+  result_type: "not_observed" | "independent" | "with_help" | "refused" | "break" | "technical_error";
+  prompt_level: "independent" | "minimal" | "full" | null;
+  note: string;
+  source: "parent_real_life_observation";
+  observed_at: string;
+};
+
+export type PracticeGoal = {
+  id: number;
+  child_id: number;
+  template_key: string;
+  version: number;
+  title: string;
+  skill_category: string;
+  observable_behavior: string;
+  baseline: string;
+  target_outcome: string;
+  accepted_responses: string[];
+  help_level: "independent" | "minimal" | "full";
+  status: "active" | "paused" | "completed";
+  source: "parent_home_practice";
+  linked_exercises: Array<{ id: number; title: string; target: string; mechanic: string; exercise_version_id: number; exercise_version: number }>;
+  observations: PracticeGoalObservation[];
+  history: Array<{ id: number; goal_version: number; event_type: string; created_at: string }>;
+  updated_at: string;
 };
 
 export type LearningSession = {
@@ -157,6 +297,7 @@ export type LearningSession = {
   target_minutes: 3 | 5 | 10;
   started_at: string;
   completed_at?: string | null;
+  adaptive_plan_id?: number | null;
   exercises: Exercise[];
   results?: Array<{ exercise_id: number; score: number; duration_seconds: number; attempt_status?: "completed" | "participated" | "refused" | "break" | "technical_error"; created_at: string }>;
 };
@@ -227,6 +368,8 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
   }
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(data.detail || "Не удалось выполнить запрос");
-  if (typeof data.csrf_token === "string" && data.csrf_token) csrfTokenMemory = data.csrf_token;
+  if (data && typeof data === "object" && "csrf_token" in data && typeof data.csrf_token === "string" && data.csrf_token) {
+    csrfTokenMemory = data.csrf_token;
+  }
   return data as T;
 }

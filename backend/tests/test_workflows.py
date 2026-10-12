@@ -11,7 +11,7 @@ def test_health_reports_controlled_schema_migration(client):
     for path in ("/health", "/api/health"):
         response = client.get(path)
         assert response.status_code == 200
-        assert response.json() == {"status": "ok", "service": "soyle-api", "schema_version": 10}
+        assert response.json() == {"status": "ok", "service": "soyle-api", "schema_version": 14}
 
 
 def test_cookie_session_csrf_origin_and_logout():
@@ -225,6 +225,77 @@ def test_learning_session_pause_and_measurements(client, parent_headers):
     metrics = client.get(f"/api/progress/{child_id}", headers=parent_headers).json()["support_metrics"]
     assert metrics["average_independence"] == 75
     assert metrics["communication_initiatives"] >= 2
+
+
+def test_old_session_resumes_pending_published_exercise_and_deduplicates_progress(client):
+    registration = client.post("/api/auth/register", headers={"X-Soyle-Auth-Mode": "bearer"}, json={
+        "username": "sessionrepair", "password": "SessionRepair123!", "full_name": "Проверка восстановления",
+    })
+    assert registration.status_code == 201, registration.text
+    headers = {"Authorization": f"Bearer {registration.json()['access_token']}"}
+    child = client.post("/api/children", headers=headers, json={
+        "name": "Тест занятия", "birth_date": "2020-05-04", "primary_module": "sensory", "avatar_color": "#82a78f",
+    }).json()
+    child_id = child["id"]
+    consent = client.put(f"/api/children/{child_id}/consent", headers=headers, json={
+        "privacy_accepted": True, "camera_processing": False, "ai_processing": False, "analytics_processing": False,
+    })
+    assert consent.status_code == 200, consent.text
+
+    plan = client.get(f"/api/session-plan/{child_id}?minutes=5", headers=headers).json()["exercises"]
+    assert len(plan) == 3
+    created = client.post("/api/learning-sessions", headers=headers, json={
+        "child_id": child_id, "exercise_ids": [exercise["id"] for exercise in plan], "target_minutes": 5,
+    })
+    assert created.status_code == 201, created.text
+    session = created.json()
+    first, pending, completed_later = session["exercises"]
+
+    def save(exercise, status):
+        sequence_index = next(
+            (index for index, item in enumerate(session["exercises"]) if item["id"] == exercise["id"]),
+            len(session["exercises"]),
+        )
+        payload = {
+            "child_id": child_id,
+            "exercise_id": exercise["id"],
+            "module": exercise["module"],
+            "score": 0,
+            "duration_seconds": 5,
+            "details": {},
+            "learning_session_id": session["id"],
+            "sequence_index": sequence_index,
+            "attempt_status": status,
+        }
+        response = client.post("/api/sessions", headers=headers, json=payload)
+        assert response.status_code == 201, response.text
+
+    save(first, "break")
+    save(first, "participated")
+    save(completed_later, "participated")
+
+    try:
+        with connect() as db:
+            db.execute("UPDATE exercises SET is_active=0 WHERE id=?", (first["id"],))
+
+        resumed = client.get(f"/api/children/{child_id}/active-session", headers=headers)
+        assert resumed.status_code == 200, resumed.text
+        payload = resumed.json()
+        assert payload["status"] == "in_progress"
+        assert payload["current_index"] == 1
+        assert [exercise["id"] for exercise in payload["exercises"][:2]] == [completed_later["id"], pending["id"]]
+        assert len(payload["exercises"]) == 3
+        assert len(payload["results"]) == 3
+
+        save(pending, "participated")
+        save(payload["exercises"][2], "participated")
+        finished = client.get(f"/api/learning-sessions/{session['id']}", headers=headers).json()
+        assert finished["status"] == "completed"
+        assert finished["current_index"] == 3
+        assert len(finished["exercises"]) == 3
+    finally:
+        with connect() as db:
+            db.execute("UPDATE exercises SET is_active=1 WHERE id=?", (first["id"],))
 
 
 def test_ai_consent_is_opt_in_and_revocation_is_immediate(client, admin_headers):
@@ -488,6 +559,12 @@ def test_only_supported_aac_learning_scenarios_are_active(client, parent_headers
         "answer", "observation", "past_event", "question", "routine",
     }
     assert len(mixed) == 10
+    assert all(item["engine"]["content"]["steps"] for item in mixed)
+    assert all(item["engine"]["content"]["action_label"] for item in mixed)
+    assert all(item["engine"]["content"]["completion"]["accepted_labels"] for item in mixed)
+    request = next(item for item in mixed if item["target"] == "request")["engine"]["content"]
+    assert "Хочу" not in request["completion"]["accepted_labels"]
+    assert set(request["completion"]["accepted_labels"]) == {"Сок", "Вода", "Мяч", "Книга"}
 
 
 def test_only_sensory_sets_with_eight_stimuli_are_active(client, parent_headers):
@@ -498,7 +575,10 @@ def test_only_sensory_sets_with_eight_stimuli_are_active(client, parent_headers)
         hidden = db.execute("SELECT target FROM exercises WHERE module='sensory' AND is_active=0").fetchall()
     assert {item["target"] for item in hidden} == {
         "body", "clothes", "household", "actions", "qualities",
-        "location", "places", "opposites", "commands",
+        "location", "places", "opposites", "commands", "p1-word-runner-demo",
+        "p1-simple-instructions-demo", "p15-nouns-toys", "p15-nouns-food",
+        "p15-nouns-animals", "p15-nouns-clothing", "p15-nouns-home",
+        "p15-nouns-body", "p15-actions-core", "p15-instructions-one-step",
     }
 
 
@@ -529,20 +609,45 @@ def test_admin_constructor_creates_safe_draft_and_blocks_unreviewed_publish(clie
         "skill": "vocabulary",
         "language": "ru",
         "response_mode": "single_tap",
-        "prompt_policy": {"steps": ["repeat_audio", "reduced_choice"], "time_limit": None},
+        "prompt_policy": {"steps": ["repeat_audio", "visual_hint", "reduced_choice"], "time_limit": None, "max_attempts": 3},
         "completion_rule": {"rounds": 5, "success": "matching_stimulus_key"},
         "content": {"stimuli": [
             {"key": "cup", "label": "Чашка", "speech": "Чашка", "visual_token": "cup"},
             {"key": "spoon", "label": "Ложка", "speech": "Ложка", "visual_token": "spoon"},
             {"key": "plate", "label": "Тарелка", "speech": "Тарелка", "visual_token": "plate"},
-        ]},
+                {"key": "book", "label": "Книга", "speech": "Книга", "media_ref": "/aac-pictograms/book.png"},
+            ], "difficulty_levels": [
+                {"level": 1, "option_count": 2, "rounds": 4, "max_attempts": 3},
+                {"level": 2, "option_count": 3, "rounds": 5, "max_attempts": 3},
+                {"level": 3, "option_count": 4, "rounds": 5, "max_attempts": 3},
+            ]},
+        "method_card": {
+            "target_skill": "Сопоставить услышанное слово с изображением",
+            "skill_group": ["понимание предметов"],
+            "intended_for": ["Дети, которым нужна практика понимания знакомых слов"],
+            "diagnosis_boundary": "Группа описана через наблюдаемый навык, а не диагноз.",
+            "prerequisites": ["Может рассмотреть два изображения"],
+            "stimuli_and_responses": "Изображения предметов; ответ — одно нажатие.",
+            "child_instruction": "Послушай и выбери картинку",
+            "adult_guidance": ["Дать время на ответ"],
+            "accepted_responses": ["Нажатие", "Отказ", "Перерыв"],
+            "difficulty_levels": ["Два, три или четыре варианта"],
+            "prompts": ["Повторить аудио", "Сократить выбор"],
+            "ambiguities": ["Однозначность изображений требует ручной проверки"],
+            "stop_conditions": ["Отказ", "Дискомфорт"],
+            "result_registration": ["Разделять самостоятельный ответ и подсказку"],
+            "real_life_transfer": ["Найти знакомый предмет дома"],
+            "sources": [],
+            "evidence_note": "Синтетический тестовый материал требует независимой методической проверки.",
+            "methodology_review_status": "pending",
+        },
     }
     created = client.post("/api/admin/exercise-drafts", headers=admin_headers, json=payload)
     assert created.status_code == 201, created.text
     preview = created.json()
     assert preview["valid"] is True
     assert preview["can_publish"] is False
-    assert preview["blocker"] == "Нужно методическое утверждение"
+    assert preview["blocker"] == "Нужна ручная техническая проверка"
     version_id = preview["version"]["id"]
     exercise_id = preview["version"]["exercise_id"]
     assert client.post(f"/api/admin/exercise-drafts/{version_id}/publish", headers=admin_headers).status_code == 409

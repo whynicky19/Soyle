@@ -21,6 +21,12 @@ backend/skills-lock.json
 /output/pdf/
 /tmp/pdfs/
 /frontend/public/pitch/
+/frontend/test-results/
+/frontend/playwright-report/
+
+# Local implementation report requested outside version control
+/SOYLE_CONTENT_REVIEW.md
+/SOYLE_PERSONALIZATION_DESIGN.md
 
 # Local files generated while running the frontend for pitch review
 /frontend/AGENTS.md

@@ -8,7 +8,7 @@ from fastapi import HTTPException
 from .database import now_iso
 
 
-SUPPORTED_PUBLIC_MECHANICS = frozenset({"auditory_choice", "guided_aac"})
+SUPPORTED_PUBLIC_MECHANICS = frozenset({"auditory_choice", "action_choice", "tap_instruction", "guided_aac"})
 
 SENSORY_CONTENT: dict[str, list[dict[str, str]]] = {
     "animals": [
@@ -44,16 +44,119 @@ SENSORY_CONTENT: dict[str, list[dict[str, str]]] = {
 }
 
 AAC_SCENARIOS: dict[str, dict[str, Any]] = {
-    "request": {"title": "Попросить предмет", "labels": ["Хочу", "Сок", "Вода", "Мяч", "Книга"]},
-    "choice": {"title": "Сделать выбор", "labels": ["Сок", "Вода"]},
-    "refusal": {"title": "Отказаться", "labels": ["Нет", "Стоп", "Не хочу"]},
-    "feelings": {"title": "Сообщить о состоянии", "labels": ["Больно", "Устал", "Весело", "Грустно", "Спокойно", "Злюсь", "Страшно"]},
-    "help": {"title": "Попросить помощь", "labels": ["Помоги"]},
-    "answer": {"title": "Ответить", "labels": ["Да", "Нет"]},
-    "observation": {"title": "Прокомментировать", "labels": ["Я", "Мама", "Папа", "Кот", "Вижу", "Играю"]},
-    "past_event": {"title": "Сообщить о событии", "labels": ["Я", "Вчера", "Играл", "Гулял", "Мяч"]},
-    "question": {"title": "Задать вопрос", "labels": ["Что это?", "Где?"]},
-    "routine": {"title": "Рассказать о дне", "labels": ["Есть", "Пить", "Играю", "Гулять", "Читать", "Спать"]},
+    "request": {
+        "title": "Попроси один предмет",
+        "instruction": "Выбери, что ты хочешь попросить.",
+        "steps": ["Выбери сок, воду, мяч или книгу. Можно сначала добавить «Хочу».", "Нажми «Сказать просьбу»."],
+        "criterion": "Задание завершится только после понятной просьбы.",
+        "empty_hint": "Сначала выбери сок, воду, мяч или книгу.",
+        "incomplete_hint": "«Хочу» — это начало. Теперь выбери предмет.",
+        "success_hint": "Просьба готова. Нажми «Сказать просьбу».",
+        "action_label": "Сказать просьбу",
+        "labels": ["Хочу", "Сок", "Вода", "Мяч", "Книга"],
+        "completion": {"type": "contains_any", "accepted_labels": ["Сок", "Вода", "Мяч", "Книга"]},
+    },
+    "choice": {
+        "title": "Выбери напиток",
+        "instruction": "Что ты выбираешь: сок или воду?",
+        "steps": ["Выбери одну карточку: «Сок» или «Вода».", "Нажми «Сказать выбор»."],
+        "criterion": "Оба ответа подходят — важно сделать понятный выбор.",
+        "empty_hint": "Выбери сок или воду.",
+        "success_hint": "Выбор готов. Нажми «Сказать выбор».",
+        "action_label": "Сказать выбор",
+        "labels": ["Сок", "Вода"],
+        "completion": {"type": "contains_any", "accepted_labels": ["Сок", "Вода"]},
+    },
+    "refusal": {
+        "title": "Скажи, что не хочешь",
+        "instruction": "Можно выбрать «Нет», «Стоп» или «Не хочу».",
+        "steps": ["Выбери подходящую карточку отказа.", "Нажми «Сказать отказ»."],
+        "criterion": "Любой понятный отказ принимается сразу и не считается ошибкой.",
+        "empty_hint": "Выбери «Нет», «Стоп» или «Не хочу».",
+        "success_hint": "Сообщение готово. Нажми «Сказать отказ».",
+        "action_label": "Сказать отказ",
+        "labels": ["Нет", "Стоп", "Не хочу"],
+        "completion": {"type": "contains_any", "accepted_labels": ["Нет", "Стоп", "Не хочу"]},
+    },
+    "feelings": {
+        "title": "Сообщи о своём состоянии",
+        "instruction": "Выбери карточку, которая подходит сейчас.",
+        "steps": ["Выбери одну карточку состояния.", "Нажми «Сообщить состояние»."],
+        "criterion": "Здесь нет неправильного чувства — фиксируется само сообщение.",
+        "empty_hint": "Выбери карточку состояния.",
+        "success_hint": "Сообщение готово. Нажми «Сообщить состояние».",
+        "action_label": "Сообщить состояние",
+        "labels": ["Больно", "Устал", "Весело", "Грустно", "Спокойно", "Злюсь", "Страшно"],
+        "completion": {"type": "contains_any", "accepted_labels": ["Больно", "Устал", "Весело", "Грустно", "Спокойно", "Злюсь", "Страшно"]},
+    },
+    "help": {
+        "title": "Попроси помощь",
+        "instruction": "Выбери карточку «Помоги».",
+        "steps": ["Выбери «Помоги».", "Нажми «Попросить помощь»."],
+        "criterion": "Одной карточки «Помоги» достаточно.",
+        "empty_hint": "Выбери карточку «Помоги».",
+        "success_hint": "Просьба готова. Нажми «Попросить помощь».",
+        "action_label": "Попросить помощь",
+        "labels": ["Помоги"],
+        "completion": {"type": "contains_any", "accepted_labels": ["Помоги"]},
+    },
+    "answer": {
+        "title": "Ответь на вопрос",
+        "instruction": "Хочешь продолжить? Ответь «Да» или «Нет».",
+        "steps": ["Выбери «Да» или «Нет».", "Нажми «Сказать ответ»."],
+        "criterion": "Оценивается факт понятного ответа, а не выбранный вариант.",
+        "empty_hint": "Выбери «Да» или «Нет».",
+        "success_hint": "Ответ готов. Нажми «Сказать ответ».",
+        "action_label": "Сказать ответ",
+        "labels": ["Да", "Нет"],
+        "completion": {"type": "contains_any", "accepted_labels": ["Да", "Нет"]},
+    },
+    "observation": {
+        "title": "Покажи, кого ты видишь",
+        "instruction": "Выбери маму, папу или кота. Можно сначала добавить «Вижу».",
+        "steps": ["Выбери, кого ты видишь.", "Нажми «Сказать, кого вижу»."],
+        "criterion": "Карточка человека или предмета уже считается понятным сообщением.",
+        "empty_hint": "Сначала выбери маму, папу или кота.",
+        "incomplete_hint": "Теперь выбери, кого ты видишь.",
+        "success_hint": "Сообщение готово. Нажми «Сказать, кого вижу».",
+        "action_label": "Сказать, кого вижу",
+        "labels": ["Я", "Мама", "Папа", "Кот", "Вижу", "Играю"],
+        "completion": {"type": "contains_any", "accepted_labels": ["Мама", "Папа", "Кот"]},
+    },
+    "past_event": {
+        "title": "Расскажи, что было",
+        "instruction": "Выбери знакомое прошедшее действие.",
+        "steps": ["Выбери «Играл» или «Гулял».", "Нажми «Рассказать»."],
+        "criterion": "Не проверяем, было ли событие на самом деле — важно понятное сообщение.",
+        "empty_hint": "Выбери «Играл» или «Гулял».",
+        "incomplete_hint": "Добавь действие: «Играл» или «Гулял».",
+        "success_hint": "Сообщение готово. Нажми «Рассказать».",
+        "action_label": "Рассказать",
+        "labels": ["Я", "Вчера", "Играл", "Гулял", "Мяч"],
+        "completion": {"type": "contains_any", "accepted_labels": ["Играл", "Гулял"]},
+    },
+    "question": {
+        "title": "Задай вопрос",
+        "instruction": "Выбери готовый вопрос.",
+        "steps": ["Выбери «Что это?» или «Где?».", "Нажми «Задать вопрос»."],
+        "criterion": "Одна вопросительная карточка завершает задание.",
+        "empty_hint": "Выбери один вопрос.",
+        "success_hint": "Вопрос готов. Нажми «Задать вопрос».",
+        "action_label": "Задать вопрос",
+        "labels": ["Что это?", "Где?"],
+        "completion": {"type": "contains_any", "accepted_labels": ["Что это?", "Где?"]},
+    },
+    "routine": {
+        "title": "Расскажи об одном действии",
+        "instruction": "Выбери знакомое действие дня.",
+        "steps": ["Выбери одно действие.", "Нажми «Рассказать о действии»."],
+        "criterion": "Одна карточка действия уже является понятным сообщением.",
+        "empty_hint": "Выбери одно действие дня.",
+        "success_hint": "Сообщение готово. Нажми «Рассказать о действии».",
+        "action_label": "Рассказать о действии",
+        "labels": ["Есть", "Пить", "Играю", "Гулять", "Читать", "Спать"],
+        "completion": {"type": "contains_any", "accepted_labels": ["Есть", "Пить", "Играю", "Гулять", "Читать", "Спать"]},
+    },
 }
 
 
@@ -77,7 +180,7 @@ def legacy_engine_payload(exercise: dict) -> dict[str, Any]:
             "response_mode": "aac_card_sequence",
             "prompt_policy": {"adult_levels": ["independent", "minimal", "full"], "time_limit": None},
             "completion_rule": {"success": "accepted_communication", "refusal_is_valid": True},
-            "content": {"scenario_key": target, "title": scenario.get("title", exercise["title"]), "labels": scenario.get("labels", [])},
+            "content": {"scenario_key": target, **scenario, "title": scenario.get("title", exercise["title"])},
         }
     return {
         "mechanic": "local_face_mirror",
@@ -109,11 +212,44 @@ def validate_version(version: dict) -> list[str]:
     if not isinstance(version.get("completion_rule"), dict) or not version.get("completion_rule"):
         errors.append("Не определены правила завершения")
 
+    if "method_card" in version:
+        method_card = version.get("method_card")
+        required_method_fields = (
+            "target_skill",
+            "skill_group",
+            "intended_for",
+            "prerequisites",
+            "stimuli_and_responses",
+            "child_instruction",
+            "adult_guidance",
+            "accepted_responses",
+            "difficulty_levels",
+            "prompts",
+            "ambiguities",
+            "stop_conditions",
+            "result_registration",
+            "real_life_transfer",
+            "sources",
+            "evidence_note",
+            "methodology_review_status",
+        )
+        if not isinstance(method_card, dict):
+            errors.append("Методическая карточка имеет неверный формат")
+        else:
+            for field in required_method_fields:
+                value = method_card.get(field)
+                if field == "sources":
+                    if not isinstance(value, list):
+                        errors.append("Методическая карточка: источники должны быть списком")
+                    continue
+                if not value:
+                    errors.append(f"Методическая карточка: не заполнено поле {field}")
+
     content = version.get("content") if isinstance(version.get("content"), dict) else {}
-    if mechanic == "auditory_choice":
+    if mechanic in {"auditory_choice", "action_choice"}:
         stimuli = content.get("stimuli") if isinstance(content, dict) else None
-        if not isinstance(stimuli, list) or not 3 <= len(stimuli) <= 12:
-            errors.append("Для выбора на слух нужны от 3 до 12 стимулов")
+        if not isinstance(stimuli, list) or not 4 <= len(stimuli) <= 12:
+            errors.append("Для выбора на слух нужны от 4 до 12 стимулов, чтобы поддержать четыре варианта")
         else:
             keys: list[str] = []
             labels: list[str] = []
@@ -132,6 +268,8 @@ def validate_version(version: dict) -> list[str]:
                     errors.append(f"Стимул {index}: нужна локальная иллюстрация или проверенный visual_token")
                 if stimulus.get("media_ref") and not str(stimulus["media_ref"]).startswith("/"):
                     errors.append(f"Стимул {index}: разрешены только локальные media_ref")
+                if mechanic == "action_choice" and not stimulus.get("media_ref"):
+                    errors.append(f"Стимул {index}: для действия нужна полноценная локальная сцена, а не visual_token")
                 keys.append(key.lower())
                 labels.append(label.casefold())
             if len(keys) != len(set(keys)):
@@ -142,6 +280,61 @@ def validate_version(version: dict) -> list[str]:
             errors.append("Механика выбора на слух требует response_mode=single_tap")
         if version.get("completion_rule", {}).get("success") != "matching_stimulus_key":
             errors.append("Правильный ответ должен определяться ключом стимула, а не позицией картинки")
+        levels = content.get("difficulty_levels")
+        if levels is not None:
+            option_counts = {
+                level.get("option_count") for level in levels if isinstance(level, dict)
+            } if isinstance(levels, list) else set()
+            if option_counts != {2, 3, 4}:
+                errors.append("Настройка сложности должна явно поддерживать 2, 3 и 4 варианта")
+            for level in levels if isinstance(levels, list) else []:
+                try:
+                    max_attempts = int(level.get("max_attempts", 0)) if isinstance(level, dict) else 0
+                except (TypeError, ValueError):
+                    max_attempts = 0
+                if not 1 <= max_attempts <= 4:
+                    errors.append("Для каждого уровня нужно от 1 до 4 попыток")
+                    break
+    elif mechanic == "tap_instruction":
+        scenarios = content.get("scenarios") if isinstance(content, dict) else None
+        if not isinstance(scenarios, list) or not scenarios:
+            errors.append("Для выполнения инструкции нужен непустой список сценариев")
+        else:
+            scenario_keys: list[str] = []
+            for index, scenario in enumerate(scenarios, start=1):
+                if not isinstance(scenario, dict):
+                    errors.append(f"Сценарий {index} имеет неверный формат")
+                    continue
+                key = str(scenario.get("key") or "").strip()
+                instruction = str(scenario.get("instruction") or "").strip()
+                speech = str(scenario.get("speech") or "").strip()
+                objects = scenario.get("objects")
+                success = scenario.get("success")
+                if not key or not re.fullmatch(r"[a-z0-9][a-z0-9-]{1,49}", key):
+                    errors.append(f"Сценарий {index}: нужен стабильный латинский key")
+                if not instruction or not speech:
+                    errors.append(f"Сценарий {index}: нужны инструкция и озвучиваемый текст")
+                if not isinstance(objects, list) or len(objects) < 2:
+                    errors.append(f"Сценарий {index}: нужны отдельные предмет и цель")
+                    continue
+                object_keys = {str(item.get("key") or "") for item in objects if isinstance(item, dict)}
+                movable = {str(item.get("key") or "") for item in objects if isinstance(item, dict) and item.get("role") == "movable"}
+                targets = {str(item.get("key") or "") for item in objects if isinstance(item, dict) and item.get("role") == "target"}
+                if not isinstance(success, dict) or success.get("object_key") not in movable or success.get("target_key") not in targets:
+                    errors.append(f"Сценарий {index}: правило завершения должно связывать movable-предмет и target")
+                for item in objects:
+                    if not isinstance(item, dict) or not item.get("label") or not str(item.get("media_ref") or "").startswith("/"):
+                        errors.append(f"Сценарий {index}: каждый объект требует подпись и локальную иллюстрацию")
+                        break
+                if len(object_keys) != len(objects):
+                    errors.append(f"Сценарий {index}: ключи объектов должны быть уникальны")
+                scenario_keys.append(key)
+            if len(scenario_keys) != len(set(scenario_keys)):
+                errors.append("Ключи сценариев не должны повторяться")
+        if version.get("response_mode") != "tap_sequence":
+            errors.append("Механика инструкции требует response_mode=tap_sequence")
+        if version.get("completion_rule", {}).get("steps") != 1:
+            errors.append("В P1 разрешены только одношаговые инструкции")
     elif mechanic == "guided_aac":
         labels = content.get("labels") if isinstance(content, dict) else None
         if not isinstance(labels, list) or not labels:
@@ -154,6 +347,8 @@ def _decode_version(row: dict) -> dict:
     result["prompt_policy"] = json.loads(result.pop("prompt_policy_json") or "{}")
     result["completion_rule"] = json.loads(result.pop("completion_rule_json") or "{}")
     result["content"] = json.loads(result.pop("content_json") or "{}")
+    if "method_card_json" in result:
+        result["method_card"] = json.loads(result.pop("method_card_json") or "{}")
     return result
 
 
@@ -174,16 +369,21 @@ def published_exercise_rows(db) -> list[dict]:
     result = []
     for row in rows:
         item = dict(row)
+        mechanic = item.pop("mechanic")
+        content = json.loads(item.pop("content_json") or "{}")
+        if mechanic == "guided_aac":
+            scenario = AAC_SCENARIOS.get(content.get("scenario_key"), {})
+            content = {**scenario, **content}
         item["engine"] = {
             "version_id": item.pop("exercise_version_id"),
             "version": item.pop("content_version"),
-            "mechanic": item.pop("mechanic"),
+            "mechanic": mechanic,
             "language": item.pop("language"),
             "objective": item.pop("objective"),
             "response_mode": item.pop("response_mode"),
             "prompt_policy": json.loads(item.pop("prompt_policy_json") or "{}"),
             "completion_rule": json.loads(item.pop("completion_rule_json") or "{}"),
-            "content": json.loads(item.pop("content_json") or "{}"),
+            "content": content,
             "review_status": item.pop("review_status"),
             "publication_status": item.pop("publication_status"),
         }
@@ -209,14 +409,15 @@ def create_draft(db, payload: dict, created_by: int) -> dict:
         """INSERT INTO exercise_versions(
                exercise_id,version,title,mechanic,language,objective,instruction,response_mode,
                prompt_policy_json,completion_rule_json,content_json,review_status,publication_status,
-               created_by,created_at)
-           VALUES(?,1,?,?,?,?,?,?,?,?,?,'pending','draft',?,?) RETURNING id""",
+               technical_status,methodology_status,release_status,method_card_json,created_by,created_at)
+           VALUES(?,1,?,?,?,?,?,?,?,?,?,'pending','draft','pending','pending','pending',?,?,?) RETURNING id""",
         (
             exercise_id, payload["title"], payload["mechanic"], payload["language"], payload["objective"],
             payload["instruction"], payload["response_mode"],
             json.dumps(payload["prompt_policy"], ensure_ascii=False),
             json.dumps(payload["completion_rule"], ensure_ascii=False),
-            json.dumps(payload["content"], ensure_ascii=False), created_by, now_iso(),
+            json.dumps(payload["content"], ensure_ascii=False),
+            json.dumps(payload.get("method_card") or {}, ensure_ascii=False), created_by, now_iso(),
         ),
     )
     version_id = cursor.fetchone()["id"]
@@ -247,12 +448,25 @@ def get_version(db, version_id: int) -> dict:
 def preview_version(db, version_id: int) -> dict:
     version = get_version(db, version_id)
     errors = validate_version(version)
+    stages_ready = (
+        version.get("technical_status") == "passed"
+        and version.get("methodology_status") == "approved"
+        and version.get("release_status") == "approved"
+    )
+    blocker = None
+    if not errors and not stages_ready:
+        if version.get("technical_status") != "passed":
+            blocker = "Нужна ручная техническая проверка"
+        elif version.get("methodology_status") != "approved":
+            blocker = "Нужно методическое утверждение уполномоченного специалиста"
+        elif version.get("release_status") != "approved":
+            blocker = "Нужно отдельное окончательное разрешение публикации"
     return {
         "version": version,
         "valid": not errors,
         "errors": errors,
-        "can_publish": not errors and version["review_status"] == "approved",
-        "blocker": "Нужно методическое утверждение" if not errors and version["review_status"] != "approved" else None,
+        "can_publish": not errors and stages_ready and version["review_status"] == "approved",
+        "blocker": blocker,
     }
 
 
@@ -261,8 +475,12 @@ def publish_version(db, version_id: int) -> dict:
     if preview["errors"]:
         raise HTTPException(422, {"message": "Версия не прошла техническую проверку", "errors": preview["errors"]})
     version = preview["version"]
-    if version["review_status"] != "approved":
+    if version["review_status"] != "approved" or version.get("methodology_status") != "approved":
         raise HTTPException(409, "Публикация заблокирована до методического утверждения")
+    if version.get("technical_status") != "passed":
+        raise HTTPException(409, "Публикация заблокирована до ручной технической проверки")
+    if version.get("release_status") != "approved":
+        raise HTTPException(409, "Публикация заблокирована до отдельного окончательного разрешения")
     db.execute("UPDATE exercise_versions SET publication_status='archived' WHERE exercise_id=? AND publication_status='published'", (version["exercise_id"],))
     db.execute("UPDATE exercise_versions SET publication_status='published',published_at=? WHERE id=?", (now_iso(), version_id))
     db.execute(
@@ -270,3 +488,107 @@ def publish_version(db, version_id: int) -> dict:
         (version["title"], version["instruction"], version["exercise_id"]),
     )
     return get_version(db, version_id)
+
+
+def review_capabilities(db, user_id: int) -> dict[str, bool]:
+    permission = db.execute(
+        "SELECT * FROM content_reviewer_permissions WHERE user_id=?",
+        (user_id,),
+    ).fetchone()
+    return {
+        "technical_review": True,
+        "methodology_review": bool(permission and permission["can_methodology_review"]),
+        "release_approval": bool(permission and permission["can_release_approve"]),
+    }
+
+
+def review_workspace(db, version_id: int, user_id: int) -> dict:
+    preview = preview_version(db, version_id)
+    version = preview["version"]
+    review_rows = db.execute(
+        """SELECT r.*,COALESCE(u.full_name,'Системная проверка') reviewer_name
+           FROM content_reviews r LEFT JOIN users u ON u.id=r.reviewer_id
+           WHERE r.version_id=? ORDER BY r.created_at,r.id""",
+        (version_id,),
+    ).fetchall()
+    stimulus_rows = db.execute(
+        "SELECT * FROM exercise_stimuli WHERE version_id=? ORDER BY position,id",
+        (version_id,),
+    ).fetchall()
+    stimuli = []
+    for row in stimulus_rows:
+        item = dict(row)
+        item["metadata"] = json.loads(item.pop("metadata_json") or "{}")
+        stimuli.append(item)
+    history_rows = db.execute(
+        """SELECT id,version,title,review_status,publication_status,technical_status,
+                  methodology_status,release_status,created_at,published_at
+           FROM exercise_versions WHERE exercise_id=? ORDER BY version DESC,id DESC""",
+        (version["exercise_id"],),
+    ).fetchall()
+    return {
+        **preview,
+        "stimuli_index": stimuli,
+        "reviews": [dict(row) for row in review_rows],
+        "version_history": [dict(row) for row in history_rows],
+        "capabilities": review_capabilities(db, user_id),
+    }
+
+
+def submit_content_review(
+    db,
+    version_id: int,
+    reviewer_id: int,
+    stage: str,
+    decision: str,
+    comment: str,
+) -> dict:
+    preview = preview_version(db, version_id)
+    version = preview["version"]
+    if version["publication_status"] != "draft":
+        raise HTTPException(409, "Проверять можно только черновую версию")
+    capabilities = review_capabilities(db, reviewer_id)
+    allowed = {
+        "technical": {"passed", "changes_requested"},
+        "methodology": {"approved", "changes_requested"},
+        "publication": {"approved", "changes_requested"},
+    }
+    if stage not in allowed or decision not in allowed[stage]:
+        raise HTTPException(422, "Недопустимое решение для выбранного этапа")
+    if stage == "methodology" and not capabilities["methodology_review"]:
+        raise HTTPException(403, "Роль администратора не подтверждает квалификацию методического эксперта")
+    if stage == "publication" and not capabilities["release_approval"]:
+        raise HTTPException(403, "Нет отдельного полномочия на окончательное разрешение публикации")
+    if stage == "technical" and decision == "passed" and preview["errors"]:
+        raise HTTPException(409, {"message": "Сначала исправьте ошибки структуры", "errors": preview["errors"]})
+    if stage == "methodology" and version.get("technical_status") != "passed":
+        raise HTTPException(409, "Методическая проверка доступна после ручной технической проверки")
+    if stage == "publication" and (
+        version.get("technical_status") != "passed" or version.get("methodology_status") != "approved"
+    ):
+        raise HTTPException(409, "Окончательное разрешение доступно после технической и методической проверки")
+
+    if stage == "technical":
+        db.execute(
+            """UPDATE exercise_versions
+               SET technical_status=?,methodology_status=CASE WHEN ?='changes_requested' THEN 'pending' ELSE methodology_status END,
+                   release_status=CASE WHEN ?='changes_requested' THEN 'pending' ELSE release_status END,
+                   review_status=CASE WHEN ?='changes_requested' THEN 'changes_requested' ELSE review_status END
+               WHERE id=?""",
+            (decision, decision, decision, decision, version_id),
+        )
+    elif stage == "methodology":
+        db.execute(
+            """UPDATE exercise_versions
+               SET methodology_status=?,review_status=?,release_status='pending'
+               WHERE id=?""",
+            (decision, "approved" if decision == "approved" else "changes_requested", version_id),
+        )
+    else:
+        db.execute("UPDATE exercise_versions SET release_status=? WHERE id=?", (decision, version_id))
+    db.execute(
+        """INSERT INTO content_reviews(version_id,stage,decision,comment,reviewer_id,created_at)
+           VALUES(?,?,?,?,?,?)""",
+        (version_id, stage, decision, comment.strip(), reviewer_id, now_iso()),
+    )
+    return review_workspace(db, version_id, reviewer_id)

@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 from typing import Any, Literal
 from pydantic import BaseModel, Field
 
@@ -45,12 +45,16 @@ class SessionCreate(BaseModel):
     attempts_count: int | None = Field(default=None, ge=0, le=100)
     correct_answers: int | None = Field(default=None, ge=0, le=100)
     prompts_used: int = Field(default=0, ge=0, le=100)
+    gameplay_choices: int = Field(default=0, ge=0, le=200)
+    independent_completions: int = Field(default=0, ge=0, le=100)
+    prompted_completions: int = Field(default=0, ge=0, le=100)
     attempt_status: Literal["completed", "participated", "refused", "break", "technical_error"] = "completed"
 
 class LearningSessionCreate(BaseModel):
     child_id: int
     exercise_ids: list[int] = Field(default_factory=list, min_length=1, max_length=5)
     target_minutes: Literal[3, 5, 10] = 5
+    adaptive_plan_id: int | None = None
 
 class ExerciseCreate(BaseModel):
     module: ModuleName
@@ -70,22 +74,73 @@ class ExerciseStimulusCreate(BaseModel):
     media_ref: str | None = Field(default=None, max_length=240)
     visual_token: str | None = Field(default=None, max_length=50)
 
+class ExerciseDifficultyLevel(BaseModel):
+    level: Literal[1, 2, 3]
+    option_count: Literal[2, 3, 4]
+    rounds: int = Field(ge=1, le=10)
+    max_attempts: int = Field(ge=1, le=4)
+
+class InstructionObjectCreate(BaseModel):
+    key: str = Field(min_length=2, max_length=50, pattern=r"^[a-z0-9][a-z0-9-]+$")
+    label: str = Field(min_length=1, max_length=80)
+    role: Literal["movable", "target"]
+    media_ref: str = Field(min_length=2, max_length=240, pattern=r"^/")
+
+class InstructionSuccessCreate(BaseModel):
+    object_key: str = Field(min_length=2, max_length=50)
+    target_key: str = Field(min_length=2, max_length=50)
+
+class InstructionScenarioCreate(BaseModel):
+    key: str = Field(min_length=2, max_length=50, pattern=r"^[a-z0-9][a-z0-9-]+$")
+    instruction: str = Field(min_length=2, max_length=160)
+    speech: str = Field(min_length=2, max_length=160)
+    objects: list[InstructionObjectCreate] = Field(min_length=2, max_length=6)
+    success: InstructionSuccessCreate
+
 class ExerciseDraftContent(BaseModel):
     stimuli: list[ExerciseStimulusCreate] = Field(default_factory=list, max_length=12)
+    difficulty_levels: list[ExerciseDifficultyLevel] = Field(default_factory=list, max_length=3)
+    scenarios: list[InstructionScenarioCreate] = Field(default_factory=list, max_length=10)
+
+class ExerciseMethodCard(BaseModel):
+    target_skill: str = Field(min_length=5, max_length=300)
+    skill_group: list[str] = Field(min_length=1, max_length=8)
+    intended_for: list[str] = Field(min_length=1, max_length=8)
+    diagnosis_boundary: str = Field(min_length=5, max_length=500)
+    prerequisites: list[str] = Field(min_length=1, max_length=12)
+    stimuli_and_responses: str = Field(min_length=5, max_length=1000)
+    child_instruction: str = Field(min_length=2, max_length=300)
+    adult_guidance: list[str] = Field(min_length=1, max_length=12)
+    accepted_responses: list[str] = Field(min_length=1, max_length=12)
+    difficulty_levels: list[str] = Field(min_length=1, max_length=8)
+    prompts: list[str] = Field(min_length=1, max_length=12)
+    ambiguities: list[str] = Field(min_length=1, max_length=12)
+    stop_conditions: list[str] = Field(min_length=1, max_length=12)
+    result_registration: list[str] = Field(min_length=1, max_length=12)
+    real_life_transfer: list[str] = Field(min_length=1, max_length=12)
+    sources: list[str | dict[str, str]] = Field(default_factory=list, max_length=20)
+    evidence_note: str = Field(min_length=5, max_length=1000)
+    methodology_review_status: Literal["pending"] = "pending"
 
 class ExerciseDraftCreate(BaseModel):
     module: Literal["sensory", "mixed"]
-    mechanic: Literal["auditory_choice", "guided_aac"]
+    mechanic: Literal["auditory_choice", "action_choice", "tap_instruction", "guided_aac"]
     title: str = Field(min_length=2, max_length=100)
     objective: str = Field(min_length=5, max_length=300)
     instruction: str = Field(min_length=2, max_length=300)
     difficulty: int = Field(ge=1, le=3)
     skill: SkillName
     language: Literal["ru"] = "ru"
-    response_mode: Literal["single_tap", "aac_card_sequence"]
+    response_mode: Literal["single_tap", "tap_sequence", "aac_card_sequence"]
     prompt_policy: dict[str, Any]
     completion_rule: dict[str, Any]
     content: ExerciseDraftContent
+    method_card: ExerciseMethodCard
+
+class ContentReviewCreate(BaseModel):
+    stage: Literal["technical", "methodology", "publication"]
+    decision: Literal["passed", "approved", "changes_requested"]
+    comment: str = Field(min_length=5, max_length=2000)
 
 class SpecialistAssignmentCreate(BaseModel):
     specialist_id: int
@@ -171,6 +226,47 @@ class HomeworkCreate(BaseModel):
 class HomeworkResultUpdate(BaseModel):
     result: Literal["independent", "minimal_prompt", "full_prompt", "failed", "refused"]
     parent_note: str = Field(default="", max_length=500)
+
+class SkillObservationUpdate(BaseModel):
+    status: Literal["not_observed", "not_yet", "with_help", "independent", "needs_review"]
+    note: str = Field(default="", max_length=500)
+    observed_at: datetime | None = None
+
+class HomeActivityObservationCreate(BaseModel):
+    activity_id: int
+    outcome: Literal["not_observed", "independent", "with_help", "refused", "stopped"]
+    prompt_level: Literal["independent", "minimal", "full"] | None = None
+    note: str = Field(default="", max_length=500)
+    observed_at: datetime | None = None
+
+class PracticeGoalCreate(BaseModel):
+    child_id: int
+    template_key: str = Field(min_length=2, max_length=80, pattern=r"^[a-z0-9][a-z0-9-]+$")
+    baseline: str = Field(min_length=2, max_length=600)
+    help_level: Literal["independent", "minimal", "full"]
+
+class PracticeGoalUpdate(BaseModel):
+    child_id: int
+    expected_version: int = Field(ge=1)
+    baseline: str | None = Field(default=None, min_length=2, max_length=600)
+    target_outcome: str | None = Field(default=None, min_length=2, max_length=600)
+    help_level: Literal["independent", "minimal", "full"] | None = None
+    status: Literal["active", "paused", "completed"] | None = None
+
+class PracticeGoalObservationCreate(BaseModel):
+    child_id: int
+    result_type: Literal["not_observed", "independent", "with_help", "refused", "break", "technical_error"]
+    prompt_level: Literal["independent", "minimal", "full"] | None = None
+    note: str = Field(default="", max_length=600)
+    observed_at: datetime | None = None
+
+class PracticePreferencesUpdate(BaseModel):
+    preferred_exercise_ids: list[int] = Field(default_factory=list, max_length=30)
+    avoided_exercise_ids: list[int] = Field(default_factory=list, max_length=30)
+    note: str = Field(default="", max_length=600)
+
+class AdaptivePlanRequest(BaseModel):
+    target_minutes: Literal[3, 5, 10] = 5
 
 class ConsentUpdate(BaseModel):
     privacy_accepted: bool
