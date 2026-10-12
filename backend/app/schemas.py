@@ -62,6 +62,31 @@ class ExerciseCreate(BaseModel):
     skill: SkillName | None = None
     is_active: bool = True
 
+class ExerciseStimulusCreate(BaseModel):
+    key: str = Field(min_length=2, max_length=50, pattern=r"^[a-z0-9][a-z0-9-]+$")
+    label: str = Field(min_length=1, max_length=80)
+    speech: str = Field(min_length=1, max_length=120)
+    hint: str = Field(default="", max_length=200)
+    media_ref: str | None = Field(default=None, max_length=240)
+    visual_token: str | None = Field(default=None, max_length=50)
+
+class ExerciseDraftContent(BaseModel):
+    stimuli: list[ExerciseStimulusCreate] = Field(default_factory=list, max_length=12)
+
+class ExerciseDraftCreate(BaseModel):
+    module: Literal["sensory", "mixed"]
+    mechanic: Literal["auditory_choice", "guided_aac"]
+    title: str = Field(min_length=2, max_length=100)
+    objective: str = Field(min_length=5, max_length=300)
+    instruction: str = Field(min_length=2, max_length=300)
+    difficulty: int = Field(ge=1, le=3)
+    skill: SkillName
+    language: Literal["ru"] = "ru"
+    response_mode: Literal["single_tap", "aac_card_sequence"]
+    prompt_policy: dict[str, Any]
+    completion_rule: dict[str, Any]
+    content: ExerciseDraftContent
+
 class SpecialistAssignmentCreate(BaseModel):
     specialist_id: int
     child_id: int

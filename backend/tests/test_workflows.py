@@ -7,6 +7,13 @@ from app.database import connect
 from app.main import app, auth_identifier
 
 
+def test_health_reports_controlled_schema_migration(client):
+    for path in ("/health", "/api/health"):
+        response = client.get(path)
+        assert response.status_code == 200
+        assert response.json() == {"status": "ok", "service": "soyle-api", "schema_version": 10}
+
+
 def test_cookie_session_csrf_origin_and_logout():
     with TestClient(app) as browser:
         login = browser.post("/api/auth/login", json={"username": "parent", "password": "Parent123!"})
@@ -373,29 +380,18 @@ def test_game_results_are_server_calculated_and_non_scored_outcomes_are_separate
         assert response.json()["score"] == 0
         assert response.json()["awarded_stars"] == 0
 
-    motor_exercises = [item for item in client.get("/api/exercises", headers=headers).json() if item["module"] == "motor"]
-    assert {item["target"] for item in motor_exercises} == {"smile", "tube", "open", "teeth", "cheeks", "sequence"}
-    motor_exercise = motor_exercises[0]
+    assert not [item for item in client.get("/api/exercises", headers=headers).json() if item["module"] == "motor"]
+    with connect() as db:
+        motor_exercise = dict(db.execute("SELECT * FROM exercises WHERE module='motor' ORDER BY id LIMIT 1").fetchone())
+        motor_version = dict(db.execute("SELECT * FROM exercise_versions WHERE exercise_id=?", (motor_exercise["id"],)).fetchone())
+    assert motor_exercise["is_active"] == 0
+    assert motor_version["publication_status"] == "internal_review"
     rejected_motor = client.post("/api/sessions", headers=headers, json={
         "child_id": child["id"], "exercise_id": motor_exercise["id"], "module": "motor",
         "score": 99, "duration_seconds": 8, "details": {"source": "manual"},
         "attempt_status": "participated", "independence": 100, "prompt_level": "independent",
     })
     assert rejected_motor.status_code == 422
-
-    saved_motor = client.post("/api/sessions", headers=headers, json={
-        "child_id": child["id"], "exercise_id": motor_exercise["id"], "module": "motor",
-        "score": 99, "duration_seconds": 8,
-        "details": {"source": "local-face-movement-check", "movement_detected": True, "media_saved": False},
-        "attempts_count": 1, "correct_answers": 1,
-        "attempt_status": "participated", "independence": 100, "prompt_level": "independent",
-    })
-    assert saved_motor.status_code == 201
-    assert saved_motor.json()["attempt_status"] == "participated"
-    assert saved_motor.json()["score"] == 0
-    assert saved_motor.json()["awarded_stars"] == 1
-    assert saved_motor.json()["details"]["measurement_source"] == "local_automated_movement_check"
-    assert saved_motor.json()["details"]["media_saved"] is False
 
     invalid = client.post("/api/sessions", headers=headers, json={
         "child_id": child["id"], "exercise_id": exercise["id"], "module": "sensory",
@@ -407,28 +403,28 @@ def test_game_results_are_server_calculated_and_non_scored_outcomes_are_separate
     progress = client.get(f"/api/progress/{child['id']}", headers=headers)
     assert progress.status_code == 200
     metrics = progress.json()["support_metrics"]
-    assert metrics["attempts_count"] == 26
+    assert metrics["attempts_count"] == 25
     assert metrics["correct_answers"] == 10
     assert metrics["prompts_used"] == 10
     assert metrics["technical_errors"] == 1
     assert metrics["refusals"] == 1
     assert metrics["breaks"] == 1
-    assert metrics["participations"] == 1
+    assert metrics["participations"] == 0
     assert metrics["game_result_average"] == 50
 
     dashboard = client.get(f"/api/dashboard/{child['id']}", headers=headers).json()
     assert dashboard["module_accuracy"]["sensory"] == 50
     assert dashboard["module_accuracy"]["motor"] is None
-    assert dashboard["module_completed"]["motor"] == 1
-    assert motor_exercise["id"] in dashboard["completed_exercise_ids"]
+    assert dashboard["module_completed"]["motor"] == 0
+    assert motor_exercise["id"] not in dashboard["completed_exercise_ids"]
     assert next(item for item in dashboard["recent"] if item["attempt_status"] == "break")["score"] == 0
     assert next(item for item in dashboard["recent"] if item["attempt_status"] == "technical_error")["score"] == 0
-    assert dashboard["today_sessions"] == 6
-    assert dashboard["week_sessions"] == 6
+    assert dashboard["today_sessions"] == 5
+    assert dashboard["week_sessions"] == 5
     assert len(dashboard["week_activity"]) == 7
     today_activity = next(item for item in dashboard["week_activity"] if item["today"])
     assert today_activity["active"] is True
-    assert today_activity["sessions"] == 6
+    assert today_activity["sessions"] == 5
     assert sum(item["active"] for item in dashboard["week_activity"]) == 1
     assert dashboard["streak_days"] == 1
 
@@ -504,6 +500,68 @@ def test_only_sensory_sets_with_eight_stimuli_are_active(client, parent_headers)
         "body", "clothes", "household", "actions", "qualities",
         "location", "places", "opposites", "commands",
     }
+
+
+def test_published_exercises_are_versioned_and_motor_is_not_public(client, parent_headers):
+    exercises = client.get("/api/exercises", headers=parent_headers).json()
+    assert exercises
+    assert all(item["module"] != "motor" for item in exercises)
+    assert all(item["engine"]["publication_status"] == "published" for item in exercises)
+    assert all(item["engine"]["review_status"] == "approved" for item in exercises)
+    sensory = next(item for item in exercises if item["module"] == "sensory")
+    assert sensory["engine"]["mechanic"] == "auditory_choice"
+    assert len(sensory["engine"]["content"]["stimuli"]) == 8
+    assert sensory["engine"]["completion_rule"]["success"] == "matching_stimulus_key"
+    routine = next(item for item in exercises if item["target"] == "routine")
+    assert routine["engine"]["version"] == 2
+    assert routine["instruction"] == "Выбери одно знакомое действие дня и сообщи о нём"
+    assert "последователь" not in routine["instruction"].lower()
+
+
+def test_admin_constructor_creates_safe_draft_and_blocks_unreviewed_publish(client, admin_headers):
+    payload = {
+        "module": "sensory",
+        "mechanic": "auditory_choice",
+        "title": "Найди знакомый предмет",
+        "objective": "Сопоставить услышанное слово с изображением",
+        "instruction": "Послушай и выбери картинку",
+        "difficulty": 1,
+        "skill": "vocabulary",
+        "language": "ru",
+        "response_mode": "single_tap",
+        "prompt_policy": {"steps": ["repeat_audio", "reduced_choice"], "time_limit": None},
+        "completion_rule": {"rounds": 5, "success": "matching_stimulus_key"},
+        "content": {"stimuli": [
+            {"key": "cup", "label": "Чашка", "speech": "Чашка", "visual_token": "cup"},
+            {"key": "spoon", "label": "Ложка", "speech": "Ложка", "visual_token": "spoon"},
+            {"key": "plate", "label": "Тарелка", "speech": "Тарелка", "visual_token": "plate"},
+        ]},
+    }
+    created = client.post("/api/admin/exercise-drafts", headers=admin_headers, json=payload)
+    assert created.status_code == 201, created.text
+    preview = created.json()
+    assert preview["valid"] is True
+    assert preview["can_publish"] is False
+    assert preview["blocker"] == "Нужно методическое утверждение"
+    version_id = preview["version"]["id"]
+    exercise_id = preview["version"]["exercise_id"]
+    assert client.post(f"/api/admin/exercise-drafts/{version_id}/publish", headers=admin_headers).status_code == 409
+    assert exercise_id not in {item["id"] for item in client.get("/api/exercises", headers=admin_headers).json()}
+
+
+def test_aac_stop_is_core_and_duplicate_custom_card_is_rejected(client, parent_headers):
+    child_id = client.get("/api/children", headers=parent_headers).json()[0]["id"]
+    cards = client.get(f"/api/aac/cards/{child_id}", headers=parent_headers).json()
+    stop = next(item for item in cards if item["label"] == "Стоп")
+    assert stop["is_core"] == 1
+    duplicate = client.post("/api/aac/cards", headers=parent_headers, json={
+        "child_id": child_id,
+        "label": "Стоп",
+        "speech": "Стоп",
+        "category": "help",
+        "image": "/soyle-mark.svg",
+    })
+    assert duplicate.status_code == 409
 
 
 def test_tts_rejects_unknown_language_before_audio_generation(client, parent_headers):

@@ -63,6 +63,20 @@ if curl -fsS http://127.0.0.1:8010/health >/dev/null 2>&1; then
   exit 1
 fi
 
+echo "Применяю контролируемые локальные миграции…"
+cd "$BACKEND_DIR"
+env \
+  DATABASE_URL="" \
+  VERCEL="" \
+  RAILWAY_ENVIRONMENT="" \
+  RENDER="" \
+  FLY_APP_NAME="" \
+  K_SERVICE="" \
+  SOYLE_ENV="development" \
+  SOYLE_DB_PATH="$BACKEND_DIR/soyle.db" \
+  SOYLE_SEED_DEMO_DATA="true" \
+  "$VENV_PYTHON" -m app.migrations upgrade
+
 echo "Запускаю FastAPI: http://127.0.0.1:8010"
 cd "$BACKEND_DIR"
 env \

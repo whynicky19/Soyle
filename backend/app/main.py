@@ -16,9 +16,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 
 from .database import connect, init_db, now_iso
-from .schemas import AACCardCreate, AACComposeRequest, AACFavoriteUpdate, AACPhraseCreate, ActiveUpdate, AIAskRequest, AIPlanRequest, AssignedExerciseCreate, ChildCreate, ChildDeleteRequest, ChildGoalCreate, ConsentUpdate, ExerciseCreate, GoalStatusUpdate, HomeworkCreate, HomeworkResultUpdate, LearningSessionCreate, LoginRequest, RecommendationReview, RegisterRequest, RoleUpdate, SessionCreate, SpecialistAssignmentCreate, SpecialistRecommendationCreate, StudentAccountCreate, StudentLoginRequest, TTSRequest, UserSettingsUpdate
+from .schemas import AACCardCreate, AACComposeRequest, AACFavoriteUpdate, AACPhraseCreate, ActiveUpdate, AIAskRequest, AIPlanRequest, AssignedExerciseCreate, ChildCreate, ChildDeleteRequest, ChildGoalCreate, ConsentUpdate, ExerciseDraftCreate, GoalStatusUpdate, HomeworkCreate, HomeworkResultUpdate, LearningSessionCreate, LoginRequest, RecommendationReview, RegisterRequest, RoleUpdate, SessionCreate, SpecialistAssignmentCreate, SpecialistRecommendationCreate, StudentAccountCreate, StudentLoginRequest, TTSRequest, UserSettingsUpdate
 from .aac_grammar import compose_aac_phrase
 from .ai_assistant import MODEL as OPENAI_MODEL, answer_parent, generate_plan, provider_error_details
+from .exercise_engine import create_draft, preview_version, publish_version, published_exercise, published_exercise_rows
 from .security import AUTH_COOKIE_NAME, CSRF_COOKIE_NAME, IS_PRODUCTION, clear_auth_cookies, create_access_token, create_student_access_token, get_current_user, hash_password, require_roles, set_auth_cookies, verify_password
 
 
@@ -177,15 +178,11 @@ def ensure_local_mirror_exercise(exercise: dict) -> None:
 
 
 def active_exercise_rows(db) -> list[dict]:
-    return [dict(row) for row in db.execute(
-        "SELECT e.* FROM exercises e WHERE e.is_active=1 ORDER BY e.module,e.difficulty,e.id",
-    ).fetchall()]
+    return published_exercise_rows(db)
 
 
 def ai_eligible_exercise_rows(db) -> list[dict]:
-    return [dict(row) for row in db.execute(
-        "SELECT e.* FROM exercises e WHERE e.is_active=1 AND e.module<>'motor' ORDER BY e.module,e.difficulty,e.id",
-    ).fetchall()]
+    return published_exercise_rows(db)
 
 
 def enforce_ai_limit(user: dict) -> None:
@@ -346,8 +343,15 @@ def create_module_notification(db, child_id: int, exercise_id: int) -> None:
 
 
 @app.get("/health")
+@app.get("/api/health")
 def health() -> dict:
-    return {"status": "ok", "service": "soyle-api"}
+    with connect() as db:
+        schema_version = db.execute("SELECT COALESCE(MAX(version),0) schema_version FROM schema_migrations").fetchone()["schema_version"]
+    return {
+        "status": "ok" if schema_version >= 10 else "migration_required",
+        "service": "soyle-api",
+        "schema_version": schema_version,
+    }
 
 
 @app.post("/api/auth/register", status_code=201)
@@ -554,13 +558,9 @@ def save_student_account(child_id: int, payload: StudentAccountCreate, user: dic
 @app.get("/api/exercises")
 def list_exercises(module: str | None = Query(default=None), child_id: int | None = Query(default=None), user: dict = Depends(get_current_user)) -> list[dict]:
     with connect() as db:
-        if user["role"] == "admin":
-            rows = [dict(row) for row in db.execute("SELECT * FROM exercises WHERE is_active=1 AND module<>'motor' ORDER BY module,difficulty,id").fetchall()]
-        elif child_id is not None:
+        if child_id is not None:
             ensure_child_access(child_id, user)
-            rows = active_exercise_rows(db)
-        else:
-            rows = active_exercise_rows(db)
+        rows = active_exercise_rows(db)
     if module:
         rows = [row for row in rows if row["module"] == module]
     return rows
@@ -585,9 +585,18 @@ def create_aac_card(payload: AACCardCreate, user: dict = Depends(require_roles("
     ensure_child_access(payload.child_id, user)
     ensure_privacy_consent(payload.child_id)
     with connect() as db:
+        duplicate = db.execute(
+            """SELECT id FROM aac_cards
+               WHERE is_active=1 AND language=? AND (child_id IS NULL OR child_id=?)
+                 AND (lower(trim(label))=lower(trim(?)) OR lower(trim(speech))=lower(trim(?)))
+               LIMIT 1""",
+            (payload.language, payload.child_id, payload.label, payload.speech),
+        ).fetchone()
+        if duplicate:
+            raise HTTPException(409, "Такая AAC-карточка уже доступна ребёнку")
         cursor = db.execute(
             "INSERT INTO aac_cards(child_id,label,speech,category,lemma,grammatical_role,language,pictogram,image,created_by,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?) RETURNING id",
-            (payload.child_id, payload.label, payload.speech, payload.category, payload.lemma or payload.label.lower(), payload.grammatical_role, payload.language, payload.pictogram or payload.image, payload.image, user["id"], now_iso()),
+            (payload.child_id, payload.label.strip(), payload.speech.strip(), payload.category, payload.lemma or payload.label.lower(), payload.grammatical_role, payload.language, payload.pictogram or payload.image, payload.image, user["id"], now_iso()),
         )
         row = db.execute("SELECT *,0 favorite FROM aac_cards WHERE id=?", (cursor.fetchone()["id"],)).fetchone()
     return dict(row)
@@ -680,12 +689,11 @@ def create_session(payload: SessionCreate, user: dict = Depends(get_current_user
         raise HTTPException(422, "Правильных ответов не может быть больше числа попыток")
     attempt_status = "refused" if payload.prompt_level == "refused" and payload.attempt_status == "completed" else payload.attempt_status
     with connect() as db:
-        exercise = db.execute("SELECT id,module,target,is_active FROM exercises WHERE id=?", (payload.exercise_id,)).fetchone()
-        if not exercise or not exercise["is_active"]:
-            raise HTTPException(422, "Задание не найдено или находится в архиве")
+        exercise = published_exercise(db, payload.exercise_id)
+        if not exercise:
+            raise HTTPException(422, "Задание не опубликовано или находится на проверке")
         if exercise["module"] != payload.module:
             raise HTTPException(422, "Задание не относится к выбранному модулю")
-        ensure_local_mirror_exercise(exercise)
         if exercise["module"] in {"motor", "mixed"} and attempt_status == "completed":
             attempt_status = "participated"
         if exercise["module"] == "motor" and attempt_status == "participated":
@@ -706,11 +714,11 @@ def create_session(payload: SessionCreate, user: dict = Depends(get_current_user
                 raise HTTPException(422, "Это упражнение не входит в текущее занятие")
         measurement_source = "local_automated_movement_check" if payload.details.get("source") == "local-face-movement-check" else "caregiver_or_user_observation"
         cursor = db.execute(
-            """INSERT INTO sessions(child_id,exercise_id,module,score,duration_seconds,details,measurement_version,
+            """INSERT INTO sessions(child_id,exercise_id,exercise_version_id,module,score,duration_seconds,details,measurement_version,
                learning_session_id,sequence_index,independence,prompt_level,response_ms,communication_initiatives,
                attempts_count,correct_answers,prompts_used,attempt_status,created_at)
-               VALUES(?,?,?,?,?,?,3,?,?,?,?,?,?,?,?,?,?,?) RETURNING id""",
-            (payload.child_id, payload.exercise_id, payload.module, game_score, payload.duration_seconds,
+               VALUES(?,?,?,?,?,?,?,3,?,?,?,?,?,?,?,?,?,?,?) RETURNING id""",
+            (payload.child_id, payload.exercise_id, exercise["engine"]["version_id"], payload.module, game_score, payload.duration_seconds,
              json.dumps({**payload.details, "measurement_source": measurement_source}, ensure_ascii=False), payload.learning_session_id, payload.sequence_index,
              payload.independence, payload.prompt_level, payload.response_ms, payload.communication_initiatives,
              payload.attempts_count, payload.correct_answers, payload.prompts_used, attempt_status, now_iso()),
@@ -939,7 +947,7 @@ def session_plan(child_id: int, minutes: int = Query(default=5), user: dict = De
         raise HTTPException(422, "Продолжительность занятия: 3, 5 или 10 минут")
     child = ensure_child_access(child_id, user)
     with connect() as db:
-        all_exercises = db.execute("SELECT * FROM exercises WHERE is_active=1 AND module<>'motor' ORDER BY difficulty,id").fetchall()
+        all_exercises = active_exercise_rows(db)
     # Keep transitions low: each exercise is a complete activity, not a single tap.
     target_count = {3: 2, 5: 3, 10: 5}[minutes]
     selected: list[dict] = []
@@ -970,11 +978,10 @@ def create_learning_session(payload: LearningSessionCreate, user: dict = Depends
         raise HTTPException(422, "В занятии не должно быть повторяющихся заданий")
     placeholders = ",".join("?" for _ in unique_ids)
     with connect() as db:
-        exercises = db.execute(f"SELECT * FROM exercises WHERE is_active=1 AND id IN ({placeholders})", tuple(unique_ids)).fetchall()
-        if len(exercises) != len(unique_ids):
-            raise HTTPException(422, "Одно из заданий недоступно")
-        for exercise in exercises:
-            ensure_local_mirror_exercise(exercise)
+        available = {item["id"]: item for item in active_exercise_rows(db)}
+        if any(item_id not in available for item_id in unique_ids):
+            raise HTTPException(422, "Одно из заданий не опубликовано или находится на проверке")
+        exercises = [available[item_id] for item_id in unique_ids]
         cursor = db.execute(
             "INSERT INTO learning_sessions(child_id,status,exercise_ids,current_index,target_minutes,started_at) VALUES(?,'in_progress',?,0,?,?) RETURNING id",
             (payload.child_id, json.dumps(unique_ids), payload.target_minutes, now_iso()),
@@ -1006,7 +1013,7 @@ def get_learning_session(session_id: int, user: dict = Depends(get_current_user)
         ensure_child_access(session["child_id"], user)
         exercise_ids = json.loads(session["exercise_ids"])
         placeholders = ",".join("?" for _ in exercise_ids)
-        exercise_rows = db.execute(f"SELECT * FROM exercises WHERE id IN ({placeholders})", tuple(exercise_ids)).fetchall()
+        exercise_rows = active_exercise_rows(db)
         result_rows = db.execute("SELECT exercise_id,score,duration_seconds,attempts_count,correct_answers,prompts_used,attempt_status,created_at FROM sessions WHERE learning_session_id=? AND measurement_version>=1 ORDER BY sequence_index,id", (session_id,)).fetchall()
     by_id = {row["id"]: dict(row) for row in exercise_rows}
     return {**dict(session), "exercise_ids": exercise_ids, "exercises": [by_id[item_id] for item_id in exercise_ids if item_id in by_id], "results": [dict(row) for row in result_rows]}
@@ -1029,10 +1036,7 @@ def get_active_learning_session(child_id: int, user: dict = Depends(get_current_
         placeholders = ",".join("?" for _ in current_ids)
         exclusion = f"AND id NOT IN ({placeholders})" if current_ids else ""
         with connect() as db:
-            candidates = db.execute(
-                f"SELECT id,module FROM exercises WHERE is_active=1 AND module<>'motor' {exclusion} ORDER BY difficulty,id",
-                tuple(current_ids),
-            ).fetchall()
+            candidates = [item for item in active_exercise_rows(db) if item["id"] not in set(current_ids)]
             while candidates and len(current_ids) < desired_count:
                 module_counts = {name: sum(1 for exercise in session["exercises"] if exercise["module"] == name) for name in ("motor", "sensory", "mixed")}
                 candidates.sort(key=lambda item: (module_counts[item["module"]], item["id"]))
@@ -1601,10 +1605,15 @@ def update_role(user_id: int, payload: RoleUpdate, admin: dict = Depends(require
     if user_id == admin["id"]:
         raise HTTPException(400, "Нельзя изменить собственную роль")
     with connect() as db:
+        target = db.execute("SELECT * FROM users WHERE id=?", (user_id,)).fetchone()
+        if not target:
+            raise HTTPException(404, "Пользователь не найден")
+        if target["role"] == "admin" and target["is_active"] and payload.role != "admin":
+            active_admins = db.execute("SELECT COUNT(*) count FROM users WHERE role='admin' AND is_active=1").fetchone()["count"]
+            if active_admins <= 1:
+                raise HTTPException(409, "Нельзя изменить роль последнего активного администратора")
         db.execute("UPDATE users SET role=? WHERE id=?", (payload.role, user_id))
         row = db.execute("SELECT * FROM users WHERE id=?", (user_id,)).fetchone()
-    if not row:
-        raise HTTPException(404, "Пользователь не найден")
     audit(admin, "user.role", "user", user_id, {"role": payload.role})
     return public_user(row)
 
@@ -1614,39 +1623,54 @@ def update_active(user_id: int, payload: ActiveUpdate, admin: dict = Depends(req
     if user_id == admin["id"]:
         raise HTTPException(400, "Нельзя отключить собственный аккаунт")
     with connect() as db:
+        target = db.execute("SELECT * FROM users WHERE id=?", (user_id,)).fetchone()
+        if not target:
+            raise HTTPException(404, "Пользователь не найден")
+        if target["role"] == "admin" and target["is_active"] and not payload.is_active:
+            active_admins = db.execute("SELECT COUNT(*) count FROM users WHERE role='admin' AND is_active=1").fetchone()["count"]
+            if active_admins <= 1:
+                raise HTTPException(409, "Нельзя отключить последнего активного администратора")
         db.execute("UPDATE users SET is_active=? WHERE id=?", (int(payload.is_active), user_id))
         row = db.execute("SELECT * FROM users WHERE id=?", (user_id,)).fetchone()
-    if not row:
-        raise HTTPException(404, "Пользователь не найден")
     audit(admin, "user.active", "user", user_id, {"active": payload.is_active})
     return public_user(row)
 
 
-@app.post("/api/admin/exercises", status_code=201)
-def create_exercise(payload: ExerciseCreate, _: dict = Depends(require_roles("admin"))) -> dict:
-    if payload.module == "motor":
-        raise HTTPException(422, "Моторные упражнения отключены в текущей версии Söyle")
-    skill = payload.skill or {"motor": "articulation", "sensory": "vocabulary", "mixed": "phrase_building"}[payload.module]
+@app.get("/api/admin/exercise-drafts")
+def list_exercise_drafts(_: dict = Depends(require_roles("admin"))) -> list[dict]:
     with connect() as db:
-        cursor = db.execute("INSERT INTO exercises(module,title,instruction,difficulty,target,icon,skill,is_active) VALUES(?,?,?,?,?,?,?,?) RETURNING id", (payload.module, payload.title, payload.instruction, payload.difficulty, payload.target, payload.icon, skill, int(payload.is_active)))
-        row = db.execute("SELECT * FROM exercises WHERE id=?", (cursor.fetchone()["id"],)).fetchone()
-    return dict(row)
+        rows = db.execute(
+            "SELECT id FROM exercise_versions WHERE publication_status='draft' ORDER BY id DESC"
+        ).fetchall()
+        return [preview_version(db, row["id"]) for row in rows]
 
 
-@app.put("/api/admin/exercises/{exercise_id}")
-def update_exercise(exercise_id: int, payload: ExerciseCreate, _: dict = Depends(require_roles("admin"))) -> dict:
-    if payload.module == "motor":
-        raise HTTPException(422, "Моторные упражнения отключены в текущей версии Söyle")
-    skill = payload.skill or {"motor": "articulation", "sensory": "vocabulary", "mixed": "phrase_building"}[payload.module]
+@app.post("/api/admin/exercise-drafts", status_code=201)
+def create_exercise_draft(payload: ExerciseDraftCreate, admin: dict = Depends(require_roles("admin"))) -> dict:
+    value = payload.model_dump()
     with connect() as db:
-        db.execute("UPDATE exercises SET module=?,title=?,instruction=?,difficulty=?,target=?,icon=?,skill=?,is_active=? WHERE id=?", (payload.module, payload.title, payload.instruction, payload.difficulty, payload.target, payload.icon, skill, int(payload.is_active), exercise_id))
-        row = db.execute("SELECT * FROM exercises WHERE id=?", (exercise_id,)).fetchone()
-    if not row:
-        raise HTTPException(404, "Упражнение не найдено")
-    return dict(row)
+        version = create_draft(db, value, admin["id"])
+        result = preview_version(db, version["id"])
+    audit(admin, "exercise.draft.create", "exercise_version", version["id"], {"exercise_id": version["exercise_id"], "mechanic": version["mechanic"]})
+    return result
+
+
+@app.get("/api/admin/exercise-drafts/{version_id}/preview")
+def preview_exercise_draft(version_id: int, _: dict = Depends(require_roles("admin"))) -> dict:
+    with connect() as db:
+        return preview_version(db, version_id)
+
+
+@app.post("/api/admin/exercise-drafts/{version_id}/publish")
+def publish_exercise_draft(version_id: int, admin: dict = Depends(require_roles("admin"))) -> dict:
+    with connect() as db:
+        version = publish_version(db, version_id)
+    audit(admin, "exercise.version.publish", "exercise_version", version_id, {"exercise_id": version["exercise_id"]})
+    return version
 
 
 @app.delete("/api/admin/exercises/{exercise_id}", status_code=204)
 def delete_exercise(exercise_id: int, _: dict = Depends(require_roles("admin"))):
     with connect() as db:
         db.execute("UPDATE exercises SET is_active=0 WHERE id=?", (exercise_id,))
+        db.execute("UPDATE exercise_versions SET publication_status='archived' WHERE exercise_id=? AND publication_status='published'", (exercise_id,))

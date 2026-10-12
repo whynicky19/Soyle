@@ -71,3 +71,48 @@ test("daily goal renders real weekday activity instead of filling dots by attemp
   assert.match(app, /weekActivity\.map/);
   assert.doesNotMatch(app, /day\s*<\s*Math\.min\(dashboard\?\.week_sessions/);
 });
+
+test("child-facing copy does not require a streak or fixed daily quota", async () => {
+  const app = await readProjectFile("components/SoyleApp.tsx");
+  assert.doesNotMatch(app, /Серия:/);
+  assert.doesNotMatch(app, /ПЛАН НА СЕГОДНЯ/);
+  assert.doesNotMatch(app, /дней подряд/);
+  assert.match(app, /Можно сделать паузу в любой момент/);
+});
+
+test("public child navigation does not expose motor prototypes", async () => {
+  const app = await readProjectFile("components/SoyleApp.tsx");
+  const modulesBlock = app.slice(app.indexOf("const modules = ["), app.indexOf("const moduleImages"));
+  assert.doesNotMatch(modulesBlock, /id:\s*["']motor["']/);
+  assert.match(app, /\["all","sensory","mixed"\]/);
+});
+
+test("sensory practice always exposes break and refusal actions", async () => {
+  const app = await readProjectFile("components/SoyleApp.tsx");
+  assert.match(app, /sensory-stop-actions/);
+  assert.match(app, /stopExercise\("break"\)/);
+  assert.match(app, /stopExercise\("refused"\)/);
+});
+
+test("closed mobile navigation is inert and returns focus", async () => {
+  const app = await readProjectFile("components/SoyleApp.tsx");
+  assert.match(app, /inert=\{sidebarIsDialog && !sidebarOpen/);
+  assert.match(app, /aria-hidden=\{sidebarIsDialog && !sidebarOpen/);
+  assert.match(app, /menuButtonRef\.current\?\.focus/);
+  assert.match(app, /event\.key === "Escape"/);
+});
+
+test("AAC prevents duplicate cards and exposes Stop as an immediate message", async () => {
+  const app = await readProjectFile("components/SoyleApp.tsx");
+  assert.match(app, /selected\.some\(\(item\) => item\.id === card\.id\)/);
+  assert.match(app, /"Стоп"/);
+  assert.match(app, /quickCards = \["Помоги", "Больно", "Стоп"/);
+});
+
+test("sensory stimuli come from the versioned exercise payload", async () => {
+  const app = await readProjectFile("components/SoyleApp.tsx");
+  const api = await readProjectFile("lib/api.ts");
+  assert.match(app, /exercise\?\.engine\?\.content\.stimuli/);
+  assert.match(api, /version_id: number/);
+  assert.match(api, /matching_stimulus_key|completion_rule/);
+});

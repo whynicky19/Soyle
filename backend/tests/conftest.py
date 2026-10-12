@@ -12,11 +12,15 @@ os.environ["SOYLE_SECRET_KEY"] = "soyle-test-secret-key-at-least-32-bytes"
 import pytest
 from fastapi.testclient import TestClient
 
+from app.database import init_db
 from app.main import app
+from app.migrations import apply_migrations
 
 
 @pytest.fixture(scope="session")
 def client():
+    init_db()
+    apply_migrations()
     with TestClient(app) as value:
         yield value
     if TEST_DB.exists():

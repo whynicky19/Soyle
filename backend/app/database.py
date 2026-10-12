@@ -94,12 +94,12 @@ EXERCISES = [
     ("sensory", "Места вокруг нас", "Послушай слово и выбери названное место", 2, "places", "/illustrations/module-listening.png"),
     ("sensory", "Противоположности", "Найди картинку по словам «большой», «маленький», «горячий» и «холодный»", 2, "opposites", "/illustrations/module-listening.png"),
     ("sensory", "Инструкции из двух шагов", "Послушай инструкцию и выбери правильную последовательность действий", 3, "commands", "/illustrations/module-listening.png"),
-    ("mixed", "Я хочу", "Собери понятную просьбу из двух или трёх карточек", 1, "request", "/illustrations/juice.png"),
-    ("mixed", "Я вижу", "Собери фразу о том, что находится рядом", 1, "observation", "/illustrations/see.png"),
+    ("mixed", "Я хочу", "Выбери предмет или собери короткую просьбу. Одной понятной карточки достаточно", 1, "request", "/illustrations/juice.png"),
+    ("mixed", "Я вижу", "Выбери, кого или что видишь, и при желании добавь действие", 1, "observation", "/illustrations/see.png"),
     ("mixed", "Мне нравится", "Составь фразу о своём предпочтении", 2, "preference", "/illustrations/love.png"),
     ("mixed", "Моя семья", "Собери короткое сообщение о близком человеке", 2, "family", "/illustrations/module-phrases.png"),
     ("mixed", "Как я себя чувствую", "Выбери карточку состояния и сообщи о нём", 2, "feelings", "/illustrations/module-phrases.png"),
-    ("mixed", "Мой день", "Составь последовательность событий дня", 3, "routine", "/illustrations/module-phrases.png"),
+    ("mixed", "Мой день", "Выбери одно знакомое действие дня и сообщи о нём", 3, "routine", "/illustrations/module-phrases.png"),
     ("mixed", "Попросить помощь", "Собери и озвучь фразу, когда тебе нужна помощь", 1, "help", "/illustrations/mascot-parrot-headphones.png"),
     ("mixed", "Сказать о желании", "Сообщи, чего ты хочешь прямо сейчас", 1, "desire", "/illustrations/want.png"),
     ("mixed", "Сообщить о необходимости", "Скажи о важной потребности: пить, отдохнуть или сходить в туалет", 1, "need", "/illustrations/juice.png"),
@@ -109,7 +109,7 @@ EXERCISES = [
     ("mixed", "Ответить «да» или «нет»", "Выбери понятный ответ на короткий вопрос", 1, "answer", "/illustrations/love.png"),
     ("mixed", "Кто и что делает", "Собери фразу из человека и действия", 2, "agent_action", "/illustrations/module-phrases.png"),
     ("mixed", "Где находится предмет", "Собери фразу с предлогом «на», «в» или «под»", 2, "spatial_phrase", "/illustrations/see.png"),
-    ("mixed", "Спросить о предмете", "Собери короткий вопрос «Что это?» или «Где мяч?»", 2, "question", "/illustrations/module-phrases.png"),
+    ("mixed", "Спросить о предмете", "Выбери готовый короткий вопрос: «Что это?» или «Где?»", 2, "question", "/illustrations/module-phrases.png"),
     ("mixed", "Рассказать о событии", "Собери короткое сообщение о том, что произошло", 3, "past_event", "/illustrations/module-phrases.png"),
 ]
 
@@ -117,6 +117,7 @@ AAC_CARDS = [
     ("Помоги", "Помоги мне", "help", "/illustrations/mascot-parrot-headphones.png", 1),
     ("Больно", "Мне больно", "help", "/illustrations/love.png", 1),
     ("Перерыв", "Мне нужен перерыв", "help", "/illustrations/mascot-parrot.png", 1),
+    ("Стоп", "Стоп", "help", "/illustrations/me.png", 1),
     ("Не хочу", "Я не хочу", "help", "/illustrations/me.png", 1),
     ("Ещё", "Я хочу ещё", "wants", "/illustrations/want.png", 1),
     ("Хочу", "хочу", "wants", "/illustrations/want.png", 1),
@@ -542,3 +543,6 @@ def init_db() -> None:
         supported_sensory_sets = ("animals", "food", "toys")
         sensory_placeholders = ",".join("?" for _ in supported_sensory_sets)
         db.execute(f"UPDATE exercises SET is_active=0 WHERE module='sensory' AND target NOT IN ({sensory_placeholders})", supported_sensory_sets)
+        # Motor prototypes remain in the database for expert review and historical
+        # session integrity, but are never part of the public catalogue.
+        db.execute("UPDATE exercises SET is_active=0 WHERE module='motor'")

@@ -122,6 +122,31 @@ export type Exercise = {
   icon: string;
   skill: SkillName | null;
   is_active: number | boolean;
+  engine?: {
+    version_id: number;
+    version: number;
+    mechanic: "auditory_choice" | "guided_aac";
+    language: "ru";
+    objective: string;
+    response_mode: "single_tap" | "aac_card_sequence";
+    prompt_policy: Record<string, unknown>;
+    completion_rule: Record<string, unknown>;
+    content: {
+      stimuli?: Array<{
+        key: string;
+        label: string;
+        speech: string;
+        hint?: string;
+        media_ref?: string;
+        visual_token?: string;
+      }>;
+      scenario_key?: string;
+      title?: string;
+      labels?: string[];
+    };
+    review_status: "approved";
+    publication_status: "published";
+  };
 };
 
 export type LearningSession = {
