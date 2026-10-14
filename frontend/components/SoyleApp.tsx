@@ -1218,6 +1218,8 @@ async function speak(text: string, rate = 0.78, enabled = true, language: "ru" |
     const audio = new Audio(objectUrl);
     currentSpeechAudio = audio;
     audio.volume = 0.92;
+    audio.playbackRate = Math.max(0.75, Math.min(1.35, rate / 0.78));
+    audio.preservesPitch = true;
     return await new Promise<boolean>((resolve) => {
       let settled = false;
       const finish = (played: boolean) => {

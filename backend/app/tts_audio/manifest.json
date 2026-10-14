@@ -1,0 +1,658 @@
+{
+  "voice": "Milena",
+  "base_rate_wpm": 148,
+  "clips": [
+    {
+      "text": "Бабушка",
+      "file": "4885e03aad23ec0743b2831ca54ec06686066d7d96f6404e1d91aff674417661.wav"
+    },
+    {
+      "text": "Банан",
+      "file": "202ccb57df8956f6748fdf75e22ac87046be0b983d33fff68ea4ab01763f1c83.wav"
+    },
+    {
+      "text": "Барабан",
+      "file": "ba08a7ff634fb75cc0b8dc4b9ec06e6963b79443734f38baac53d9dee93d2a52.wav"
+    },
+    {
+      "text": "Ботинки",
+      "file": "1aa3782e2b974d6b03b1216e5e06fa529cd1f64242c27622e01cd9b66cf25ef4.wav"
+    },
+    {
+      "text": "Брат",
+      "file": "5d66d036b93054e6ce1c0d3e46c5f8e7583619b036a87833037111bb46691102.wav"
+    },
+    {
+      "text": "Брюки",
+      "file": "44749641180126a1a62558a738e09a17e6c56399df85a4a6d065d6545d6e84c6.wav"
+    },
+    {
+      "text": "Вижу кота",
+      "file": "7e2b677eb753735ce01c4b5cbfbf75765a588bfdaaea8f024fbaa063591213ca.wav"
+    },
+    {
+      "text": "Вижу маму",
+      "file": "14550017b39f99a0603ae4536a6d50f49896641283cad630ad6d072ce67848bb.wav"
+    },
+    {
+      "text": "Вижу папу",
+      "file": "cece6d8b2e6b443822357533c0495556e8286cd3dc52c718d95c832ca61962e7.wav"
+    },
+    {
+      "text": "Вода",
+      "file": "cb591d31e1ef0b53e97b50039ec7a7abccad135d633939aec57d382323235e4c.wav"
+    },
+    {
+      "text": "Возьми мяч",
+      "file": "f6e1f7982a9483ac98c4258a466bdd3646a2850cd99d22d6a0b7c629d5bb55a9.wav"
+    },
+    {
+      "text": "Возьми чашку",
+      "file": "d9af02337787d4ecc7ba8fcb1db3853539a3b1a11bee6b4d24562bd8c637072a.wav"
+    },
+    {
+      "text": "Вчера",
+      "file": "5362e348449490012ed374b4817565deedf5dfbb5a3c4bff545b8e3435c097cf.wav"
+    },
+    {
+      "text": "Где?",
+      "file": "887b7807718119d28cfd157d397738bc10b283865a8e533a0d70337b38583389.wav"
+    },
+    {
+      "text": "Глаза",
+      "file": "f9580f82106b52b29325110979532c6e464c6aa05b0b278b29380c1730896da5.wav"
+    },
+    {
+      "text": "Да",
+      "file": "2e4507d2a16f5e6dca109dcc6058ebfb20f32b0b65e9ce21e9eb699dc39d1ed0.wav"
+    },
+    {
+      "text": "Дай взрослому чашку",
+      "file": "b969029ace1010cf4cd609ab9f3cbc086e989ef6364d357b0a5160f9e0bc03b1.wav"
+    },
+    {
+      "text": "Дай мишке яблоко",
+      "file": "d998c0a924393b306f325ac39772ca51036a2f83e30e42143792b1d25c42ff92.wav"
+    },
+    {
+      "text": "Дай мяч",
+      "file": "2b864a7a536758e7ee4a9ffc373be0843488feeea6bf4707147c2ffa2ead00dd.wav"
+    },
+    {
+      "text": "Дедушка",
+      "file": "ec5e408258f821f8296f00e9bb981a05f9cc9b9d7451bdb7ff9e1da64ce4cf5f.wav"
+    },
+    {
+      "text": "Жук",
+      "file": "e548a64e0cca0ff55accec737d0001b8f27a2a16715bd6c33d55b51a045f86ea.wav"
+    },
+    {
+      "text": "Каша",
+      "file": "b7eebbfccc55c0aa8250e0d391a6a9924dbdd1ef3e1e2b15bd4a81bb7b778cda.wav"
+    },
+    {
+      "text": "Книга",
+      "file": "fc663b04059fbdd1762acda0da111796d1c1eb926dd61bf56c3b6414642c02c5.wav"
+    },
+    {
+      "text": "Кот",
+      "file": "622f817517ce94d90f17cf17f3273a3547b75627b6c4d07241fd4877ff45bc0c.wav"
+    },
+    {
+      "text": "Краски",
+      "file": "57a9228b040e5282f4d8b5ba15961f9ecb28028e3d87c35210615ec21ea1f0b2.wav"
+    },
+    {
+      "text": "Кровать",
+      "file": "be97b9cf0682ca5f4b61cd97bd6df2040ed67344c693ea19902767fca1cd45a0.wav"
+    },
+    {
+      "text": "Кролик",
+      "file": "296b774d76c1cdd49b5dbb48e3257653f6db3983c2a5ad804f07ae5cea4255df.wav"
+    },
+    {
+      "text": "Кто бежит?",
+      "file": "95b3c22a306b1012806a8124e03859072bef906b7378b31809abdec5ffec52f7.wav"
+    },
+    {
+      "text": "Кто ест?",
+      "file": "19289ec7c11bfade05d081654678f3db1c4105fa5a82ae6fca3502bc36837772.wav"
+    },
+    {
+      "text": "Кто играет?",
+      "file": "af3d21f5dbd5013aa3dbdd247eada587720b2a3b577d63ed1fe145a177b525bf.wav"
+    },
+    {
+      "text": "Кто идёт?",
+      "file": "cfeb3df2881f6f13eca07ce7c5cae19f5fa48e0041d63acc1d0c8093467248a8.wav"
+    },
+    {
+      "text": "Кто моет руки?",
+      "file": "cf1746e3aaa0e8fdb44c55c76fdabf467d71afcd452b8cacc17be04eb1a3c182.wav"
+    },
+    {
+      "text": "Кто пьёт?",
+      "file": "a8c649f0b89d4e54d3b140c924c64a77f379ad40b47710e30699a8dc1374a7ba.wav"
+    },
+    {
+      "text": "Кто сидит?",
+      "file": "ed8e626a13f3cabe6fababfa5f91b88a82bb179f7dafc82f19514cbc39512941.wav"
+    },
+    {
+      "text": "Кто спит?",
+      "file": "c64534571db2d91a76534a9a371f757513e2da450a7859163cd40fdf002f59b9.wav"
+    },
+    {
+      "text": "Кто стоит?",
+      "file": "b947e5cb399c484c4d61019d2f0f6f2ff6d6e6797fadbc838eb1ad176033ce12.wav"
+    },
+    {
+      "text": "Кто читает?",
+      "file": "63e138075ac13b23b518124664a77faf4dc4aa4c6c59c29c55fa0b6e4faeba45.wav"
+    },
+    {
+      "text": "Кубики",
+      "file": "03c9c8ab65a83cec19468222bc92120a00ae971e75fa619c44b888fa48613baf.wav"
+    },
+    {
+      "text": "Кукла",
+      "file": "a9cf3d5611cac258bf4f14be7bf9e706ee65b387c4d857469c09d8ce162817b1.wav"
+    },
+    {
+      "text": "Куртка",
+      "file": "a2d9fbab29e773b656f2ec29f1d4846c0b80859bc55aa289476dc78f9f4e897a.wav"
+    },
+    {
+      "text": "Лампа",
+      "file": "506148de5019cc16737679f1882259c23a274102721f80d5ae7b8b62ccdb3d03.wav"
+    },
+    {
+      "text": "Ложка",
+      "file": "6ed4a41b86fbbff2b228ece8f64f98495ee368f7e939beed0815f7a892e0c7e9.wav"
+    },
+    {
+      "text": "Мама",
+      "file": "4ad0802d5186f59dd69156f7f0979d40df04596034c368406bd085f4fb20f935.wav"
+    },
+    {
+      "text": "Машинка",
+      "file": "b0199bc1d6aef683e61e2117bdb62cb65e6025e448ff684d114ff0beac09c715.wav"
+    },
+    {
+      "text": "Мне больно",
+      "file": "f4908e858f9f818fc59bc179ff57839aa5200574b1b28de27ec569351daeda8a.wav"
+    },
+    {
+      "text": "Мне весело",
+      "file": "14dc98e868cfc48816fea32dfa7da175e27df37f6c40d3cc6d5ed70c2e309e99.wav"
+    },
+    {
+      "text": "Мне грустно",
+      "file": "56db99e5a83f9def35227fb5a9a52667276527101376f5e0d49c57ea74e14b1e.wav"
+    },
+    {
+      "text": "Мне жарко",
+      "file": "3e3d15763cdc299e1f0596faddc90dd3772073c1139e61e106da4ef5d4891e44.wav"
+    },
+    {
+      "text": "Мне нужен перерыв",
+      "file": "0accbc054827015d92509ed2123e8d4825ecd7f0968f1258da2463a0acd6f75d.wav"
+    },
+    {
+      "text": "Мне нужно в туалет",
+      "file": "caf668e6df6b627d3b00f703b6a68faef09828b5ea65f6fb9d1c28a19b7cd23b.wav"
+    },
+    {
+      "text": "Мне спокойно",
+      "file": "b61e4e266728ca7776af4e688f05e224cc5aa0d375562c698e34e08e90b95876.wav"
+    },
+    {
+      "text": "Мне страшно",
+      "file": "6042c629bf078fc1bab9c7ed764e5c8943d3815ee589768818aff96bd9cb2287.wav"
+    },
+    {
+      "text": "Мне холодно",
+      "file": "ad8f60566333e296d169aed1e10206523f6cd4f37d8f84f3ae1be202385798cf.wav"
+    },
+    {
+      "text": "Молоко",
+      "file": "4d83e4e0d742af89f7c4cc8a7bdc80030eeaf4240a515f090210e587c430cc13.wav"
+    },
+    {
+      "text": "Мяч",
+      "file": "860bed915a9e1954bb3972e192f5231bab3b6fa6265a4e240a1c9c7b3e3b9ae4.wav"
+    },
+    {
+      "text": "Нет",
+      "file": "71df74f212c1f534c181e5bab6c6be20110022097e3ea4c13ad1b84b1283facf.wav"
+    },
+    {
+      "text": "Нога",
+      "file": "a4b0daf208b25216541b2391414f184e52b89612e129c6ed933a69691d795411.wav"
+    },
+    {
+      "text": "Нос",
+      "file": "50ea610ecf177593f6869c5314c1cff4223b7cfd6f890f6edec0fe1d2ac1b390.wav"
+    },
+    {
+      "text": "Пазл",
+      "file": "c2ff6d432130bbd39e6b452a674072ae856cf1065d222f3211af60b412eb8946.wav"
+    },
+    {
+      "text": "Папа",
+      "file": "400afa71e6b1fb06ad65e0f560a4c22452f920c24468471171aef2ac956379e6.wav"
+    },
+    {
+      "text": "Платье",
+      "file": "b8cf8c4792124bf01a9781eb159d053883bd92480edd6e85c762bb488ac5b050.wav"
+    },
+    {
+      "text": "Положи книгу в коробку",
+      "file": "88e4872bc21505a031b498b6321a814689c40feeb8c27d38580b33aba20607a3.wav"
+    },
+    {
+      "text": "Положи книгу на стол",
+      "file": "6851bfa9d193a18b870a0f0d71c5802e9e254859b6cefad43601c34047949cdc.wav"
+    },
+    {
+      "text": "Положи куклу рядом с мишкой",
+      "file": "a707a4cd2923165a888fca15baa8da58f4acd626afd9d919e9393e126b865fc2.wav"
+    },
+    {
+      "text": "Положи мяч в коробку",
+      "file": "7562268502faa9c69f0870047dd3b4a33ebf6fb0df1bb5a6343355c8257c8976.wav"
+    },
+    {
+      "text": "Положи мяч рядом со стулом",
+      "file": "ee8e79622e9c7679c2dfdf1ea92689ff8d65d2d2012f922ae711bf0aea1d4a50.wav"
+    },
+    {
+      "text": "Получилось.",
+      "file": "aa2d2598b72beaf73fab9502b338a3e4b10260e300a73d0276a563bb85d3d0ff.wav"
+    },
+    {
+      "text": "Помоги мне",
+      "file": "4a0430f5519c993583a9e58836cacf52a7990b1e164f2aa1744d3334baae6a48.wav"
+    },
+    {
+      "text": "Поставь чашку на стол",
+      "file": "421f5e529484fdc6365e04e705cb8b2d87fff32f7befe70ccc5f058920fc4ef2.wav"
+    },
+    {
+      "text": "Привет",
+      "file": "03545eff7a8acffaf52395276bcc8c39761e0faceccf873a6acbd7b2d77f70ba.wav"
+    },
+    {
+      "text": "Птица",
+      "file": "1037c4afdcc2cdc5088a6011ecc0704b4928cf375180a633a854220197737583.wav"
+    },
+    {
+      "text": "Рот",
+      "file": "9dd3d2c6706020014793885d34a320690a70fce12394da5b0bf4b235f8ce9f8f.wav"
+    },
+    {
+      "text": "Рука",
+      "file": "fce35dc7520e033263d0e824db0b63fddfe51673111b8f9f3aa46b521a8408df.wav"
+    },
+    {
+      "text": "Рыба",
+      "file": "a4b7e2f0aa66e1890d6f7f3eebcf980877036cb7292422a05f3e39ce5fbb88a5.wav"
+    },
+    {
+      "text": "Сестра",
+      "file": "1e7c7101fa02673124fa6faeddc6ec136a841dcbeaee48738cc895a13822873b.wav"
+    },
+    {
+      "text": "Собака",
+      "file": "19a79090ccaead4cf952b94bfc53b2b0cacc739c4a32c32b0eac7f03718e5f72.wav"
+    },
+    {
+      "text": "Сок",
+      "file": "f47f0e00644512e21ed49c7f5f6f11798d432beffb7f9b119f1c85571f45af42.wav"
+    },
+    {
+      "text": "Стоп",
+      "file": "108cf050e1002465a60299e09dfac5c22500176133a1053c04f7f4c89823e273.wav"
+    },
+    {
+      "text": "Стул",
+      "file": "aff4f78c621db60f158eceebc2c743d3275e99650d259874c6456f84ab257ea6.wav"
+    },
+    {
+      "text": "Суп",
+      "file": "f56da53c731fc911d0e4764e63169a07535a2bc36d5cf7cbfd8cd5d997a03a10.wav"
+    },
+    {
+      "text": "Улитка",
+      "file": "21f6976a940eac3ab1e5586fdb4132d3279768cca03e5d45e56fc7a91b85e13f.wav"
+    },
+    {
+      "text": "Ухо",
+      "file": "3eb08c46b22036c7cedb5b17ccb3a875080f1c05b3a5cac73f61b91aab0c1584.wav"
+    },
+    {
+      "text": "Футболка",
+      "file": "cd9776d7e5d70238f91552fe5b1243e6f71f43323b2d09c41db82ffdb567c588.wav"
+    },
+    {
+      "text": "Хлеб",
+      "file": "528f7705feb51d026b9017fad8c5861b2411053c904e85bd6599c0b58fc983f3.wav"
+    },
+    {
+      "text": "Хочу воду",
+      "file": "0639abf7772780d7231d23a0ccc28f861bb7c92f6aa87e066c3aa28b04e26686.wav"
+    },
+    {
+      "text": "Хочу книгу",
+      "file": "bef7249c373ead0bc9224fc58fa679cb23af5a4cf4193d891d75483a4f674148.wav"
+    },
+    {
+      "text": "Хочу мяч",
+      "file": "ee01d99317c974f9065017ad7d96a0824f2a6a65f3fd41fce1d9b0490d60f4d2.wav"
+    },
+    {
+      "text": "Хочу сок",
+      "file": "f724e503fd1f6cc03be41a893c62bc5e30e3bf0772abdde2cc15a1901096eb0b.wav"
+    },
+    {
+      "text": "Чашка",
+      "file": "e826f7a48360fc4742d33889445865c051919b639b21863cbc0c3749da225bcf.wav"
+    },
+    {
+      "text": "Черепаха",
+      "file": "6d2e7c755fce2712aaabb3e46e11bc9a62d46d4db9e5796389ca5032ac977ea7.wav"
+    },
+    {
+      "text": "Что это?",
+      "file": "93ca194a733e94b25997d0f6ef05567da23cfd44f4a272694f03104901361d09.wav"
+    },
+    {
+      "text": "Шапка",
+      "file": "e3ec9584d36e6588e7e1fc0561721d51706ed6dac0a1df912f94cc5591ff0610.wav"
+    },
+    {
+      "text": "Это банан.",
+      "file": "87f20ba5a09fde368e72825649a32f10fbf43e767f948194454f64e951b0f1d0.wav"
+    },
+    {
+      "text": "Это барабан.",
+      "file": "443c772affd4c95b5d82fa2c32fe76a519370dbf0191765cd7a5a63da307ef9b.wav"
+    },
+    {
+      "text": "Это вода.",
+      "file": "530f27fee3dabb0b13f62c4c38c2e855f70840da21198f45acd85f4dc56bed94.wav"
+    },
+    {
+      "text": "Это жук.",
+      "file": "9a08e7b0297cc7363bdb6cef056238293b3c8d70f807695e5f55217fe39efc36.wav"
+    },
+    {
+      "text": "Это каша.",
+      "file": "104fc3f9f24e06dc44321f1e8b46cdf75267c9943b339bd2b584eb0932bbc0d6.wav"
+    },
+    {
+      "text": "Это книга.",
+      "file": "8f07a13b827f6f2d04f7d762ab8b38ec1726a29fe5b01594d3465ca88101a3ad.wav"
+    },
+    {
+      "text": "Это кот.",
+      "file": "50a81a0e009e925f489b1b371cbc5412f1ffe6a31ba1b00e97f2826630203bff.wav"
+    },
+    {
+      "text": "Это краски.",
+      "file": "0ee9856164ea89f6b86f46b5806b1d93113541b18bc02acf2af4aa92ce68f4c1.wav"
+    },
+    {
+      "text": "Это кролик.",
+      "file": "d299ab67e2befb688ec1f835c3813960c2c36a71ae8562d35bfd726c5268dedf.wav"
+    },
+    {
+      "text": "Это кубики.",
+      "file": "47e50036214cb395d2e249d52a804c0992c60013570e386f86a2a13191747276.wav"
+    },
+    {
+      "text": "Это кукла.",
+      "file": "9dc14af4b0c7db014de04403a1be6a0e87866e60db32db227069be0483c15f3d.wav"
+    },
+    {
+      "text": "Это машинка.",
+      "file": "f42a20a955debf2447c234ea4be4157b404dba339855e1a86f3c9fde800af2c8.wav"
+    },
+    {
+      "text": "Это молоко.",
+      "file": "0ed2fd97097b5d672f8b67e67e987ecedb9dbce797f8b5c4f96f4bff5003aeb4.wav"
+    },
+    {
+      "text": "Это мяч.",
+      "file": "b4aeb43b90cb024f3f347882ab8d164d8a4e786f0e57ae4c4680b45d39c2d732.wav"
+    },
+    {
+      "text": "Это пазл.",
+      "file": "d3d7a3c7b49c53983b5624d60fc2d706a80e4cc15ed0ec504be7d0001e202bfd.wav"
+    },
+    {
+      "text": "Это птица.",
+      "file": "994dfceead71ee7a4808a243bbae6977208af5a802b37f9d3a151fe5b6954deb.wav"
+    },
+    {
+      "text": "Это рыба.",
+      "file": "0acb91efb474cfa7448de6e6efd16ff7e058518f4285e93f4ee343bb02a00e1b.wav"
+    },
+    {
+      "text": "Это собака.",
+      "file": "d89c35ef448dcb8b5bc4f3477b2a04c891a3c0cc40d694c6ab58eb2396375de5.wav"
+    },
+    {
+      "text": "Это сок.",
+      "file": "ba7bc2627724da0a9235199aa12050e3b94ec674777b3869d9d96001a4ae4716.wav"
+    },
+    {
+      "text": "Это суп.",
+      "file": "f7a464f74a7c050b3d265ab5c1c549372a46c4917441cd59fe5324188b4a7f4e.wav"
+    },
+    {
+      "text": "Это улитка.",
+      "file": "afd2e59eb39ec1a2f18de09016dd1e50e9dd206d4433e1e819e8018442a10b80.wav"
+    },
+    {
+      "text": "Это хлеб.",
+      "file": "92f7e620e7193b30bd303ae8a804ecb6fc882d94c8082943b7d431fa14aa7240.wav"
+    },
+    {
+      "text": "Это черепаха.",
+      "file": "ae5741769252fc24c15618d6f8d328de5b1cebc5270b4671f8d5d902cf889847.wav"
+    },
+    {
+      "text": "Это яблоко.",
+      "file": "ad660f3ca2aefa715936e3b56699a6ef0dc34d6dee832bedce6f62b8565d9f78.wav"
+    },
+    {
+      "text": "Я",
+      "file": "b173fdd72f7116f27cf36d953f77fb9524f6e14ea7fe1ca11230efc9e04b95f5.wav"
+    },
+    {
+      "text": "Я вижу кота",
+      "file": "a3fdeb38e434c67dc3ac935cac7b0fcbc43e2e405d0c7427506d643a61d78740.wav"
+    },
+    {
+      "text": "Я вижу маму",
+      "file": "f7ba5d8447c766e66cb16f6d7e46866c97665618491c2483a599dea7a046374a.wav"
+    },
+    {
+      "text": "Я вижу папу",
+      "file": "522e4d29aee6a3f0490391b28a41c6e771b6c42720f3773ead9d4720ddeefe08.wav"
+    },
+    {
+      "text": "Я гулял",
+      "file": "d52cb78c67db6f45f161a68e4c2d67fcbffd6808850bfd24e71cc65b4c5aa956.wav"
+    },
+    {
+      "text": "Я злюсь",
+      "file": "dbebb401dc2d0ed71870aeed12111cab024b9a4228670f988936d9dc6d2423ba.wav"
+    },
+    {
+      "text": "Я играл",
+      "file": "ec11cb50807e236e4eb3de40e139c07bcdce05e3aea2114f4ae456b5d54f60d2.wav"
+    },
+    {
+      "text": "Я не хочу",
+      "file": "2ca4d9a993f119740f40dca9cfd41180a80c1549c83de3e7eb91a1113c1a1ff0.wav"
+    },
+    {
+      "text": "Я устал",
+      "file": "4d05a875cdbdf4d5c119c4d3072ee15aa672ea7a00bbe06168fb387d2235f682.wav"
+    },
+    {
+      "text": "Я хочу в детский сад",
+      "file": "fbdafd239284217400851f0742934f69dc67287fb7130a298dd98c1a6e173553.wav"
+    },
+    {
+      "text": "Я хочу в магазин",
+      "file": "0b0d35374f142fb4ba36ae0dd74bff9fde38fed4051740948da6adac824aac90.wav"
+    },
+    {
+      "text": "Я хочу в школу",
+      "file": "5a4d30ac769f85ff34e402a73847248d23122ee63256307c8da1bdfb5aaaf729.wav"
+    },
+    {
+      "text": "Я хочу домой",
+      "file": "4320e7e5aab8d2a4d32270bd06c85aa7e190c1fd83b8cefd94037a9163e1b650.wav"
+    },
+    {
+      "text": "Я хочу есть",
+      "file": "f1a0bb71e007c87d14d6df77e033ebaec826a9dbddb8805d3ec733f77b8175c3.wav"
+    },
+    {
+      "text": "Я хочу ещё",
+      "file": "5e9e1952da0483362eeae5dd3f6320107f77a5f9ed45d83de5afa2f97ca45212.wav"
+    },
+    {
+      "text": "Я хочу на площадку",
+      "file": "4c3c7ce55ad851ba1b01b3dbd7c4b5d143aa9a4088e36b21c3c5192d412ecb57.wav"
+    },
+    {
+      "text": "Я хочу отдохнуть",
+      "file": "5efd4cbb3ac4a8a20f2721d3de60b951143a3299febcff491bf9a52a346d6583.wav"
+    },
+    {
+      "text": "Я хочу пить",
+      "file": "dca459ec8585e3924fcd2434c30715fb033886218263fc6020133358d4d4d2ae.wav"
+    },
+    {
+      "text": "Яблоко",
+      "file": "f88e774463f9c777fc48076ad7be871f549cb324dbb70c881aa84f0c27eeb49a.wav"
+    },
+    {
+      "text": "банан",
+      "file": "6578daa33153d9bd0733d18cced9fa53a2fa0e7ec3fabf0b24cee22a67ebffb2.wav"
+    },
+    {
+      "text": "в коробке",
+      "file": "cbd2f69541f7b12a70f74835aede1c2c64c5f4648926a4b46551dbda587cabd6.wav"
+    },
+    {
+      "text": "вижу",
+      "file": "afd27d33198a37e0e255d288129ca3673a63a73beb31338e33c28d8c20bd4ee4.wav"
+    },
+    {
+      "text": "воду",
+      "file": "6bf43848908a1bceb9239f098c5869dccd8fab535e1b8731219dc5b93a3dcbed.wav"
+    },
+    {
+      "text": "гулял",
+      "file": "95c30bc95ee42ba0b57d4675c39bfbd02da6fc6fd9bb3c9ca650c310ac45e416.wav"
+    },
+    {
+      "text": "гулять",
+      "file": "8c104ebd8b446e80ea37de536ac2799efc1b53c859a61812415741f8787874c1.wav"
+    },
+    {
+      "text": "играл",
+      "file": "8c950d23324aa1863c68dfa7ae44fb7b459f0805b712b3b28b6b5dabc75b3bd5.wav"
+    },
+    {
+      "text": "играю",
+      "file": "995d36e97a0db2e418c54c68f7eb3a7b1133e556d9ad929a523555892659d39d.wav"
+    },
+    {
+      "text": "иду",
+      "file": "605911bcb035d8148c5265db4d0f2a81661f49291dca0090b3813e6ae9289593.wav"
+    },
+    {
+      "text": "кашу",
+      "file": "409d02f7b873d1d9f312016122980c31b170a323c6a446e1e8f590056bb44149.wav"
+    },
+    {
+      "text": "книгу",
+      "file": "ff92b9573d0691893be506f5ebd8778e366c556e9a5bb1a61d869bf073cccd2e.wav"
+    },
+    {
+      "text": "кот",
+      "file": "6ed6ea7368ca3b6965cac64a474449c79f97bbffe729772e108f33b456ee74af.wav"
+    },
+    {
+      "text": "куклу",
+      "file": "325382e9c717859d93bf271116460eab3b55037cffdcc50ae74819365cb32656.wav"
+    },
+    {
+      "text": "люблю",
+      "file": "21fd7cc83739a9a0dd3ed4149436c67206f9d022043681682369accf250314cd.wav"
+    },
+    {
+      "text": "машинку",
+      "file": "1701e09c1b86f3fae366c261150adc768bd1d4502b7f7f8b0d6a51d21b9e22a4.wav"
+    },
+    {
+      "text": "мяч",
+      "file": "c15cc917c38fb90d43eeebec41a1e3d1f9738bdb9d2d48d1c81f2cb5f8b1eb77.wav"
+    },
+    {
+      "text": "на столе",
+      "file": "0b3abf0ac6423a9b2713180baf1feb07aeea86e2c281474da1f1c500028cc2c9.wav"
+    },
+    {
+      "text": "пазл",
+      "file": "4bdf65bff5a422bcdd1760924c676407c2fdab2e985bc95be45a272fd8cfb941.wav"
+    },
+    {
+      "text": "под стулом",
+      "file": "6b305935c8e6d798fc122e2c950ef608945c0b67ba48bf588d3f2c5db5245392.wav"
+    },
+    {
+      "text": "рисовать",
+      "file": "e9fdeecf38f2c83a5054986bae14d6e6155ca83aabeeb247410bac63bc190fa8.wav"
+    },
+    {
+      "text": "сок",
+      "file": "e48d95fda252ec20b44c65f8b0fb1bcebc95cad33b932f1865eff56e037e58e2.wav"
+    },
+    {
+      "text": "спать",
+      "file": "3bdebefaaae6e07d29337bfaa1028ebe75469ccfa028cadea67d1c9f9c5efd06.wav"
+    },
+    {
+      "text": "суп",
+      "file": "2addd90cefac48ec7b9896e932ce5598416301b3f9bd53b371ac0d824d1bd548.wav"
+    },
+    {
+      "text": "хлеб",
+      "file": "ff9298872ccbe2be847afb1324c09a528beb4224e4e72238723d4f21d81fe34a.wav"
+    },
+    {
+      "text": "хочу",
+      "file": "063fe1a31fef2529eecea25d521ad0d8662a56167b846f12a69df664924c87c2.wav"
+    },
+    {
+      "text": "чай",
+      "file": "108216dc05db83760b6947ed5ed5a021a0fbfde634757873a05edbde24046a47.wav"
+    },
+    {
+      "text": "читать",
+      "file": "82aacd01197c1eaaefef5083762ef73f72c66d5e11b067ade94f59373b0b62fb.wav"
+    },
+    {
+      "text": "яблоко",
+      "file": "22f535c61e31d9b6de76e374d441c4788f49c69e0eb46cd12afbd63dd3fdc9e7.wav"
+    }
+  ]
+}

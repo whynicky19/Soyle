@@ -17,6 +17,7 @@ from fastapi.responses import FileResponse, JSONResponse
 
 from .database import connect, init_db, now_iso
 from .schemas import AACCardCreate, AACComposeRequest, AACFavoriteUpdate, AACPhraseCreate, ActiveUpdate, AdaptivePlanRequest, AIAskRequest, AIPlanRequest, AssignedExerciseCreate, ChildCreate, ChildDeleteRequest, ChildGoalCreate, ConsentUpdate, ContentReviewCreate, ExerciseDraftCreate, GoalStatusUpdate, HomeActivityObservationCreate, HomeworkCreate, HomeworkResultUpdate, LearningSessionCreate, LoginRequest, PracticeGoalCreate, PracticeGoalObservationCreate, PracticeGoalUpdate, PracticePreferencesUpdate, RecommendationReview, RegisterRequest, RoleUpdate, SessionCreate, SkillObservationUpdate, SpecialistAssignmentCreate, SpecialistRecommendationCreate, StudentAccountCreate, StudentLoginRequest, TTSRequest, UserSettingsUpdate
+from .tts_library import bundled_tts_path
 from .aac_grammar import compose_aac_phrase
 from .ai_assistant import DISCLAIMER as LOCAL_ASSISTANT_DISCLAIMER, answer_parent
 from .exercise_engine import create_draft, preview_version, publish_version, published_exercise, published_exercise_rows, review_capabilities, review_workspace, submit_content_review
@@ -483,6 +484,14 @@ def update_settings(payload: UserSettingsUpdate, user: dict = Depends(get_curren
 @app.post("/api/tts")
 def text_to_speech(payload: TTSRequest, _: dict = Depends(get_current_user)) -> FileResponse:
     text = " ".join(payload.text.split()).strip()
+    bundled_path = bundled_tts_path(text, payload.language)
+    if bundled_path.exists():
+        return FileResponse(
+            bundled_path,
+            media_type="audio/wav",
+            filename="soyle-speech.wav",
+            headers={"Cache-Control": "no-store", "X-Soyle-TTS": "bundled"},
+        )
     cache_dir = Path(tempfile.gettempdir()) / "soyle-tts-v1"
     cache_dir.mkdir(parents=True, exist_ok=True)
     cache_key = hashlib.sha256(f"{payload.language}|{text}|{payload.rate:.2f}".encode("utf-8")).hexdigest()

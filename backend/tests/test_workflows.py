@@ -689,6 +689,17 @@ def test_tts_rejects_unknown_language_before_audio_generation(client, parent_hea
         assert response.status_code == 422
 
 
+def test_bundled_tts_serves_guided_aac_without_browser_voice(client, parent_headers):
+    response = client.post("/api/tts", headers=parent_headers, json={
+        "text": "Я вижу маму", "rate": 0.72, "language": "ru",
+    })
+    assert response.status_code == 200, response.text
+    assert response.headers["content-type"].startswith("audio/wav")
+    assert response.headers["x-soyle-tts"] == "bundled"
+    assert response.headers["cache-control"] == "no-store"
+    assert response.content[:4] == b"RIFF"
+
+
 def test_future_birth_date_is_rejected(client, parent_headers):
     response = client.post("/api/children", headers=parent_headers, json={
         "name": "Ребёнок из будущего",
