@@ -65,7 +65,18 @@ def test_p15_library_is_complete_structured_and_stays_draft(client, parent_heade
         content = item["version"]["content"]
         assert len(content["stimuli"]) == 6
         assert {level["option_count"] for level in content["difficulty_levels"]} == {2, 3, 4}
-        assert all(stimulus["hint"] and stimulus["alt"] and stimulus["media_ref"].endswith(".svg") for stimulus in content["stimuli"])
+        assert all(stimulus["hint"] and stimulus["alt"] and stimulus["media_ref"].endswith((".svg", ".png")) for stimulus in content["stimuli"])
+
+    animal_media = {
+        item["label"]: item["media_ref"]
+        for item in drafts["p15-nouns-animals"]["version"]["content"]["stimuli"]
+    }
+    assert animal_media["Кролик"] == "/aac-pictograms/rabbit.png"
+    assert animal_media["Рыба"] == "/aac-pictograms/fish.png"
+    assert animal_media["Птица"] == "/aac-pictograms/bird.png"
+    assert animal_media["Кот"] == "/aac-pictograms/cat.png"
+    assert animal_media["Собака"] == "/aac-pictograms/dog.png"
+    assert animal_media["Черепаха"] == "/aac-pictograms/turtle.png"
 
     actions = drafts["p15-actions-core"]["version"]["content"]["stimuli"]
     assert len(actions) == 10

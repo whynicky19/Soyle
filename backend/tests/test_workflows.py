@@ -571,6 +571,18 @@ def test_only_sensory_sets_with_eight_stimuli_are_active(client, parent_headers)
     sensory = client.get("/api/exercises?module=sensory", headers=parent_headers).json()
     assert {item["target"] for item in sensory} == {"animals", "food", "toys"}
     assert len(sensory) == 3
+    animal_media = {
+        item["label"]: item.get("media_ref")
+        for item in next(exercise for exercise in sensory if exercise["target"] == "animals")["engine"]["content"]["stimuli"]
+    }
+    assert animal_media["Кот"] == "/aac-pictograms/cat.png"
+    assert animal_media["Кролик"] == "/aac-pictograms/rabbit.png"
+    assert animal_media["Рыба"] == "/aac-pictograms/fish.png"
+    assert animal_media["Птица"] == "/aac-pictograms/bird.png"
+    assert animal_media["Собака"] == "/aac-pictograms/dog.png"
+    assert animal_media["Черепаха"] == "/aac-pictograms/turtle.png"
+    assert animal_media["Улитка"] == "/aac-pictograms/snail.png"
+    assert animal_media["Жук"] == "/aac-pictograms/bug.png"
     with connect() as db:
         hidden = db.execute("SELECT target FROM exercises WHERE module='sensory' AND is_active=0").fetchall()
     assert {item["target"] for item in hidden} == {

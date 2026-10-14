@@ -13,13 +13,13 @@ SUPPORTED_PUBLIC_MECHANICS = frozenset({"auditory_choice", "action_choice", "tap
 SENSORY_CONTENT: dict[str, list[dict[str, str]]] = {
     "animals": [
         {"key": "cat", "label": "Кот", "speech": "Кот", "hint": "Домашнее животное, которое мяукает", "media_ref": "/aac-pictograms/cat.png"},
-        {"key": "dog", "label": "Собака", "speech": "Собака", "hint": "Домашнее животное, которое лает", "visual_token": "dog"},
-        {"key": "fish", "label": "Рыба", "speech": "Рыба", "hint": "Она живёт в воде", "visual_token": "fish"},
-        {"key": "bird", "label": "Птица", "speech": "Птица", "hint": "У неё есть крылья", "visual_token": "bird"},
-        {"key": "rabbit", "label": "Кролик", "speech": "Кролик", "hint": "У него длинные уши", "visual_token": "rabbit"},
-        {"key": "turtle", "label": "Черепаха", "speech": "Черепаха", "hint": "У неё есть панцирь", "visual_token": "turtle"},
-        {"key": "snail", "label": "Улитка", "speech": "Улитка", "hint": "Она носит домик на спине", "visual_token": "snail"},
-        {"key": "bug", "label": "Жук", "speech": "Жук", "hint": "Маленькое насекомое", "visual_token": "bug"},
+        {"key": "dog", "label": "Собака", "speech": "Собака", "hint": "Домашнее животное, которое лает", "media_ref": "/aac-pictograms/dog.png"},
+        {"key": "fish", "label": "Рыба", "speech": "Рыба", "hint": "Она живёт в воде", "media_ref": "/aac-pictograms/fish.png"},
+        {"key": "bird", "label": "Птица", "speech": "Птица", "hint": "У неё есть крылья", "media_ref": "/aac-pictograms/bird.png"},
+        {"key": "rabbit", "label": "Кролик", "speech": "Кролик", "hint": "У него длинные уши", "media_ref": "/aac-pictograms/rabbit.png"},
+        {"key": "turtle", "label": "Черепаха", "speech": "Черепаха", "hint": "У неё есть панцирь", "media_ref": "/aac-pictograms/turtle.png"},
+        {"key": "snail", "label": "Улитка", "speech": "Улитка", "hint": "Она носит домик на спине", "media_ref": "/aac-pictograms/snail.png"},
+        {"key": "bug", "label": "Жук", "speech": "Жук", "hint": "Маленькое насекомое", "media_ref": "/aac-pictograms/bug.png"},
     ],
     "food": [
         {"key": "apple", "label": "Яблоко", "speech": "Яблоко", "hint": "Фрукт круглой формы", "media_ref": "/aac-pictograms/apple.png"},
@@ -414,6 +414,10 @@ def published_exercise_rows(db) -> list[dict]:
             # Published built-in scenarios use the current reviewed contract. The
             # stored version still supplies its scenario key and any unrelated data.
             content = {**content, **scenario}
+        elif mechanic == "auditory_choice" and item.get("target") in SENSORY_CONTENT:
+            # Built-in exercises keep reviewed visual corrections current even
+            # when an older local database still contains the original payload.
+            content = {**content, "stimuli": SENSORY_CONTENT[item["target"]]}
         item["engine"] = {
             "version_id": item.pop("exercise_version_id"),
             "version": item.pop("content_version"),

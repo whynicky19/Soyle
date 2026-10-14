@@ -2,7 +2,7 @@
 
 Nothing in this module is clinically approved.  Migration 13 stores every
 exercise and home activity as DRAFT/pending and never activates it for a child.
-All visual assets referenced here are local, editable project SVGs.
+All visual assets referenced here are local project illustrations.
 """
 
 from typing import Any
@@ -18,9 +18,10 @@ PROMPT_STEPS = ["repeat_audio", "visual_hint", "reduced_choice", "model_answer"]
 
 
 def _asset(path: str) -> dict[str, str]:
+    asset_kind = "PNG-пиктограмма" if path.endswith(".png") else "SVG-иллюстрация"
     return {
         "media_ref": path,
-        "origin": "Söyle P1.5 — оригинальная синтетическая SVG-иллюстрация",
+        "origin": f"Söyle P1.5 — оригинальная синтетическая {asset_kind}",
         "license": "Внутренний проектный ресурс; сторонние материалы не использованы",
         "license_status": "documented",
     }
@@ -137,12 +138,12 @@ NOUN_SETS: tuple[dict[str, Any], ...] = (
         "title": "Понимание слов: животные",
         "difficulty": 1,
         "stimuli": [
-            _stimulus("animal-cat", "Кот", "Домашнее животное с усами и длинным хвостом", "/p15/nouns/animals/cat.svg"),
-            _stimulus("animal-dog", "Собака", "Домашнее животное с ошейником", "/p15/nouns/animals/dog.svg"),
-            _stimulus("animal-rabbit", "Кролик", "Животное с длинными ушами", "/p15/nouns/animals/rabbit.svg"),
-            _stimulus("animal-bird", "Птица", "Животное с крыльями и клювом", "/p15/nouns/animals/bird.svg"),
-            _stimulus("animal-fish", "Рыба", "Животное с плавниками", "/p15/nouns/animals/fish.svg"),
-            _stimulus("animal-turtle", "Черепаха", "Животное с панцирем", "/p15/nouns/animals/turtle.svg"),
+            _stimulus("animal-cat", "Кот", "Домашнее животное с усами и длинным хвостом", "/aac-pictograms/cat.png"),
+            _stimulus("animal-dog", "Собака", "Домашнее животное с ошейником", "/aac-pictograms/dog.png"),
+            _stimulus("animal-rabbit", "Кролик", "Животное с длинными ушами", "/aac-pictograms/rabbit.png"),
+            _stimulus("animal-bird", "Птица", "Животное с крыльями и клювом", "/aac-pictograms/bird.png"),
+            _stimulus("animal-fish", "Рыба", "Животное с плавниками", "/aac-pictograms/fish.png"),
+            _stimulus("animal-turtle", "Черепаха", "Животное с панцирем", "/aac-pictograms/turtle.png"),
         ],
         "ambiguities": ["Иллюстрации обозначают категорию, а не конкретную породу", "Проверить узнаваемость стилизованных поз и пропорций"],
         "transfer": ["Найти животное в знакомой книге", "Показать названную игрушку-животное"],

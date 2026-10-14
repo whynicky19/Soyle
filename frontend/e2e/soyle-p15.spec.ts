@@ -85,6 +85,30 @@ test("child choice runner handles audio, wrong answer, hint, repeat and saved co
   await expect(page.getByText("Попытка сохранена. Выбери, продолжить или вернуться к занятиям.", { exact: true })).toBeVisible();
 });
 
+test("animal choices use one consistent illustrated pictogram set", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop", "Проверка набора иллюстраций выполняется один раз; responsive smoke покрывает размеры.");
+  await login(page, "alikhan", "1234", true);
+  await page.getByRole("button", { name: "Занятия", exact: true }).click();
+  await page.getByRole("button", { name: /Я вижу/ }).click();
+  await page.locator(".aac-card-main").filter({ has: page.locator("strong", { hasText: /^Мама$/ }) }).click();
+  await page.locator(".speak-button").click();
+  await page.getByRole("button", { name: "Закончить практику" }).click();
+  await page.getByRole("button", { name: /Домашние животные/ }).click();
+  await page.locator(".runner-levels button").filter({ hasText: /^4$/ }).click();
+  await page.getByRole("button", { name: /Понятно, начать/ }).click();
+
+  const pictures = page.locator(".picture-options img");
+  await expect(pictures).toHaveCount(4);
+  const pictureSources = await pictures.evaluateAll((images) => images.map((image) => {
+    const source = image.getAttribute("src") || "";
+    const parsed = new URL(source, window.location.href);
+    return parsed.searchParams.get("url") || parsed.pathname;
+  }));
+  for (const source of pictureSources) {
+    expect(source).toMatch(/^\/aac-pictograms\/(cat|dog|fish|bird|rabbit|turtle|snail|bug)\.png$/);
+  }
+});
+
 test("break and refusal are accepted without exposing a draft", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "desktop", "Полный сценарий выполняется один раз; responsive smoke покрывает все размеры.");
   await login(page, "alikhan", "1234", true);
@@ -120,6 +144,7 @@ test("I see message can be spoken and guided answers cannot accumulate duplicate
   await speakButton.click();
   await expect(speakButton).toBeDisabled();
   await expect(speakButton).toContainText("Озвучиваем…");
+  await expect.poll(() => page.evaluate(() => Boolean((window as typeof window & { __soyleFinishSpeech?: () => void }).__soyleFinishSpeech))).toBe(true);
   await expect(page.getByRole("heading", { name: "Готово!" })).toHaveCount(0);
   expect(completionRequests).toBe(0);
   await page.evaluate(() => { (window as typeof window & { __soyleFinishSpeech?: () => void }).__soyleFinishSpeech?.(); });
