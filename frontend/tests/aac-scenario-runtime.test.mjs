@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { evaluateAACScenario } from "../lib/aacScenarioRuntime.ts";
+import { canAddAACScenarioCard, evaluateAACScenario } from "../lib/aacScenarioRuntime.ts";
 
 const request = {
   scenario_key: "request",
@@ -33,4 +33,34 @@ test("legacy request payload still rejects Want without a requested object", () 
   const legacy = { scenario_key: "request", labels: ["Хочу", "Сок", "Вода"] };
   assert.equal(evaluateAACScenario(legacy, ["Хочу"]).complete, false);
   assert.equal(evaluateAACScenario(legacy, ["Сок"]).complete, true);
+});
+
+test("observation accepts the shown I-see-person sequence and blocks unrelated continuations", () => {
+  const observation = {
+    scenario_key: "observation",
+    labels: ["Я", "Вижу", "Мама", "Папа", "Кот"],
+    completion: { type: "contains_any", accepted_labels: ["Мама", "Папа", "Кот"] },
+    accepted_sequences: [
+      ["Мама"], ["Папа"], ["Кот"],
+      ["Вижу", "Мама"], ["Вижу", "Папа"], ["Вижу", "Кот"],
+      ["Я", "Вижу", "Мама"], ["Я", "Вижу", "Папа"], ["Я", "Вижу", "Кот"],
+    ],
+  };
+  assert.equal(evaluateAACScenario(observation, ["Я", "Вижу", "Мама"]).complete, true);
+  assert.equal(canAddAACScenarioCard(observation, ["Я"], "Вижу"), true);
+  assert.equal(canAddAACScenarioCard(observation, ["Я"], "Мама"), false);
+  assert.equal(canAddAACScenarioCard(observation, ["Мама"], "Папа"), false);
+});
+
+test("single-answer tasks cannot accumulate contradictory or repeated answers", () => {
+  const answer = {
+    scenario_key: "answer",
+    labels: ["Да", "Нет"],
+    completion: { type: "contains_any", accepted_labels: ["Да", "Нет"] },
+    accepted_sequences: [["Да"], ["Нет"]],
+  };
+  assert.equal(evaluateAACScenario(answer, ["Да"]).complete, true);
+  assert.equal(evaluateAACScenario(answer, ["Да", "Нет"]).complete, false);
+  assert.equal(canAddAACScenarioCard(answer, ["Да"], "Нет"), false);
+  assert.equal(canAddAACScenarioCard(answer, ["Да"], "Да"), false);
 });

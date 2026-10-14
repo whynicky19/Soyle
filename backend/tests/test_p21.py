@@ -1,6 +1,7 @@
 from uuid import uuid4
 
 from app.database import connect
+from app.exercise_engine import published_exercise_rows
 
 
 def _new_child(client, headers, name="P21 Synthetic"):
@@ -119,7 +120,7 @@ def test_planner_uses_only_related_published_non_motor_versions(client, parent_h
     )
     assert response.status_code == 201, response.text
     plan = response.json()
-    assert plan["rules_version"] == "p2.1-rules-1"
+    assert plan["rules_version"] == "p2.2-weighted-rotation-1"
     assert plan["items"]
     assert {item["target"] for item in plan["items"]} <= {"animals", "food", "toys"}
     assert all(item["module"] != "motor" for item in plan["items"])
@@ -202,6 +203,94 @@ def test_difficulty_never_increases_after_one_success_and_ignores_breaks(client,
     later_item = next(item for item in later_plan["items"] if item["exercise_id"] == exercise["id"])
     assert later_item["difficulty_params"]["difficulty_level"] == 2
     assert later_item["assignment_reason"]["evidence"]["recorded_sessions"] == 3
+
+
+def test_recent_results_are_weighted_without_one_miss_erasing_stable_progress(client, parent_headers):
+    child = _new_child(client, parent_headers)
+    _add_goal(client, parent_headers, child["id"])
+    exercise = next(
+        item for item in client.get("/api/exercises", headers=parent_headers).json()
+        if item["target"] == "animals"
+    )
+
+    def save(correct):
+        response = client.post("/api/sessions", headers=parent_headers, json={
+            "child_id": child["id"], "exercise_id": exercise["id"], "module": "sensory",
+            "score": correct * 25, "duration_seconds": 20, "details": {"source": "weighted-test"},
+            "attempt_status": "completed", "attempts_count": 4, "correct_answers": correct,
+            "gameplay_choices": 4, "independent_completions": 1 if correct else 0,
+            "prompted_completions": 0 if correct else 1,
+            "prompts_used": 0 if correct else 1,
+            "prompt_level": "independent" if correct else "minimal",
+        })
+        assert response.status_code == 201, response.text
+
+    for _ in range(7):
+        save(4)
+    save(0)
+    plan = client.post(
+        f"/api/adaptive-plans/{child['id']}", headers=parent_headers, json={"target_minutes": 5},
+    ).json()
+    evidence = plan["items"][0]["assignment_reason"]["evidence"]
+    assert evidence["recorded_sessions"] == 8
+    assert evidence["weighted_accuracy"] > 0.8
+    assert evidence["recency_weights"][0] > evidence["recency_weights"][-1]
+    assert all(item["difficulty_params"]["difficulty_level"] == 2 for item in plan["items"])
+
+
+def test_planner_rotates_unused_exercises_before_repeating(client, parent_headers):
+    child = _new_child(client, parent_headers)
+    _add_goal(client, parent_headers, child["id"])
+
+    first = client.post(
+        f"/api/adaptive-plans/{child['id']}", headers=parent_headers, json={"target_minutes": 3},
+    ).json()
+    second = client.post(
+        f"/api/adaptive-plans/{child['id']}", headers=parent_headers, json={"target_minutes": 3},
+    ).json()
+    first_ids = [item["exercise_id"] for item in first["items"]]
+    second_ids = [item["exercise_id"] for item in second["items"]]
+    assert len(first_ids) == len(set(first_ids)) == 2
+    assert len(second_ids) == len(set(second_ids)) == 2
+    assert len(set(first_ids + second_ids)) == 3
+    new_second = next(item for item in second["items"] if item["exercise_id"] not in first_ids)
+    assert new_second["assignment_reason"]["evidence"]["assignment_count_before"] == 0
+    assert "new_exercise" in new_second["assignment_reason"]["codes"]
+
+
+def test_published_exercise_catalog_has_no_duplicate_tasks_or_round_items(client):
+    with connect() as db:
+        exercises = published_exercise_rows(db)
+    assert len({item["id"] for item in exercises}) == len(exercises)
+    assert len({(item["module"], item["target"]) for item in exercises}) == len(exercises)
+    assert len({item["title"].strip().casefold() for item in exercises}) == len(exercises)
+    for exercise in exercises:
+        content = exercise["engine"]["content"]
+        stimuli = content.get("stimuli") or []
+        scenarios = content.get("scenarios") or []
+        assert len({item["key"] for item in stimuli}) == len(stimuli), exercise["title"]
+        assert len({item["label"].strip().casefold() for item in stimuli}) == len(stimuli), exercise["title"]
+        assert len({item["key"] for item in scenarios}) == len(scenarios), exercise["title"]
+
+
+def test_legacy_local_plan_also_rotates_completed_tasks(client, parent_headers):
+    child = _new_child(client, parent_headers)
+    first = client.get(
+        f"/api/session-plan/{child['id']}?minutes=3", headers=parent_headers,
+    ).json()["exercises"]
+    assert len(first) == 2
+    for exercise in first:
+        saved = client.post("/api/sessions", headers=parent_headers, json={
+            "child_id": child["id"], "exercise_id": exercise["id"], "module": exercise["module"],
+            "score": 100, "duration_seconds": 10, "details": {"source": "rotation-test"},
+            "attempt_status": "completed", "attempts_count": 1, "correct_answers": 1,
+            "independent_completions": 1,
+        })
+        assert saved.status_code == 201, saved.text
+    second = client.get(
+        f"/api/session-plan/{child['id']}?minutes=3", headers=parent_headers,
+    ).json()["exercises"]
+    assert {item["id"] for item in first}.isdisjoint({item["id"] for item in second})
 
 
 def test_learning_session_preserves_plan_goal_and_difficulty_snapshot(client, parent_headers):

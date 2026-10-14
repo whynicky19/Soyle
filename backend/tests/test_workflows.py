@@ -68,13 +68,13 @@ def test_login_rate_limit(client):
     assert response.status_code == 429
 
 
-def test_ai_plan_uses_only_safe_library_and_specialist_role_is_removed(client, parent_headers, admin_headers):
+def test_local_plan_uses_only_safe_library_and_specialist_role_is_removed(client, parent_headers, admin_headers):
     child_id = client.get("/api/children", headers=parent_headers).json()[0]["id"]
     plan = client.post(f"/api/ai/plan/{child_id}", headers=parent_headers, json={"target_minutes": 3})
     assert plan.status_code == 200
     assert plan.json()["estimated_minutes"] == 3
     assert len(plan.json()["exercises"]) == 2
-    assert plan.json()["generated_by"] == "local_fallback"
+    assert plan.json()["generated_by"] == "local_rules"
     assert plan.json()["needs_ai_consent"] is False
     assert all(item["module"] != "motor" for item in plan.json()["exercises"])
 
@@ -90,95 +90,55 @@ def test_ai_plan_uses_only_safe_library_and_specialist_role_is_removed(client, p
     assert not any("specialist-assignments" in path for path in paths)
 
 
-def test_ai_parent_answer_has_safe_fallback(client, parent_headers):
+def test_parent_helper_uses_local_reviewed_rules(client, parent_headers):
     child_id = client.get("/api/children", headers=parent_headers).json()[0]["id"]
     response = client.post(f"/api/ai/ask/{child_id}", headers=parent_headers, json={"question": "Как мягко начать занятие?"})
     assert response.status_code == 200
     payload = response.json()
-    assert payload["generated_by"] == "local_fallback"
-    assert payload["provider_error"] == "not_configured"
+    assert payload["generated_by"] == "local_rules"
+    assert payload["model"] is None
     assert len(payload["suggested_actions"]) <= 3
     assert "диагноз" in payload["disclaimer"].lower()
 
 
-def test_ai_parent_answer_explains_invalid_key(client, parent_headers, monkeypatch):
+def test_parent_helper_routes_urgent_question_to_professional_help(client, parent_headers):
     child_id = client.get("/api/children", headers=parent_headers).json()[0]["id"]
-
-    class InvalidKeyError(Exception):
-        status_code = 401
-        body = {"error": {"code": "invalid_api_key"}}
-
-    def reject_answer(_context):
-        raise InvalidKeyError()
-
-    monkeypatch.setattr("app.main.answer_parent", reject_answer)
-    response = client.post(f"/api/ai/ask/{child_id}", headers=parent_headers, json={"question": "Как начать занятие?"})
+    response = client.post(
+        f"/api/ai/ask/{child_id}", headers=parent_headers,
+        json={"question": "Что делать, если ребёнку внезапно больно глотать?"},
+    )
     assert response.status_code == 200
     payload = response.json()
-    assert payload["generated_by"] == "local_fallback"
-    assert payload["provider_error"] == "invalid_api_key"
-    assert "API-ключ" in payload["provider_message"]
+    assert payload["generated_by"] == "local_rules"
+    assert payload["needs_professional_help"] is True
+    assert "специалист" in payload["answer"].lower()
 
 
-def test_ai_plan_validates_model_ids_and_records_tokens(client, parent_headers, admin_headers, monkeypatch):
+def test_local_plan_has_no_model_or_token_usage(client, parent_headers, admin_headers):
     child_id = client.get("/api/children", headers=parent_headers).json()[0]["id"]
-
-    def fake_plan(context):
-        assert len(context["allowed_exercises"]) <= 40
-        allowed_ids = [item["id"] for item in context["allowed_exercises"]]
-        return ({
-            "title": "План от модели",
-            "reason": "Короткое чередование заданий",
-            "parent_tip": "Дайте время ответить",
-            "exercise_ids": [999999, *allowed_ids[::-1]],
-        }, {"input_tokens": 120, "output_tokens": 40})
-
-    monkeypatch.setattr("app.main.generate_plan", fake_plan)
     response = client.post(f"/api/ai/plan/{child_id}", headers=parent_headers, json={"target_minutes": 3})
     assert response.status_code == 200, response.text
     payload = response.json()
-    assert payload["generated_by"] == "openai"
-    assert payload["model"] == "gpt-4o-mini"
+    assert payload["generated_by"] == "local_rules"
+    assert payload["model"] is None
     assert len(payload["exercises"]) == 2
-    assert 999999 not in {item["id"] for item in payload["exercises"]}
+    assert len({item["id"] for item in payload["exercises"]}) == 2
     assert all(item["module"] != "motor" for item in payload["exercises"])
     usage = client.get("/api/admin/usage", headers=admin_headers).json()
-    assert usage["input_tokens"] >= 120
-    assert usage["output_tokens"] >= 40
+    assert usage["input_tokens"] == 0
+    assert usage["output_tokens"] == 0
     assert len(usage["daily"]) == 30
-    event = next(item for item in usage["recent"] if item["feature"] == "home_practice_plan")
-    assert event["actor_type"] == "user"
-    assert event["actor_name"] == "Айгерим Садыкова"
-    assert event["actor_username"] == "parent"
-    assert event["actor_role"] == "parent"
-    assert event["child_name"] == "Алихан"
-    assert event["total_tokens"] == 160
+    assert usage["recent"] == []
 
 
-def test_ai_usage_identifies_student_actor(client, student_headers, admin_headers, monkeypatch):
+def test_student_local_plan_does_not_create_external_usage(client, student_headers, admin_headers):
     child_id = client.get("/api/children", headers=student_headers).json()[0]["id"]
-
-    def fake_plan(context):
-        allowed_ids = [item["id"] for item in context["allowed_exercises"]]
-        return ({
-            "title": "Ученический план",
-            "reason": "Короткая практика",
-            "parent_tip": "Дайте время ответить",
-            "exercise_ids": allowed_ids[:2],
-        }, {"input_tokens": 30, "output_tokens": 10})
-
-    monkeypatch.setattr("app.main.generate_plan", fake_plan)
     response = client.post(f"/api/ai/plan/{child_id}", headers=student_headers, json={"target_minutes": 3})
     assert response.status_code == 200, response.text
-    assert response.json()["generated_by"] == "openai"
+    assert response.json()["generated_by"] == "local_rules"
 
     usage = client.get("/api/admin/usage?days=7&limit=100", headers=admin_headers).json()
-    event = next(item for item in usage["recent"] if item["actor_type"] == "student")
-    assert event["actor_name"] == "Алихан"
-    assert event["actor_username"] == "alikhan"
-    assert event["actor_role"] == "student"
-    assert event["child_name"] == "Алихан"
-    assert event["total_tokens"] == 40
+    assert usage["requests"] == 0
 
 
 def test_learning_session_pause_and_measurements(client, parent_headers):
@@ -298,7 +258,7 @@ def test_old_session_resumes_pending_published_exercise_and_deduplicates_progres
             db.execute("UPDATE exercises SET is_active=1 WHERE id=?", (first["id"],))
 
 
-def test_ai_consent_is_opt_in_and_revocation_is_immediate(client, admin_headers):
+def test_local_helper_never_requires_external_ai_consent(client, admin_headers):
     registration = client.post("/api/auth/register", headers={"X-Soyle-Auth-Mode": "bearer"}, json={
         "username": "consentparent2", "password": "ConsentParent123!", "full_name": "Родитель AI-согласий",
     })
@@ -312,11 +272,12 @@ def test_ai_consent_is_opt_in_and_revocation_is_immediate(client, admin_headers)
     assert initial["ai_processing_at"] is None
     assert initial["version"] == "2026-10-local-face-1"
 
-    denied = client.post(f"/api/ai/ask/{child_id}", headers=parent, json={"question": "Как начать занятие?"})
-    assert denied.status_code == 403
+    local_answer = client.post(f"/api/ai/ask/{child_id}", headers=parent, json={"question": "Как начать занятие?"})
+    assert local_answer.status_code == 200
+    assert local_answer.json()["generated_by"] == "local_rules"
     local_plan = client.post(f"/api/ai/plan/{child_id}", headers=parent, json={"target_minutes": 3})
     assert local_plan.status_code == 200
-    assert local_plan.json()["needs_ai_consent"] is True
+    assert local_plan.json()["needs_ai_consent"] is False
 
     inconsistent = client.put(f"/api/children/{child_id}/consent", headers=parent, json={
         "privacy_accepted": False, "camera_processing": False, "ai_processing": True, "analytics_processing": False,
@@ -335,7 +296,7 @@ def test_ai_consent_is_opt_in_and_revocation_is_immediate(client, admin_headers)
     })
     assert revoked.status_code == 200
     assert revoked.json()["ai_processing_at"] is None
-    assert client.post(f"/api/ai/ask/{child_id}", headers=parent, json={"question": "Как начать занятие?"}).status_code == 403
+    assert client.post(f"/api/ai/ask/{child_id}", headers=parent, json={"question": "Как начать занятие?"}).status_code == 200
     audits = client.get("/api/admin/audit", headers=admin_headers).json()
     assert any(item["action"] == "consent.update" and item["object_id"] == str(child_id) for item in audits)
 
@@ -537,6 +498,22 @@ def test_aac_grammar_uses_safe_language_specific_templates(client, parent_header
     }).json()
     assert ready["phrase"] == "Помоги мне"
 
+    observation = client.post("/api/aac/compose", headers=parent_headers, json={
+        "child_id": child_id,
+        "card_ids": [by_label["Я"]["id"], by_label["Вижу"]["id"], by_label["Мама"]["id"]],
+        "language": "ru",
+    }).json()
+    assert observation["valid"] is True
+    assert observation["phrase"] == "Я вижу маму"
+
+    seen_cat = client.post("/api/aac/compose", headers=parent_headers, json={
+        "child_id": child_id,
+        "card_ids": [by_label["Вижу"]["id"], by_label["Кот"]["id"]],
+        "language": "ru",
+    }).json()
+    assert seen_cat["valid"] is True
+    assert seen_cat["phrase"] == "Вижу кота"
+
     english = compose_aac_phrase([
         {"speech": "I", "language": "en", "grammatical_role": "subject"},
         {"speech": "want", "language": "en", "grammatical_role": "action"},
@@ -554,6 +531,9 @@ def test_aac_grammar_uses_safe_language_specific_templates(client, parent_header
 
 def test_only_supported_aac_learning_scenarios_are_active(client, parent_headers):
     mixed = [item for item in client.get("/api/exercises?module=mixed", headers=parent_headers).json()]
+    child_id = client.get("/api/children", headers=parent_headers).json()[0]["id"]
+    cards = client.get(f"/api/aac/cards/{child_id}", headers=parent_headers).json()
+    cards_by_label = {card["label"]: card for card in cards}
     assert {item["target"] for item in mixed} == {
         "request", "choice", "refusal", "feelings", "help",
         "answer", "observation", "past_event", "question", "routine",
@@ -562,9 +542,29 @@ def test_only_supported_aac_learning_scenarios_are_active(client, parent_headers
     assert all(item["engine"]["content"]["steps"] for item in mixed)
     assert all(item["engine"]["content"]["action_label"] for item in mixed)
     assert all(item["engine"]["content"]["completion"]["accepted_labels"] for item in mixed)
+    assert all(item["engine"]["content"]["accepted_sequences"] for item in mixed)
+    for item in mixed:
+        content = item["engine"]["content"]
+        labels = content["labels"]
+        sequences = content["accepted_sequences"]
+        assert len(labels) == len(set(labels))
+        assert len({tuple(sequence) for sequence in sequences}) == len(sequences)
+        assert all(len(sequence) == len(set(sequence)) for sequence in sequences)
+        assert all(set(sequence).issubset(labels) for sequence in sequences)
+        composed_phrases = []
+        for sequence in sequences:
+            composed = compose_aac_phrase([cards_by_label[label] for label in sequence], "ru")
+            assert composed["valid"] is True, (item["target"], sequence, composed["reason"])
+            composed_phrases.append(composed["phrase"])
+        assert len(composed_phrases) == len(set(composed_phrases))
     request = next(item for item in mixed if item["target"] == "request")["engine"]["content"]
     assert "Хочу" not in request["completion"]["accepted_labels"]
     assert set(request["completion"]["accepted_labels"]) == {"Сок", "Вода", "Мяч", "Книга"}
+    observation = next(item for item in mixed if item["target"] == "observation")["engine"]["content"]
+    assert ["Я", "Вижу", "Мама"] in observation["accepted_sequences"]
+    assert "Играю" not in observation["labels"]
+    past_event = next(item for item in mixed if item["target"] == "past_event")["engine"]["content"]
+    assert set(past_event["labels"]) == {"Я", "Играл", "Гулял"}
 
 
 def test_only_sensory_sets_with_eight_stimuli_are_active(client, parent_headers):

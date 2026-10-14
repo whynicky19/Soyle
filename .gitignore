@@ -14,6 +14,11 @@ backend/skills-lock.json
 .vercel
 .env*
 
+# Keep local notes and generated Markdown outside version control.
+# The public project documentation lives only in the root README.
+*.md
+!/README.md
+
 # Local pitch-generation artifacts (Codex)
 /.codex-build/
 /.codex-finalizer/

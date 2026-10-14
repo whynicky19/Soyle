@@ -6,10 +6,9 @@ BACKEND_DIR="$PROJECT_DIR/backend"
 FRONTEND_DIR="$PROJECT_DIR/frontend"
 
 VENV_PYTHON="$BACKEND_DIR/.venv/bin/python"
-BACKEND_ENV_FILE="$BACKEND_DIR/.env.local"
 LOCAL_ALLOWED_ORIGINS="http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,http://127.0.0.1:3001"
 
-if [[ ! -x "$VENV_PYTHON" ]] || ! "$VENV_PYTHON" -c "import uvicorn, openai, dotenv" >/dev/null 2>&1; then
+if [[ ! -x "$VENV_PYTHON" ]] || ! "$VENV_PYTHON" -c "import uvicorn, dotenv" >/dev/null 2>&1; then
   echo "Устанавливаю backend-зависимости…"
   python3 -m venv "$BACKEND_DIR/.venv"
   "$VENV_PYTHON" -m pip install -r "$BACKEND_DIR/requirements.txt"
@@ -20,35 +19,7 @@ if [[ ! -d "$FRONTEND_DIR/node_modules" ]]; then
   npm --prefix "$FRONTEND_DIR" install
 fi
 
-# Read only the AI settings from the local backend file. Vercel database,
-# cookie and CORS settings must never leak into the local development server.
-dotenv_value() {
-  "$VENV_PYTHON" -c 'from dotenv import dotenv_values; import sys; print(dotenv_values(sys.argv[1]).get(sys.argv[2], "") or "")' "$BACKEND_ENV_FILE" "$1"
-}
-
-if [[ -f "$BACKEND_ENV_FILE" ]]; then
-  FILE_OPENAI_API_KEY="$(dotenv_value OPENAI_API_KEY)"
-  FILE_OPENAI_MODEL="$(dotenv_value SOYLE_OPENAI_MODEL)"
-  FILE_AI_REQUEST_LIMIT="$(dotenv_value SOYLE_AI_REQUESTS_PER_HOUR)"
-  if [[ -n "$FILE_OPENAI_API_KEY" ]]; then
-    export OPENAI_API_KEY="$FILE_OPENAI_API_KEY"
-  fi
-  if [[ -n "$FILE_OPENAI_MODEL" ]]; then
-    export SOYLE_OPENAI_MODEL="$FILE_OPENAI_MODEL"
-  fi
-  if [[ -n "$FILE_AI_REQUEST_LIMIT" ]]; then
-    export SOYLE_AI_REQUESTS_PER_HOUR="$FILE_AI_REQUEST_LIMIT"
-  fi
-fi
-
-export SOYLE_OPENAI_MODEL="${SOYLE_OPENAI_MODEL:-gpt-4o-mini}"
-export SOYLE_AI_REQUESTS_PER_HOUR="${SOYLE_AI_REQUESTS_PER_HOUR:-30}"
-
-if [[ -n "${OPENAI_API_KEY:-}" ]]; then
-  echo "Söyle AI: локальный ключ найден"
-else
-  echo "Söyle AI: ключ не найден, будут использоваться резервные подсказки"
-fi
+echo "Адаптивный анализ: локальные правила, внешняя AI API не используется"
 
 cleanup() {
   if [[ -n "$BACKEND_PID" ]]; then

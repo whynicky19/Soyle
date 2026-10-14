@@ -46,12 +46,15 @@ export function shuffleWithRandom<T>(values: readonly T[], random: () => number 
 export function createChoiceRound(
   stimuli: readonly ChoiceStimulus[],
   optionCount: 2 | 3 | 4,
-  previousTargetKey?: string,
+  excludedTargetKeys?: string | readonly string[] | ReadonlySet<string>,
   random: () => number = Math.random,
   previousCorrectIndex?: number,
 ): ChoiceRound {
   if (stimuli.length < optionCount) throw new Error("Недостаточно стимулов для выбранной сложности");
-  const possibleTargets = stimuli.filter((item) => item.key !== previousTargetKey);
+  const excluded = typeof excludedTargetKeys === "string"
+    ? new Set([excludedTargetKeys])
+    : new Set(excludedTargetKeys || []);
+  const possibleTargets = stimuli.filter((item) => !excluded.has(item.key));
   const target = shuffleWithRandom(possibleTargets.length ? possibleTargets : stimuli, random)[0];
   const distractors = shuffleWithRandom(stimuli.filter((item) => item.key !== target.key), random).slice(0, optionCount - 1);
   const optionKeys = shuffleWithRandom([target, ...distractors], random).map((item) => item.key);

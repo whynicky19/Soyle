@@ -43,6 +43,14 @@ SENSORY_CONTENT: dict[str, list[dict[str, str]]] = {
     ],
 }
 
+
+def _single_card_sequences(labels: list[str]) -> list[list[str]]:
+    return [[label] for label in labels]
+
+
+def _optional_prefix_sequences(prefixes: list[list[str]], labels: list[str]) -> list[list[str]]:
+    return _single_card_sequences(labels) + [[*prefix, label] for prefix in prefixes for label in labels]
+
 AAC_SCENARIOS: dict[str, dict[str, Any]] = {
     "request": {
         "title": "Попроси один предмет",
@@ -55,6 +63,7 @@ AAC_SCENARIOS: dict[str, dict[str, Any]] = {
         "action_label": "Сказать просьбу",
         "labels": ["Хочу", "Сок", "Вода", "Мяч", "Книга"],
         "completion": {"type": "contains_any", "accepted_labels": ["Сок", "Вода", "Мяч", "Книга"]},
+        "accepted_sequences": _optional_prefix_sequences([["Хочу"]], ["Сок", "Вода", "Мяч", "Книга"]),
     },
     "choice": {
         "title": "Выбери напиток",
@@ -66,6 +75,7 @@ AAC_SCENARIOS: dict[str, dict[str, Any]] = {
         "action_label": "Сказать выбор",
         "labels": ["Сок", "Вода"],
         "completion": {"type": "contains_any", "accepted_labels": ["Сок", "Вода"]},
+        "accepted_sequences": _single_card_sequences(["Сок", "Вода"]),
     },
     "refusal": {
         "title": "Скажи, что не хочешь",
@@ -77,6 +87,7 @@ AAC_SCENARIOS: dict[str, dict[str, Any]] = {
         "action_label": "Сказать отказ",
         "labels": ["Нет", "Стоп", "Не хочу"],
         "completion": {"type": "contains_any", "accepted_labels": ["Нет", "Стоп", "Не хочу"]},
+        "accepted_sequences": _single_card_sequences(["Нет", "Стоп", "Не хочу"]),
     },
     "feelings": {
         "title": "Сообщи о своём состоянии",
@@ -88,6 +99,7 @@ AAC_SCENARIOS: dict[str, dict[str, Any]] = {
         "action_label": "Сообщить состояние",
         "labels": ["Больно", "Устал", "Весело", "Грустно", "Спокойно", "Злюсь", "Страшно"],
         "completion": {"type": "contains_any", "accepted_labels": ["Больно", "Устал", "Весело", "Грустно", "Спокойно", "Злюсь", "Страшно"]},
+        "accepted_sequences": _single_card_sequences(["Больно", "Устал", "Весело", "Грустно", "Спокойно", "Злюсь", "Страшно"]),
     },
     "help": {
         "title": "Попроси помощь",
@@ -99,6 +111,7 @@ AAC_SCENARIOS: dict[str, dict[str, Any]] = {
         "action_label": "Попросить помощь",
         "labels": ["Помоги"],
         "completion": {"type": "contains_any", "accepted_labels": ["Помоги"]},
+        "accepted_sequences": [["Помоги"]],
     },
     "answer": {
         "title": "Ответь на вопрос",
@@ -110,30 +123,33 @@ AAC_SCENARIOS: dict[str, dict[str, Any]] = {
         "action_label": "Сказать ответ",
         "labels": ["Да", "Нет"],
         "completion": {"type": "contains_any", "accepted_labels": ["Да", "Нет"]},
+        "accepted_sequences": _single_card_sequences(["Да", "Нет"]),
     },
     "observation": {
         "title": "Покажи, кого ты видишь",
-        "instruction": "Выбери маму, папу или кота. Можно сначала добавить «Вижу».",
-        "steps": ["Выбери, кого ты видишь.", "Нажми «Сказать, кого вижу»."],
+        "instruction": "Выбери маму, папу или кота. Можно сначала добавить «Вижу» или «Я» + «Вижу».",
+        "steps": ["Выбери готовую карточку или собери «Я» + «Вижу» + кого ты видишь.", "Нажми «Сказать, кого вижу»."],
         "criterion": "Карточка человека или предмета уже считается понятным сообщением.",
         "empty_hint": "Сначала выбери маму, папу или кота.",
         "incomplete_hint": "Теперь выбери, кого ты видишь.",
         "success_hint": "Сообщение готово. Нажми «Сказать, кого вижу».",
         "action_label": "Сказать, кого вижу",
-        "labels": ["Я", "Мама", "Папа", "Кот", "Вижу", "Играю"],
+        "labels": ["Я", "Вижу", "Мама", "Папа", "Кот"],
         "completion": {"type": "contains_any", "accepted_labels": ["Мама", "Папа", "Кот"]},
+        "accepted_sequences": _optional_prefix_sequences([["Вижу"], ["Я", "Вижу"]], ["Мама", "Папа", "Кот"]),
     },
     "past_event": {
         "title": "Расскажи, что было",
-        "instruction": "Выбери знакомое прошедшее действие.",
-        "steps": ["Выбери «Играл» или «Гулял».", "Нажми «Рассказать»."],
+        "instruction": "Выбери знакомое прошедшее действие. Можно сначала добавить «Я».",
+        "steps": ["Выбери «Играл» или «Гулял». При желании сначала добавь «Я».", "Нажми «Рассказать»."],
         "criterion": "Не проверяем, было ли событие на самом деле — важно понятное сообщение.",
         "empty_hint": "Выбери «Играл» или «Гулял».",
         "incomplete_hint": "Добавь действие: «Играл» или «Гулял».",
         "success_hint": "Сообщение готово. Нажми «Рассказать».",
         "action_label": "Рассказать",
-        "labels": ["Я", "Вчера", "Играл", "Гулял", "Мяч"],
+        "labels": ["Я", "Играл", "Гулял"],
         "completion": {"type": "contains_any", "accepted_labels": ["Играл", "Гулял"]},
+        "accepted_sequences": _optional_prefix_sequences([["Я"]], ["Играл", "Гулял"]),
     },
     "question": {
         "title": "Задай вопрос",
@@ -145,6 +161,7 @@ AAC_SCENARIOS: dict[str, dict[str, Any]] = {
         "action_label": "Задать вопрос",
         "labels": ["Что это?", "Где?"],
         "completion": {"type": "contains_any", "accepted_labels": ["Что это?", "Где?"]},
+        "accepted_sequences": _single_card_sequences(["Что это?", "Где?"]),
     },
     "routine": {
         "title": "Расскажи об одном действии",
@@ -156,6 +173,7 @@ AAC_SCENARIOS: dict[str, dict[str, Any]] = {
         "action_label": "Рассказать о действии",
         "labels": ["Есть", "Пить", "Играю", "Гулять", "Читать", "Спать"],
         "completion": {"type": "contains_any", "accepted_labels": ["Есть", "Пить", "Играю", "Гулять", "Читать", "Спать"]},
+        "accepted_sequences": _single_card_sequences(["Есть", "Пить", "Играю", "Гулять", "Читать", "Спать"]),
     },
 }
 
@@ -339,6 +357,26 @@ def validate_version(version: dict) -> list[str]:
         labels = content.get("labels") if isinstance(content, dict) else None
         if not isinstance(labels, list) or not labels:
             errors.append("Для guided AAC нужен непустой список допустимых карточек")
+        elif len(labels) != len(set(labels)):
+            errors.append("В guided AAC допустимые карточки не должны повторяться")
+        completion = content.get("completion") if isinstance(content, dict) else None
+        accepted_labels = completion.get("accepted_labels") if isinstance(completion, dict) else None
+        if not isinstance(accepted_labels, list) or not accepted_labels:
+            errors.append("Для guided AAC нужен непустой список принимаемых ответов")
+        elif isinstance(labels, list) and (len(accepted_labels) != len(set(accepted_labels)) or not set(accepted_labels).issubset(labels)):
+            errors.append("Принимаемые ответы guided AAC должны быть уникальны и входить в допустимые карточки")
+        sequences = content.get("accepted_sequences") if isinstance(content, dict) else None
+        if sequences is not None:
+            if not isinstance(sequences, list) or not sequences or any(not isinstance(sequence, list) or not sequence for sequence in sequences):
+                errors.append("Допустимые последовательности guided AAC должны быть непустыми списками")
+            else:
+                sequence_keys = [tuple(sequence) for sequence in sequences]
+                if len(sequence_keys) != len(set(sequence_keys)):
+                    errors.append("Последовательности guided AAC не должны повторяться")
+                if isinstance(labels, list) and any(len(sequence) != len(set(sequence)) or not set(sequence).issubset(labels) for sequence in sequences):
+                    errors.append("Карточки в последовательностях guided AAC должны быть уникальны и допустимы для задания")
+                if isinstance(accepted_labels, list) and any(not set(sequence).intersection(accepted_labels) for sequence in sequences):
+                    errors.append("Каждая последовательность guided AAC должна содержать принимаемый ответ")
     return errors
 
 
@@ -373,7 +411,9 @@ def published_exercise_rows(db) -> list[dict]:
         content = json.loads(item.pop("content_json") or "{}")
         if mechanic == "guided_aac":
             scenario = AAC_SCENARIOS.get(content.get("scenario_key"), {})
-            content = {**scenario, **content}
+            # Published built-in scenarios use the current reviewed contract. The
+            # stored version still supplies its scenario key and any unrelated data.
+            content = {**content, **scenario}
         item["engine"] = {
             "version_id": item.pop("exercise_version_id"),
             "version": item.pop("content_version"),

@@ -118,7 +118,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FaceLandmarker } from "@mediapipe/tasks-vision";
 import { api, AACCard, AIAnswer, type AdaptivePlan, API_URL, AppSettings, Child, ChildConsent, clearLegacyAuth, Dashboard, Exercise, getCsrfToken, LearningSession, NotificationsData, Role, SkillProgress, User } from "@/lib/api";
 import { composeAACMessage } from "@/lib/aacGrammar";
-import { evaluateAACScenario } from "@/lib/aacScenarioRuntime";
+import { canAddAACScenarioCard, evaluateAACScenario } from "@/lib/aacScenarioRuntime";
 import { supportedInterfaceLanguages, useInterfaceLanguage } from "@/lib/i18n";
 import { nextIncompleteExerciseIndex, summarizeSessionResults } from "@/lib/sessionRuntime";
 import { categoriesToScores, evaluateMotorMovement, mergeBaseline, targetForSequenceStep, type BlendshapeScores } from "@/lib/motorDetection";
@@ -284,7 +284,7 @@ function AuthenticatedApp({ user, onLogout }: { user: User; onLogout: () => void
           { id: "games", label: "Занятия", icon: Gamepad2 },
           { id: "aac", label: "Сказать", icon: Parentheses },
           { id: "goals", label: "Цели и занятия", icon: Target },
-          { id: "ai", label: "Söyle AI", icon: Bot },
+          { id: "ai", label: "Локальный помощник", icon: Bot },
           { id: "progress", label: "Прогресс", icon: BarChart3 },
           ...(user.role === "parent" ? [{ id: "parent" as Screen, label: "Для родителей", icon: UserRound }] : []),
           { id: "settings", label: "Настройки", icon: Settings },
@@ -581,7 +581,7 @@ function AuthenticatedApp({ user, onLogout }: { user: User; onLogout: () => void
           {screen === "sensory" && selectedExercise?.engine?.mechanic === "tap_instruction" ? <div className="page-enter game-page"><GameHeader title={selectedExercise.title} subtitle="Выполни один шаг" step="Предмет → цель" onBack={() => sessionExerciseActive && activeSession ? setScreen("session") : openScreen("games")}/><PublishedInstructionRunner scenarios={selectedExercise.engine.content.scenarios || []} soundEnabled={settings.sound_enabled} onSpeak={(text, rate) => speak(text, rate, settings.sound_enabled)} onBack={() => sessionExerciseActive && activeSession ? setScreen("session") : openScreen("games")} onComplete={(measurement, details) => saveSession(selectedExercise.id, "sensory", 0, details, measurement)}/></div> : null}
           {screen === "sensory" && selectedExercise?.engine?.mechanic !== "tap_instruction" && <SensoryGame key={selectedExercise?.id || "sensory"} exercise={selectedExercise?.module === "sensory" ? selectedExercise : exercises.find((item) => item.module === "sensory")} soundEnabled={settings.sound_enabled} onBack={() => sessionExerciseActive && activeSession ? setScreen("session") : openScreen("games")} onComplete={(score, exerciseId, measurement, details) => saveSession(exerciseId, "sensory", score, details || {}, measurement)} />}
           {screen === "aac" && <PhraseGame key="free-aac" childId={child?.id} canManage={user.role === "parent"} freeMode soundEnabled={settings.sound_enabled} onBack={() => openScreen("home")} />}
-          {screen === "ai" && user.role === "parent" && <AIParentScreen child={child} consent={consent} onOpenConsent={() => openScreen("parent")} />}
+          {screen === "ai" && user.role === "parent" && <AIParentScreen child={child} />}
           {screen === "mixed" && <PhraseGame key={selectedExercise?.id || "mixed"} childId={child?.id} canManage={user.role === "parent"} exercise={selectedExercise?.module === "mixed" ? selectedExercise : exercises.find((item) => item.module === "mixed")} soundEnabled={settings.sound_enabled} onBack={() => sessionExerciseActive && activeSession ? setScreen("session") : openScreen("games")} onComplete={(score, phrase, exerciseId, measurement) => saveSession(exerciseId, "mixed", score, { phrase }, measurement)} />}
           {screen === "progress" && <ProgressScreen childId={child?.id} dashboard={dashboard} />}
           {screen === "goals" && user.role === "parent" && <GoalsAndPractice child={child} targetMinutes={dailyMinutes} onStartPlan={startPreparedPlan}/>}
@@ -603,7 +603,7 @@ function RewardCelebration({ stars }: { stars: number }) {
 function ChildOnboarding({ user, onCreated, onLogout }: { user: User; onCreated: (child: Child) => void; onLogout: () => void }) {
   const [name, setName] = useState(""); const [birthDate, setBirthDate] = useState(""); const [module, setModule] = useState<ModuleName>("mixed"); const [error, setError] = useState("");
   const submit = async (event: React.FormEvent) => { event.preventDefault(); setError(""); try { const child = await api<Child>("/api/children", { method: "POST", body: JSON.stringify({ name, birth_date: birthDate, primary_module: module, avatar_color: "#f07d68" }) }); onCreated(child); } catch (cause) { setError(cause instanceof Error ? cause.message : "Не удалось создать профиль"); } };
-  return <div className="onboarding-page"><div className="onboarding-card"><div className="brand"><div className="brand-mark"><BrandIcon /></div><div><strong>Söyle</strong><span>первичная настройка</span></div></div><span className="kicker">ДОБРО ПОЖАЛОВАТЬ, {user.full_name.toUpperCase()}</span><h1>Создадим профиль ребёнка</h1><p>Это поможет сохранять историю практики и готовить короткие планы с Söyle AI.</p><form onSubmit={submit}><label>Имя ребёнка<input value={name} onChange={(e) => setName(e.target.value)} placeholder="Алихан" required minLength={2}/></label><label>Дата рождения<input type="date" max={new Date().toISOString().slice(0,10)} value={birthDate} onChange={(e) => setBirthDate(e.target.value)} required/></label><label>Стартовое направление<select value={module} onChange={(e) => setModule(e.target.value as ModuleName)}><option value="sensory">Игровые задания на слух</option><option value="mixed">AAC-коммуникация и смешанная практика</option></select></label>{error && <div className="auth-error">{error}</div>}<button className="primary-button">Создать профиль <ChevronRight size={18}/></button></form><button className="auth-switch" onClick={onLogout}>Выйти из аккаунта</button></div></div>;
+  return <div className="onboarding-page"><div className="onboarding-card"><div className="brand"><div className="brand-mark"><BrandIcon /></div><div><strong>Söyle</strong><span>первичная настройка</span></div></div><span className="kicker">ДОБРО ПОЖАЛОВАТЬ, {user.full_name.toUpperCase()}</span><h1>Создадим профиль ребёнка</h1><p>Это поможет сохранять историю практики и готовить короткие адаптивные планы по локальным правилам.</p><form onSubmit={submit}><label>Имя ребёнка<input value={name} onChange={(e) => setName(e.target.value)} placeholder="Алихан" required minLength={2}/></label><label>Дата рождения<input type="date" max={new Date().toISOString().slice(0,10)} value={birthDate} onChange={(e) => setBirthDate(e.target.value)} required/></label><label>Стартовое направление<select value={module} onChange={(e) => setModule(e.target.value as ModuleName)}><option value="sensory">Игровые задания на слух</option><option value="mixed">AAC-коммуникация и смешанная практика</option></select></label>{error && <div className="auth-error">{error}</div>}<button className="primary-button">Создать профиль <ChevronRight size={18}/></button></form><button className="auth-switch" onClick={onLogout}>Выйти из аккаунта</button></div></div>;
 }
 
 function roleLabel(role: Role) {
@@ -1137,23 +1137,30 @@ function SensoryVisual({ item }: { item: SensoryItem }) {
 let currentSpeechAudio: HTMLAudioElement | null = null;
 let currentSpeechUrl = "";
 let speechController: AbortController | null = null;
+let currentSpeechCompletion: ((played: boolean) => void) | null = null;
 let serverSpeechUnavailable = false;
 
 function stopCurrentSpeech() {
+  const completion = currentSpeechCompletion;
+  currentSpeechCompletion = null;
   speechController?.abort();
   speechController = null;
   if (currentSpeechAudio) {
     currentSpeechAudio.pause();
     currentSpeechAudio.currentTime = 0;
   }
+  window.speechSynthesis?.cancel();
+  completion?.(false);
   if (currentSpeechUrl) URL.revokeObjectURL(currentSpeechUrl);
   currentSpeechAudio = null;
   currentSpeechUrl = "";
-  window.speechSynthesis?.cancel();
 }
 
-function speakWithBrowserVoice(text: string, rate: number, language: "ru" | "kk" | "en"): Promise<boolean> {
-  if (!("speechSynthesis" in window) || typeof SpeechSynthesisUtterance === "undefined") return Promise.resolve(false);
+function speakWithBrowserVoice(text: string, rate: number, language: "ru" | "kk" | "en", controller: AbortController): Promise<boolean> {
+  if (!("speechSynthesis" in window) || typeof SpeechSynthesisUtterance === "undefined") {
+    if (speechController === controller) speechController = null;
+    return Promise.resolve(false);
+  }
   const locale = { ru: "ru-RU", kk: "kk-KZ", en: "en-US" }[language];
   const utterance = new SpeechSynthesisUtterance(text);
   utterance.lang = locale;
@@ -1165,9 +1172,24 @@ function speakWithBrowserVoice(text: string, rate: number, language: "ru" | "kk"
     || voices.find((voice) => voice.lang.toLowerCase().startsWith(language))
     || null;
   return new Promise((resolve) => {
-    utterance.onend = () => resolve(true);
-    utterance.onerror = () => resolve(false);
-    window.speechSynthesis.speak(utterance);
+    let settled = false;
+    const finish = (played: boolean) => {
+      if (settled) return;
+      settled = true;
+      utterance.onend = null;
+      utterance.onerror = null;
+      if (currentSpeechCompletion === finish) currentSpeechCompletion = null;
+      if (speechController === controller) speechController = null;
+      resolve(played);
+    };
+    currentSpeechCompletion = finish;
+    utterance.onend = () => finish(true);
+    utterance.onerror = () => finish(false);
+    try {
+      window.speechSynthesis.speak(utterance);
+    } catch {
+      finish(false);
+    }
   });
 }
 
@@ -1176,40 +1198,55 @@ async function speak(text: string, rate = 0.78, enabled = true, language: "ru" |
   const cleaned = text.replace(/\s+/g, " ").trim();
   if (!cleaned) return false;
   stopCurrentSpeech();
-  speechController = new AbortController();
-  if (serverSpeechUnavailable) return speakWithBrowserVoice(cleaned, rate, language);
+  const controller = new AbortController();
+  speechController = controller;
+  if (serverSpeechUnavailable) return speakWithBrowserVoice(cleaned, rate, language, controller);
   try {
     const response = await fetch(`${API_URL}/api/tts`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-CSRF-Token": getCsrfToken() },
       credentials: "include",
       body: JSON.stringify({ text: cleaned, rate, language }),
-      signal: speechController.signal,
+      signal: controller.signal,
     });
     if (!response.ok) {
       if (response.status === 404 || response.status >= 500) serverSpeechUnavailable = true;
-      return speakWithBrowserVoice(cleaned, rate, language);
+      return speakWithBrowserVoice(cleaned, rate, language, controller);
     }
-    currentSpeechUrl = URL.createObjectURL(await response.blob());
-    const audio = new Audio(currentSpeechUrl);
+    const objectUrl = URL.createObjectURL(await response.blob());
+    currentSpeechUrl = objectUrl;
+    const audio = new Audio(objectUrl);
     currentSpeechAudio = audio;
     audio.volume = 0.92;
-    const cleanupAudio = () => {
-      if (currentSpeechUrl) URL.revokeObjectURL(currentSpeechUrl);
-      currentSpeechUrl = "";
-      currentSpeechAudio = null;
-    };
-    audio.onended = cleanupAudio;
-    audio.onerror = cleanupAudio;
-    await audio.play();
-    return true;
+    return await new Promise<boolean>((resolve) => {
+      let settled = false;
+      const finish = (played: boolean) => {
+        if (settled) return;
+        settled = true;
+        audio.onended = null;
+        audio.onerror = null;
+        if (currentSpeechCompletion === finish) currentSpeechCompletion = null;
+        if (currentSpeechAudio === audio) currentSpeechAudio = null;
+        if (currentSpeechUrl === objectUrl) currentSpeechUrl = "";
+        if (speechController === controller) speechController = null;
+        URL.revokeObjectURL(objectUrl);
+        resolve(played);
+      };
+      currentSpeechCompletion = finish;
+      audio.onended = () => finish(true);
+      audio.onerror = () => finish(false);
+      audio.play().catch(() => finish(false));
+    });
   } catch (cause) {
-    if (cause instanceof DOMException && cause.name === "AbortError") return false;
+    if (cause instanceof DOMException && cause.name === "AbortError") {
+      if (speechController === controller) speechController = null;
+      return false;
+    }
     if (currentSpeechUrl) URL.revokeObjectURL(currentSpeechUrl);
     currentSpeechUrl = "";
     currentSpeechAudio = null;
     serverSpeechUnavailable = true;
-    return speakWithBrowserVoice(cleaned, rate, language);
+    return speakWithBrowserVoice(cleaned, rate, language, controller);
   }
 }
 
@@ -1224,9 +1261,9 @@ function shuffled<T>(values: T[]): T[] {
   return result;
 }
 
-function createSensoryRound(itemCount: number, optionCount: 2 | 3 | 4, previousTarget?: number, previousCorrectIndex?: number): SensoryRound {
+function createSensoryRound(itemCount: number, optionCount: 2 | 3 | 4, excludedTargets: ReadonlySet<number> = new Set(), previousCorrectIndex?: number): SensoryRound {
   const all = Array.from({ length: itemCount }, (_, index) => index);
-  const targets = all.filter((index) => index !== previousTarget);
+  const targets = all.filter((index) => !excludedTargets.has(index));
   const target = shuffled(targets.length ? targets : all)[0];
   const distractors = shuffled(all.filter((index) => index !== target)).slice(0, optionCount - 1);
   const options = shuffled([target, ...distractors]);
@@ -1267,6 +1304,7 @@ function SensoryGame({ exercise, soundEnabled, onBack, onComplete }: { exercise?
   const promptLevelRef = useRef<0 | 1 | 2>(0);
   const promptTypesRef = useRef<string[]>([]);
   const roundOutcomesRef = useRef<Array<Record<string, unknown>>>([]);
+  const usedTargetsRef = useRef<Set<number>>(new Set());
 
   if (items.length < difficulty.option_count) return <div className="empty-state large" role="alert"><ShieldAlert size={28}/><strong>Задание пока недоступно</strong><span>Опубликованная версия не содержит достаточного числа проверенных стимулов.</span><button className="secondary-button" onClick={onBack}>Вернуться к занятиям</button></div>;
 
@@ -1279,9 +1317,11 @@ function SensoryGame({ exercise, soundEnabled, onBack, onComplete }: { exercise?
     else { setAudioPlayed(false); setPhase("technical"); }
   };
 
-  const beginRound = async (previousTarget?: number, previousCorrectIndex?: number) => {
+  const beginRound = async (previousCorrectIndex?: number) => {
     if (!soundEnabled) { setPhase("technical"); return; }
-    const nextRound = createSensoryRound(items.length, difficulty.option_count, previousTarget, previousCorrectIndex);
+    if (usedTargetsRef.current.size >= items.length) usedTargetsRef.current.clear();
+    const nextRound = createSensoryRound(items.length, difficulty.option_count, usedTargetsRef.current, previousCorrectIndex);
+    usedTargetsRef.current.add(nextRound.target);
     setRoundData(nextRound);
     setPhase("playing");
     setAudioPlayed(false);
@@ -1375,12 +1415,13 @@ function SensoryGame({ exercise, soundEnabled, onBack, onComplete }: { exercise?
       promptLevelRef.current = 0;
       promptTypesRef.current = [];
       roundOutcomesRef.current = [];
+      usedTargetsRef.current.clear();
       setRound(1);
       setRoundData(null);
       setPhase("demo");
     } else {
       setRound((value) => value + 1);
-      void beginRound(roundData.target, roundData.options.indexOf(roundData.target));
+      void beginRound(roundData.options.indexOf(roundData.target));
     }
   };
 
@@ -1482,6 +1523,7 @@ function PhraseGame({ childId, canManage, exercise, freeMode = false, soundEnabl
   const [customOpen, setCustomOpen] = useState(false);
   const [custom, setCustom] = useState({ label: "", speech: "", category: "needs" });
   const [aacNotice, setAacNotice] = useState("");
+  const [speechPending, setSpeechPending] = useState(false);
   const [promptLevel, setPromptLevel] = useState<"independent" | "minimal" | "full">("independent");
   const savedRef = useRef(false);
   const composition = composeAACMessage(selected);
@@ -1497,6 +1539,7 @@ function PhraseGame({ childId, canManage, exercise, freeMode = false, soundEnabl
   const scenarioLabels = scenario?.labels?.length ? new Set(scenario.labels) : null;
   const selectedLabels = selected.map((card) => card.label);
   const scenarioEvaluation = evaluateAACScenario(scenario, selectedLabels);
+  const canAddGuidedCard = (card: AACCard) => freeMode || canAddAACScenarioCard(scenario, selectedLabels, card.label);
   const composerHint = freeMode
     ? selected.length
       ? composition.valid ? "Сообщение готово к озвучиванию" : composition.reason
@@ -1512,6 +1555,10 @@ function PhraseGame({ childId, canManage, exercise, freeMode = false, soundEnabl
       setAacNotice(`Карточка «${card.label}» уже добавлена. Сначала убери её из сообщения.`);
       return;
     }
+    if (!canAddGuidedCard(card)) {
+      setAacNotice(scenarioEvaluation.complete ? scenarioEvaluation.hint : "Эта карточка не продолжает выбранное сообщение. Убери лишнюю карточку или выбери подходящий следующий шаг.");
+      return;
+    }
     savedRef.current = false;
     setAacNotice("");
     setSelected((items) => [...items, card].slice(-8));
@@ -1522,38 +1569,50 @@ function PhraseGame({ childId, canManage, exercise, freeMode = false, soundEnabl
     setCards((items) => items.map((item) => item.id === card.id ? { ...item, favorite: !item.favorite } : item));
   };
   const sayPhrase = async () => {
-    if (!selected.length || !childId) return;
+    if (!selected.length || !childId || speechPending) return;
     if (!freeMode && !scenarioEvaluation.complete) {
       setAacNotice(scenarioEvaluation.hint);
       return;
     }
-    const composed = await api<{ valid: boolean; phrase: string; reason: string }>("/api/aac/compose", { method: "POST", body: JSON.stringify({ child_id: childId, card_ids: selected.map((item) => item.id), language: selected[0].language || "ru" }) }).catch(() => composition);
-    if (!composed.valid) { setAacNotice(composed.reason || "Эту комбинацию пока нельзя озвучить как готовую фразу."); return; }
-    setAacNotice("");
-    speak(composed.phrase, 0.72, freeMode || soundEnabled, selected[0]?.language || "ru");
-    if (!freeMode) {
-      const saved = await api<{ id: number; phrase: string }>("/api/aac/history", { method: "POST", body: JSON.stringify({ child_id: childId, phrase: composed.phrase, card_ids: selected.map((item) => item.id) }) }).catch(() => null);
-      if (saved) setHistory((items) => [saved, ...items.filter((item) => item.phrase !== saved.phrase)].slice(0, 12));
-    }
-    if (!freeMode && !savedRef.current && exercise && onComplete) {
-      const labels = selected.map((card) => card.label);
-      const refused = labels.includes("Не хочу") && exercise.target !== "refusal";
-      const paused = selected.some((card) => card.label === "Перерыв");
-      if (!scenarioEvaluation.complete && !refused && !paused) {
-        setAacNotice(scenarioEvaluation.hint);
-        return;
+    setSpeechPending(true);
+    try {
+      const composed = await api<{ valid: boolean; phrase: string; reason: string }>("/api/aac/compose", { method: "POST", body: JSON.stringify({ child_id: childId, card_ids: selected.map((item) => item.id), language: selected[0].language || "ru" }) }).catch(() => composition);
+      if (!composed.valid) { setAacNotice(composed.reason || "Эту комбинацию пока нельзя озвучить как готовую фразу."); return; }
+      setAacNotice("");
+      await speak(composed.phrase, 0.72, freeMode || soundEnabled, selected[0]?.language || "ru");
+      if (!freeMode) {
+        const saved = await api<{ id: number; phrase: string }>("/api/aac/history", { method: "POST", body: JSON.stringify({ child_id: childId, phrase: composed.phrase, card_ids: selected.map((item) => item.id) }) }).catch(() => null);
+        if (saved) setHistory((items) => [saved, ...items.filter((item) => item.phrase !== saved.phrase)].slice(0, 12));
       }
-      const result = await onComplete(0, composed.phrase, exercise.id, { prompts_used: promptLevel === "independent" ? 0 : 1, prompt_level: promptLevel, attempt_status: refused ? "refused" : paused ? "break" : "participated", independence: promptLevel === "independent" ? 100 : promptLevel === "minimal" ? 60 : 30, communication_initiatives: 1 });
-      if (result) savedRef.current = true;
+      if (!freeMode && !savedRef.current && exercise && onComplete) {
+        const labels = selected.map((card) => card.label);
+        const refused = labels.includes("Не хочу") && exercise.target !== "refusal";
+        const paused = selected.some((card) => card.label === "Перерыв");
+        if (!scenarioEvaluation.complete && !refused && !paused) {
+          setAacNotice(scenarioEvaluation.hint);
+          return;
+        }
+        const result = await onComplete(0, composed.phrase, exercise.id, { prompts_used: promptLevel === "independent" ? 0 : 1, prompt_level: promptLevel, attempt_status: refused ? "refused" : paused ? "break" : "participated", independence: promptLevel === "independent" ? 100 : promptLevel === "minimal" ? 60 : 30, communication_initiatives: 1 });
+        if (result) savedRef.current = true;
+      }
+    } finally {
+      setSpeechPending(false);
     }
   };
   const sendQuickMessage = async (card: AACCard) => {
+    if (speechPending) return;
+    setSpeechPending(true);
     setSelected([card]);
-    setAacNotice(card.label === "Перерыв" ? "Сообщение озвучено. Можно сделать паузу или вернуться на главную." : ["Нет", "Стоп", "Не хочу"].includes(card.label) ? "Сообщение озвучено. Продолжать действие не нужно." : "Сообщение озвучено.");
-    speak(card.speech, 0.72, true, card.language || "ru");
-    if (!freeMode && !savedRef.current && exercise && onComplete && ["Перерыв", "Стоп", "Не хочу"].includes(card.label)) {
-      const result = await onComplete(0, card.speech, exercise.id, { attempts_count: 0, correct_answers: 0, prompts_used: 0, attempt_status: card.label === "Перерыв" ? "break" : "refused", communication_initiatives: 1 });
-      if (result) savedRef.current = true;
+    setAacNotice("Озвучиваем сообщение…");
+    try {
+      await speak(card.speech, 0.72, true, card.language || "ru");
+      setAacNotice(card.label === "Перерыв" ? "Сообщение озвучено. Можно сделать паузу или вернуться на главную." : ["Нет", "Стоп", "Не хочу"].includes(card.label) ? "Сообщение озвучено. Продолжать действие не нужно." : "Сообщение озвучено.");
+      if (!freeMode && !savedRef.current && exercise && onComplete && ["Перерыв", "Стоп", "Не хочу"].includes(card.label)) {
+        const result = await onComplete(0, card.speech, exercise.id, { attempts_count: 0, correct_answers: 0, prompts_used: 0, attempt_status: card.label === "Перерыв" ? "break" : "refused", communication_initiatives: 1 });
+        if (result) savedRef.current = true;
+      }
+    } finally {
+      setSpeechPending(false);
     }
   };
   const createCustom = async (event: React.FormEvent) => {
@@ -1573,15 +1632,15 @@ function PhraseGame({ childId, canManage, exercise, freeMode = false, soundEnabl
   const quickCards = ["Помоги", "Больно", "Стоп", "Перерыв", "Не хочу", "Да", "Нет"].flatMap((label) => cards.find((card) => card.label === label) || []);
   return <div className="page-enter game-page aac-page redesigned">
     <GameHeader title={freeMode ? "Сказать" : exercise?.title || "Учебное AAC-задание"} subtitle={freeMode ? "Свободное сообщение без оценок" : "Практика с карточками AAC"} step={freeMode ? "Всегда доступно" : scenarioEvaluation.stepLabel} onBack={onBack}/>
-    {freeMode && <section className="aac-quick" aria-label="Быстрые сообщения"><div className="aac-quick-head"><div><span className="kicker">СКАЗАТЬ СЕЙЧАС</span><strong>Важное сообщение - одним нажатием</strong></div><ShieldCheck size={22}/></div><div>{quickCards.map((card) => <button key={card.id} onClick={() => sendQuickMessage(card)}><AACVisual card={card} compact/><span>{card.label}</span></button>)}</div>{aacNotice && <p role="status">{aacNotice}{selected[0]?.label === "Перерыв" && <button onClick={onBack}>Сделать паузу</button>}</p>}</section>}
+    {freeMode && <section className="aac-quick" aria-label="Быстрые сообщения"><div className="aac-quick-head"><div><span className="kicker">СКАЗАТЬ СЕЙЧАС</span><strong>Важное сообщение - одним нажатием</strong></div><ShieldCheck size={22}/></div><div>{quickCards.map((card) => <button key={card.id} disabled={speechPending} onClick={() => sendQuickMessage(card)}><AACVisual card={card} compact/><span>{card.label}</span></button>)}</div>{aacNotice && <p role="status">{aacNotice}{selected[0]?.label === "Перерыв" && <button onClick={onBack}>Сделать паузу</button>}</p>}</section>}
     {!freeMode && <div className="aac-goal"><div><span className="kicker">ЧТО НУЖНО СДЕЛАТЬ</span><strong>{scenario?.title || exercise?.instruction || "Собери сообщение"}</strong><p>{scenario?.instruction || exercise?.instruction}</p>{scenario?.steps?.length ? <ol className="aac-task-steps">{scenario.steps.map((step) => <li key={step}>{step}</li>)}</ol> : null}</div><Target size={22}/><p>{scenario?.criterion || "Задание завершится после понятного сообщения."}</p>{canManage && <div className="aac-prompt-level" aria-label="Как выполнено"><span>Поддержка взрослого:</span>{([['independent','Самостоятельно'],['minimal','С подсказкой'],['full','Вместе']] as const).map(([value,label]) => <button key={value} className={promptLevel === value ? "active" : ""} aria-pressed={promptLevel === value} onClick={() => setPromptLevel(value)}>{label}</button>)}</div>}</div>}
-    <section className="aac-composer aac-composer-top"><div className="aac-composer-head"><div><span className="kicker">{freeMode ? "МОЁ СООБЩЕНИЕ" : "ТВОЙ ОТВЕТ"}</span><strong>{sentence || "Ответ пока не выбран"}</strong><small>{composerHint}</small></div><div className="aac-composer-actions"><button className="clear-button" disabled={!selected.length} onClick={() => { setSelected([]); setAacNotice(""); savedRef.current = false; }}>Очистить всё</button><button className="speak-button" disabled={!selected.length || !composition.valid || (!freeMode && !scenarioEvaluation.complete)} onClick={sayPhrase}><Volume2 size={21}/>{freeMode ? "Озвучить сообщение" : scenarioEvaluation.actionLabel}</button></div></div><div className={`aac-sentence ${selected.length ? "filled" : ""}`}>{selected.length ? selected.map((card, index) => <button key={`${card.id}-${index}`} aria-label={`Убрать карточку ${card.label}`} onClick={() => { savedRef.current = false; setSelected((items) => items.filter((_, itemIndex) => itemIndex !== index)); }}><span className="aac-card-order">{index + 1}</span><AACVisual card={card} compact/><span>{card.label}</span><X size={13}/></button>) : <div className="aac-empty-message"><MessageCircle size={24}/><div><strong>{freeMode ? "Выбери первую карточку" : scenarioEvaluation.hint}</strong><span>{freeMode ? "Короткое сообщение — полноценное сообщение" : "Выбранные карточки появятся здесь"}</span></div></div>}</div>{selected.length > 0 && <p className="aac-remove-hint">Чтобы убрать одну карточку, нажми на неё в строке сообщения.</p>}</section>
+    <section className="aac-composer aac-composer-top"><div className="aac-composer-head"><div><span className="kicker">{freeMode ? "МОЁ СООБЩЕНИЕ" : "ТВОЙ ОТВЕТ"}</span><strong>{sentence || "Ответ пока не выбран"}</strong><small>{composerHint}</small></div><div className="aac-composer-actions"><button className="clear-button" disabled={!selected.length || speechPending} onClick={() => { setSelected([]); setAacNotice(""); savedRef.current = false; }}>Очистить всё</button><button className="speak-button" disabled={speechPending || !selected.length || !composition.valid || (!freeMode && !scenarioEvaluation.complete)} onClick={sayPhrase}><Volume2 size={21}/>{speechPending ? "Озвучиваем…" : freeMode ? "Озвучить сообщение" : scenarioEvaluation.actionLabel}</button></div></div><div className={`aac-sentence ${selected.length ? "filled" : ""}`}>{selected.length ? selected.map((card, index) => <button key={`${card.id}-${index}`} disabled={speechPending} aria-label={`Убрать карточку ${card.label}`} onClick={() => { savedRef.current = false; setSelected((items) => items.filter((_, itemIndex) => itemIndex !== index)); }}><span className="aac-card-order">{index + 1}</span><AACVisual card={card} compact/><span>{card.label}</span><X size={13}/></button>) : <div className="aac-empty-message"><MessageCircle size={24}/><div><strong>{freeMode ? "Выбери первую карточку" : scenarioEvaluation.hint}</strong><span>{freeMode ? "Короткое сообщение — полноценное сообщение" : "Выбранные карточки появятся здесь"}</span></div></div>}</div>{selected.length > 0 && <p className="aac-remove-hint">Чтобы убрать одну карточку, нажми на неё в строке сообщения.</p>}</section>
     {aacNotice && !freeMode && <div className="aac-notice" role="status"><Volume2 size={18}/><span>{aacNotice}</span>{selected[0]?.label === "Перерыв" && <button className="small-button" onClick={onBack}>Сделать паузу</button>}</div>}
     {!freeMode ? <div className="aac-guided-workspace">
       <section className="aac-board guided"><div className="aac-toolbar"><div><span className="kicker">{scenarioEvaluation.complete ? "ШАГ 1 · ОТВЕТ ВЫБРАН" : "ШАГ 1 · ВЫБЕРИ КАРТОЧКУ"}</span><h3>{scenario?.title || "Карточки для задания"}</h3></div><small>{availableCards.length} {availableCards.length === 1 ? "вариант" : availableCards.length < 5 ? "варианта" : "вариантов"}</small></div>
-        <div className="aac-card-grid guided">{visibleCards.map((card) => <div className={`aac-card aac-card-${card.category} ${card.is_core ? "core" : ""}`} key={card.id}><button className="aac-card-main" disabled={selected.some((item) => item.id === card.id)} onClick={() => addCard(card)}><AACVisual card={card}/><strong>{card.label}</strong><small>{card.speech}</small></button></div>)}</div>
+        <div className="aac-card-grid guided">{visibleCards.map((card) => <div className={`aac-card aac-card-${card.category} ${card.is_core ? "core" : ""}`} key={card.id}><button className="aac-card-main" disabled={speechPending || selected.some((item) => item.id === card.id) || !canAddGuidedCard(card)} onClick={() => addCard(card)}><AACVisual card={card}/><strong>{card.label}</strong><small>{card.speech}</small></button></div>)}</div>
       </section>
-      {safetyCards.length > 0 && <section className="aac-guided-safety" aria-label="Важные сообщения"><div><span className="kicker">МОЖНО СКАЗАТЬ В ЛЮБОЙ МОМЕНТ</span><strong>Помощь, перерыв или отказ</strong></div><div>{safetyCards.map((card) => <button key={card.id} onClick={() => sendQuickMessage(card)}><AACVisual card={card} compact/><span>{card.label}</span></button>)}</div></section>}
+      {safetyCards.length > 0 && <section className="aac-guided-safety" aria-label="Важные сообщения"><div><span className="kicker">МОЖНО СКАЗАТЬ В ЛЮБОЙ МОМЕНТ</span><strong>Помощь, перерыв или отказ</strong></div><div>{safetyCards.map((card) => <button key={card.id} disabled={speechPending} onClick={() => sendQuickMessage(card)}><AACVisual card={card} compact/><span>{card.label}</span></button>)}</div></section>}
     </div> : <div className="aac-workspace">
       <aside className="aac-category-panel"><div><span className="kicker">КАТЕГОРИИ</span><h3>Выбери слово или фразу</h3></div><nav className="aac-tabs" aria-label="Категории карточек">{aacCategories.map((item) => { const Icon = item.icon; const count = item.id === "favorites" ? availableCards.filter((card) => card.favorite || card.is_core).length : availableCards.filter((card) => card.category === item.id).length; return <button key={item.id} className={category === item.id ? "active" : ""} aria-pressed={category === item.id} onClick={() => { setCategory(item.id); setCardQuery(""); }}><Icon size={18}/><span>{item.label}</span><small>{count}</small></button>; })}</nav>{history.length > 0 && <div className="aac-history"><span className="kicker">НЕДАВНИЕ</span>{history.slice(0,3).map((item) => <button key={item.id} onClick={() => replayHistory(item.phrase)}><RotateCcw size={14}/><span>{item.phrase}</span></button>)}</div>}</aside>
       <section className="aac-board"><div className="aac-toolbar"><div><span className="kicker">{category === "favorites" ? "БЫСТРЫЙ ДОСТУП" : "КАТЕГОРИЯ"}</span><h3>{activeCategory.label}</h3></div><div className="aac-tools"><label className="aac-search"><Search size={16}/><input value={cardQuery} onChange={(event) => setCardQuery(event.target.value)} placeholder="Найти слово" aria-label="Найти слово"/></label><button className="small-button" onClick={() => document.querySelector<HTMLElement>(".aac-page")?.requestFullscreen?.()}><LayoutDashboard size={15}/> На весь экран</button>{canManage && freeMode && <button className="small-button" onClick={() => setCustomOpen((value) => !value)}><Plus size={15}/> Своя карточка</button>}</div></div>
@@ -1608,7 +1667,7 @@ function ProgressScreen({ childId, dashboard }: { childId?: number; dashboard: D
       <div className="stats-row"><StatCard icon={<TrendingUp/>} value={`${dashboard?.overall ?? data?.overall ?? 0}%`} label="пройдено программы" /><StatCard icon={<Timer/>} value={String(dashboard?.total_minutes || 0)} label="минут практики" /><StatCard icon={<Star/>} value={String(dashboard?.stars || 0)} label="звёзд за игры" /><StatCard icon={<Target/>} value={String(dashboard?.total_sessions ?? data?.total_sessions ?? 0)} label="игровых попыток" /></div>
       <div className="progress-grid">
         <section className="chart-card"><div className="card-heading"><div><span className="kicker">ИГРОВЫЕ ПОПЫТКИ</span><h3>Ответы в заданиях на слух за 7 дней</h3></div></div><div className="chart-area"><div className="chart-lines"><i/><i/><i/><i/></div>{daysWithData ? <><svg viewBox="0 0 700 230" preserveAspectRatio="none" aria-label="График ответов в заданиях на слух">{daysWithData >= 3 && <polyline points={chartPoints("sensory")} className="line blue-line"/>}{chartCoordinates("sensory").map((point, index) => <circle key={`sensory-${index}`} cx={point.x} cy={point.y} r="6" className="chart-point sensory-point"/>)}</svg>{daysWithData < 3 && <div className="chart-sparse-note">Пока есть результаты за {daysWithData === 1 ? "один день" : "два дня"}. Это история конкретной игры, а не оценка понимания речи.</div>}</> : <div className="chart-empty">Завершите задание на слух - здесь появится история ответов</div>}<div className="chart-labels">{chartDays.map((point) => <span key={point.date}>{point.label}</span>)}</div></div><div className="legend"><span><i className="blue-dot"/>Доля правильных выборов в игре</span></div></section>
-        <section className="skills-card"><span className="kicker">ПРАКТИКА ПО НАПРАВЛЕНИЯМ</span><h3>Игровые ответы и участие</h3>{skills.length ? skills.map((skill) => <div className="skill" key={skill.skill}><div><span>{skill.label}<small>{skill.average_game_score !== null ? `среднее по ${skill.sessions} игровым попыткам` : skill.participations ? "отмечено участие без оценки правильности" : "ещё нет попыток"}</small></span><strong>{skill.average_game_score !== null ? `${skill.average_game_score}% в игре` : `${skill.participations} участий`}</strong></div></div>) : <div className="empty-state">Завершите первое игровое задание - здесь появится история.</div>}<div className="insight-note"><ShieldCheck size={19}/><p>Söyle AI может объяснить эти данные простыми словами, но не оценивает развитие речи и не ставит диагноз.</p></div></section>
+        <section className="skills-card"><span className="kicker">ПРАКТИКА ПО НАПРАВЛЕНИЯМ</span><h3>Игровые ответы и участие</h3>{skills.length ? skills.map((skill) => <div className="skill" key={skill.skill}><div><span>{skill.label}<small>{skill.average_game_score !== null ? `среднее по ${skill.sessions} игровым попыткам` : skill.participations ? "отмечено участие без оценки правильности" : "ещё нет попыток"}</small></span><strong>{skill.average_game_score !== null ? `${skill.average_game_score}% в игре` : `${skill.participations} участий`}</strong></div></div>) : <div className="empty-state">Завершите первое игровое задание - здесь появится история.</div>}<div className="insight-note"><ShieldCheck size={19}/><p>Локальный анализ учитывает последние результаты с повышенным весом свежих ответов, но не оценивает развитие речи и не ставит диагноз.</p></div></section>
       </div>
       <P1ResultsSummary childId={childId}/>
       <section className="achievements"><div className="section-heading"><div><span className="kicker">ДОСТИЖЕНИЯ</span><h2>Значки за практику</h2></div></div><div className="badges"><Badge icon={<Star/>} title="Первая пятёрка" text="5 игровых попыток" unlocked={dashboard?.achievements.first_five}/><Badge image="/illustrations/module-listening.png" title="Чуткое ушко" text="5 заданий на понимание" unlocked={dashboard?.achievements.good_listener}/><Badge image="/illustrations/module-phrases.png" title="Мастер фраз" text="5 игр с фразами" unlocked={dashboard?.achievements.phrase_master}/><Badge icon={<Trophy/>} title="Неделя практики" text="7 дней с практикой" unlocked={dashboard?.achievements.week_streak}/></div></section>
@@ -1619,7 +1678,7 @@ function ProgressScreen({ childId, dashboard }: { childId?: number; dashboard: D
 function StatCard({ icon, value, label }: { icon: React.ReactNode; value: string; label: string }) { return <div className="stat-card"><span>{icon}</span><div><strong>{value}</strong><small>{label}</small></div></div>; }
 function Badge({ icon, image, title, text, unlocked = false }: { icon?: React.ReactNode; image?: string; title: string; text: string; unlocked?: boolean }) { return <div className={`badge-card ${unlocked ? "unlocked" : "locked"}`}><span>{unlocked ? (image ? <Image src={image} alt="" width={42} height={42}/> : icon) : <LockKeyhole/>}</span><div><strong>{title}</strong><small>{unlocked ? "Получено" : text}</small></div></div>; }
 
-function AIParentScreen({ child, consent, onOpenConsent }: { child?: Child; consent: ChildConsent | null; onOpenConsent: () => void }) {
+function AIParentScreen({ child }: { child?: Child }) {
   const [question, setQuestion] = useState("");
   const [submittedQuestion, setSubmittedQuestion] = useState("");
   const [answer, setAnswer] = useState<AIAnswer | null>(null);
@@ -1654,30 +1713,30 @@ function AIParentScreen({ child, consent, onOpenConsent }: { child?: Child; cons
   };
   return <div className="page-enter ai-parent-page redesigned-ai">
     <header className="ai-page-heading">
-      <div className="ai-page-title"><span className="ai-mark"><Bot size={24}/></span><div><span className="kicker">SÖYLE AI · ДЛЯ РОДИТЕЛЯ</span><h1>Спокойно разберём ситуацию</h1><p>Короткие безопасные подсказки для домашней практики и AAC. Решение всегда остаётся за вами.</p></div></div>
-      <span className={`ai-status ${consent?.ai_processing ? "ready" : "off"}`}><i/>{consent?.ai_processing ? "AI включён" : "Нужно разрешение"}</span>
+      <div className="ai-page-title"><span className="ai-mark"><Bot size={24}/></span><div><span className="kicker">SÖYLE AI · ЛОКАЛЬНЫЕ ПРАВИЛА</span><h1>Спокойно разберём ситуацию</h1><p>Короткие подсказки выбираются внутри Söyle без внешней AI API. Решение всегда остаётся за вами.</p></div></div>
+      <span className="ai-status ready"><i/>Работает локально</span>
     </header>
 
-    {!consent?.ai_processing ? <section className="ai-consent-callout"><span className="ai-consent-icon"><ShieldCheck size={25}/></span><div><span className="kicker">ПРИВАТНОСТЬ</span><h2>Разрешите AI-подсказки отдельно</h2><p>В OpenAI отправляется вопрос, возраст и обезличенная сводка занятий. Имя ребёнка и точная дата рождения не передаются.</p></div><button className="primary-button" onClick={onOpenConsent}>Открыть разрешения</button></section> : <div className="ai-chat-layout">
+    <div className="ai-chat-layout">
       <aside className="ai-prompt-panel" aria-label="Готовые вопросы">
         <div><span className="kicker">С ЧЕГО НАЧАТЬ</span><h2>Готовые вопросы</h2><p>Выберите тему - вопрос появится в поле, и его можно изменить перед отправкой.</p></div>
         <div className="ai-quick-questions">{quickQuestions.map((item) => <button type="button" key={item.title} onClick={() => chooseQuestion(item.question)}><span><MessageCircle size={17}/></span><strong>{item.title}</strong><ChevronRight size={16}/></button>)}</div>
-        <div className="ai-privacy-note"><ShieldCheck size={18}/><div><strong>Без имени и даты рождения</strong><span>Не пишите в вопросе адрес, контакты и другие лишние личные данные.</span></div></div>
+        <div className="ai-privacy-note"><ShieldCheck size={18}/><div><strong>Без внешней отправки данных</strong><span>Вопрос обрабатывается локальными правилами приложения и не передаётся поставщику модели.</span></div></div>
         <div className="ai-limits"><strong>Что умеет помощник</strong><ul><li>Объясняет результаты простыми словами</li><li>Предлагает короткие безопасные шаги</li><li>Помогает использовать AAC дома</li></ul><small>Не ставит диагноз и не заменяет специалиста.</small></div>
       </aside>
 
-      <section className="ai-conversation" aria-label="Диалог с Söyle AI">
-        <div className="ai-conversation-head"><div><span className="ai-mini-avatar"><Bot size={18}/></span><span><strong>Söyle AI</strong><small>Может ошибаться - проверяйте важные рекомендации</small></span></div>{(answer || submittedQuestion) && <button type="button" className="ai-new-chat" onClick={resetConversation} disabled={loading}><Plus size={16}/>Новый вопрос</button>}</div>
+      <section className="ai-conversation" aria-label="Диалог с локальным помощником Söyle">
+        <div className="ai-conversation-head"><div><span className="ai-mini-avatar"><Bot size={18}/></span><span><strong>Локальный помощник</strong><small>Ответы основаны на заранее заданных безопасных правилах</small></span></div>{(answer || submittedQuestion) && <button type="button" className="ai-new-chat" onClick={resetConversation} disabled={loading}><Plus size={16}/>Новый вопрос</button>}</div>
 
         <div className={`ai-thread ${!answer && !loading ? "empty" : ""}`} aria-live="polite" aria-busy={loading}>
           {!answer && !loading && !submittedQuestion && <div className="ai-welcome"><span><Bot size={28}/></span><h2>Чем помочь сегодня?</h2><p>Опишите одну конкретную ситуацию. Чем проще вопрос, тем понятнее будет ответ.</p><div><ShieldCheck size={16}/> Ответ не является медицинской рекомендацией</div></div>}
 
           {submittedQuestion && <div className="ai-message user-message"><small>Вы</small><p>{submittedQuestion}</p></div>}
 
-          {loading && <div className="ai-message assistant-message ai-thinking" role="status"><div className="ai-message-meta"><span><Bot size={16}/></span><strong>Söyle AI</strong></div><div className="ai-thinking-row"><i/><i/><i/><span>Готовлю короткий ответ…</span></div></div>}
+          {loading && <div className="ai-message assistant-message ai-thinking" role="status"><div className="ai-message-meta"><span><Bot size={16}/></span><strong>Локальный помощник</strong></div><div className="ai-thinking-row"><i/><i/><i/><span>Подбираю подходящее правило…</span></div></div>}
 
           {answer && <article className="ai-message assistant-message ai-answer-card">
-            <div className="ai-message-meta"><span><Bot size={16}/></span><div><strong>Söyle AI</strong><small>{answer.generated_by === "openai" ? `Ответ создан ИИ${answer.model ? ` · ${answer.model}` : ""}` : "Безопасная резервная подсказка"}</small></div></div>
+            <div className="ai-message-meta"><span><Bot size={16}/></span><div><strong>Локальный помощник</strong><small>Ответ по проверяемым правилам · без внешней API</small></div></div>
             {answer.provider_message && <div className="inline-error ai-provider-error" role="status"><ShieldAlert size={17} aria-hidden="true"/><span>{answer.provider_message}</span></div>}
             <p className="ai-answer-text">{answer.answer}</p>
             {answer.suggested_actions.length > 0 && <div className="ai-action-plan"><strong>Что можно попробовать</strong><ol>{answer.suggested_actions.map((item, index) => <li key={item}><span>{index + 1}</span><p>{item}</p></li>)}</ol></div>}
@@ -1689,12 +1748,12 @@ function AIParentScreen({ child, consent, onOpenConsent }: { child?: Child; cons
 
         {error && <div className="inline-error ai-chat-error" role="alert"><CircleAlert size={17}/><span>{error}</span></div>}
         <form className="ai-composer" onSubmit={ask}>
-          <label className="sr-only" htmlFor="ai-parent-question">Вопрос для Söyle AI</label>
+          <label className="sr-only" htmlFor="ai-parent-question">Вопрос для локального помощника Söyle</label>
           <textarea id="ai-parent-question" ref={questionRef} value={question} onChange={(event) => setQuestion(event.target.value)} minLength={3} maxLength={600} rows={2} placeholder="Опишите ситуацию или задайте вопрос…"/>
           <div className="ai-composer-footer"><span>{question.length}/600 · Не указывайте личные данные</span><button className="primary-button" aria-label="Отправить вопрос" disabled={loading || question.trim().length < 3}><ArrowUp size={19}/><span>Отправить</span></button></div>
         </form>
       </section>
-    </div>}
+    </div>
   </div>;
 }
 
@@ -1729,7 +1788,7 @@ function ParentScreen({ child, childProfiles, onSelectChild, onDeleted, dashboar
     if (!child) return;
     setDataMessage("");
     try {
-      const value = await api<ChildConsent>(`/api/children/${child.id}/consent`, { method: "PUT", body: JSON.stringify({ privacy_accepted: consent.privacy_accepted, camera_processing: consent.camera_processing, ai_processing: consent.ai_processing, analytics_processing: consent.analytics_processing }) });
+      const value = await api<ChildConsent>(`/api/children/${child.id}/consent`, { method: "PUT", body: JSON.stringify({ privacy_accepted: consent.privacy_accepted, camera_processing: consent.camera_processing, ai_processing: false, analytics_processing: consent.analytics_processing }) });
       setConsent(value); onConsentChange(value); setDataMessage("Настройки приватности сохранены");
     } catch (cause) { setDataMessage(cause instanceof Error ? cause.message : "Не удалось сохранить настройки"); }
   };
@@ -1747,17 +1806,17 @@ function ParentScreen({ child, childProfiles, onSelectChild, onDeleted, dashboar
       <div className="parent-profile"><div className="avatar large">{child?.name[0] || "Р"}</div><div><span className="kicker">ПРОФИЛЬ РЕБЁНКА</span><h2>{child?.name || "Ребёнок"}, {age} лет</h2><p>{dashboard?.total_sessions || 0} игровых попыток · {dashboard?.total_minutes || 0} минут практики</p></div></div>
       <div className="parent-progress"><div><span>Пройдено программы</span><strong>{dashboard?.overall || 0}%</strong></div><div className="parent-progress-track" aria-label={`Пройдено ${dashboard?.overall || 0}% программы`}><i style={{width:`${Math.min(dashboard?.overall || 0,100)}%`}}/></div><small><Activity size={15}/> {dashboard?.week_sessions || 0} занятий за неделю</small></div>
     </section>
-    <div className="stats-row parent-stats"><StatCard icon={<Check/>} value={String(dashboard?.today_sessions || 0)} label="заданий сегодня"/><StatCard icon={<Gamepad2/>} value={String(dashboard?.week_sessions || 0)} label="заданий за неделю"/><StatCard icon={<Timer/>} value={`${dashboard?.week_minutes || 0} мин`} label="практики за неделю"/><StatCard icon={<Bot/>} value={consent.ai_processing ? "Включён" : "Выключен"} label="Söyle AI"/></div>
+    <div className="stats-row parent-stats"><StatCard icon={<Check/>} value={String(dashboard?.today_sessions || 0)} label="заданий сегодня"/><StatCard icon={<Gamepad2/>} value={String(dashboard?.week_sessions || 0)} label="заданий за неделю"/><StatCard icon={<Timer/>} value={`${dashboard?.week_minutes || 0} мин`} label="практики за неделю"/><StatCard icon={<Bot/>} value="Локально" label="адаптивный анализ"/></div>
     <section className="admin-card family-support-guide"><div className="admin-card-head"><div><span className="kicker">КАК БЫТЬ РЯДОМ</span><h3>Короткая памятка для занятия</h3><p>Цель - дать ребёнку понятный способ ответить, а не добиться ответа любой ценой.</p></div></div><div><article><span>1</span><div><strong>Подготовьте</strong><p>Проверьте звук, уберите лишние раздражители и предложите выбрать длительность.</p></div></article><article><span>2</span><div><strong>Подождите</strong><p>После инструкции оставьте не меньше пяти спокойных секунд на ответ.</p></div></article><article><span>3</span><div><strong>Помогайте по одному шагу</strong><p>Сначала повторите, затем сократите выбор. Не ведите руку ребёнка без согласия.</p></div></article><article className="stop"><Pause size={18}/><div><strong>Остановитесь сразу</strong><p>«Нет», «не хочу», «перерыв», боль, усталость или заметный дискомфорт - достаточная причина завершить действие без ошибки и уговоров.</p></div></article></div></section>
     <FunctionalSkillMap childId={child?.id}/>
     <HomePracticeLibrary childId={child?.id}/>
     <div className="parent-grid">
-      <section className="recommend-card"><div className="recommend-icon"><Bot /></div><span className="kicker">SÖYLE AI</span><h2>Подсказки для родителя</h2><p>AI собирает короткий план только из безопасной библиотеки и объясняет, как поддержать ребёнка без давления.</p><ul><li><Check size={16}/>Не ставит диагноз</li><li><Check size={16}/>Не назначает моторные упражнения</li><li><Check size={16}/>Уважает отказ и AAC-ответ</li></ul></section>
+      <section className="recommend-card"><div className="recommend-icon"><Bot /></div><span className="kicker">ЛОКАЛЬНЫЙ АНАЛИЗ</span><h2>Подсказки для родителя</h2><p>Алгоритм собирает короткий план по последним ответам и проверенным правилам, не отправляя данные во внешнюю AI API.</p><ul><li><Check size={16}/>Учитывает 8 последних результатов</li><li><Check size={16}/>Не повторяет задания до ротации</li><li><Check size={16}/>Уважает отказ и AAC-ответ</li></ul></section>
       <section className="sessions-card"><div className="card-heading"><div><span className="kicker">ПОСЛЕДНИЕ ПОПЫТКИ</span><h3>История игровых заданий</h3></div></div>{dashboard?.recent.length ? dashboard.recent.map((item) => <div className="session-row" key={item.id}><span><Image src={sessionLabels[item.module][0]} alt="" width={42} height={42}/></span><div><strong>{sessionLabels[item.module][1]}</strong><small>{new Date(item.created_at).toLocaleString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}{item.attempts_count ? ` · ${item.correct_answers || 0} из ${item.attempts_count}` : ""}</small></div><b>{item.attempt_status === "technical_error" ? "Техническая ошибка" : item.attempt_status === "participated" ? "Участие отмечено" : item.attempt_status === "refused" ? "Отказ" : item.attempt_status === "break" ? "Перерыв" : `${item.score}% в игре`}</b></div>) : <p>Игровых попыток пока нет.</p>}</section>
     </div>
     <div className="parent-management-grid">
       <section className="admin-card student-access"><div className="admin-card-head"><div><span className="kicker">ДОСТУП РЕБЁНКА</span><h3>{student ? "Изменить ученический вход" : "Создать вход для ученика"}</h3><p>Отдельный безопасный вход без электронной почты.</p></div><span className="period-pill">Только логин и PIN</span></div><form className="student-access-form" onSubmit={saveStudent}><label>Логин ученика<input value={studentForm.username} onChange={(e) => setStudentForm({...studentForm, username:e.target.value})} placeholder="Например, alikhan" pattern="[A-Za-z0-9_.-]+" minLength={3} required/></label><label>Новый PIN<input value={studentForm.pin} onChange={(e) => setStudentForm({...studentForm, pin:e.target.value.replace(/\D/g, "")})} placeholder="4-12 цифр" inputMode="numeric" minLength={4} maxLength={12} required/></label><button className="primary-button">Сохранить доступ</button></form>{accountMessage && <div className="usage-note" role="status"><Check size={18}/><p>{accountMessage}</p></div>}</section>
-      <section className="admin-card privacy-control"><div className="admin-card-head"><div><span className="kicker">ПРИВАТНОСТЬ И ДАННЫЕ</span><h3>Разрешения семьи</h3><p>Каждое необязательное разрешение включается отдельно и может быть отозвано.</p></div></div><div className="consent-options"><label><input type="checkbox" checked={consent.privacy_accepted} onChange={(e)=>setConsent(e.target.checked ? {...consent,privacy_accepted:true} : {...consent,privacy_accepted:false,camera_processing:false,ai_processing:false,analytics_processing:false})}/><span><b>Сохранение программы и результатов</b><small>Нужно для занятий и истории игровых попыток.</small></span></label><label className={!consent.privacy_accepted ? "disabled" : ""}><input type="checkbox" disabled={!consent.privacy_accepted} checked={consent.camera_processing} onChange={(e)=>setConsent({...consent,camera_processing:e.target.checked})}/><span><b>Локальная проверка движения камерой</b><small>Кадры анализируются только в этом браузере для проверки движения. Они не записываются, не отправляются и не используются для распознавания личности.</small></span></label><label className={!consent.privacy_accepted ? "disabled" : ""}><input type="checkbox" disabled={!consent.privacy_accepted} checked={consent.ai_processing} onChange={(e)=>setConsent({...consent,ai_processing:e.target.checked})}/><span><b>Söyle AI через OpenAI</b><small>Передаёт вопрос, возраст и обезличенную сводку - без имени и даты рождения.</small></span></label><label className={!consent.privacy_accepted ? "disabled" : ""}><input type="checkbox" disabled={!consent.privacy_accepted} checked={consent.analytics_processing} onChange={(e)=>setConsent({...consent,analytics_processing:e.target.checked})}/><span><b>Описательная история и AAC</b><small>Сохраняет AAC-фразы и участие без клинических выводов.</small></span></label></div><div className="privacy-actions"><button className="primary-button" onClick={saveConsent}>Сохранить разрешения</button>{consent.updated_at && <small className="consent-updated">Изменено {new Date(consent.updated_at).toLocaleString("ru-RU")}</small>}</div></section>
+      <section className="admin-card privacy-control"><div className="admin-card-head"><div><span className="kicker">ПРИВАТНОСТЬ И ДАННЫЕ</span><h3>Разрешения семьи</h3><p>Каждое необязательное разрешение включается отдельно и может быть отозвано. Адаптивный анализ работает внутри платформы и не отправляет ответы во внешнюю AI API.</p></div></div><div className="consent-options"><label><input type="checkbox" checked={consent.privacy_accepted} onChange={(e)=>setConsent(e.target.checked ? {...consent,privacy_accepted:true} : {...consent,privacy_accepted:false,camera_processing:false,ai_processing:false,analytics_processing:false})}/><span><b>Сохранение программы и результатов</b><small>Нужно для занятий и истории игровых попыток.</small></span></label><label className={!consent.privacy_accepted ? "disabled" : ""}><input type="checkbox" disabled={!consent.privacy_accepted} checked={consent.camera_processing} onChange={(e)=>setConsent({...consent,camera_processing:e.target.checked})}/><span><b>Локальная проверка движения камерой</b><small>Кадры анализируются только в этом браузере для проверки движения. Они не записываются, не отправляются и не используются для распознавания личности.</small></span></label><label className={!consent.privacy_accepted ? "disabled" : ""}><input type="checkbox" disabled={!consent.privacy_accepted} checked={consent.analytics_processing} onChange={(e)=>setConsent({...consent,analytics_processing:e.target.checked})}/><span><b>Описательная история и AAC</b><small>Сохраняет AAC-фразы и участие без клинических выводов.</small></span></label></div><div className="privacy-actions"><button className="primary-button" onClick={saveConsent}>Сохранить разрешения</button>{consent.updated_at && <small className="consent-updated">Изменено {new Date(consent.updated_at).toLocaleString("ru-RU")}</small>}</div></section>
     </div>
     <section className="data-control"><div><ShieldCheck/><span><strong>Данные ребёнка принадлежат семье</strong><small>Экспорт включает профиль, согласия, настройки, занятия, пользовательские AAC-карточки, избранное и историю.</small></span></div><div className="data-actions"><button className="secondary-button" onClick={exportData}>Скачать данные</button><button className="small-button danger-button" onClick={() => setDeleteOpen(!deleteOpen)}>Удалить данные</button></div></section>{deleteOpen && <form className="delete-data-form" onSubmit={deleteData}><div><strong>Удалить профиль и все связанные данные?</strong><p>Действие необратимо. Введите пароль родительского аккаунта для подтверждения.</p></div><input type="password" value={deletePassword} onChange={(e)=>setDeletePassword(e.target.value)} placeholder="Пароль" required/><button className="small-button danger-button">Удалить навсегда</button></form>}{dataMessage && <div className="usage-note"><Check size={18}/><p>{dataMessage}</p></div>}
     <div className="medical-note"><ShieldCheck size={25}/><div><strong>Söyle - помощник, а не врач</strong><p>Платформа не ставит диагноз и не заменяет занятия с логопедом или консультацию специалиста.</p></div></div>
@@ -1888,7 +1947,7 @@ function AdminScreen() {
     <div className="admin-heading"><PageTitle eyebrow="УПРАВЛЕНИЕ ПЛАТФОРМОЙ" title="Админ-панель" subtitle="Пользователи, контент и прозрачный учёт автоматических функций."/><span className={`system-status ${apiHealthy === false ? "blocked" : ""}`}><i/> {apiHealthy === null ? "Проверяем API" : apiHealthy ? "API доступен" : "API недоступен"}</span></div>
     {adminError && <div className="game-error" role="alert"><ShieldAlert size={18}/><span>{adminError}</span><button className="small-button" onClick={() => void load()}>Повторить</button></div>}
     <div className="stats-row admin-stats"><StatCard icon={<Users/>} value={String(stats.users)} label="аккаунтов"/><StatCard icon={<UserRound/>} value={String(stats.children)} label="профилей детей"/><StatCard icon={<Target/>} value={String(stats.sessions)} label="занятий пройдено"/><StatCard icon={<Gamepad2/>} value={String(stats.exercises)} label="активных заданий"/></div>
-    <div className="admin-tabs" role="tablist" aria-label="Разделы админ-панели"><button type="button" role="tab" aria-selected={tab === "users"} className={tab === "users" ? "active" : ""} onClick={() => setTab("users")}><Users size={17}/>Пользователи</button><button type="button" role="tab" aria-selected={tab === "exercises"} className={tab === "exercises" ? "active" : ""} onClick={() => setTab("exercises")}><Gamepad2 size={17}/>Задания</button><button type="button" role="tab" aria-selected={tab === "usage"} className={tab === "usage" ? "active" : ""} onClick={() => { setTab("usage"); void loadUsage(usageDays); }}><BarChart3 size={17}/>AI и токены</button><button type="button" role="tab" aria-selected={tab === "audit"} className={tab === "audit" ? "active" : ""} onClick={() => setTab("audit")}><ShieldCheck size={17}/>Журнал</button></div>
+    <div className="admin-tabs" role="tablist" aria-label="Разделы админ-панели"><button type="button" role="tab" aria-selected={tab === "users"} className={tab === "users" ? "active" : ""} onClick={() => setTab("users")}><Users size={17}/>Пользователи</button><button type="button" role="tab" aria-selected={tab === "exercises"} className={tab === "exercises" ? "active" : ""} onClick={() => setTab("exercises")}><Gamepad2 size={17}/>Задания</button><button type="button" role="tab" aria-selected={tab === "usage"} className={tab === "usage" ? "active" : ""} onClick={() => { setTab("usage"); void loadUsage(usageDays); }}><BarChart3 size={17}/>Архив API</button><button type="button" role="tab" aria-selected={tab === "audit"} className={tab === "audit" ? "active" : ""} onClick={() => setTab("audit")}><ShieldCheck size={17}/>Журнал</button></div>
     {tab === "exercises" && reviewWorkspace && <ContentReviewWorkspace data={reviewWorkspace} onClose={() => setReviewWorkspace(null)} onSpeak={(text, rate) => speak(text, rate, true)} onReview={reviewContent}/>}
     {tab === "exercises" && homePreview && <HomeActivityReviewPreview activity={homePreview} onClose={() => setHomePreview(null)}/>}
     {tab === "users" && <section className="admin-card"><div className="admin-card-head"><div><span className="kicker">ДОСТУП И РОЛИ</span><h3>Взрослые аккаунты</h3><p>Роль определяет доступ к семейным и административным разделам.</p></div></div><div className="admin-table-wrap"><table className="account-table"><caption className="sr-only">Взрослые аккаунты и их права доступа</caption><thead><tr><th scope="col">Пользователь</th><th scope="col">Роль</th><th scope="col">Статус</th><th scope="col">Действие</th></tr></thead><tbody>{users.map((item) => <tr key={item.id}><td data-label="Пользователь"><b>{item.full_name}</b><small>{item.email}</small></td><td data-label="Роль"><select aria-label={`Роль пользователя ${item.full_name}`} value={item.role} onChange={(e) => changeRole(item.id, e.target.value as Exclude<Role,"student">)}><option value="parent">Родитель</option><option value="admin">Администратор</option></select></td><td data-label="Статус"><i className={`status ${item.is_active ? "active" : "blocked"}`}>{item.is_active ? "Активен" : "Отключён"}</i></td><td data-label="Действие"><button type="button" className="small-button" onClick={() => toggleUser(item)}>{item.is_active ? "Отключить" : "Включить"}</button></td></tr>)}</tbody></table></div><div className="student-accounts"><div className="student-accounts-head"><span className="kicker">УЧЕНИЧЕСКИЕ АККАУНТЫ</span><small>{students.length} всего</small></div><div className="student-account-grid">{students.map((item) => <article key={item.id}><span className="student-icon"><Backpack/></span><div><strong>{item.child_name}</strong><small>Логин: {item.username}</small><small>Родитель: {item.parent_name}</small></div><i className="status active">Ученик</i></article>)}</div></div></section>}
@@ -1901,12 +1960,12 @@ function AdminScreen() {
     {tab === "exercises" && <section className="admin-card home-draft-review"><div className="admin-card-head"><div><span className="kicker">БЫТОВЫЕ ИГРЫ · DRAFT</span><h3>Контент на методической проверке</h3><p>Родителю видны только названия. Здесь можно открыть точный preview будущей инструкции.</p></div><span className="period-pill">{homeDrafts.length} черновиков</span></div><div>{homeDrafts.map((item) => <article key={item.id}><div><strong>{item.title}</strong><p>{item.objective}</p></div><span className="status blocked">DRAFT · pending</span><button type="button" className="small-button" onClick={() => setHomePreview(item)}>Открыть preview</button></article>)}</div></section>}
     {tab === "usage" && <section className="usage-dashboard" aria-busy={usageLoading}>
       <div className="usage-toolbar">
-        <div><span className="kicker">OPENAI API</span><h2>Расход токенов</h2><p>Сколько токенов использовано, когда был запрос и кто его запустил.</p></div>
+        <div><span className="kicker">ВНЕШНЯЯ API ОТКЛЮЧЕНА</span><h2>Архив прежних запросов</h2><p>Новые планы и подсказки работают локально. Здесь остаётся только исторический технический журнал.</p></div>
         <div className="usage-periods" aria-label="Период отчёта">{([7, 30, 90] as const).map((days) => <button key={days} className={usageDays === days ? "active" : ""} aria-pressed={usageDays === days} onClick={() => { setUsageDays(days); void loadUsage(days); }}>{days} дней</button>)}</div>
       </div>
       {usageLoading ? <div className="admin-card usage-loading" role="status"><span className="sr-only">Загрузка статистики токенов</span>{[1,2,3,4].map((item) => <i key={item}/>)}</div> : usageError ? <div className="admin-card usage-error" role="alert"><CircleAlert/><div><strong>Не удалось загрузить статистику</strong><p>{usageError}</p></div><button className="secondary-button" onClick={() => void loadUsage(usageDays)}><RotateCcw size={16}/>Повторить</button></div> : <>
         <div className="usage-cards">
-          <StatCard icon={<Bot/>} value={formatTokens(usage.requests)} label="успешных AI-запросов"/>
+          <StatCard icon={<Bot/>} value={formatTokens(usage.requests)} label="старых внешних запросов"/>
           <StatCard icon={<BarChart3/>} value={formatTokens(usage.total_tokens)} label="токенов всего"/>
           <StatCard icon={<ArrowUp/>} value={formatTokens(usage.input_tokens)} label="входных токенов"/>
           <StatCard icon={<ArrowDown/>} value={formatTokens(usage.output_tokens)} label="выходных токенов"/>
@@ -1922,7 +1981,7 @@ function AdminScreen() {
                 return <span className="usage-chart-day" key={item.date} title={`${label}: ${formatTokens(item.total_tokens)} токенов, ${item.requests} запросов`}><i style={{height: `${height}%`}}/><small>{label}</small></span>;
               })}</div>
               <figcaption>Высота столбца - общее число входных и выходных токенов за день.</figcaption>
-            </figure> : <div className="usage-empty"><BarChart3/><strong>За этот период запросов не было</strong><p>Статистика появится после успешного ответа Söyle AI через OpenAI.</p></div>}
+            </figure> : <div className="usage-empty"><BarChart3/><strong>Внешних запросов нет</strong><p>Локальный анализ не расходует токены и не обращается к поставщику модели.</p></div>}
           </section>
           <section className="admin-card usage-breakdown-card">
             <div className="admin-card-head"><div><span className="kicker">НА ЧТО УШЛИ ТОКЕНЫ</span><h3>По функциям</h3></div></div>
@@ -1930,8 +1989,8 @@ function AdminScreen() {
           </section>
         </div>
         <section className="admin-card usage-history-card">
-          <div className="admin-card-head"><div><span className="kicker">КТО И КОГДА</span><h3>Последние AI-запросы</h3><p>Показаны последние {usage.recent.length} событий за выбранный период.</p></div><button className="small-button" onClick={() => void loadUsage(usageDays)} aria-label="Обновить расход токенов"><RotateCcw size={15}/>Обновить</button></div>
-          {usage.recent.length ? <div className="usage-history-wrap"><table className="usage-history-table"><caption className="sr-only">История расхода токенов OpenAI по пользователям и времени</caption><thead><tr><th scope="col">Когда</th><th scope="col">Кто запустил</th><th scope="col">Профиль ребёнка</th><th scope="col">Функция</th><th scope="col">Токены</th><th scope="col">Стоимость</th></tr></thead><tbody>{usage.recent.map((event) => <tr key={event.id}>
+          <div className="admin-card-head"><div><span className="kicker">ИСТОРИЧЕСКИЕ ДАННЫЕ</span><h3>Прежние внешние запросы</h3><p>Показаны последние {usage.recent.length} сохранённых событий за выбранный период.</p></div><button className="small-button" onClick={() => void loadUsage(usageDays)} aria-label="Обновить архив"><RotateCcw size={15}/>Обновить</button></div>
+          {usage.recent.length ? <div className="usage-history-wrap"><table className="usage-history-table"><caption className="sr-only">Архив прежних внешних запросов по пользователям и времени</caption><thead><tr><th scope="col">Когда</th><th scope="col">Кто запустил</th><th scope="col">Профиль ребёнка</th><th scope="col">Функция</th><th scope="col">Токены</th><th scope="col">Стоимость</th></tr></thead><tbody>{usage.recent.map((event) => <tr key={event.id}>
             <td data-label="Когда"><time dateTime={event.created_at}>{new Date(event.created_at).toLocaleString("ru-RU", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}</time></td>
             <td data-label="Кто запустил"><strong>{event.actor_name}</strong><small>{event.actor_username ? `@${event.actor_username} · ` : ""}{actorRoleLabel(event.actor_role)}</small></td>
             <td data-label="Профиль ребёнка">{event.child_name || "Профиль удалён"}</td>

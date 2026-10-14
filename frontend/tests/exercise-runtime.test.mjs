@@ -54,6 +54,22 @@ test("the correct answer never repeats the same visual position in consecutive r
   }
 });
 
+test("targets do not repeat until the available stimulus set is exhausted", () => {
+  const random = seededRandom(20261014);
+  const usedTargets = [];
+  let previousCorrectIndex;
+  for (let index = 0; index < stimuli.length; index += 1) {
+    const round = createChoiceRound(stimuli, 4, usedTargets, random, previousCorrectIndex);
+    assert.ok(!usedTargets.includes(round.targetKey));
+    usedTargets.push(round.targetKey);
+    previousCorrectIndex = round.optionKeys.indexOf(round.targetKey);
+  }
+  assert.equal(new Set(usedTargets).size, stimuli.length);
+
+  const nextCycle = createChoiceRound(stimuli, 4, usedTargets, random, previousCorrectIndex);
+  assert.ok(stimuli.some((item) => item.key === nextCycle.targetKey));
+});
+
 test("difficulty keeps option count, round count and attempt limit separate", () => {
   const levels = [
     { level: 1, option_count: 2, rounds: 4, max_attempts: 3 },

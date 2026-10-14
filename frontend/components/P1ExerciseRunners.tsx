@@ -95,6 +95,7 @@ function ChoicePreview({ version, onSpeak }: { version: DraftExerciseVersion; on
   const [attempts, setAttempts] = useState(0);
   const [feedback, setFeedback] = useState("");
   const [audioReady, setAudioReady] = useState(false);
+  const usedTargetKeysRef = useRef<string[]>([]);
 
   const speakTarget = async (round = roundData) => {
     if (!round) return;
@@ -103,8 +104,10 @@ function ChoicePreview({ version, onSpeak }: { version: DraftExerciseVersion; on
     setAudioReady(played);
     if (!played) setFeedback("Озвучка недоступна. В предпросмотре результат не оценивается.");
   };
-  const begin = async (previous?: string, previousCorrectIndex?: number) => {
-    const next = createChoiceRound(stimuli, config.option_count, previous, Math.random, previousCorrectIndex);
+  const begin = async (previousCorrectIndex?: number) => {
+    if (usedTargetKeysRef.current.length >= stimuli.length) usedTargetKeysRef.current = [];
+    const next = createChoiceRound(stimuli, config.option_count, usedTargetKeysRef.current, Math.random, previousCorrectIndex);
+    usedTargetKeysRef.current.push(next.targetKey);
     setRoundData(next); setVisibleKeys(next.optionKeys); setAttempts(0); setFeedback(""); setPhase("playing");
     await speakTarget(next);
   };
@@ -134,9 +137,10 @@ function ChoicePreview({ version, onSpeak }: { version: DraftExerciseVersion; on
     if (!roundData) return;
     if (roundNumber >= config.rounds) { setPhase("done"); return; }
     setRoundNumber((value) => value + 1);
-    void begin(roundData.targetKey, roundData.optionKeys.indexOf(roundData.targetKey));
+    void begin(roundData.optionKeys.indexOf(roundData.targetKey));
   };
   const resetForLevel = (nextLevel: 1 | 2 | 3) => {
+    usedTargetKeysRef.current = [];
     setLevel(nextLevel); setPhase("intro"); setRoundNumber(1); setRoundData(null); setFeedback(""); setAudioReady(false);
   };
 

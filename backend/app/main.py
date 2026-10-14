@@ -18,7 +18,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from .database import connect, init_db, now_iso
 from .schemas import AACCardCreate, AACComposeRequest, AACFavoriteUpdate, AACPhraseCreate, ActiveUpdate, AdaptivePlanRequest, AIAskRequest, AIPlanRequest, AssignedExerciseCreate, ChildCreate, ChildDeleteRequest, ChildGoalCreate, ConsentUpdate, ContentReviewCreate, ExerciseDraftCreate, GoalStatusUpdate, HomeActivityObservationCreate, HomeworkCreate, HomeworkResultUpdate, LearningSessionCreate, LoginRequest, PracticeGoalCreate, PracticeGoalObservationCreate, PracticeGoalUpdate, PracticePreferencesUpdate, RecommendationReview, RegisterRequest, RoleUpdate, SessionCreate, SkillObservationUpdate, SpecialistAssignmentCreate, SpecialistRecommendationCreate, StudentAccountCreate, StudentLoginRequest, TTSRequest, UserSettingsUpdate
 from .aac_grammar import compose_aac_phrase
-from .ai_assistant import MODEL as OPENAI_MODEL, answer_parent, generate_plan, provider_error_details
+from .ai_assistant import DISCLAIMER as LOCAL_ASSISTANT_DISCLAIMER, answer_parent
 from .exercise_engine import create_draft, preview_version, publish_version, published_exercise, published_exercise_rows, review_capabilities, review_workspace, submit_content_review
 from .family_practice import descriptive_results, home_library, save_home_observation, skill_map, upsert_skill_observation
 from .adaptive_planner import create_plan as create_adaptive_plan, get_plan as get_adaptive_plan, plan_history as adaptive_plan_history
@@ -159,13 +159,6 @@ def ensure_analytics_consent(child_id: int) -> dict:
     return consent
 
 
-def ensure_ai_consent(child_id: int) -> dict:
-    consent = ensure_privacy_consent(child_id)
-    if not consent["ai_processing"]:
-        raise HTTPException(403, "Сначала родителю нужно отдельно разрешить обработку запроса с помощью Söyle AI")
-    return consent
-
-
 def ensure_camera_processing_consent(child_id: int) -> dict:
     consent = ensure_privacy_consent(child_id)
     if not consent["camera_processing"]:
@@ -261,40 +254,6 @@ def learning_session_payload(db, session_row) -> dict:
         ],
         "results": [dict(row) for row in result_rows],
     }
-
-
-def ai_eligible_exercise_rows(db) -> list[dict]:
-    return published_exercise_rows(db)
-
-
-def enforce_ai_limit(user: dict) -> None:
-    cutoff = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
-    actor_type = "student" if user.get("role") == "student" else "user"
-    try:
-        configured_limit = int(os.getenv("SOYLE_AI_REQUESTS_PER_HOUR", "30"))
-    except ValueError:
-        configured_limit = 30
-    limit = max(1, min(configured_limit, 120))
-    with connect() as db:
-        count = db.execute(
-            "SELECT COUNT(*) count FROM usage_events WHERE actor_type=? AND user_id=? AND provider='openai' AND created_at>=?",
-            (actor_type, user["id"], cutoff),
-        ).fetchone()["count"]
-    if count >= limit:
-        raise HTTPException(429, "Лимит Söyle AI на этот час исчерпан. Попробуйте позже")
-
-
-def record_ai_usage(user: dict, child_id: int, feature: str, usage: dict) -> None:
-    input_tokens = int(usage.get("input_tokens", 0))
-    output_tokens = int(usage.get("output_tokens", 0))
-    actor_type = "student" if user.get("role") == "student" else "user"
-    cost = (input_tokens * 0.15 + output_tokens * 0.60) / 1_000_000 if OPENAI_MODEL == "gpt-4o-mini" else 0
-    with connect() as db:
-        db.execute(
-            """INSERT INTO usage_events(user_id,actor_type,child_id,provider,model,feature,input_tokens,output_tokens,estimated_cost_usd,created_at)
-               VALUES(?,?,?,?,?,?,?,?,?,?)""",
-            (user["id"], actor_type, child_id, "openai", OPENAI_MODEL, feature, input_tokens, output_tokens, cost, now_iso()),
-        )
 
 
 def calculate_game_score(correct_answers: int, attempts_count: int) -> int:
@@ -417,7 +376,7 @@ def create_module_notification(db, child_id: int, exercise_id: int) -> None:
         (
             child["parent_id"], child_id, f"module_complete:{child_id}:{unit['id']}",
             f"{unit['label']}: {unit['title']} завершён",
-            f"{child['name']}: модуль отмечен пройденным. Söyle AI может предложить следующий короткий шаг для дома.",
+            f"{child['name']}: модуль отмечен пройденным. Локальный анализ предложит следующий короткий шаг по истории ответов.",
             json.dumps({"unit_id": unit["id"], "unit_label": unit["label"], "unit_title": unit["title"]}, ensure_ascii=False),
             now_iso(),
         ),
@@ -1055,6 +1014,18 @@ def session_plan(child_id: int, minutes: int = Query(default=5), user: dict = De
     child = ensure_child_access(child_id, user)
     with connect() as db:
         all_exercises = active_exercise_rows(db)
+        history_rows = db.execute(
+            """SELECT exercise_id FROM sessions
+               WHERE child_id=? AND exercise_id IS NOT NULL AND measurement_version>=1
+               ORDER BY id DESC""",
+            (child_id,),
+        ).fetchall()
+    usage_count: dict[int, int] = defaultdict(int)
+    last_used_rank: dict[int, int] = {}
+    for rank, row in enumerate(history_rows):
+        exercise_id = row["exercise_id"]
+        usage_count[exercise_id] += 1
+        last_used_rank.setdefault(exercise_id, rank)
     # Keep transitions low: each exercise is a complete activity, not a single tap.
     target_count = {3: 2, 5: 3, 10: 5}[minutes]
     selected: list[dict] = []
@@ -1062,11 +1033,17 @@ def session_plan(child_id: int, minutes: int = Query(default=5), user: dict = De
     candidates = [dict(row) for row in all_exercises if row["id"] not in seen]
     while candidates and len(selected) < target_count:
         module_counts = {name: sum(1 for item in selected if item["module"] == name) for name in ("motor", "sensory", "mixed")}
-        candidates.sort(key=lambda item: (module_counts[item["module"]], item["difficulty"], item["id"]))
+        candidates.sort(key=lambda item: (
+            usage_count[item["id"]],
+            module_counts[item["module"]],
+            -last_used_rank.get(item["id"], 10**9),
+            item["difficulty"],
+            item["id"],
+        ))
         item = candidates.pop(0)
         selected.append(item)
         seen.add(item["id"])
-    return {"child": child, "focus_skill": None, "selection_method": "safe_local_variety", "estimated_minutes": minutes, "exercises": selected}
+    return {"child": child, "focus_skill": None, "selection_method": "local_least_used_rotation", "estimated_minutes": minutes, "exercises": selected}
 
 
 @app.post("/api/adaptive-plans/{child_id}", status_code=201)
@@ -1207,125 +1184,34 @@ def get_active_learning_session(child_id: int, user: dict = Depends(get_current_
 
 @app.post("/api/ai/plan/{child_id}")
 def ai_plan(child_id: int, payload: AIPlanRequest, user: dict = Depends(get_current_user)) -> dict:
-    child = ensure_child_access(child_id, user)
-    fallback = session_plan(child_id, payload.target_minutes, user)
-    fallback.update({
+    ensure_child_access(child_id, user)
+    plan = session_plan(child_id, payload.target_minutes, user)
+    plan.update({
         "title": "Спокойная практика на сегодня",
-        "reason": "Задания чередуют понимание речи и доступную коммуникацию без моторных упражнений.",
+        "reason": "Задания выбраны локальными правилами из проверенной библиотеки без обращения к внешней модели.",
         "parent_tip": "Предлагайте выбор, ждите ответ не меньше пяти секунд и спокойно завершайте занятие после отказа.",
-        "generated_by": "local_fallback",
+        "generated_by": "local_rules",
         "model": None,
         "needs_ai_consent": False,
-        "disclaimer": "Söyle AI не ставит диагноз и не заменяет врача или логопеда.",
+        "disclaimer": LOCAL_ASSISTANT_DISCLAIMER,
     })
-    consent = consent_record(child_id)
-    if not consent["privacy_accepted"] or not consent["ai_processing"]:
-        fallback["needs_ai_consent"] = True
-        return fallback
-    enforce_ai_limit(user)
-    with connect() as db:
-        # Keep prompts predictable and inexpensive as the exercise library grows.
-        allowed = ai_eligible_exercise_rows(db)[:40]
-    target_count = {3: 2, 5: 3, 10: 5}[payload.target_minutes]
-    born = date.fromisoformat(child["birth_date"])
-    age_years = max(0, date.today().year - born.year - ((date.today().month, date.today().day) < (born.month, born.day)))
-    cutoff = (datetime.now(timezone.utc) - timedelta(days=14)).isoformat()
-    with connect() as db:
-        recent = db.execute(
-            """SELECT COUNT(*) attempts,
-                      SUM(CASE WHEN attempt_status='refused' THEN 1 ELSE 0 END) refusals,
-                      SUM(CASE WHEN attempt_status='break' THEN 1 ELSE 0 END) breaks,
-                      SUM(CASE WHEN module='sensory' THEN 1 ELSE 0 END) sensory_attempts,
-                      SUM(CASE WHEN module='mixed' THEN 1 ELSE 0 END) communication_attempts
-               FROM sessions WHERE child_id=? AND created_at>=?""",
-            (child_id, cutoff),
-        ).fetchone()
-    context = {
-        "target_minutes": payload.target_minutes,
-        "target_count": target_count,
-        "child_age_years": age_years,
-        "recent_14_days": dict(recent),
-        "allowed_exercises": [
-            {"id": item["id"], "title": item["title"], "instruction": item["instruction"], "module": item["module"], "skill": item["skill"]}
-            for item in allowed
-        ],
-    }
-    try:
-        generated = generate_plan(context)
-        if generated is None:
-            fallback.update({
-                "provider_error": "not_configured",
-                "provider_message": "OPENAI_API_KEY не настроен на сервере. Использован безопасный локальный план.",
-            })
-            return fallback
-        result, usage = generated
-        allowed_by_id = {item["id"]: item for item in allowed}
-        selected_ids = []
-        for item_id in result.get("exercise_ids", []):
-            if item_id in allowed_by_id and item_id not in selected_ids:
-                selected_ids.append(item_id)
-        for item in allowed:
-            if len(selected_ids) >= target_count:
-                break
-            if item["id"] not in selected_ids:
-                selected_ids.append(item["id"])
-        selected_ids = selected_ids[:target_count]
-        record_ai_usage(user, child_id, "home_practice_plan", usage)
-        audit(user, "ai.plan", "child", child_id, {"model": OPENAI_MODEL, "target_minutes": payload.target_minutes})
-        return {
-            **fallback,
-            "title": str(result.get("title") or fallback["title"])[:120],
-            "reason": str(result.get("reason") or fallback["reason"])[:500],
-            "parent_tip": str(result.get("parent_tip") or fallback["parent_tip"])[:500],
-            "exercises": [allowed_by_id[item_id] for item_id in selected_ids],
-            "generated_by": "openai",
-            "model": OPENAI_MODEL,
-        }
-    except Exception as error:
-        fallback.update(provider_error_details(error))
-        return fallback
+    return plan
 
 
 @app.post("/api/ai/ask/{child_id}")
 def ai_ask(child_id: int, payload: AIAskRequest, user: dict = Depends(require_roles("parent"))) -> dict:
-    child = ensure_child_access(child_id, user)
-    ensure_ai_consent(child_id)
-    enforce_ai_limit(user)
-    born = date.fromisoformat(child["birth_date"])
-    age_years = max(0, date.today().year - born.year - ((date.today().month, date.today().day) < (born.month, born.day)))
-    fallback = {
-        "answer": "Söyle AI пока не подключён. Для безопасной домашней практики предложите ребёнку простой выбор из двух вариантов, дайте время ответить и примите жест, карточку или отказ как сообщение.",
-        "suggested_actions": ["Уберите лишние отвлекающие предметы", "Покажите два понятных варианта", "Подождите ответ не меньше пяти секунд"],
-        "needs_professional_help": False,
-        "safety_note": "При боли, проблемах с дыханием или глотанием, внезапной потере навыков обратитесь к врачу.",
-        "generated_by": "local_fallback",
+    ensure_child_access(child_id, user)
+    result = answer_parent({"parent_question": payload.question})
+    audit(user, "local_assistant.ask", "child", child_id, {"rules": "parent-guidance-1"})
+    return {
+        "answer": str(result["answer"])[:1600],
+        "suggested_actions": [str(item)[:240] for item in result["suggested_actions"][:3]],
+        "needs_professional_help": bool(result["needs_professional_help"]),
+        "safety_note": str(result["safety_note"])[:600],
+        "generated_by": "local_rules",
         "model": None,
-        "disclaimer": "Söyle AI не ставит диагноз и не заменяет врача или логопеда.",
+        "disclaimer": LOCAL_ASSISTANT_DISCLAIMER,
     }
-    try:
-        generated = answer_parent({"child_age_years": age_years, "parent_question": payload.question})
-        if generated is None:
-            fallback.update({
-                "provider_error": "not_configured",
-                "provider_message": "OPENAI_API_KEY не настроен на сервере. Использована безопасная резервная подсказка.",
-            })
-            return fallback
-        result, usage = generated
-        actions = [str(item)[:240] for item in result.get("suggested_actions", [])[:3]]
-        record_ai_usage(user, child_id, "parent_support_answer", usage)
-        audit(user, "ai.ask", "child", child_id, {"model": OPENAI_MODEL})
-        return {
-            "answer": str(result.get("answer") or fallback["answer"])[:1600],
-            "suggested_actions": actions,
-            "needs_professional_help": bool(result.get("needs_professional_help", False)),
-            "safety_note": str(result.get("safety_note") or fallback["safety_note"])[:600],
-            "generated_by": "openai",
-            "model": OPENAI_MODEL,
-            "disclaimer": fallback["disclaimer"],
-        }
-    except Exception as error:
-        fallback.update(provider_error_details(error))
-        return fallback
 
 
 @app.get("/api/specialist/children/{child_id}", include_in_schema=False)
@@ -1890,7 +1776,7 @@ def admin_usage(
         "breakdown": [dict(row) for row in breakdown],
         "daily": daily,
         "recent": [dict(row) for row in recent],
-        "note": "Учитываются только успешные запросы к OpenAI. Локальные резервные ответы и функции без AI токены не расходуют.",
+        "note": "Внешняя модель отключена. Раздел хранит только прежние события; локальный анализ не расходует токены и не отправляет данные поставщику AI.",
     }
 
 

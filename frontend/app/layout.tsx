@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Söyle - общение и практика",
-  description: "Поддерживаемая коммуникация, игровые задания и короткие планы с Söyle AI",
+  description: "Поддерживаемая коммуникация, игровые задания и локальные адаптивные планы Söyle",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

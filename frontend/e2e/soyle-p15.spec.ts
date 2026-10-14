@@ -6,6 +6,7 @@ const BROWSER_API_URL = "http://localhost:8010";
 
 async function prepareSpeech(page: Page) {
   await page.addInitScript(() => {
+    const speechState = window as typeof window & { __soyleHoldSpeech?: boolean; __soyleFinishSpeech?: () => void };
     class TestUtterance {
       text: string;
       lang = "";
@@ -19,7 +20,20 @@ async function prepareSpeech(page: Page) {
     }
     Object.defineProperty(window, "SpeechSynthesisUtterance", { value: TestUtterance, configurable: true });
     Object.defineProperty(window, "speechSynthesis", {
-      value: { cancel() {}, getVoices() { return []; }, speak(utterance: TestUtterance) { setTimeout(() => utterance.onend?.(), 0); } },
+      value: {
+        cancel() {},
+        getVoices() { return []; },
+        speak(utterance: TestUtterance) {
+          if (speechState.__soyleHoldSpeech) {
+            speechState.__soyleFinishSpeech = () => {
+              speechState.__soyleFinishSpeech = undefined;
+              utterance.onend?.();
+            };
+          } else {
+            setTimeout(() => utterance.onend?.(), 0);
+          }
+        },
+      },
       configurable: true,
     });
   });
@@ -81,6 +95,36 @@ test("break and refusal are accepted without exposing a draft", async ({ page },
   await page.getByRole("button", { name: /Игрушки/ }).first().click();
   await page.getByRole("button", { name: "Не хочу" }).click();
   await expect(page.getByRole("heading", { name: "Сообщение принято" })).toBeVisible();
+});
+
+test("I see message can be spoken and guided answers cannot accumulate duplicates", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop", "Полный AAC-сценарий выполняется один раз; модульные тесты покрывают правила последовательностей.");
+  await login(page, "alikhan", "1234", true);
+  await page.getByRole("button", { name: "Занятия", exact: true }).click();
+  await page.getByRole("button", { name: /Я вижу/ }).click();
+
+  const card = (label: string) => page.locator(".aac-card-main").filter({ has: page.locator("strong", { hasText: new RegExp(`^${label}$`) }) });
+  await card("Я").click();
+  await card("Вижу").click();
+  await card("Мама").click();
+
+  await expect(page.getByText("Я вижу маму", { exact: true })).toBeVisible();
+  const speakButton = page.locator(".speak-button");
+  let completionRequests = 0;
+  page.on("request", (request) => {
+    if (new URL(request.url()).pathname === "/api/sessions" && request.method() === "POST") completionRequests += 1;
+  });
+  await expect(speakButton).toBeEnabled();
+  await expect(card("Папа")).toBeDisabled();
+  await page.evaluate(() => { (window as typeof window & { __soyleHoldSpeech?: boolean }).__soyleHoldSpeech = true; });
+  await speakButton.click();
+  await expect(speakButton).toBeDisabled();
+  await expect(speakButton).toContainText("Озвучиваем…");
+  await expect(page.getByRole("heading", { name: "Готово!" })).toHaveCount(0);
+  expect(completionRequests).toBe(0);
+  await page.evaluate(() => { (window as typeof window & { __soyleFinishSpeech?: () => void }).__soyleFinishSpeech?.(); });
+  await expect(page.getByRole("heading", { name: "Готово!" })).toBeVisible();
+  expect(completionRequests).toBe(1);
 });
 
 test("parent creates a practical goal and sees an explained approved-only plan", async ({ page }, testInfo) => {

@@ -157,7 +157,8 @@ test("P2.1 goals use a deterministic review-gated planner instead of AI", async 
   ]);
   assert.match(app, /\/api\/adaptive-plans\/\$\{child\.id\}/);
   assert.doesNotMatch(app, /api<AIPlan>\(`\/api\/ai\/plan/);
-  assert.match(goals, /Правила, не AI/);
+  assert.match(goals, /Локальная адаптация/);
+  assert.match(goals, /Без внешней AI API/);
   assert.match(goals, /Домашние практические цели/);
   assert.match(goals, /Черновики не используются/);
   assert.match(goals, /Почему предложено/);
@@ -165,6 +166,18 @@ test("P2.1 goals use a deterministic review-gated planner instead of AI", async 
   assert.match(api, /goal_version: number/);
   assert.match(api, /difficulty_params: AdaptiveDifficultyParams/);
   assert.match(api, /assignment_reason: AdaptiveAssignmentReason/);
+});
+
+test("adaptive analysis has no external model SDK or API key dependency", async () => {
+  const [requirements, helper, launcher] = await Promise.all([
+    readFile(new URL("../../backend/requirements.txt", import.meta.url), "utf8"),
+    readFile(new URL("../../backend/app/ai_assistant.py", import.meta.url), "utf8"),
+    readFile(new URL("../../start.sh", import.meta.url), "utf8"),
+  ]);
+  assert.doesNotMatch(requirements, /^openai\b/im);
+  assert.doesNotMatch(helper, /OpenAI|OPENAI_API_KEY|responses\.create|from openai/i);
+  assert.doesNotMatch(launcher, /OPENAI_API_KEY|SOYLE_OPENAI_MODEL|import uvicorn, openai/);
+  assert.match(helper, /local rule-based helper/i);
 });
 
 test("adaptive runner applies the planned option count instead of a numeric label alone", async () => {

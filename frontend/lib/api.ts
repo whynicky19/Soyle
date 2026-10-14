@@ -82,7 +82,7 @@ export type AIPlan = {
   parent_tip: string;
   estimated_minutes: 3 | 5 | 10;
   exercises: Exercise[];
-  generated_by: "openai" | "local_fallback";
+  generated_by: "local_rules";
   model: string | null;
   needs_ai_consent: boolean;
   disclaimer: string;
@@ -95,7 +95,7 @@ export type AIAnswer = {
   suggested_actions: string[];
   needs_professional_help: boolean;
   safety_note: string;
-  generated_by: "openai" | "local_fallback";
+  generated_by: "local_rules";
   model: string | null;
   disclaimer: string;
   provider_error?: string;
@@ -159,6 +159,7 @@ export type Exercise = {
       success_hint?: string;
       action_label?: string;
       completion?: { type: "contains_any"; accepted_labels: string[] };
+      accepted_sequences?: string[][];
     };
     review_status: "approved";
     publication_status: "published";
@@ -192,11 +193,16 @@ export type AdaptiveAssignmentReason = {
     recorded_sessions: number;
     attempts: number;
     accuracy: number | null;
+    weighted_accuracy: number | null;
+    weighted_independence_rate: number | null;
+    recency_weights: number[];
     independent_completions: number;
     prompts_used: number;
     refusals: number;
     breaks: number;
     technical_errors: number;
+    assignment_count_before: number;
+    last_assigned_at: string | null;
     parent_observations: {
       count: number;
       latest_result: string | null;
