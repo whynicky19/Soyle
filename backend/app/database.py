@@ -537,7 +537,10 @@ def init_db() -> None:
             placeholders = ",".join("?" for _ in labels)
             db.execute(f"UPDATE aac_cards SET grammatical_role=?,language='ru' WHERE label IN ({placeholders})", (role, *labels))
         db.execute("UPDATE aac_cards SET speech='хочу',lemma='хотеть',grammatical_role='action',language='ru' WHERE label='Хочу'")
-        db.execute("UPDATE aac_cards SET speech='Где?' WHERE label='Где?' AND language='ru'")
+        db.execute(
+            "UPDATE aac_cards SET speech=? WHERE label=? AND language='ru'",
+            ("Где?", "Где?"),
+        )
         supported_aac_scenarios = ("request", "choice", "refusal", "feelings", "help", "answer", "observation", "past_event", "question", "routine")
         scenario_placeholders = ",".join("?" for _ in supported_aac_scenarios)
         db.execute(f"UPDATE exercises SET is_active=0 WHERE module='mixed' AND target NOT IN ({scenario_placeholders})", supported_aac_scenarios)
