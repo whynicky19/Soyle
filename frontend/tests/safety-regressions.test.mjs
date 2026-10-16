@@ -16,6 +16,36 @@ test("successful empty API responses do not crash session recovery", async () =>
   assert.match(api, /data && typeof data === ["']object["'] && ["']csrf_token["'] in data/);
 });
 
+test("TTS has a dedicated timeout longer than the ordinary API budget", async () => {
+  const api = await readProjectFile("lib/api.ts");
+  assert.match(api, /path === ["']\/api\/tts["'] \? 45_000 : 8_000/);
+});
+
+test("critical optimistic UI changes report failures and roll back", async () => {
+  const app = await readProjectFile("components/SoyleApp.tsx");
+  const notificationBlock = app.slice(app.indexOf("const markNotificationRead"), app.indexOf("const changeSettings"));
+  const settingsBlock = app.slice(app.indexOf("const changeSettings"), app.indexOf("if (user.role === \"parent\" && childrenLoading"));
+  assert.doesNotMatch(notificationBlock, /\.catch\(\(\) => null\)/);
+  assert.match(notificationBlock, /Уведомление не отмечено прочитанным/);
+  assert.match(settingsBlock, /setSettings\(previous\)/);
+  assert.match(settingsBlock, /Настройки не сохранены и возвращены к предыдущим/);
+});
+
+test("offline copy does not claim an in-memory attempt is safely stored", async () => {
+  const app = await readProjectFile("components/SoyleApp.tsx");
+  assert.match(app, /Результат не сохранится автоматически и пропадёт при обновлении или закрытии страницы/);
+});
+
+test("frontend does not request blocked external fonts or unsupported image quality", async () => {
+  const [styles, landing] = await Promise.all([
+    readProjectFile("app/globals.css"),
+    readProjectFile("components/LandingPage.tsx"),
+  ]);
+  assert.doesNotMatch(styles, /fonts\.googleapis\.com|fonts\.gstatic\.com/);
+  assert.doesNotMatch(landing, /quality=\{92\}/);
+  assert.match(landing, /quality=\{75\}/);
+});
+
 test("child AAC vocabulary is not persisted in browser storage", async () => {
   const app = await readProjectFile("components/SoyleApp.tsx");
   assert.doesNotMatch(app, /localStorage[^\n]*soyle-aac|soyle-aac[^\n]*localStorage/);

@@ -32,6 +32,10 @@ backend/skills-lock.json
 # Local implementation report requested outside version control
 /SOYLE_CONTENT_REVIEW.md
 /SOYLE_PERSONALIZATION_DESIGN.md
+/SOYLE_ALALIA_AND_PLATFORM_AUDIT_2026-10-16.md
+/SOYLE_REMEDIATION_PROGRESS.md
+/SOYLE_UI_UX_AUDIT_2026-10-16.md
+/backend/MIGRATIONS.md
 
 # Local files generated while running the frontend for pitch review
 /frontend/AGENTS.md

@@ -28,7 +28,7 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
-if curl -fsS http://127.0.0.1:8010/health >/dev/null 2>&1; then
+if curl -fsS http://127.0.0.1:8010/health/live >/dev/null 2>&1; then
   echo "Порт 8010 уже занят другим backend-процессом."
   echo "Остановите предыдущий запуск через Ctrl+C и снова выполните ./start.sh"
   exit 1
@@ -66,7 +66,7 @@ env \
 BACKEND_PID=$!
 BACKEND_READY=0
 for _ in {1..40}; do
-  if curl -fsS http://127.0.0.1:8010/health >/dev/null 2>&1; then
+  if curl -fsS http://127.0.0.1:8010/api/health >/dev/null 2>&1; then
     BACKEND_READY=1
     break
   fi

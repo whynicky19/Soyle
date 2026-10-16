@@ -5,10 +5,11 @@ from typing import Any
 
 from fastapi import HTTPException
 
-from .database import now_iso
+from .database import IS_PRODUCTION, env_enabled, now_iso
 
 
 SUPPORTED_PUBLIC_MECHANICS = frozenset({"auditory_choice", "action_choice", "tap_instruction", "guided_aac"})
+ALLOW_UNREVIEWED_DEMO_CONTENT = env_enabled("SOYLE_ALLOW_UNREVIEWED_DEMO_CONTENT", default=not IS_PRODUCTION)
 
 SENSORY_CONTENT: dict[str, list[dict[str, str]]] = {
     "animals": [
@@ -394,15 +395,19 @@ def published_exercise_rows(db) -> list[dict]:
     rows = db.execute(
         """SELECT e.*,v.id exercise_version_id,v.version content_version,v.mechanic,v.language,
                   v.objective,v.response_mode,v.prompt_policy_json,v.completion_rule_json,v.content_json,
-                  v.review_status,v.publication_status
+                  v.review_status,v.publication_status,v.technical_status,v.methodology_status,
+                  v.accessibility_status,v.release_status
            FROM exercises e
            JOIN exercise_versions v ON v.exercise_id=e.id
            WHERE e.is_active=1 AND v.review_status='approved' AND v.publication_status='published'
              AND v.mechanic<>'local_face_mirror'
+             AND ((v.technical_status='passed' AND v.methodology_status='approved'
+                   AND v.accessibility_status='approved' AND v.release_status='approved') OR ?=1)
              AND v.version=(SELECT MAX(v2.version) FROM exercise_versions v2
                             WHERE v2.exercise_id=e.id AND v2.review_status='approved'
                               AND v2.publication_status='published')
-           ORDER BY e.module,e.difficulty,e.id"""
+           ORDER BY e.module,e.difficulty,e.id""",
+        (int(ALLOW_UNREVIEWED_DEMO_CONTENT),),
     ).fetchall()
     result = []
     for row in rows:
@@ -430,6 +435,24 @@ def published_exercise_rows(db) -> list[dict]:
             "content": content,
             "review_status": item.pop("review_status"),
             "publication_status": item.pop("publication_status"),
+            "review_gate": {
+                "approved": all((
+                    item.get("technical_status") == "passed",
+                    item.get("methodology_status") == "approved",
+                    item.get("accessibility_status") == "approved",
+                    item.get("release_status") == "approved",
+                )),
+                "demo_only": not all((
+                    item.get("technical_status") == "passed",
+                    item.get("methodology_status") == "approved",
+                    item.get("accessibility_status") == "approved",
+                    item.get("release_status") == "approved",
+                )),
+                "technical_status": item.pop("technical_status"),
+                "methodology_status": item.pop("methodology_status"),
+                "accessibility_status": item.pop("accessibility_status"),
+                "release_status": item.pop("release_status"),
+            },
         }
         result.append(item)
     return result
@@ -495,6 +518,7 @@ def preview_version(db, version_id: int) -> dict:
     stages_ready = (
         version.get("technical_status") == "passed"
         and version.get("methodology_status") == "approved"
+        and version.get("accessibility_status") == "approved"
         and version.get("release_status") == "approved"
     )
     blocker = None
@@ -503,6 +527,8 @@ def preview_version(db, version_id: int) -> dict:
             blocker = "Нужна ручная техническая проверка"
         elif version.get("methodology_status") != "approved":
             blocker = "Нужно методическое утверждение уполномоченного специалиста"
+        elif version.get("accessibility_status") != "approved":
+            blocker = "Нужна отдельная проверка доступности механики"
         elif version.get("release_status") != "approved":
             blocker = "Нужно отдельное окончательное разрешение публикации"
     return {
@@ -523,6 +549,8 @@ def publish_version(db, version_id: int) -> dict:
         raise HTTPException(409, "Публикация заблокирована до методического утверждения")
     if version.get("technical_status") != "passed":
         raise HTTPException(409, "Публикация заблокирована до ручной технической проверки")
+    if version.get("accessibility_status") != "approved":
+        raise HTTPException(409, "Публикация заблокирована до отдельной проверки доступности")
     if version.get("release_status") != "approved":
         raise HTTPException(409, "Публикация заблокирована до отдельного окончательного разрешения")
     db.execute("UPDATE exercise_versions SET publication_status='archived' WHERE exercise_id=? AND publication_status='published'", (version["exercise_id"],))
@@ -542,6 +570,7 @@ def review_capabilities(db, user_id: int) -> dict[str, bool]:
     return {
         "technical_review": True,
         "methodology_review": bool(permission and permission["can_methodology_review"]),
+        "accessibility_review": bool(permission and permission["can_accessibility_review"]),
         "release_approval": bool(permission and permission["can_release_approve"]),
     }
 
@@ -566,7 +595,7 @@ def review_workspace(db, version_id: int, user_id: int) -> dict:
         stimuli.append(item)
     history_rows = db.execute(
         """SELECT id,version,title,review_status,publication_status,technical_status,
-                  methodology_status,release_status,created_at,published_at
+                  methodology_status,accessibility_status,release_status,created_at,published_at
            FROM exercise_versions WHERE exercise_id=? ORDER BY version DESC,id DESC""",
         (version["exercise_id"],),
     ).fetchall()
@@ -595,38 +624,52 @@ def submit_content_review(
     allowed = {
         "technical": {"passed", "changes_requested"},
         "methodology": {"approved", "changes_requested"},
+        "accessibility": {"approved", "changes_requested"},
         "publication": {"approved", "changes_requested"},
     }
     if stage not in allowed or decision not in allowed[stage]:
         raise HTTPException(422, "Недопустимое решение для выбранного этапа")
     if stage == "methodology" and not capabilities["methodology_review"]:
         raise HTTPException(403, "Роль администратора не подтверждает квалификацию методического эксперта")
+    if stage == "accessibility" and not capabilities["accessibility_review"]:
+        raise HTTPException(403, "Нет отдельного полномочия на проверку доступности")
     if stage == "publication" and not capabilities["release_approval"]:
         raise HTTPException(403, "Нет отдельного полномочия на окончательное разрешение публикации")
     if stage == "technical" and decision == "passed" and preview["errors"]:
         raise HTTPException(409, {"message": "Сначала исправьте ошибки структуры", "errors": preview["errors"]})
     if stage == "methodology" and version.get("technical_status") != "passed":
         raise HTTPException(409, "Методическая проверка доступна после ручной технической проверки")
-    if stage == "publication" and (
+    if stage == "accessibility" and (
         version.get("technical_status") != "passed" or version.get("methodology_status") != "approved"
     ):
-        raise HTTPException(409, "Окончательное разрешение доступно после технической и методической проверки")
+        raise HTTPException(409, "Проверка доступности доступна после технической и методической проверки")
+    if stage == "publication" and (
+        version.get("technical_status") != "passed" or version.get("methodology_status") != "approved"
+        or version.get("accessibility_status") != "approved"
+    ):
+        raise HTTPException(409, "Окончательное разрешение доступно после технической, методической и accessibility-проверки")
 
     if stage == "technical":
         db.execute(
             """UPDATE exercise_versions
                SET technical_status=?,methodology_status=CASE WHEN ?='changes_requested' THEN 'pending' ELSE methodology_status END,
+                   accessibility_status=CASE WHEN ?='changes_requested' THEN 'pending' ELSE accessibility_status END,
                    release_status=CASE WHEN ?='changes_requested' THEN 'pending' ELSE release_status END,
                    review_status=CASE WHEN ?='changes_requested' THEN 'changes_requested' ELSE review_status END
                WHERE id=?""",
-            (decision, decision, decision, decision, version_id),
+            (decision, decision, decision, decision, decision, version_id),
         )
     elif stage == "methodology":
         db.execute(
             """UPDATE exercise_versions
-               SET methodology_status=?,review_status=?,release_status='pending'
+               SET methodology_status=?,review_status=?,accessibility_status='pending',release_status='pending'
                WHERE id=?""",
             (decision, "approved" if decision == "approved" else "changes_requested", version_id),
+        )
+    elif stage == "accessibility":
+        db.execute(
+            "UPDATE exercise_versions SET accessibility_status=?,release_status='pending' WHERE id=?",
+            (decision, version_id),
         )
     else:
         db.execute("UPDATE exercise_versions SET release_status=? WHERE id=?", (decision, version_id))

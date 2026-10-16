@@ -233,6 +233,9 @@ def init_db() -> None:
             learning_session_id BIGINT REFERENCES learning_sessions(id) ON DELETE SET NULL,
             sequence_index INTEGER, attempts_count INTEGER, correct_answers INTEGER,
             prompts_used INTEGER NOT NULL DEFAULT 0, attempt_status TEXT NOT NULL DEFAULT 'completed',
+            actor_role TEXT NOT NULL DEFAULT 'unknown',
+            response_owner TEXT NOT NULL DEFAULT 'unknown',
+            support_context TEXT NOT NULL DEFAULT 'unknown',
             created_at TEXT NOT NULL
         );
         CREATE TABLE IF NOT EXISTS specialist_children (

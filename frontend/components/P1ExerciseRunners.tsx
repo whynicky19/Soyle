@@ -26,6 +26,7 @@ export type DraftExerciseVersion = {
   publication_status: string;
   technical_status?: string;
   methodology_status?: string;
+  accessibility_status?: string;
   release_status?: string;
   method_card?: ExerciseMethodCard;
   content: {

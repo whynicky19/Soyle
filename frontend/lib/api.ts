@@ -163,6 +163,14 @@ export type Exercise = {
     };
     review_status: "approved";
     publication_status: "published";
+    review_gate: {
+      approved: boolean;
+      demo_only: boolean;
+      technical_status: string;
+      methodology_status: string;
+      accessibility_status: string;
+      release_status: string;
+    };
   };
   adaptive?: {
     plan_item_id: number;
@@ -358,12 +366,15 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
   }
   let response: Response;
   const controller = new AbortController();
-  const timeout = window.setTimeout(() => controller.abort(), 8000);
+  const timeoutMs = path === "/api/tts" ? 45_000 : 8_000;
+  const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
   if (options.signal) options.signal.addEventListener("abort", () => controller.abort(), { once: true });
   try {
     response = await fetch(`${API_URL}${path}`, { ...options, headers, credentials: "include", signal: controller.signal });
   } catch (cause) {
-    if (cause instanceof DOMException && cause.name === "AbortError") throw new Error("Сервер Söyle отвечает слишком долго. Попробуйте ещё раз через несколько секунд.");
+    if (cause instanceof DOMException && cause.name === "AbortError") {
+      throw new Error(path === "/api/tts" ? "Озвучивание не успело подготовиться. Попробуйте ещё раз." : "Сервер Söyle отвечает слишком долго. Попробуйте ещё раз через несколько секунд.");
+    }
     throw new Error("Сервер Söyle временно недоступен. Проверьте подключение и попробуйте ещё раз.");
   } finally {
     window.clearTimeout(timeout);

@@ -4,14 +4,41 @@ from fastapi.testclient import TestClient
 
 from app.aac_grammar import compose_aac_phrase
 from app.database import connect
-from app.main import app, auth_identifier
+from app.main import app, auth_identifier, ensure_child_access
+
+
+PARENT_CHILD_ATTEMPT = {
+    "actor_role": "parent",
+    "response_owner": "child",
+    "support_context": "independent",
+}
 
 
 def test_health_reports_controlled_schema_migration(client):
-    for path in ("/health", "/api/health"):
+    for path in ("/health", "/health/live"):
         response = client.get(path)
         assert response.status_code == 200
-        assert response.json() == {"status": "ok", "service": "soyle-api", "schema_version": 14}
+        assert response.json() == {"status": "alive", "service": "soyle-api"}
+    for path in ("/api/health", "/health/ready"):
+        response = client.get(path)
+        assert response.status_code == 200
+        assert response.json() == {"status": "ok", "service": "soyle-api", "schema_version": 16, "required_schema_version": 16}
+
+
+def test_readiness_is_non_2xx_when_schema_is_stale_but_liveness_remains_up(client):
+    with connect() as db:
+        applied_at = db.execute("SELECT applied_at FROM schema_migrations WHERE version=16").fetchone()["applied_at"]
+        db.execute("DELETE FROM schema_migrations WHERE version=16")
+    try:
+        assert client.get("/health/live").status_code == 200
+        response = client.get("/api/health")
+        assert response.status_code == 503
+        assert response.json()["status"] == "migration_required"
+        assert response.json()["schema_version"] == 15
+        assert response.json()["required_schema_version"] == 16
+    finally:
+        with connect() as db:
+            db.execute("INSERT INTO schema_migrations(version,applied_at) VALUES(16,?)", (applied_at,))
 
 
 def test_cookie_session_csrf_origin_and_logout():
@@ -60,12 +87,102 @@ def test_auth_roles_and_child_access(client, parent_headers, admin_headers):
     assert client.get(f"/api/dashboard/{child.json()['id']}", headers=parent_headers).status_code == 403
 
 
+def test_session_attribution_blocks_adult_preview_and_separates_modelled_results(client, parent_headers):
+    child = client.post("/api/children", headers=parent_headers, json={
+        "name": "Атрибуция попыток", "birth_date": "2021-02-03", "primary_module": "sensory", "avatar_color": "#82a78f",
+    }).json()
+    child_id = child["id"]
+    consent = client.put(f"/api/children/{child_id}/consent", headers=parent_headers, json={
+        "privacy_accepted": True, "camera_processing": False, "ai_processing": False, "analytics_processing": True,
+    })
+    assert consent.status_code == 200, consent.text
+    exercise = client.get("/api/exercises?module=sensory", headers=parent_headers).json()[0]
+    base = {
+        "child_id": child_id, "exercise_id": exercise["id"], "module": "sensory",
+        "score": 100, "duration_seconds": 10, "details": {},
+        "attempt_status": "completed", "attempts_count": 1, "correct_answers": 1,
+    }
+
+    preview = client.post("/api/sessions", headers=parent_headers, json={
+        **base, "actor_role": "parent", "response_owner": "adult", "support_context": "adult_preview",
+    })
+    assert preview.status_code == 422
+    mismatched_actor = client.post("/api/sessions", headers=parent_headers, json={
+        **base, "actor_role": "student", "response_owner": "child", "support_context": "independent",
+    })
+    assert mismatched_actor.status_code == 403
+    unattributed = client.post("/api/sessions", headers=parent_headers, json={
+        **base, "actor_role": "parent", "response_owner": "unknown", "support_context": "unknown",
+    })
+    assert unattributed.status_code == 422
+
+    modelled = client.post("/api/sessions", headers=parent_headers, json={
+        **base, "score": 0, "correct_answers": 0, "prompt_level": "full",
+        "actor_role": "parent", "response_owner": "child", "support_context": "caregiver_modelled",
+    })
+    assert modelled.status_code == 201, modelled.text
+    assert modelled.json()["awarded_stars"] == 0
+    supported = client.post("/api/sessions", headers=parent_headers, json={
+        **base, "prompt_level": "minimal",
+        "actor_role": "parent", "response_owner": "child", "support_context": "caregiver_supported",
+    })
+    assert supported.status_code == 201, supported.text
+
+    with connect() as db:
+        rows = [dict(row) for row in db.execute(
+            "SELECT actor_role,response_owner,support_context FROM sessions WHERE child_id=? ORDER BY id", (child_id,),
+        ).fetchall()]
+    assert rows == [
+        {"actor_role": "parent", "response_owner": "child", "support_context": "caregiver_modelled"},
+        {"actor_role": "parent", "response_owner": "child", "support_context": "caregiver_supported"},
+    ]
+    metrics = client.get(f"/api/progress/{child_id}", headers=parent_headers).json()["support_metrics"]
+    assert metrics["modelled_responses"] == 1
+    assert metrics["game_result_average"] == 100
+
+
+def test_student_session_requires_student_actor_and_independent_context(client, student_headers):
+    child_id = client.get("/api/children", headers=student_headers).json()[0]["id"]
+    exercise = client.get("/api/exercises?module=sensory", headers=student_headers).json()[0]
+    base = {
+        "child_id": child_id, "exercise_id": exercise["id"], "module": "sensory",
+        "score": 100, "duration_seconds": 10, "details": {},
+        "attempt_status": "completed", "attempts_count": 1, "correct_answers": 1,
+        "actor_role": "student", "response_owner": "child",
+    }
+    supported = client.post("/api/sessions", headers=student_headers, json={**base, "support_context": "caregiver_supported"})
+    assert supported.status_code == 422
+    independent = client.post("/api/sessions", headers=student_headers, json={**base, "support_context": "independent"})
+    assert independent.status_code == 201, independent.text
+    assert independent.json()["actor_role"] == "student"
+
+
 def test_login_rate_limit(client):
     for _ in range(5):
         response = client.post("/api/auth/login", json={"username": "rate-limited", "password": "wrong"})
         assert response.status_code == 401
     response = client.post("/api/auth/login", json={"username": "rate-limited", "password": "wrong"})
     assert response.status_code == 429
+
+
+def test_registration_rate_limit_and_generic_duplicate_message(client):
+    payload = {"username": "parent", "password": "AnotherParent123!", "full_name": "Другой родитель"}
+    for _ in range(5):
+        response = client.post("/api/auth/register", json=payload)
+        assert response.status_code == 409
+        assert response.json()["detail"] == "Не удалось создать аккаунт с этими данными"
+    response = client.post("/api/auth/register", json=payload)
+    assert response.status_code == 429
+
+
+def test_specialist_role_is_rejected_by_shared_child_access_helper(client, parent_headers):
+    child_id = client.get("/api/children", headers=parent_headers).json()[0]["id"]
+    try:
+        ensure_child_access(child_id, {"id": 999, "role": "specialist"})
+    except Exception as error:
+        assert getattr(error, "status_code", None) == 403
+    else:
+        raise AssertionError("Specialist access must require an explicit assignment model")
 
 
 def test_local_plan_uses_only_safe_library_and_specialist_role_is_removed(client, parent_headers, admin_headers):
@@ -164,6 +281,7 @@ def test_learning_session_pause_and_measurements(client, parent_headers):
 
     exercise = session["exercises"][0]
     saved = client.post("/api/sessions", headers=parent_headers, json={
+        **PARENT_CHILD_ATTEMPT,
         "child_id": child_id, "exercise_id": exercise["id"], "module": exercise["module"],
         "score": 80, "duration_seconds": 22, "details": {}, "learning_session_id": session["id"],
         "sequence_index": 0, "independence": 75, "prompt_level": "minimal", "response_ms": 1800,
@@ -172,6 +290,7 @@ def test_learning_session_pause_and_measurements(client, parent_headers):
     assert saved.status_code == 201
     for index, exercise in enumerate(session["exercises"][1:], start=1):
         response = client.post("/api/sessions", headers=parent_headers, json={
+            **PARENT_CHILD_ATTEMPT,
             "child_id": child_id, "exercise_id": exercise["id"], "module": exercise["module"],
             "score": 80, "duration_seconds": 20, "details": {}, "learning_session_id": session["id"],
             "sequence_index": index, "independence": 75, "prompt_level": "minimal",
@@ -217,6 +336,7 @@ def test_old_session_resumes_pending_published_exercise_and_deduplicates_progres
             len(session["exercises"]),
         )
         payload = {
+            **PARENT_CHILD_ATTEMPT,
             "child_id": child_id,
             "exercise_id": exercise["id"],
             "module": exercise["module"],
@@ -378,6 +498,7 @@ def test_game_results_are_server_calculated_and_non_scored_outcomes_are_separate
     saved_scores = []
     for correct in (0, 1, 4, 5):
         response = client.post("/api/sessions", headers=headers, json={
+            **PARENT_CHILD_ATTEMPT,
             "child_id": child["id"], "exercise_id": exercise["id"], "module": "sensory",
             "score": 99, "duration_seconds": 12, "details": {"source": "test", "prompt_types": ["repeat_audio"] if correct == 4 else []},
             "attempts_count": 5, "correct_answers": correct, "prompts_used": 5 - correct,
@@ -392,6 +513,7 @@ def test_game_results_are_server_calculated_and_non_scored_outcomes_are_separate
     assert saved_scores == [0, 20, 80, 100]
 
     technical = client.post("/api/sessions", headers=headers, json={
+        **PARENT_CHILD_ATTEMPT,
         "child_id": child["id"], "exercise_id": exercise["id"], "module": "sensory",
         "score": 100, "duration_seconds": 4, "details": {"reason": "audio_unavailable"},
         "attempts_count": 5, "correct_answers": 0, "prompts_used": 0,
@@ -403,6 +525,7 @@ def test_game_results_are_server_calculated_and_non_scored_outcomes_are_separate
 
     for status in ("refused", "break"):
         response = client.post("/api/sessions", headers=headers, json={
+            **PARENT_CHILD_ATTEMPT,
             "child_id": child["id"], "exercise_id": exercise["id"], "module": "sensory",
             "score": 100, "duration_seconds": 2, "details": {},
             "attempts_count": 0, "correct_answers": 0, "prompts_used": 0,
@@ -419,6 +542,7 @@ def test_game_results_are_server_calculated_and_non_scored_outcomes_are_separate
     assert motor_exercise["is_active"] == 0
     assert motor_version["publication_status"] == "internal_review"
     rejected_motor = client.post("/api/sessions", headers=headers, json={
+        **PARENT_CHILD_ATTEMPT,
         "child_id": child["id"], "exercise_id": motor_exercise["id"], "module": "motor",
         "score": 99, "duration_seconds": 8, "details": {"source": "manual"},
         "attempt_status": "participated", "independence": 100, "prompt_level": "independent",

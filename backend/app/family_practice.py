@@ -133,8 +133,9 @@ def save_home_observation(db, child_id: int, payload: dict, user_id: int, observ
 def descriptive_results(db, child_id: int) -> dict:
     sessions = [dict(row) for row in db.execute(
         """SELECT attempt_status,gameplay_choices,independent_completions,prompted_completions,
-                  prompts_used,attempts_count,correct_answers
-           FROM sessions WHERE child_id=? AND measurement_version>=1""",
+                  prompts_used,attempts_count,correct_answers,support_context
+           FROM sessions WHERE child_id=? AND measurement_version>=1
+             AND response_owner='child' AND support_context<>'unknown'""",
         (child_id,),
     ).fetchall()]
     real_life_skill = db.execute("SELECT COUNT(*) count FROM skill_observations WHERE child_id=?", (child_id,)).fetchone()["count"]
@@ -149,6 +150,7 @@ def descriptive_results(db, child_id: int) -> dict:
         "refusals": sum(1 for row in sessions if row["attempt_status"] == "refused"),
         "breaks": sum(1 for row in sessions if row["attempt_status"] == "break"),
         "technical_errors": sum(1 for row in sessions if row["attempt_status"] == "technical_error"),
+        "modelled_responses": sum(1 for row in sessions if row["support_context"] == "caregiver_modelled"),
         "real_life_observations": real_life_skill + real_life_home,
         "disclaimer": "Показатели описывают отдельные игровые попытки и бытовые наблюдения; они не объединяются в оценку развития речи.",
     }

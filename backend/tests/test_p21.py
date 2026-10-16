@@ -4,6 +4,13 @@ from app.database import connect
 from app.exercise_engine import published_exercise_rows
 
 
+PARENT_CHILD_ATTEMPT = {
+    "actor_role": "parent",
+    "response_owner": "child",
+    "support_context": "independent",
+}
+
+
 def _new_child(client, headers, name="P21 Synthetic"):
     response = client.post(
         "/api/children",
@@ -181,6 +188,7 @@ def test_difficulty_never_increases_after_one_success_and_ignores_breaks(client,
 
     def save(status="completed"):
         body = {
+            **PARENT_CHILD_ATTEMPT,
             "child_id": child["id"], "exercise_id": exercise["id"], "module": "sensory",
             "score": 100, "duration_seconds": 20, "details": {"source": "p21-test"}, "attempt_status": status,
         }
@@ -215,6 +223,7 @@ def test_recent_results_are_weighted_without_one_miss_erasing_stable_progress(cl
 
     def save(correct):
         response = client.post("/api/sessions", headers=parent_headers, json={
+            **PARENT_CHILD_ATTEMPT,
             "child_id": child["id"], "exercise_id": exercise["id"], "module": "sensory",
             "score": correct * 25, "duration_seconds": 20, "details": {"source": "weighted-test"},
             "attempt_status": "completed", "attempts_count": 4, "correct_answers": correct,
@@ -281,6 +290,7 @@ def test_legacy_local_plan_also_rotates_completed_tasks(client, parent_headers):
     assert len(first) == 2
     for exercise in first:
         saved = client.post("/api/sessions", headers=parent_headers, json={
+            **PARENT_CHILD_ATTEMPT,
             "child_id": child["id"], "exercise_id": exercise["id"], "module": exercise["module"],
             "score": 100, "duration_seconds": 10, "details": {"source": "rotation-test"},
             "attempt_status": "completed", "attempts_count": 1, "correct_answers": 1,
@@ -315,6 +325,7 @@ def test_learning_session_preserves_plan_goal_and_difficulty_snapshot(client, pa
     result = client.post(
         "/api/sessions", headers=parent_headers,
         json={
+            **PARENT_CHILD_ATTEMPT,
             "child_id": child["id"], "exercise_id": item["id"], "module": item["module"],
             "score": 0, "duration_seconds": 10, "details": {"source": "guided-aac"},
             "learning_session_id": session["id"], "sequence_index": 0, "attempt_status": "participated",

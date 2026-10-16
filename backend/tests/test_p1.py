@@ -5,6 +5,13 @@ from app.database import connect
 from app.migrations import apply_migrations
 
 
+PARENT_CHILD_ATTEMPT = {
+    "actor_role": "parent",
+    "response_owner": "child",
+    "support_context": "independent",
+}
+
+
 def _register_family(client, username: str) -> tuple[dict[str, str], int]:
     registered = client.post(
         "/api/auth/register",
@@ -153,6 +160,7 @@ def test_results_keep_choices_support_and_stop_outcomes_separate(client, parent_
         "/api/sessions",
         headers=parent_headers,
         json={
+            **PARENT_CHILD_ATTEMPT,
             "child_id": child_id,
             "exercise_id": exercise["id"],
             "module": "sensory",
@@ -175,6 +183,7 @@ def test_results_keep_choices_support_and_stop_outcomes_separate(client, parent_
             "/api/sessions",
             headers=parent_headers,
             json={
+                **PARENT_CHILD_ATTEMPT,
                 "child_id": child_id,
                 "exercise_id": exercise["id"],
                 "module": "sensory",
@@ -197,7 +206,7 @@ def test_results_keep_choices_support_and_stop_outcomes_separate(client, parent_
     assert "не объединяются" in after["disclaimer"]
 
 
-def test_migrations_9_to_14_upgrade_an_old_database_and_are_idempotent(tmp_path):
+def test_migrations_9_to_16_upgrade_an_old_database_and_are_idempotent(tmp_path):
     original_path = database.DB_PATH
     temporary_path = Path(tmp_path) / "soyle-p1-upgrade.db"
     database.DB_PATH = temporary_path
@@ -205,14 +214,18 @@ def test_migrations_9_to_14_upgrade_an_old_database_and_are_idempotent(tmp_path)
         database.init_db()
         with connect() as db:
             assert db.execute("SELECT MAX(version) version FROM schema_migrations").fetchone()["version"] == 8
-        assert apply_migrations() == [9, 10, 11, 12, 13, 14]
+        assert apply_migrations() == [9, 10, 11, 12, 13, 14, 15, 16]
         assert apply_migrations() == []
         with connect() as db:
-            assert db.execute("SELECT MAX(version) version FROM schema_migrations").fetchone()["version"] == 14
+            assert db.execute("SELECT MAX(version) version FROM schema_migrations").fetchone()["version"] == 16
             tables = {row["name"] for row in db.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
             assert {"exercise_versions", "skill_observations", "home_activity_templates", "home_activity_observations", "content_reviews", "content_reviewer_permissions", "content_assets", "practice_goal_templates", "parent_practice_goals", "practice_goal_history", "practice_goal_observations", "adaptive_practice_plans", "adaptive_practice_plan_items"} <= tables
             session_columns = {row["name"] for row in db.execute("PRAGMA table_info(sessions)").fetchall()}
-            assert {"exercise_version_id", "gameplay_choices", "independent_completions", "prompted_completions", "adaptive_plan_item_id"} <= session_columns
+            assert {"exercise_version_id", "gameplay_choices", "independent_completions", "prompted_completions", "adaptive_plan_item_id", "actor_role", "response_owner", "support_context"} <= session_columns
+            version_columns = {row["name"] for row in db.execute("PRAGMA table_info(exercise_versions)").fetchall()}
+            assert "accessibility_status" in version_columns
+            permission_columns = {row["name"] for row in db.execute("PRAGMA table_info(content_reviewer_permissions)").fetchall()}
+            assert "can_accessibility_review" in permission_columns
             learning_columns = {row["name"] for row in db.execute("PRAGMA table_info(learning_sessions)").fetchall()}
             assert "adaptive_plan_id" in learning_columns
             assert db.execute("SELECT COUNT(*) count FROM practice_goal_templates").fetchone()["count"] == 6

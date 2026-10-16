@@ -640,6 +640,47 @@ def _migration_14_personal_goals_and_plans(db) -> None:
         )
 
 
+def _migration_15_session_attribution(db) -> None:
+    """Keep historical attempts unattributed and require explicit attribution for new data."""
+    session_columns = _columns(db, "sessions")
+    additions = {
+        "actor_role": "TEXT NOT NULL DEFAULT 'unknown'",
+        "response_owner": "TEXT NOT NULL DEFAULT 'unknown'",
+        "support_context": "TEXT NOT NULL DEFAULT 'unknown'",
+    }
+    for column, definition in additions.items():
+        if column not in session_columns:
+            db.execute(f"ALTER TABLE sessions ADD COLUMN {column} {definition}")
+    # There is no reliable actor identifier on historical rows.  Do not infer
+    # that an adult-authenticated request was answered by the child.
+    db.execute(
+        """UPDATE sessions
+           SET actor_role=COALESCE(NULLIF(actor_role,''),'unknown'),
+               response_owner=COALESCE(NULLIF(response_owner,''),'unknown'),
+               support_context=COALESCE(NULLIF(support_context,''),'unknown')"""
+    )
+    db.execute(
+        "CREATE INDEX IF NOT EXISTS idx_sessions_child_evidence ON sessions(child_id,response_owner,support_context,created_at)"
+    )
+
+
+def _migration_16_accessibility_review_gate(db) -> None:
+    """Require a distinct accessibility decision before release approval."""
+    version_columns = _columns(db, "exercise_versions")
+    if "accessibility_status" not in version_columns:
+        db.execute("ALTER TABLE exercise_versions ADD COLUMN accessibility_status TEXT NOT NULL DEFAULT 'pending'")
+    permission_columns = _columns(db, "content_reviewer_permissions")
+    if "can_accessibility_review" not in permission_columns:
+        db.execute(
+            "ALTER TABLE content_reviewer_permissions ADD COLUMN can_accessibility_review INTEGER NOT NULL DEFAULT 0"
+        )
+    db.execute(
+        """UPDATE exercise_versions
+           SET accessibility_status='legacy_publication'
+           WHERE publication_status='published' AND accessibility_status='pending'"""
+    )
+
+
 MIGRATIONS = (
     (9, _migration_9_exercise_engine),
     (10, _migration_10_content_contracts),
@@ -647,7 +688,23 @@ MIGRATIONS = (
     (12, _migration_12_observations_and_home_practice),
     (13, _migration_13_p15_content_review),
     (14, _migration_14_personal_goals_and_plans),
+    (15, _migration_15_session_attribution),
+    (16, _migration_16_accessibility_review_gate),
 )
+LATEST_SCHEMA_VERSION = MIGRATIONS[-1][0]
+
+
+def migration_status() -> dict[str, int | list[int] | bool]:
+    with connect() as db:
+        current = db.execute("SELECT COALESCE(MAX(version),0) version FROM schema_migrations").fetchone()["version"]
+        known = {row["version"] for row in db.execute("SELECT version FROM schema_migrations").fetchall()}
+    pending = [version for version, _ in MIGRATIONS if version not in known]
+    return {
+        "current": current,
+        "required": LATEST_SCHEMA_VERSION,
+        "pending": pending,
+        "ready": not pending and current >= LATEST_SCHEMA_VERSION,
+    }
 
 
 def apply_migrations() -> list[int]:
@@ -664,12 +721,20 @@ def apply_migrations() -> list[int]:
 
 
 def main() -> int:
-    if len(sys.argv) != 2 or sys.argv[1] != "upgrade":
-        print("Usage: python -m app.migrations upgrade")
+    if len(sys.argv) != 2 or sys.argv[1] not in {"upgrade", "status", "check"}:
+        print("Usage: python -m app.migrations {upgrade|status|check}")
         return 2
     init_db()
+    if sys.argv[1] in {"status", "check"}:
+        status = migration_status()
+        print(json.dumps(status, ensure_ascii=False))
+        return 0 if status["ready"] or sys.argv[1] == "status" else 1
     applied = apply_migrations()
     print("Applied migrations:", ", ".join(map(str, applied)) if applied else "none")
+    status = migration_status()
+    if not status["ready"]:
+        print("Schema is not ready:", json.dumps(status, ensure_ascii=False))
+        return 1
     return 0
 
 

@@ -55,15 +55,20 @@ async function login(page: Page, username: string, password: string, student = f
   await expect(page.getByRole("main")).toBeVisible();
 }
 
+async function openMainSection(page: Page, name: string) {
+  const menu = page.getByRole("button", { name: "Открыть меню" });
+  if (await menu.isVisible()) await menu.click();
+  await page.getByRole("button", { name, exact: true }).click();
+}
+
 test.beforeEach(async ({ page }) => {
   await prepareSpeech(page);
 });
 
-test("child choice runner handles audio, wrong answer, hint, repeat and saved completion", async ({ page }, testInfo) => {
-  test.skip(testInfo.project.name !== "desktop", "Полный сценарий выполняется один раз; responsive smoke покрывает все размеры.");
+test("child choice runner handles audio, wrong answer, hint, repeat and saved completion", async ({ page }) => {
   await login(page, "alikhan", "1234", true);
   await page.evaluate(() => { Math.random = () => 0.999; });
-  await page.getByRole("button", { name: "Занятия", exact: true }).click();
+  await openMainSection(page, "Занятия");
   await expect(page.getByText("Понимание слов: игрушки")).toHaveCount(0);
   await page.getByRole("button", { name: /Игрушки/ }).first().click();
   await page.getByRole("button", { name: /Понятно, начать/ }).click();
@@ -85,10 +90,9 @@ test("child choice runner handles audio, wrong answer, hint, repeat and saved co
   await expect(page.getByText("Попытка сохранена. Выбери, продолжить или вернуться к занятиям.", { exact: true })).toBeVisible();
 });
 
-test("animal choices use one consistent illustrated pictogram set", async ({ page }, testInfo) => {
-  test.skip(testInfo.project.name !== "desktop", "Проверка набора иллюстраций выполняется один раз; responsive smoke покрывает размеры.");
+test("animal choices use one consistent illustrated pictogram set", async ({ page }) => {
   await login(page, "alikhan", "1234", true);
-  await page.getByRole("button", { name: "Занятия", exact: true }).click();
+  await openMainSection(page, "Занятия");
   await page.getByRole("button", { name: /Я вижу/ }).click();
   await page.locator(".aac-card-main").filter({ has: page.locator("strong", { hasText: /^Мама$/ }) }).click();
   await page.locator(".speak-button").click();
@@ -109,10 +113,9 @@ test("animal choices use one consistent illustrated pictogram set", async ({ pag
   }
 });
 
-test("break and refusal are accepted without exposing a draft", async ({ page }, testInfo) => {
-  test.skip(testInfo.project.name !== "desktop", "Полный сценарий выполняется один раз; responsive smoke покрывает все размеры.");
+test("break and refusal are accepted without exposing a draft", async ({ page }) => {
   await login(page, "alikhan", "1234", true);
-  await page.getByRole("button", { name: "Занятия", exact: true }).click();
+  await openMainSection(page, "Занятия");
   await page.getByRole("button", { name: /Игрушки/ }).first().click();
   await page.getByRole("button", { name: "Перерыв" }).click();
   await expect(page.getByRole("heading", { name: "Выбери приключение" })).toBeVisible();
@@ -121,10 +124,97 @@ test("break and refusal are accepted without exposing a draft", async ({ page },
   await expect(page.getByRole("heading", { name: "Сообщение принято" })).toBeVisible();
 });
 
-test("I see message can be spoken and guided answers cannot accumulate duplicates", async ({ page }, testInfo) => {
-  test.skip(testInfo.project.name !== "desktop", "Полный AAC-сценарий выполняется один раз; модульные тесты покрывают правила последовательностей.");
+test("adult preview never creates a child session and child practice remains explicit", async ({ page }) => {
+  await login(page, "parent", "Parent123!");
+  await openMainSection(page, "Занятия");
+  await expect(page.getByRole("button", { name: "Предпросмотр взрослого" })).toHaveAttribute("aria-pressed", "true");
+  let sessionRequests = 0;
+  page.on("request", (request) => {
+    if (new URL(request.url()).pathname === "/api/sessions" && request.method() === "POST") sessionRequests += 1;
+  });
+  await page.getByRole("button", { name: /Игрушки/ }).first().click();
+  await expect(page.getByText("Ответы не сохраняются в профиль ребёнка.")).toBeVisible();
+  await page.getByRole("button", { name: "Не хочу" }).click();
+  await expect(page.getByRole("heading", { name: "Предпросмотр завершён" })).toBeVisible();
+  expect(sessionRequests).toBe(0);
+
+  await page.getByRole("button", { name: "Закончить практику" }).click();
+  await page.getByRole("button", { name: "Практика ребёнка" }).click();
+  await page.getByRole("button", { name: /Игрушки/ }).first().click();
+  await page.getByRole("button", { name: "Не хочу" }).click();
+  await expect(page.getByRole("heading", { name: "Сообщение принято" })).toBeVisible();
+  expect(sessionRequests).toBe(1);
+});
+
+test("two, three and four picture choices keep equal geometry at every viewport", async ({ page }) => {
   await login(page, "alikhan", "1234", true);
-  await page.getByRole("button", { name: "Занятия", exact: true }).click();
+  await openMainSection(page, "Занятия");
+  for (const optionCount of [2, 3, 4]) {
+    await page.getByRole("button", { name: /Игрушки/ }).first().click();
+    await page.locator(".runner-levels button").filter({ hasText: new RegExp(`^${optionCount}$`) }).click();
+    await page.getByRole("button", { name: /Понятно, начать/ }).click();
+    const options = page.locator(".picture-options button");
+    await expect(options).toHaveCount(optionCount);
+    const boxes = await options.evaluateAll((buttons) => buttons.map((button) => {
+      const box = button.getBoundingClientRect();
+      return { width: Math.round(box.width), height: Math.round(box.height) };
+    }));
+    expect(new Set(boxes.map((box) => box.width)).size).toBe(1);
+    expect(new Set(boxes.map((box) => box.height)).size).toBe(1);
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    expect(overflow).toBeLessThanOrEqual(1);
+    await page.getByRole("button", { name: "Назад" }).click();
+  }
+});
+
+test("spoken-options mode is explicit, keyboard reachable and excluded from scored results", async ({ page }) => {
+  await login(page, "alikhan", "1234", true);
+  await openMainSection(page, "Занятия");
+  await page.getByRole("button", { name: /Игрушки/ }).first().click();
+  await page.getByRole("button", { name: "Озвучивать все варианты" }).click();
+  await expect(page.getByText(/отдельный доступный режим/)).toBeVisible();
+  await page.getByRole("button", { name: /Понятно, начать/ }).click();
+
+  const soundButton = page.getByRole("button", { name: "Прослушать слово" });
+  await expect(soundButton).toBeFocused();
+  const options = page.locator(".picture-options button");
+  await expect(options).toHaveCount(2);
+  const names = await options.evaluateAll((buttons) => buttons.map((button) => button.getAttribute("aria-label")));
+  expect(names.every((name) => Boolean(name) && !name?.startsWith("Вариант"))).toBe(true);
+  await expect(page.getByText("Варианты озвучиваются. Эта попытка сохраняется без оценки правильности.")).toBeVisible();
+
+  const results = await new AxeBuilder({ page }).analyze();
+  expect(results.violations.filter((item) => ["serious", "critical"].includes(item.impact || ""))).toEqual([]);
+});
+
+test("failed settings save rolls the toggle back and explains the error", async ({ page }) => {
+  await login(page, "alikhan", "1234", true);
+  await openMainSection(page, "Настройки");
+  await page.route(`${BROWSER_API_URL}/api/settings`, async (route) => {
+    if (route.request().method() === "PUT") {
+      await route.fulfill({ status: 503, contentType: "application/json", body: '{"detail":"test settings outage"}' });
+      return;
+    }
+    await route.continue({ url: route.request().url().replace(BROWSER_API_URL, API_URL) });
+  });
+  const soundToggle = page.getByRole("button", { name: /Звуковые подсказки/ });
+  await expect(soundToggle).toHaveAttribute("aria-pressed", "true");
+  await soundToggle.click();
+  await expect(page.locator(".global-request-error")).toContainText("Настройки не сохранены и возвращены к предыдущим");
+  await expect(soundToggle).toHaveAttribute("aria-pressed", "true");
+});
+
+test("offline banner states that an in-memory result can be lost", async ({ page }) => {
+  await login(page, "alikhan", "1234", true);
+  await page.context().setOffline(true);
+  await page.evaluate(() => window.dispatchEvent(new Event("offline")));
+  await expect(page.locator(".offline-banner")).toContainText("Результат не сохранится автоматически и пропадёт при обновлении или закрытии страницы");
+  await page.context().setOffline(false);
+});
+
+test("I see message can be spoken and guided answers cannot accumulate duplicates", async ({ page }) => {
+  await login(page, "alikhan", "1234", true);
+  await openMainSection(page, "Занятия");
   await page.getByRole("button", { name: /Я вижу/ }).click();
 
   const card = (label: string) => page.locator(".aac-card-main").filter({ has: page.locator("strong", { hasText: new RegExp(`^${label}$`) }) });
@@ -152,10 +242,9 @@ test("I see message can be spoken and guided answers cannot accumulate duplicate
   expect(completionRequests).toBe(1);
 });
 
-test("parent creates a practical goal and sees an explained approved-only plan", async ({ page }, testInfo) => {
-  test.skip(testInfo.project.name !== "desktop", "Полный сценарий выполняется один раз; responsive smoke покрывает все размеры.");
+test("parent creates a practical goal and sees an explained approved-only plan", async ({ page }) => {
   await login(page, "parent", "Parent123!");
-  await page.getByRole("button", { name: "Цели и занятия" }).click();
+  await openMainSection(page, "Цели и занятия");
   await expect(page.getByRole("heading", { name: "Практика под понятную цель" })).toBeVisible();
   if (await page.locator(".practice-goal-card").count() === 0) {
     await page.getByLabel("Что получается сейчас").fill("Выбирает знакомую картинку после показа взрослого");
@@ -169,20 +258,25 @@ test("parent creates a practical goal and sees an explained approved-only plan",
   await expect(page.locator(".prepared-plan")).not.toContainText("мотор");
 });
 
-test("parent sees saved result and an active session survives reload", async ({ page }, testInfo) => {
-  test.skip(testInfo.project.name !== "desktop", "Полный сценарий выполняется один раз; responsive smoke покрывает все размеры.");
+test("parent sees saved result and an active session survives reload", async ({ page }) => {
   await login(page, "parent", "Parent123!");
-  await page.getByRole("button", { name: /Начать занятие/ }).first().click();
+  await openMainSection(page, "Цели и занятия");
+  if (await page.locator(".practice-goal-card").count() === 0) {
+    await page.getByLabel("Что получается сейчас").fill("Выбирает знакомую картинку после показа взрослого");
+    await page.getByRole("button", { name: "Добавить домашнюю цель" }).click();
+    await expect(page.locator(".practice-goal-card")).toHaveCount(1);
+  }
+  await openMainSection(page, "Главная");
+  await page.getByRole("button", { name: /Начать занятие|Продолжить занятие/ }).first().click();
   await expect(page.getByRole("heading", { name: "Короткая практика шаг за шагом" })).toBeVisible();
   await page.reload();
   await expect(page.getByRole("button", { name: "Продолжить занятие" })).toBeVisible();
-  await page.getByRole("button", { name: "Прогресс" }).click();
+  await openMainSection(page, "Прогресс");
   await expect(page.getByRole("heading", { name: "Игровые ответы и участие" })).toBeVisible();
   await expect(page.getByText(/Отказ|Перерыв|% в игре/).first()).toBeVisible();
 });
 
-test("admin can preview DRAFT but cannot methodically approve or publish it", async ({ page }, testInfo) => {
-  test.skip(testInfo.project.name !== "desktop", "Полный сценарий выполняется один раз; responsive smoke покрывает все размеры.");
+test("admin can preview DRAFT but cannot methodically approve or publish it", async ({ page }) => {
   await login(page, "admin", "Admin123!");
   await page.getByRole("tab", { name: "Задания" }).click();
   const card = page.locator(".draft-list article").filter({ hasText: "Понимание слов: игрушки" });
@@ -218,9 +312,7 @@ test("core screens have no serious axe violations and do not overflow", async ({
 
 test("goals and practice screen is accessible without horizontal overflow", async ({ page }) => {
   await login(page, "parent", "Parent123!");
-  const menu = page.getByRole("button", { name: "Открыть меню" });
-  if (await menu.isVisible()) await menu.click();
-  await page.getByRole("button", { name: "Цели и занятия" }).click();
+  await openMainSection(page, "Цели и занятия");
   await expect(page.getByRole("heading", { name: "Практика под понятную цель" })).toBeVisible();
   const results = await new AxeBuilder({ page }).analyze();
   expect(results.violations.filter((item) => ["serious", "critical"].includes(item.impact || ""))).toEqual([]);

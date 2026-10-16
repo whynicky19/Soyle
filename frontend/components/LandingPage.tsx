@@ -140,7 +140,7 @@ export function LandingPage() {
                 width={1672}
                 height={941}
                 priority
-                quality={92}
+                quality={75}
                 sizes="(max-width: 980px) calc(100vw - 32px), 56vw"
               />
               <figcaption>Домашняя практика строится вокруг выбора ребёнка, а не результата.</figcaption>
@@ -168,7 +168,7 @@ export function LandingPage() {
                   <article className="feature-story" key={feature.label} data-reveal>
                     <span className="feature-index">0{index + 1}</span>
                     <figure className="story-media">
-                      <Image src={feature.image} alt={feature.alt} width={1536} height={1024} quality={92} sizes="(max-width: 760px) calc(100vw - 32px), 54vw" />
+                      <Image src={feature.image} alt={feature.alt} width={1536} height={1024} quality={75} sizes="(max-width: 760px) calc(100vw - 32px), 54vw" />
                     </figure>
                     <div className="story-copy">
                       <span className="feature-label">{feature.label}</span>

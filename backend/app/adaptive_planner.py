@@ -78,6 +78,8 @@ def _evidence(db, child_id: int, targets: list[str], thresholds: PlannerThreshol
             FROM sessions s JOIN exercises e ON e.id=s.exercise_id
             WHERE s.child_id=? AND e.target IN ({placeholders})
               AND s.measurement_version>=1 AND s.attempt_status='completed'
+              AND s.response_owner='child'
+              AND s.support_context IN ('independent','caregiver_supported')
               AND s.attempts_count>0
             ORDER BY s.id DESC LIMIT ?""",
         (child_id, *targets, thresholds.recent_window),
@@ -85,6 +87,8 @@ def _evidence(db, child_id: int, targets: list[str], thresholds: PlannerThreshol
     status_rows = [row["attempt_status"] for row in db.execute(
         f"""SELECT s.attempt_status FROM sessions s JOIN exercises e ON e.id=s.exercise_id
             WHERE s.child_id=? AND e.target IN ({placeholders}) AND s.measurement_version>=1
+              AND s.response_owner='child'
+              AND s.support_context IN ('independent','caregiver_supported')
             ORDER BY s.id DESC LIMIT ?""",
         (child_id, *targets, thresholds.recent_window),
     ).fetchall()]
@@ -132,6 +136,8 @@ def _assignment_history(db, child_id: int) -> dict[int, dict]:
            FROM sessions s
            WHERE s.child_id=? AND s.exercise_id IS NOT NULL
              AND s.adaptive_plan_item_id IS NULL
+             AND s.response_owner='child'
+             AND s.support_context IN ('independent','caregiver_supported')
            ORDER BY created_at DESC""",
         (child_id, child_id),
     ).fetchall()

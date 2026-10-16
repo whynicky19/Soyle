@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from app.database import connect
+from app import exercise_engine
 
 
 P15_TARGETS = {
@@ -114,7 +115,7 @@ def test_review_stages_require_independent_permissions_and_keep_history(client, 
     version_id = draft["version"]["id"]
     capabilities = client.get("/api/admin/content-review/capabilities", headers=admin_headers)
     assert capabilities.status_code == 200
-    assert capabilities.json() == {"technical_review": True, "methodology_review": False, "release_approval": False}
+    assert capabilities.json() == {"technical_review": True, "methodology_review": False, "accessibility_review": False, "release_approval": False}
 
     too_early = client.post(
         f"/api/admin/exercise-drafts/{version_id}/reviews",
@@ -136,8 +137,8 @@ def test_review_stages_require_independent_permissions_and_keep_history(client, 
         with connect() as db:
             db.execute(
                 """INSERT INTO content_reviewer_permissions(
-                       user_id,can_methodology_review,can_release_approve,granted_by,granted_at)
-                   VALUES(?,1,1,?,datetime('now'))""",
+                       user_id,can_methodology_review,can_accessibility_review,can_release_approve,granted_by,granted_at)
+                   VALUES(?,1,1,1,?,datetime('now'))""",
                 (admin_id, admin_id),
             )
         methodology = client.post(
@@ -146,6 +147,12 @@ def test_review_stages_require_independent_permissions_and_keep_history(client, 
             json={"stage": "methodology", "decision": "approved", "comment": "Формулировки и иерархия подсказок проверены"},
         )
         assert methodology.status_code == 200, methodology.text
+        accessibility = client.post(
+            f"/api/admin/exercise-drafts/{version_id}/reviews",
+            headers=admin_headers,
+            json={"stage": "accessibility", "decision": "approved", "comment": "Клавиатура, screen reader и масштаб текста проверены"},
+        )
+        assert accessibility.status_code == 200, accessibility.text
         release = client.post(
             f"/api/admin/exercise-drafts/{version_id}/reviews",
             headers=admin_headers,
@@ -153,18 +160,32 @@ def test_review_stages_require_independent_permissions_and_keep_history(client, 
         )
         assert release.status_code == 200, release.text
         assert release.json()["can_publish"] is True
-        assert [item["stage"] for item in release.json()["reviews"]][-3:] == ["technical", "methodology", "publication"]
-        assert all(item["comment"] for item in release.json()["reviews"][-3:])
+        assert [item["stage"] for item in release.json()["reviews"]][-4:] == ["technical", "methodology", "accessibility", "publication"]
+        assert all(item["comment"] for item in release.json()["reviews"][-4:])
     finally:
         with connect() as db:
             db.execute("DELETE FROM content_reviews WHERE version_id=? AND reviewer_id=?", (version_id, admin_id))
             db.execute("DELETE FROM content_reviewer_permissions WHERE user_id=?", (admin_id,))
             db.execute(
                 """UPDATE exercise_versions SET technical_status='automated_passed',
-                       methodology_status='pending',release_status='pending',review_status='pending'
+                       methodology_status='pending',accessibility_status='pending',release_status='pending',review_status='pending'
                    WHERE id=?""",
                 (version_id,),
             )
+
+
+def test_legacy_publications_are_demo_only_and_hidden_when_demo_mode_is_disabled(client):
+    with connect() as db:
+        demo_rows = exercise_engine.published_exercise_rows(db)
+    assert demo_rows
+    assert all(item["engine"]["review_gate"]["demo_only"] for item in demo_rows)
+    original = exercise_engine.ALLOW_UNREVIEWED_DEMO_CONTENT
+    try:
+        exercise_engine.ALLOW_UNREVIEWED_DEMO_CONTENT = False
+        with connect() as db:
+            assert exercise_engine.published_exercise_rows(db) == []
+    finally:
+        exercise_engine.ALLOW_UNREVIEWED_DEMO_CONTENT = original
 
 
 def test_twelve_home_games_are_review_gated_without_leaking_instructions(client, parent_headers, admin_headers):

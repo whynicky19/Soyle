@@ -49,6 +49,9 @@ class SessionCreate(BaseModel):
     independent_completions: int = Field(default=0, ge=0, le=100)
     prompted_completions: int = Field(default=0, ge=0, le=100)
     attempt_status: Literal["completed", "participated", "refused", "break", "technical_error"] = "completed"
+    actor_role: Literal["parent", "student"]
+    response_owner: Literal["child", "adult", "unknown"]
+    support_context: Literal["independent", "caregiver_supported", "caregiver_modelled", "adult_preview", "unknown"]
 
 class LearningSessionCreate(BaseModel):
     child_id: int
@@ -138,7 +141,7 @@ class ExerciseDraftCreate(BaseModel):
     method_card: ExerciseMethodCard
 
 class ContentReviewCreate(BaseModel):
-    stage: Literal["technical", "methodology", "publication"]
+    stage: Literal["technical", "methodology", "accessibility", "publication"]
     decision: Literal["passed", "approved", "changes_requested"]
     comment: str = Field(min_length=5, max_length=2000)
 
