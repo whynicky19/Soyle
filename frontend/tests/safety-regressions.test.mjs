@@ -46,6 +46,19 @@ test("frontend does not request blocked external fonts or unsupported image qual
   assert.match(landing, /quality=\{75\}/);
 });
 
+test("landing always uses the calm base theme instead of inheriting ocean", async () => {
+  const [landing, styles] = await Promise.all([
+    readProjectFile("components/LandingPage.tsx"),
+    readProjectFile("app/landing.css"),
+  ]);
+  assert.match(landing, /LANDING_THEME = "peach"/);
+  assert.match(landing, /document\.documentElement\.dataset\.theme = LANDING_THEME/);
+  assert.match(landing, /data-theme=\{LANDING_THEME\}/);
+  assert.match(styles, /--landing-blue: #1668c7/);
+  assert.match(styles, /--landing-canvas: #f5f7fa/);
+  assert.doesNotMatch(styles, /--landing-blue: #245b84/);
+});
+
 test("child AAC vocabulary is not persisted in browser storage", async () => {
   const app = await readProjectFile("components/SoyleApp.tsx");
   assert.doesNotMatch(app, /localStorage[^\n]*soyle-aac|soyle-aac[^\n]*localStorage/);
@@ -186,7 +199,7 @@ test("P2.1 goals use a deterministic review-gated planner instead of AI", async 
     readProjectFile("components/GoalsAndPractice.tsx"),
     readProjectFile("lib/api.ts"),
   ]);
-  assert.match(app, /\/api\/adaptive-plans\/\$\{child\.id\}/);
+  assert.match(goals, /\/api\/adaptive-plans\/\$\{child\.id\}/);
   assert.doesNotMatch(app, /api<AIPlan>\(`\/api\/ai\/plan/);
   assert.match(goals, /Локальная адаптация/);
   assert.match(goals, /Без внешней AI API/);
@@ -197,6 +210,13 @@ test("P2.1 goals use a deterministic review-gated planner instead of AI", async 
   assert.match(api, /goal_version: number/);
   assert.match(api, /difficulty_params: AdaptiveDifficultyParams/);
   assert.match(api, /assignment_reason: AdaptiveAssignmentReason/);
+});
+
+test("daily duration uses the reviewed rotating session plan and active sessions lock their original duration", async () => {
+  const app = await readProjectFile("components/SoyleApp.tsx");
+  assert.match(app, /\/api\/session-plan\/\$\{child\.id\}\?minutes=\$\{dailyMinutes\}/);
+  assert.match(app, /disabled=\{Boolean\(currentSession\)\}/);
+  assert.match(app, /SESSION_EXERCISE_COUNTS\[dailyMinutes\]/);
 });
 
 test("adaptive analysis has no external model SDK or API key dependency", async () => {

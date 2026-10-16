@@ -11,6 +11,8 @@ import {
 } from "lucide-react";
 import "@/app/landing.css";
 
+const LANDING_THEME = "peach" as const;
+
 const features = [
   {
     label: "Понимание речи",
@@ -65,6 +67,7 @@ export function LandingPage() {
   const closeMenu = () => setMenuOpen(false);
 
   useEffect(() => {
+    document.documentElement.dataset.theme = LANDING_THEME;
     const root = document.querySelector(".landing-page");
     const items = document.querySelectorAll<HTMLElement>("[data-reveal]");
     if (!root || !items.length || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
@@ -92,7 +95,7 @@ export function LandingPage() {
   }, []);
 
   return (
-    <div className="landing-page">
+    <div className="landing-page" data-theme={LANDING_THEME}>
       <a className="skip-link" href="#main-content">Перейти к содержанию</a>
 
       <header className="landing-header">

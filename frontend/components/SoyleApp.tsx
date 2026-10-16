@@ -120,6 +120,7 @@ import { api, AACCard, AIAnswer, type AdaptivePlan, API_URL, AppSettings, Child,
 import { composeAACMessage } from "@/lib/aacGrammar";
 import { canAddAACScenarioCard, evaluateAACScenario } from "@/lib/aacScenarioRuntime";
 import { supportedInterfaceLanguages, useInterfaceLanguage } from "@/lib/i18n";
+import { exerciseCountLabel, selectHomeExercises, SESSION_EXERCISE_COUNTS } from "@/lib/homePractice";
 import { nextIncompleteExerciseIndex, summarizeSessionResults } from "@/lib/sessionRuntime";
 import { categoriesToScores, evaluateMotorMovement, mergeBaseline, targetForSequenceStep, type BlendshapeScores } from "@/lib/motorDetection";
 import { resolveDifficulty } from "@/lib/exerciseRuntime";
@@ -349,6 +350,7 @@ function AuthenticatedApp({ user, onLogout, externalError, onDismissExternalErro
     if (!child?.id) { queueMicrotask(() => setActiveSessionLoading(false)); return; }
     api<LearningSession | null>(`/api/children/${child.id}/active-session`).then((session) => {
       setActiveSession(session);
+      if (session && session.status !== "completed") setDailyMinutes(session.target_minutes);
     }).catch((cause) => {
       setRequestError(cause instanceof Error ? `Не удалось проверить незавершённое занятие: ${cause.message}` : "Не удалось проверить незавершённое занятие");
     }).finally(() => setActiveSessionLoading(false));
@@ -456,9 +458,9 @@ function AuthenticatedApp({ user, onLogout, externalError, onDismissExternalErro
         setScreen("session");
         return;
       }
-      const plan = await api<AdaptivePlan>(`/api/adaptive-plans/${child.id}`, { method: "POST", body: JSON.stringify({ target_minutes: dailyMinutes }) });
-      if (!plan.items.length) throw new Error(plan.notices[0]?.message || "Для активных целей пока нет разрешённых заданий.");
-      const created = await api<LearningSession>("/api/learning-sessions", { method: "POST", body: JSON.stringify({ child_id: child.id, exercise_ids: plan.items.map((item) => item.exercise_id), target_minutes: dailyMinutes, adaptive_plan_id: plan.id }) });
+      const plan = await api<{ estimated_minutes: 3 | 5 | 10; exercises: Exercise[] }>(`/api/session-plan/${child.id}?minutes=${dailyMinutes}`);
+      if (!plan.exercises.length) throw new Error("Сейчас нет опубликованных заданий для короткого занятия.");
+      const created = await api<LearningSession>("/api/learning-sessions", { method: "POST", body: JSON.stringify({ child_id: child.id, exercise_ids: plan.exercises.map((item) => item.id), target_minutes: plan.estimated_minutes }) });
       setActiveSession({ ...created, results: [] });
       setScreen("session");
     } catch (cause) {
@@ -821,10 +823,14 @@ function HomeScreen(props: HomeScreenProps) {
 }
 
 function ChildHomeScreen({ onOpen, onExercise, onStartSession, onResume, activeSession, activeSessionLoading, dailyMinutes, onMinutesChange, sessionLoading, sessionError, child, dashboard, consent, exercises }: HomeScreenProps) {
-  const recommended = [dashboard?.recommended_exercise, ...exercises]
-    .filter((item): item is Exercise => Boolean(item))
-    .filter((item, index, items) => items.findIndex((candidate) => candidate.id === item.id) === index)
-    .slice(0, 3);
+  const currentSession = activeSession && activeSession.status !== "completed" ? activeSession : null;
+  const recommended = selectHomeExercises({
+    exercises,
+    completedExerciseIds: dashboard?.completed_exercise_ids || [],
+    totalAttempts: dashboard?.total_sessions || 0,
+    recommendedExercise: dashboard?.recommended_exercise,
+  });
+  const plannedCount = SESSION_EXERCISE_COUNTS[dailyMinutes];
   return <div className="stack-xl page-enter child-home">
     {!consent?.privacy_accepted && <section className="consent-banner child-consent" role="status"><ShieldAlert size={24}/><div><strong>Попроси взрослого включить сохранение</strong><p>Игры можно посмотреть, но результат пока не сохранится.</p></div></section>}
     <div className="home-overview child-home-overview">
@@ -832,9 +838,10 @@ function ChildHomeScreen({ onOpen, onExercise, onStartSession, onResume, activeS
         <div className="hero-copy">
           <div className="pill"><Sparkles size={18}/> Привет, {child?.name || "друг"}!</div>
           <h1>Готов к новому<br/><em>приключению?</em></h1>
-          <p>Выбери время. Потом мы покажем один шаг.</p>
-          <div className="duration-picker" aria-label="Сколько заниматься">{([3,5,10] as const).map((value) => <button key={value} className={dailyMinutes === value ? "active" : ""} aria-pressed={dailyMinutes === value} onClick={() => onMinutesChange(value)}>{value} мин</button>)}</div>
-          {activeSession && activeSession.status !== "completed"
+          <p>{currentSession ? "Твоё занятие уже готово. Продолжим с того же места." : "Выбери время. Потом мы покажем один шаг."}</p>
+          <div className="duration-picker" aria-label="Сколько заниматься">{([3,5,10] as const).map((value) => <button key={value} className={dailyMinutes === value ? "active" : ""} aria-pressed={dailyMinutes === value} disabled={Boolean(currentSession)} onClick={() => onMinutesChange(value)}>{value} мин</button>)}</div>
+          <span className="duration-explanation" role="status">{currentSession ? `${currentSession.target_minutes} мин · ${exerciseCountLabel(currentSession.exercises.length)} в текущем занятии` : `${dailyMinutes} мин · ${exerciseCountLabel(plannedCount)}`}</span>
+          {currentSession
             ? <button className="primary-button hero-primary" onClick={onResume} disabled={!consent?.privacy_accepted || sessionLoading}><Play size={21} fill="currentColor"/>{sessionLoading ? "Подожди…" : "Продолжить"}</button>
             : <button className="primary-button hero-primary" onClick={onStartSession} disabled={sessionLoading || activeSessionLoading}><Play size={21} fill="currentColor"/>{activeSessionLoading || sessionLoading ? "Подожди…" : "Начать занятие"}</button>}
           {sessionError && <div className="inline-error" role="alert">{sessionError}</div>}
@@ -848,7 +855,7 @@ function ChildHomeScreen({ onOpen, onExercise, onStartSession, onResume, activeS
       </aside>
     </div>
     <section className="child-picks" aria-labelledby="child-picks-title">
-      <div className="section-heading"><div><span className="kicker">МОЖНО ВЫБРАТЬ ОДНО</span><h2 id="child-picks-title">Знакомые занятия</h2></div><button className="text-button" onClick={() => onOpen("games")}>Все занятия <ChevronRight size={20}/></button></div>
+      <div className="section-heading"><div><span className="kicker">НА СЕГОДНЯ</span><h2 id="child-picks-title">Попробуй эти занятия</h2><p className="section-helper">После сохранённой попытки подборка обновится.</p></div><button className="text-button" onClick={() => onOpen("games")}>Все занятия · {exercises.length} <ChevronRight size={20}/></button></div>
       <div className="child-pick-grid">{recommended.map((exercise) => <button key={exercise.id} className="child-pick-card" onClick={() => onExercise(exercise)}><span><ModuleGlyph module={exercise.module} size={30}/></span><div><strong>{exercise.title}</strong><small>{exercise.module === "sensory" ? "Послушай и покажи" : "Собери сообщение"}</small></div><ChevronRight size={22}/></button>)}</div>
       {!recommended.length && <div className="empty-state large"><Gamepad2 size={30}/><strong>Занятия скоро появятся</strong><span>Можно открыть «Сказать» или вернуться позже.</span></div>}
     </section>
@@ -857,13 +864,15 @@ function ChildHomeScreen({ onOpen, onExercise, onStartSession, onResume, activeS
 
 function ParentHomeScreen({ onOpen, onStartSession, onResume, activeSession, activeSessionLoading, dailyMinutes, onMinutesChange, sessionLoading, sessionError, child, dashboard, consent }: HomeScreenProps) {
   const hasHistory = Boolean(dashboard?.total_sessions);
+  const currentSession = activeSession && activeSession.status !== "completed" ? activeSession : null;
+  const plannedCount = SESSION_EXERCISE_COUNTS[dailyMinutes];
   return <div className="page-enter parent-home">
     <header className="parent-home-heading"><div><span className="kicker">СЕГОДНЯ</span><h1>Сегодня с {child?.name || "ребёнком"}</h1><p>Один безопасный следующий шаг, текущие разрешения и история практики.</p></div><button className="secondary-button" onClick={() => onOpen("parent")}><UserRound size={19}/> Профиль и доступ</button></header>
     <div className="parent-home-grid">
       <section className="parent-next-step">
-        <div className="parent-next-copy"><span className="kicker">СЛЕДУЮЩИЙ ШАГ</span><h2>{activeSession && activeSession.status !== "completed" ? "Продолжить короткое занятие" : "Подготовить короткое занятие"}</h2><p>Занятие можно остановить при усталости, отказе или просьбе о перерыве.</p></div>
-        <div className="duration-picker" aria-label="Продолжительность занятия">{([3,5,10] as const).map((value) => <button key={value} className={dailyMinutes === value ? "active" : ""} aria-pressed={dailyMinutes === value} onClick={() => onMinutesChange(value)}>{value} мин</button>)}</div>
-        {activeSession && activeSession.status !== "completed" ? <button className="primary-button" onClick={onResume} disabled={!consent?.privacy_accepted || sessionLoading}><Play size={19} fill="currentColor"/>Продолжить занятие</button> : <button className="primary-button" onClick={onStartSession} disabled={sessionLoading || activeSessionLoading}><Play size={19} fill="currentColor"/>{sessionLoading || activeSessionLoading ? "Подготавливаем…" : "Начать занятие"}</button>}
+        <div className="parent-next-copy"><span className="kicker">СЛЕДУЮЩИЙ ШАГ</span><h2>{currentSession ? "Продолжить короткое занятие" : "Подготовить короткое занятие"}</h2><p>Занятие можно остановить при усталости, отказе или просьбе о перерыве.</p></div>
+        <div><div className="duration-picker" aria-label="Продолжительность занятия">{([3,5,10] as const).map((value) => <button key={value} className={dailyMinutes === value ? "active" : ""} aria-pressed={dailyMinutes === value} disabled={Boolean(currentSession)} onClick={() => onMinutesChange(value)}>{value} мин</button>)}</div><span className="duration-explanation">{currentSession ? `${currentSession.target_minutes} мин · ${exerciseCountLabel(currentSession.exercises.length)} уже в плане` : `${exerciseCountLabel(plannedCount)} в новом плане`}</span></div>
+        {currentSession ? <button className="primary-button" onClick={onResume} disabled={!consent?.privacy_accepted || sessionLoading}><Play size={19} fill="currentColor"/>Продолжить занятие</button> : <button className="primary-button" onClick={onStartSession} disabled={sessionLoading || activeSessionLoading}><Play size={19} fill="currentColor"/>{sessionLoading || activeSessionLoading ? "Подготавливаем…" : "Начать занятие"}</button>}
         {sessionError && <div className="inline-error" role="alert">{sessionError}</div>}
       </section>
       <aside className={`parent-consent-status ${consent?.privacy_accepted ? "ready" : "attention"}`}><ShieldCheck size={26}/><div><span className="kicker">БЕЗОПАСНОСТЬ</span><h2>{consent?.privacy_accepted ? "Сохранение разрешено" : "Нужно решение взрослого"}</h2><p>{consent?.privacy_accepted ? "Результаты сохраняются в профиле ребёнка. Камера управляется отдельно." : "Без согласия результаты и планы не сохраняются."}</p></div><button className="secondary-button" onClick={() => onOpen("parent")}>{consent?.privacy_accepted ? "Проверить настройки" : "Открыть разрешения"}</button></aside>
@@ -930,16 +939,13 @@ const courseUnits = [
 
 function GamesScreen({ onOpen, onExercise, dashboard, exercises, childMode, parentPracticeMode, onParentPracticeModeChange }: { onOpen: (screen: Screen) => void; onExercise: (exercise: Exercise) => void; dashboard: Dashboard | null; exercises: Exercise[]; childMode: boolean; parentPracticeMode?: ParentPracticeMode; onParentPracticeModeChange?: (mode: ParentPracticeMode) => void }) {
   if (childMode) {
-    const featured = [dashboard?.recommended_exercise, exercises.find((item) => item.target === "toys"), exercises.find((item) => item.target === "help"), ...exercises]
-      .filter((item): item is Exercise => Boolean(item))
-      .filter((item, index, items) => items.findIndex((candidate) => candidate.id === item.id) === index)
-      .slice(0, 5);
+    const featured = selectHomeExercises({ exercises, completedExerciseIds: dashboard?.completed_exercise_ids || [], totalAttempts: dashboard?.total_sessions || 0, recommendedExercise: dashboard?.recommended_exercise, limit: 5 });
     const remaining = exercises.filter((item) => !featured.some((featuredItem) => featuredItem.id === item.id));
     return <div className="page-enter child-games">
-      <PageTitle eyebrow="ЗАНЯТИЯ" title="Выбери одну игру" subtitle="Можно остановиться, попросить помощь или вернуться позже."/>
+      <PageTitle eyebrow={`ЗАНЯТИЯ · ${exercises.length}`} title="Выбери одну игру" subtitle="Здесь все доступные задания. Сначала — пять вариантов на сегодня."/>
       <button className="child-aac-entry" onClick={() => onOpen("aac")}><span><MessageCircle size={28}/></span><div><strong>Сказать, что нужно</strong><small>Помощь, перерыв, отказ и другие сообщения</small></div><ChevronRight size={24}/></button>
       <section className="child-featured-games" aria-labelledby="featured-games-title"><div className="section-heading"><div><span className="kicker">ДОСТУПНО СЕЙЧАС</span><h2 id="featured-games-title">Знакомые игры</h2></div></div><div>{featured.map((exercise, index) => <button key={exercise.id} className="child-game-card" onClick={() => onExercise(exercise)}><span className="child-game-number">{index + 1}</span><span className="child-game-glyph"><ModuleGlyph module={exercise.module} size={31}/></span><div><strong>{exercise.title}</strong><small>{exercise.module === "sensory" ? "Послушай слово и покажи картинку" : "Выбери карточки и скажи сообщение"}</small></div><ChevronRight size={24}/></button>)}</div></section>
-      {remaining.length > 0 && <details className="child-more-games"><summary>Ещё игры <span>{remaining.length}</span><ChevronRight size={21}/></summary><div>{remaining.map((exercise) => <button key={exercise.id} onClick={() => onExercise(exercise)}><span><ModuleGlyph module={exercise.module} size={26}/></span><div><strong>{exercise.title}</strong><small>{exercise.module === "sensory" ? "Слушай и находи" : "Собери сообщение"}</small></div><ChevronRight size={21}/></button>)}</div></details>}
+      {remaining.length > 0 && <details className="child-more-games"><summary>Все остальные занятия <span>{remaining.length}</span><ChevronRight size={21}/></summary><div>{remaining.map((exercise) => <button key={exercise.id} onClick={() => onExercise(exercise)}><span><ModuleGlyph module={exercise.module} size={26}/></span><div><strong>{exercise.title}</strong><small>{exercise.module === "sensory" ? "Слушай и находи" : "Собери сообщение"}</small></div><ChevronRight size={21}/></button>)}</div></details>}
     </div>;
   }
   return (
@@ -2262,7 +2268,7 @@ function ProfileScreen({ user, child, dashboard, settings, onOpen, onLogout }: {
   const age = child ? Math.max(0, new Date().getFullYear() - new Date(child.birth_date).getFullYear() - (new Date() < new Date(new Date().getFullYear(), new Date(child.birth_date).getMonth(), new Date(child.birth_date).getDate()) ? 1 : 0)) : null;
   const primaryModule = child ? modules.find((item) => item.id === child.primary_module)?.title : null;
   const languageName = { ru: "Русский", en: "English", kk: "Қазақша" }[settings.language];
-  const themeName = { peach: "Базовая", ocean: "Мягкий океан", lavender: "Лаванда", contrast: "Высокий контраст" }[settings.theme];
+  const themeName = { peach: "Спокойная", ocean: "Океан", lavender: "Лаванда", contrast: "Высокий контраст" }[settings.theme];
   return <div className="page-enter profile-page">
     <PageTitle eyebrow="ПРОФИЛЬ" title="Личный кабинет" subtitle="Информация об аккаунте, ребёнке и текущих настройках."/>
     <section className="profile-hero-card">

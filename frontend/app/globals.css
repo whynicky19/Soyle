@@ -406,6 +406,7 @@ button,a,input,select{font-family:inherit}
 .duration-picker{width:max-content;padding:4px;border-radius:14px;background:rgba(255,255,255,.72);box-shadow:inset 0 0 0 1px rgba(69,120,180,.1)}
 .duration-picker button{min-width:74px;border:0;background:transparent;color:#63728a;border-radius:11px}
 .duration-picker button.active{border:0;color:#174a8c;background:#fff;box-shadow:0 5px 14px rgba(41,91,151,.12)}
+.duration-picker button:disabled{cursor:not-allowed;opacity:.72}.duration-picker button.active:disabled{opacity:1}.duration-explanation{display:block;margin:-7px 0 13px;color:#536986;font-size:13px;font-weight:800;line-height:1.4}.section-helper{margin:6px 0 0;color:var(--muted);font-size:14px;line-height:1.45}
 .primary-button,.speak-button{background:var(--coral);box-shadow:0 10px 24px rgba(47,125,235,.2)}
 .primary-button:hover,.speak-button:hover{box-shadow:0 13px 28px rgba(47,125,235,.24)}
 .secondary-button,.small-button{border-color:var(--line);background:#fff;color:#315f98}

@@ -54,12 +54,25 @@ async function expectNoHorizontalOverflow(page: Page) {
 }
 
 test("visual UX pass at the five required widths", async ({ page }, testInfo) => {
+  test.setTimeout(120_000);
   test.skip(testInfo.project.name !== "desktop", "The test explicitly owns all five audit widths.");
   await mkdir(SCREENSHOT_DIR, { recursive: true });
   await prepareApp(page);
 
   await page.setViewportSize({ width: 1440, height: 1000 });
   await login(page, "alikhan", "1234", true);
+
+  await expect(page.getByRole("button", { name: /Все занятия · \d+/ })).toBeVisible();
+  const durationButtons = page.locator(".child-hero .duration-picker button");
+  if (await durationButtons.first().isEnabled()) {
+    await page.getByRole("button", { name: "3 мин", exact: true }).click();
+    await expect(page.locator(".child-hero .duration-explanation")).toHaveText("3 мин · 2 задания");
+    await page.getByRole("button", { name: "10 мин", exact: true }).click();
+    await expect(page.locator(".child-hero .duration-explanation")).toHaveText("10 мин · 5 заданий");
+  } else {
+    await expect(durationButtons).toBeDisabled();
+    await expect(page.locator(".child-hero .duration-explanation")).toContainText(/\d+ мин · \d+ задан/);
+  }
 
   for (const width of [320, 360, 390, 768, 1440]) {
     const height = width <= 390 ? 820 : 1000;
@@ -71,7 +84,9 @@ test("visual UX pass at the five required widths", async ({ page }, testInfo) =>
     await openSection(page, "Занятия");
     await expectNoHorizontalOverflow(page);
     await page.screenshot({ path: `${SCREENSHOT_DIR}/${width}-child-catalog.png`, fullPage: true, animations: "disabled" });
-    await page.getByRole("button", { name: /Игрушки/ }).first().click();
+    const toysExercise = page.getByRole("button", { name: /Игрушки/ }).first();
+    if (!await toysExercise.isVisible()) await page.locator(".child-more-games summary").click();
+    await toysExercise.click();
     await page.getByRole("button", { name: /Понятно, начать/ }).click();
     await expectNoHorizontalOverflow(page);
 
