@@ -84,7 +84,10 @@ def _migration_9_exercise_engine(db) -> None:
             "title": exercise["title"],
             "instruction": exercise["instruction"],
         }
-        errors = validate_version(candidate)
+        # Migration 9 preserves the historical demo catalogue. New and edited
+        # versions still use the stricter visual-consistency gate; the child
+        # runner only exposes the reviewed illustration subset of legacy tasks.
+        errors = validate_version(candidate, enforce_visual_consistency=False)
         public = bool(exercise["is_active"]) and exercise["module"] != "motor" and not errors
         review_status = "approved" if public else "unreviewed"
         publication_status = "published" if public else "internal_review" if exercise["module"] == "motor" else "archived"

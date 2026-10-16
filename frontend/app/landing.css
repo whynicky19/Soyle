@@ -331,3 +331,26 @@
   .hero-photo > img,
   .story-media { border: 1px solid CanvasText; }
 }
+
+/* Mobile landing keeps the same information without repeating three large image blocks. */
+@media (max-width: 620px) {
+  .landing-page { overflow: visible; }
+  .landing-container { width: min(100% - 32px, 1200px); }
+  .landing-section { padding: 52px 0; }
+  .landing-hero { padding: 40px 0 32px; }
+  .landing-hero h1 { margin-block: 14px 18px; font-size: clamp(34px, 10vw, 42px); }
+  .hero-actions { margin-top: 22px; }
+  .hero-facts { margin-top: 28px; }
+  .landing-page .section-heading { margin-bottom: 24px; }
+  .feature-story { padding: 25px 0; grid-template-columns: 28px minmax(0, 1fr); gap: 14px; }
+  .feature-story .story-media { display: none; }
+  .feature-story .story-copy { grid-column: 2; }
+  .story-copy h3 { font-size: 25px; }
+  .story-copy > p { margin-bottom: 16px; }
+  .steps-list li { padding: 20px 0; }
+  .safety-panel { padding-block: 52px; }
+  .faq-grid { gap: 28px; }
+  .faq-list summary { min-height: 64px; }
+  .cta-inner { padding-block: 42px; }
+  .landing-footer { padding-top: 46px; }
+}

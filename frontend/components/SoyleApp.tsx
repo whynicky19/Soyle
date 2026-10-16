@@ -127,8 +127,9 @@ import { PublishedInstructionRunner, type DraftExerciseVersion } from "@/compone
 import { ContentReviewWorkspace, HomeActivityReviewPreview, type ContentReviewWorkspaceData, type HomeActivityDraft } from "@/components/ContentReviewWorkspace";
 import { FunctionalSkillMap, HomePracticeLibrary, P1ResultsSummary } from "@/components/FamilyPractice";
 import { GoalsAndPractice } from "@/components/GoalsAndPractice";
+import { AdminShell, ChildShell, ExerciseFocusShell, ParentShell } from "@/components/AppShells";
 
-type Screen = "home" | "games" | "session" | "exercise-complete" | "motor" | "sensory" | "mixed" | "aac" | "ai" | "progress" | "goals" | "parent" | "profile" | "settings" | "admin";
+type Screen = "home" | "games" | "session" | "exercise-complete" | "motor" | "sensory" | "mixed" | "aac" | "ai" | "progress" | "goals" | "parent" | "profile" | "settings" | "more" | "admin";
 type ModuleName = "motor" | "sensory" | "mixed";
 type GameMeasurement = { attempts_count?: number; correct_answers?: number; prompts_used?: number; gameplay_choices?: number; independent_completions?: number; prompted_completions?: number; attempt_status?: "completed" | "participated" | "refused" | "break" | "technical_error"; independence?: number; prompt_level?: "independent" | "minimal" | "full"; response_ms?: number; communication_initiatives?: number };
 type ExerciseCompletion = { title: string; message: string; nextExercise: Exercise | null; sessionMode: boolean; sessionFinished: boolean };
@@ -241,6 +242,7 @@ function AuthenticatedApp({ user, onLogout, externalError, onDismissExternalErro
   const [isOnline, setIsOnline] = useState(true);
   const [requestError, setRequestError] = useState("");
   const [parentPracticeMode, setParentPracticeMode] = useState<ParentPracticeMode>("adult_preview");
+  const [focusStopping, setFocusStopping] = useState(false);
   useInterfaceLanguage(settings.language);
 
   useEffect(() => {
@@ -313,14 +315,11 @@ function AuthenticatedApp({ user, onLogout, externalError, onDismissExternalErro
     : user.role === "student"
         ? [{ id: "home", label: "Главная", icon: Home }, { id: "games", label: "Занятия", icon: Gamepad2 }, { id: "aac", label: "Сказать", icon: Parentheses }, { id: "settings", label: "Настройки", icon: Settings }]
       : [
-          { id: "home", label: "Главная", icon: Home },
+          { id: "home", label: "Сегодня", icon: Home },
           { id: "games", label: "Занятия", icon: Gamepad2 },
-          { id: "aac", label: "Сказать", icon: Parentheses },
-          { id: "goals", label: "Цели и занятия", icon: Target },
-          { id: "ai", label: "Локальный помощник", icon: Bot },
+          { id: "aac", label: "Общение", icon: Parentheses },
           { id: "progress", label: "Прогресс", icon: BarChart3 },
-          ...(user.role === "parent" ? [{ id: "parent" as Screen, label: "Для родителей", icon: UserRound }] : []),
-          { id: "settings", label: "Настройки", icon: Settings },
+          { id: "more", label: "Ещё", icon: Menu },
         ];
 
   const child = children.find((item) => item.id === selectedChildId) || children[0];
@@ -406,7 +405,7 @@ function AuthenticatedApp({ user, onLogout, externalError, onDismissExternalErro
           : "independent";
     const result = await api<SessionSaveResult>("/api/sessions", { method: "POST", body: JSON.stringify({ child_id: child.id, exercise_id: exerciseId, module, score, duration_seconds: durationSeconds, details, ...measurement, actor_role: user.role, response_owner: "child", support_context: supportContext, learning_session_id: sessionExerciseActive ? activeSession?.id || null : null, sequence_index: sequenceIndex !== undefined && sequenceIndex >= 0 ? sequenceIndex : null }) }).catch((cause) => { setSessionError(`${cause instanceof Error ? cause.message : "Не удалось сохранить результат"}. Попытка осталась на экране — можно повторить сохранение.`); return null; });
     if (result) {
-      if (result.awarded_stars > 0) {
+      if (result.awarded_stars > 0 && !settingsRef.current.calm_mode) {
         setReward({ stars: result.awarded_stars, nonce: Date.now() });
         window.setTimeout(() => setReward(null), 2200);
       }
@@ -633,8 +632,56 @@ function AuthenticatedApp({ user, onLogout, externalError, onDismissExternalErro
     }
   };
 
+  const exerciseBack = () => sessionExerciseActive && activeSession ? setScreen("session") : openScreen("games");
+  const activeExerciseContent = <>
+    {screen === "motor" && <MotorGame exercises={exercises.filter((item) => item.module === "motor")} initialExercise={selectedExercise} cameraConsentGranted={Boolean(consent?.privacy_accepted && consent?.camera_processing && settings.camera_enabled)} canManageConsent={user.role === "parent"} onOpenConsent={() => openScreen("parent")} onBack={exerciseBack} onComplete={(score, exerciseId, measurement, details) => saveSession(exerciseId, "motor", score, details || { source: "manual" }, measurement)} />}
+    {screen === "sensory" && selectedExercise?.engine?.mechanic === "tap_instruction" ? <div className="page-enter game-page"><GameHeader title={selectedExercise.title} subtitle="Выполни один шаг" step="Предмет → цель" onBack={exerciseBack}/><PublishedInstructionRunner scenarios={selectedExercise.engine.content.scenarios || []} soundEnabled={settings.sound_enabled} onSpeak={(text, rate) => speak(text, rate, settings.sound_enabled)} onBack={exerciseBack} onComplete={(measurement, details) => saveSession(selectedExercise.id, "sensory", 0, details, measurement)}/></div> : null}
+    {screen === "sensory" && selectedExercise?.engine?.mechanic !== "tap_instruction" && <SensoryGame key={selectedExercise?.id || "sensory"} exercise={selectedExercise?.module === "sensory" ? selectedExercise : exercises.find((item) => item.module === "sensory")} soundEnabled={settings.sound_enabled} onBack={exerciseBack} onComplete={(score, exerciseId, measurement, details) => saveSession(exerciseId, "sensory", score, details || {}, measurement)} />}
+    {screen === "mixed" && <PhraseGame key={selectedExercise?.id || "mixed"} childId={child?.id} canManage={user.role === "parent"} exercise={selectedExercise?.module === "mixed" ? selectedExercise : exercises.find((item) => item.module === "mixed")} soundEnabled={settings.sound_enabled} onBack={exerciseBack} onComplete={(score, phrase, exerciseId, measurement) => saveSession(exerciseId, "mixed", score, { phrase }, measurement)} />}
+  </>;
+  const isChildExerciseFocus = ["motor", "sensory", "mixed"].includes(screen) && (user.role === "student" || (user.role === "parent" && parentPracticeMode === "child_practice"));
+  const focusExercise = selectedExercise || exercises.find((item) => item.module === screen);
+  const stopFocusedExercise = async (status: "break" | "refused") => {
+    if (focusStopping) return;
+    if (!focusExercise || !["motor", "sensory", "mixed"].includes(focusExercise.module)) {
+      exerciseBack();
+      return;
+    }
+    setFocusStopping(true);
+    try {
+      const result = await saveSession(focusExercise.id, focusExercise.module, 0, { source: "exercise_focus_shell", reason: "child_choice" }, { attempts_count: 0, correct_answers: 0, prompts_used: 0, attempt_status: status });
+      if (result && status === "break") exerciseBack();
+    } finally {
+      setFocusStopping(false);
+    }
+  };
+
+  if (isChildExerciseFocus) {
+    const progress = sessionExerciseActive && activeSession
+      ? `Шаг ${Math.min(activeSession.current_index + 1, activeSession.exercises.length)} из ${activeSession.exercises.length}`
+      : "Одно задание";
+    return <ExerciseFocusShell
+      title={focusExercise?.title || "Спокойная практика"}
+      progress={progress}
+      soundEnabled={settings.sound_enabled}
+      stopping={focusStopping}
+      onBack={exerciseBack}
+      onToggleSound={() => changeSettings({ ...settingsRef.current, sound_enabled: !settingsRef.current.sound_enabled })}
+      onBreak={() => void stopFocusedExercise("break")}
+      onRefuse={() => void stopFocusedExercise("refused")}
+    >
+      {!isOnline && <div className="offline-banner" role="status"><CircleAlert size={18}/><span><strong>Нет соединения.</strong> Результат не сохранится автоматически. Не закрывай страницу.</span></div>}
+      {externalError && <div className="game-error global-request-error" role="alert"><ShieldAlert size={18}/><span>{externalError}</span><button type="button" className="small-button" onClick={onDismissExternalError}>Закрыть</button></div>}
+      {requestError && <div className="game-error global-request-error" role="alert"><ShieldAlert size={18}/><span>{requestError}</span><button type="button" className="small-button" onClick={() => setRequestError("")}>Закрыть</button></div>}
+      {sessionError && <div className="game-error" role="alert"><ShieldAlert size={18}/><span>{sessionError}</span></div>}
+      {activeExerciseContent}
+    </ExerciseFocusShell>;
+  }
+
+  const AppRoleShell = user.role === "student" ? ChildShell : user.role === "admin" ? AdminShell : ParentShell;
+
   return (
-    <div className={`app-shell ${user.role === "student" ? "student-mode" : ""}`}>
+    <AppRoleShell>
       <div className="ambient ambient-one" />
       <div className="ambient ambient-two" />
       <aside id="primary-navigation" className={`sidebar ${sidebarOpen ? "open" : ""}`} aria-hidden={sidebarIsDialog && !sidebarOpen ? true : undefined} inert={sidebarIsDialog && !sidebarOpen ? true : undefined}>
@@ -673,8 +720,8 @@ function AuthenticatedApp({ user, onLogout, externalError, onDismissExternalErro
           <button ref={menuButtonRef} className="menu-button" onClick={() => setSidebarOpen(true)} aria-label="Открыть меню" aria-expanded={sidebarOpen} aria-controls="primary-navigation"><Menu /></button>
           <div className="mobile-logo"><BrandIcon size={22} /> Söyle</div>
           <div className="top-actions">
-            <button className="language" data-i18n-native onClick={() => openScreen("settings")} aria-label={{ ru: "Язык интерфейса: русский", en: "Interface language: English", kk: "Интерфейс тілі: қазақша" }[settings.language]}><Languages size={17} /> {{ ru: "RU", en: "EN", kk: "ҚАЗ" }[settings.language]}</button>
-            <div className="stars"><Star size={18} fill="currentColor" /> {dashboard?.stars || 0}</div>
+            {user.role !== "student" && <button className="language" data-i18n-native onClick={() => openScreen("settings")} aria-label={{ ru: "Язык интерфейса: русский", en: "Interface language: English", kk: "Интерфейс тілі: қазақша" }[settings.language]}><Languages size={17} /> {{ ru: "RU", en: "EN", kk: "ҚАЗ" }[settings.language]}</button>}
+            {user.role !== "student" && <div className="stars"><Star size={18} fill="currentColor" /> {dashboard?.stars || 0}</div>}
             {user.role === "parent" && <div className="notification-wrap"><button className="notification-button" onClick={() => setNotificationsOpen((value) => !value)} aria-label="Уведомления"><Bell size={19}/>{notifications.unread > 0 && <i>{notifications.unread}</i>}</button>{notificationsOpen && <div className="notification-panel"><div className="notification-head"><div><span className="kicker">УВЕДОМЛЕНИЯ</span><strong>События программы</strong></div>{notifications.unread > 0 && <button onClick={markAllNotificationsRead}>Прочитать все</button>}</div><div className="notification-list">{notifications.items.length ? notifications.items.map((item) => <button key={item.id} className={item.is_read ? "read" : "unread"} onClick={() => markNotificationRead(item.id)}><span className="notification-symbol"><Trophy size={18}/></span><div><strong>{item.title}</strong><p>{item.message}</p><small>{new Date(item.created_at).toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}</small></div>{!item.is_read && <i/>}</button>) : <div className="notification-empty"><Bell size={24}/><strong>Пока всё спокойно</strong><span>Здесь появятся отметки о занятиях и новых шагах программы.</span></div>}</div></div>}</div>}
             <button className="avatar small avatar-button" onClick={() => openScreen("profile")} aria-label="Открыть профиль">{user.full_name[0]}</button>
           </div>
@@ -685,28 +732,26 @@ function AuthenticatedApp({ user, onLogout, externalError, onDismissExternalErro
         {requestError && <div className="game-error global-request-error" role="alert"><ShieldAlert size={18}/><span>{requestError}</span><button type="button" className="small-button" onClick={() => setRequestError("")}>Закрыть</button></div>}
 
         <div className="page">
-          {screen === "home" && <HomeScreen onOpen={openScreen} onStartSession={startDailySession} onResume={resumeSession} activeSession={activeSession} activeSessionLoading={activeSessionLoading} dailyMinutes={dailyMinutes} onMinutesChange={setDailyMinutes} sessionLoading={sessionLoading} sessionError={sessionError} child={child} dashboard={dashboard} consent={consent} userRole={user.role} />}
+          {screen === "home" && <HomeScreen onOpen={openScreen} onExercise={openExercise} onStartSession={startDailySession} onResume={resumeSession} activeSession={activeSession} activeSessionLoading={activeSessionLoading} dailyMinutes={dailyMinutes} onMinutesChange={setDailyMinutes} sessionLoading={sessionLoading} sessionError={sessionError} child={child} dashboard={dashboard} consent={consent} userRole={user.role} exercises={exercises} />}
           {screen === "games" && <GamesScreen onOpen={openScreen} onExercise={openExercise} dashboard={dashboard} exercises={exercises} childMode={user.role === "student"} parentPracticeMode={user.role === "parent" ? parentPracticeMode : undefined} onParentPracticeModeChange={setParentPracticeMode} />}
           {screen === "session" && activeSession && <SessionScreen session={activeSession} onContinue={continueSession} onPause={pauseSession} onFinish={() => { setActiveSession(null); refreshDashboard(); setScreen("home"); }} />}
           {screen === "exercise-complete" && exerciseCompletion && <ExerciseCompletionScreen completion={exerciseCompletion} onContinue={continueAfterExercise} onFinish={() => openScreen(exerciseCompletion.sessionMode ? "session" : "games")} />}
           {user.role === "parent" && parentPracticeMode === "adult_preview" && ["motor", "sensory", "mixed"].includes(screen) && <div className="adult-preview-banner" role="status"><Eye size={19}/><div><strong>Предпросмотр взрослого</strong><span>Ответы не сохраняются в профиль ребёнка.</span></div><button type="button" onClick={() => setParentPracticeMode("child_practice")}>Перейти к практике ребёнка</button></div>}
           {sessionError && ["motor", "sensory", "mixed"].includes(screen) && <div className="game-error" role="alert"><ShieldAlert size={18}/><span>{sessionError}</span></div>}
-          {screen === "motor" && <MotorGame exercises={exercises.filter((item) => item.module === "motor")} initialExercise={selectedExercise} cameraConsentGranted={Boolean(consent?.privacy_accepted && consent?.camera_processing && settings.camera_enabled)} canManageConsent={user.role === "parent"} onOpenConsent={() => openScreen("parent")} onBack={() => sessionExerciseActive && activeSession ? setScreen("session") : openScreen("games")} onComplete={(score, exerciseId, measurement, details) => saveSession(exerciseId, "motor", score, details || { source: "manual" }, measurement)} />}
-          {screen === "sensory" && selectedExercise?.engine?.mechanic === "tap_instruction" ? <div className="page-enter game-page"><GameHeader title={selectedExercise.title} subtitle="Выполни один шаг" step="Предмет → цель" onBack={() => sessionExerciseActive && activeSession ? setScreen("session") : openScreen("games")}/><PublishedInstructionRunner scenarios={selectedExercise.engine.content.scenarios || []} soundEnabled={settings.sound_enabled} onSpeak={(text, rate) => speak(text, rate, settings.sound_enabled)} onBack={() => sessionExerciseActive && activeSession ? setScreen("session") : openScreen("games")} onComplete={(measurement, details) => saveSession(selectedExercise.id, "sensory", 0, details, measurement)}/></div> : null}
-          {screen === "sensory" && selectedExercise?.engine?.mechanic !== "tap_instruction" && <SensoryGame key={selectedExercise?.id || "sensory"} exercise={selectedExercise?.module === "sensory" ? selectedExercise : exercises.find((item) => item.module === "sensory")} soundEnabled={settings.sound_enabled} onBack={() => sessionExerciseActive && activeSession ? setScreen("session") : openScreen("games")} onComplete={(score, exerciseId, measurement, details) => saveSession(exerciseId, "sensory", score, details || {}, measurement)} />}
+          {activeExerciseContent}
           {screen === "aac" && <PhraseGame key="free-aac" childId={child?.id} canManage={user.role === "parent"} freeMode soundEnabled={settings.sound_enabled} onBack={() => openScreen("home")} />}
           {screen === "ai" && user.role === "parent" && <AIParentScreen child={child} />}
-          {screen === "mixed" && <PhraseGame key={selectedExercise?.id || "mixed"} childId={child?.id} canManage={user.role === "parent"} exercise={selectedExercise?.module === "mixed" ? selectedExercise : exercises.find((item) => item.module === "mixed")} soundEnabled={settings.sound_enabled} onBack={() => sessionExerciseActive && activeSession ? setScreen("session") : openScreen("games")} onComplete={(score, phrase, exerciseId, measurement) => saveSession(exerciseId, "mixed", score, { phrase }, measurement)} />}
-          {screen === "progress" && <ProgressScreen childId={child?.id} dashboard={dashboard} />}
+          {screen === "progress" && <ProgressScreen childId={child?.id} dashboard={dashboard} onStartPractice={() => openScreen("games")} />}
           {screen === "goals" && user.role === "parent" && <GoalsAndPractice child={child} targetMinutes={dailyMinutes} onStartPlan={startPreparedPlan}/>}
           {screen === "parent" && <ParentScreen child={child} childProfiles={children} onSelectChild={setSelectedChildId} onDeleted={(id) => { const remaining = children.filter((item) => item.id !== id); setChildren(remaining); setSelectedChildId(remaining[0]?.id || null); setScreen("home"); }} dashboard={dashboard} onConsentChange={setConsent} />}
+          {screen === "more" && user.role === "parent" && <ParentMoreScreen onOpen={openScreen}/>}
           {screen === "profile" && <ProfileScreen user={user} child={child} dashboard={dashboard} settings={settings} onOpen={openScreen} onLogout={onLogout}/>}
           {screen === "admin" && <AdminScreen />}
-          {screen === "settings" && <SettingsScreen settings={settings} saving={settingsSaving} onChange={changeSettings} onLogout={onLogout} />}
+          {screen === "settings" && <SettingsScreen role={user.role} settings={settings} saving={settingsSaving} onChange={changeSettings} onLogout={onLogout} onOpenParent={() => openScreen("parent")} />}
         </div>
       </main>
       {reward && <RewardCelebration key={reward.nonce} stars={reward.stars} />}
-    </div>
+    </AppRoleShell>
   );
 }
 
@@ -769,68 +814,63 @@ function AuthScreen({ onAuthenticated }: { onAuthenticated: (user: User) => void
   </div>;
 }
 
-function HomeScreen({ onOpen, onStartSession, onResume, activeSession, activeSessionLoading, dailyMinutes, onMinutesChange, sessionLoading, sessionError, child, dashboard, consent, userRole }: { onOpen: (screen: Screen) => void; onStartSession: () => void; onResume: () => void; activeSession: LearningSession | null; activeSessionLoading: boolean; dailyMinutes: 3 | 5 | 10; onMinutesChange: (value: 3 | 5 | 10) => void; sessionLoading: boolean; sessionError: string; child?: Child; dashboard: Dashboard | null; consent: ChildConsent | null; userRole: Role }) {
-  const today = new Date();
-  const month = today.toLocaleDateString("ru-RU", { month: "short" }).replace(".", "").toUpperCase();
-  const weekActivity = dashboard?.week_activity?.length === 7
-    ? dashboard.week_activity
-    : ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"].map((label) => ({ date: "", label, active: false, sessions: 0, today: false }));
-  return (
-    <div className="stack-xl page-enter">
-      {!consent?.privacy_accepted && <section className="consent-banner" role="status">
-        <ShieldAlert size={24}/>
-        <div><strong>{userRole === "parent" ? "Сохранение программы и результатов выключено" : "Попроси взрослого включить сохранение"}</strong><p>{userRole === "parent" ? "Разрешения включаются отдельно и только вами в кабинете родителя." : "Задания можно посмотреть, но результат пока не сохранится."}</p></div>
-        {userRole === "parent" && <button className="secondary-button" onClick={() => onOpen("parent")}>Открыть согласия</button>}
-      </section>}
-      <div className="home-overview">
-        <section className="hero">
-          <div className="hero-copy">
-            <div className="pill"><Sparkles size={15} /> Привет, {child?.name || "друг"}!</div>
-            <h1>Готов к новому<br /><em>приключению?</em></h1>
-            <p>Выбери удобное время и начни короткое занятие. Мы покажем каждый шаг по очереди.</p>
-            <div className="duration-picker" aria-label="Продолжительность занятия">{([3,5,10] as const).map((value) => <button key={value} className={dailyMinutes === value ? "active" : ""} aria-pressed={dailyMinutes === value} onClick={() => onMinutesChange(value)}>{value} мин</button>)}</div>
-            {activeSession && activeSession.status !== "completed" ? <button className="primary-button hero-primary" onClick={onResume} disabled={!consent?.privacy_accepted || sessionLoading}><Play size={18} fill="currentColor" /> {!consent?.privacy_accepted ? "Сначала включите сохранение" : sessionLoading ? "Восстанавливаем занятие…" : "Продолжить занятие"}</button> : <button className="primary-button hero-primary" onClick={onStartSession} disabled={sessionLoading || activeSessionLoading}><Play size={18} fill="currentColor" /> {activeSessionLoading ? "Восстанавливаем занятие…" : sessionLoading ? "Готовим занятие…" : "Начать занятие"}</button>}
-            {sessionError && <div className="inline-error" role="alert">{sessionError}</div>}
-          </div>
-          <div className="hero-art" aria-hidden="true">
-            <div className="mascot"><Image src="/illustrations/mascot-parrot.png" alt="" width={360} height={360} priority /></div>
-          </div>
-        </section>
+type HomeScreenProps = { onOpen: (screen: Screen) => void; onExercise: (exercise: Exercise) => void; onStartSession: () => void; onResume: () => void; activeSession: LearningSession | null; activeSessionLoading: boolean; dailyMinutes: 3 | 5 | 10; onMinutesChange: (value: 3 | 5 | 10) => void; sessionLoading: boolean; sessionError: string; child?: Child; dashboard: Dashboard | null; consent: ChildConsent | null; userRole: Role; exercises: Exercise[] };
 
-        {userRole === "student" ? <aside className="daily-panel calm-practice" aria-label="Спокойный темп занятия">
-          <div className="daily-panel-head"><span className="daily-icon"><Pause size={21}/></span><div><small>ТВОЙ ТЕМП</small><strong>Можно остановиться</strong></div></div>
-          <p>Одного шага достаточно. Перерыв, отказ и просьба о помощи — нормальные сообщения.</p>
-          <button className="secondary-button wide" onClick={() => onOpen("aac")}><MessageCircle size={18}/> Сказать, что нужно</button>
-        </aside> : <aside className="daily-panel" aria-label="История практики сегодня">
-          <div className="daily-panel-head"><span className="daily-icon"><Target size={21}/></span><div><small>ПРАКТИКА СЕГОДНЯ</small><strong>Без обязательной нормы</strong></div></div>
-          <div className="daily-progress-ring" style={{"--daily-progress": `${Math.min((dashboard?.today_sessions || 0) / 3 * 100, 100)}%`} as React.CSSProperties}>
-            <span><b>{dashboard?.today_sessions || 0}</b><small>попыток</small></span>
-          </div>
-          <p>Остановитесь при усталости или отказе. Пропуск дня не уменьшает результат ребёнка.</p>
-          <div className="daily-streak"><Activity size={18}/><span><b>{dashboard?.week_sessions || 0} занятий</b><small>за эту неделю — только история</small></span></div>
-          <div className="week-dots" aria-label={`${dashboard?.week_sessions || 0} заданий на этой неделе`}>{weekActivity.map((day) => <span className={day.today ? "today" : ""} key={day.date || day.label} aria-label={`${day.label}: ${day.sessions ? `${day.sessions} заданий` : "нет занятий"}`}><i className={day.active ? "done" : ""}>{day.active ? <Check size={13}/> : null}</i><small>{day.label}</small></span>)}</div>
-        </aside>}
-      </div>
+function HomeScreen(props: HomeScreenProps) {
+  return props.userRole === "student" ? <ChildHomeScreen {...props}/> : <ParentHomeScreen {...props}/>;
+}
 
-      <section>
-        <div className="section-heading"><div><span className="kicker">МОЙ ПЛАН</span><h2>Выбери, что хочется</h2></div><button className="text-button" onClick={() => onOpen("games")}>Все занятия <ChevronRight size={17} /></button></div>
-        <div className="module-grid">
-          {modules.map((module, index) => <ModuleCard key={module.id} module={{...module, progress: dashboard?.module_completion[module.id] || 0}} completed={dashboard?.module_completed[module.id] || 0} total={dashboard?.active_exercises[module.id] || 0} onClick={() => onOpen(module.id)} index={index + 1} />)}
+function ChildHomeScreen({ onOpen, onExercise, onStartSession, onResume, activeSession, activeSessionLoading, dailyMinutes, onMinutesChange, sessionLoading, sessionError, child, dashboard, consent, exercises }: HomeScreenProps) {
+  const recommended = [dashboard?.recommended_exercise, ...exercises]
+    .filter((item): item is Exercise => Boolean(item))
+    .filter((item, index, items) => items.findIndex((candidate) => candidate.id === item.id) === index)
+    .slice(0, 3);
+  return <div className="stack-xl page-enter child-home">
+    {!consent?.privacy_accepted && <section className="consent-banner child-consent" role="status"><ShieldAlert size={24}/><div><strong>Попроси взрослого включить сохранение</strong><p>Игры можно посмотреть, но результат пока не сохранится.</p></div></section>}
+    <div className="home-overview child-home-overview">
+      <section className="hero child-hero">
+        <div className="hero-copy">
+          <div className="pill"><Sparkles size={18}/> Привет, {child?.name || "друг"}!</div>
+          <h1>Готов к новому<br/><em>приключению?</em></h1>
+          <p>Выбери время. Потом мы покажем один шаг.</p>
+          <div className="duration-picker" aria-label="Сколько заниматься">{([3,5,10] as const).map((value) => <button key={value} className={dailyMinutes === value ? "active" : ""} aria-pressed={dailyMinutes === value} onClick={() => onMinutesChange(value)}>{value} мин</button>)}</div>
+          {activeSession && activeSession.status !== "completed"
+            ? <button className="primary-button hero-primary" onClick={onResume} disabled={!consent?.privacy_accepted || sessionLoading}><Play size={21} fill="currentColor"/>{sessionLoading ? "Подожди…" : "Продолжить"}</button>
+            : <button className="primary-button hero-primary" onClick={onStartSession} disabled={sessionLoading || activeSessionLoading}><Play size={21} fill="currentColor"/>{activeSessionLoading || sessionLoading ? "Подожди…" : "Начать занятие"}</button>}
+          {sessionError && <div className="inline-error" role="alert">{sessionError}</div>}
         </div>
+        <div className="hero-art" aria-hidden="true"><div className="mascot"><Image src="/illustrations/mascot-parrot.png" alt="" width={360} height={360} priority/></div></div>
       </section>
-
-      <section className="recommended-today"><div className="recommend-icon"><Target/></div><div><span className="kicker">СПОКОЙНАЯ ПРАКТИКА</span><h3>{userRole === "student" ? "Можно выбрать один шаг" : "Короткий план по активным целям"}</h3><p>{userRole === "student" ? "Выбери знакомое задание, попроси помощь или вернись позже." : "План собирается прозрачными правилами только из опубликованных заданий. Причину каждого выбора можно посмотреть в разделе целей."}</p></div><button className="secondary-button" onClick={onStartSession}>{userRole === "student" ? "Посмотреть варианты" : "Собрать план"} <ChevronRight size={17}/></button></section>
-
-      {userRole !== "student" && <section className="today-row">
-        <div className="today-card">
-          <div className="calendar-tile"><span>{month}</span><strong>{today.getDate()}</strong></div>
-          <div><span className="kicker">СЕГОДНЯ</span><h3>Ты уже позанимался {dashboard?.today_minutes || 0} минут</h3><p>За неделю: {dashboard?.week_sessions || 0} занятий и {dashboard?.week_minutes || 0} минут практики.</p></div>
-          <div className="goal-ring" aria-label={`${dashboard?.today_sessions || 0} попыток сегодня`}><span>{dashboard?.today_sessions || 0}</span></div>
-        </div>
-        <div className="privacy-card"><ShieldCheck size={26} /><div><strong>Проверка работает на устройстве</strong><span>Кадры анализируются локально, но не отправляются и не сохраняются</span></div></div>
-      </section>}
+      <aside className="daily-panel calm-practice child-communication-card" aria-label="Быстрое сообщение">
+        <span className="child-communication-icon"><MessageCircle size={30}/></span>
+        <div><span className="kicker">ВСЕГДА МОЖНО</span><h2>Сказать, что нужно</h2><p>Помощь, перерыв и отказ доступны без задания.</p></div>
+        <button className="primary-button wide" onClick={() => onOpen("aac")}><MessageCircle size={20}/> Открыть «Сказать»</button>
+      </aside>
     </div>
-  );
+    <section className="child-picks" aria-labelledby="child-picks-title">
+      <div className="section-heading"><div><span className="kicker">МОЖНО ВЫБРАТЬ ОДНО</span><h2 id="child-picks-title">Знакомые занятия</h2></div><button className="text-button" onClick={() => onOpen("games")}>Все занятия <ChevronRight size={20}/></button></div>
+      <div className="child-pick-grid">{recommended.map((exercise) => <button key={exercise.id} className="child-pick-card" onClick={() => onExercise(exercise)}><span><ModuleGlyph module={exercise.module} size={30}/></span><div><strong>{exercise.title}</strong><small>{exercise.module === "sensory" ? "Послушай и покажи" : "Собери сообщение"}</small></div><ChevronRight size={22}/></button>)}</div>
+      {!recommended.length && <div className="empty-state large"><Gamepad2 size={30}/><strong>Занятия скоро появятся</strong><span>Можно открыть «Сказать» или вернуться позже.</span></div>}
+    </section>
+  </div>;
+}
+
+function ParentHomeScreen({ onOpen, onStartSession, onResume, activeSession, activeSessionLoading, dailyMinutes, onMinutesChange, sessionLoading, sessionError, child, dashboard, consent }: HomeScreenProps) {
+  const hasHistory = Boolean(dashboard?.total_sessions);
+  return <div className="page-enter parent-home">
+    <header className="parent-home-heading"><div><span className="kicker">СЕГОДНЯ</span><h1>Сегодня с {child?.name || "ребёнком"}</h1><p>Один безопасный следующий шаг, текущие разрешения и история практики.</p></div><button className="secondary-button" onClick={() => onOpen("parent")}><UserRound size={19}/> Профиль и доступ</button></header>
+    <div className="parent-home-grid">
+      <section className="parent-next-step">
+        <div className="parent-next-copy"><span className="kicker">СЛЕДУЮЩИЙ ШАГ</span><h2>{activeSession && activeSession.status !== "completed" ? "Продолжить короткое занятие" : "Подготовить короткое занятие"}</h2><p>Занятие можно остановить при усталости, отказе или просьбе о перерыве.</p></div>
+        <div className="duration-picker" aria-label="Продолжительность занятия">{([3,5,10] as const).map((value) => <button key={value} className={dailyMinutes === value ? "active" : ""} aria-pressed={dailyMinutes === value} onClick={() => onMinutesChange(value)}>{value} мин</button>)}</div>
+        {activeSession && activeSession.status !== "completed" ? <button className="primary-button" onClick={onResume} disabled={!consent?.privacy_accepted || sessionLoading}><Play size={19} fill="currentColor"/>Продолжить занятие</button> : <button className="primary-button" onClick={onStartSession} disabled={sessionLoading || activeSessionLoading}><Play size={19} fill="currentColor"/>{sessionLoading || activeSessionLoading ? "Подготавливаем…" : "Начать занятие"}</button>}
+        {sessionError && <div className="inline-error" role="alert">{sessionError}</div>}
+      </section>
+      <aside className={`parent-consent-status ${consent?.privacy_accepted ? "ready" : "attention"}`}><ShieldCheck size={26}/><div><span className="kicker">БЕЗОПАСНОСТЬ</span><h2>{consent?.privacy_accepted ? "Сохранение разрешено" : "Нужно решение взрослого"}</h2><p>{consent?.privacy_accepted ? "Результаты сохраняются в профиле ребёнка. Камера управляется отдельно." : "Без согласия результаты и планы не сохраняются."}</p></div><button className="secondary-button" onClick={() => onOpen("parent")}>{consent?.privacy_accepted ? "Проверить настройки" : "Открыть разрешения"}</button></aside>
+    </div>
+    <section className="parent-observation" aria-labelledby="parent-observation-title"><div><span className="kicker">НАБЛЮДЕНИЕ, НЕ ДИАГНОЗ</span><h2 id="parent-observation-title">{hasHistory ? "Что видно по последним играм" : "Пока недостаточно наблюдений"}</h2><p>{hasHistory && dashboard?.weakest_skill ? `В заданиях «${dashboard.weakest_skill.label}» чаще требовалась поддержка. Это описание игровых попыток, а не оценка развития речи.` : "После нескольких занятий здесь появится краткое описание участия и использованной помощи."}</p></div><button className="text-button" onClick={() => onOpen(hasHistory ? "progress" : "goals")}>{hasHistory ? "Открыть историю" : "Настроить цель"}<ChevronRight size={19}/></button></section>
+    <section className="parent-quick-actions" aria-label="Основные разделы"><button onClick={() => onOpen("goals")}><Target/><span><strong>Цели и планы</strong><small>Настроить следующий шаг</small></span><ChevronRight/></button><button onClick={() => onOpen("games")}><Gamepad2/><span><strong>Занятия</strong><small>Предпросмотр и практика</small></span><ChevronRight/></button><button onClick={() => onOpen("aac")}><MessageCircle/><span><strong>Общение</strong><small>AAC и словарь ребёнка</small></span><ChevronRight/></button><button onClick={() => onOpen("progress")}><BarChart3/><span><strong>История</strong><small>Участие без клинических выводов</small></span><ChevronRight/></button></section>
+  </div>;
 }
 
 function SessionScreen({ session, onContinue, onPause, onFinish }: { session: LearningSession; onContinue: () => void; onPause: () => void; onFinish: () => void }) {
@@ -889,15 +929,28 @@ const courseUnits = [
 ] as const;
 
 function GamesScreen({ onOpen, onExercise, dashboard, exercises, childMode, parentPracticeMode, onParentPracticeModeChange }: { onOpen: (screen: Screen) => void; onExercise: (exercise: Exercise) => void; dashboard: Dashboard | null; exercises: Exercise[]; childMode: boolean; parentPracticeMode?: ParentPracticeMode; onParentPracticeModeChange?: (mode: ParentPracticeMode) => void }) {
+  if (childMode) {
+    const featured = [dashboard?.recommended_exercise, exercises.find((item) => item.target === "toys"), exercises.find((item) => item.target === "help"), ...exercises]
+      .filter((item): item is Exercise => Boolean(item))
+      .filter((item, index, items) => items.findIndex((candidate) => candidate.id === item.id) === index)
+      .slice(0, 5);
+    const remaining = exercises.filter((item) => !featured.some((featuredItem) => featuredItem.id === item.id));
+    return <div className="page-enter child-games">
+      <PageTitle eyebrow="ЗАНЯТИЯ" title="Выбери одну игру" subtitle="Можно остановиться, попросить помощь или вернуться позже."/>
+      <button className="child-aac-entry" onClick={() => onOpen("aac")}><span><MessageCircle size={28}/></span><div><strong>Сказать, что нужно</strong><small>Помощь, перерыв, отказ и другие сообщения</small></div><ChevronRight size={24}/></button>
+      <section className="child-featured-games" aria-labelledby="featured-games-title"><div className="section-heading"><div><span className="kicker">ДОСТУПНО СЕЙЧАС</span><h2 id="featured-games-title">Знакомые игры</h2></div></div><div>{featured.map((exercise, index) => <button key={exercise.id} className="child-game-card" onClick={() => onExercise(exercise)}><span className="child-game-number">{index + 1}</span><span className="child-game-glyph"><ModuleGlyph module={exercise.module} size={31}/></span><div><strong>{exercise.title}</strong><small>{exercise.module === "sensory" ? "Послушай слово и покажи картинку" : "Выбери карточки и скажи сообщение"}</small></div><ChevronRight size={24}/></button>)}</div></section>
+      {remaining.length > 0 && <details className="child-more-games"><summary>Ещё игры <span>{remaining.length}</span><ChevronRight size={21}/></summary><div>{remaining.map((exercise) => <button key={exercise.id} onClick={() => onExercise(exercise)}><span><ModuleGlyph module={exercise.module} size={26}/></span><div><strong>{exercise.title}</strong><small>{exercise.module === "sensory" ? "Слушай и находи" : "Собери сообщение"}</small></div><ChevronRight size={21}/></button>)}</div></details>}
+    </div>;
+  }
   return (
     <div className="page-enter stack-xl">
       <PageTitle eyebrow="ИГРОВАЯ КОМНАТА" title="Выбери приключение" subtitle="Каждая игра поддерживает отдельный навык. Можно выбрать одно знакомое задание или вернуться позже." />
       {exercises.some((item) => item.engine?.review_gate.demo_only) && <div className="unreviewed-demo-banner" role="status"><ShieldAlert size={20}/><div><strong>Внутренний демонстрационный контент</strong><span>Эти задания ещё не прошли независимую методическую и accessibility-проверку. Не используйте их как утверждённую программу для пилота.</span></div></div>}
       {parentPracticeMode && <section className="practice-mode-card" aria-labelledby="practice-mode-title"><div><Eye size={22}/><span><strong id="practice-mode-title">Кто сейчас выполняет задание?</strong><small>Предпросмотр взрослого никогда не попадает в историю и адаптивный подбор.</small></span></div><div className="practice-mode-options"><button type="button" className={parentPracticeMode === "adult_preview" ? "active" : ""} aria-pressed={parentPracticeMode === "adult_preview"} onClick={() => onParentPracticeModeChange?.("adult_preview")}><Eye size={17}/> Предпросмотр взрослого</button><button type="button" className={parentPracticeMode === "child_practice" ? "active" : ""} aria-pressed={parentPracticeMode === "child_practice"} onClick={() => onParentPracticeModeChange?.("child_practice")}><Baby size={17}/> Практика ребёнка</button></div></section>}
       <LearningPath exercises={exercises} completedIds={dashboard?.completed_exercise_ids || []} onExercise={onExercise} />
-      {!childMode && <><div className="section-heading"><div><span className="kicker">СВОБОДНАЯ ПРАКТИКА</span><h2>Тренировка по направлениям</h2></div></div>
+      <><div className="section-heading"><div><span className="kicker">СВОБОДНАЯ ПРАКТИКА</span><h2>Тренировка по направлениям</h2></div></div>
       <div className="module-grid large">{modules.map((m, i) => <ModuleCard key={m.id} module={{...m, progress: dashboard?.module_completion[m.id] || 0}} completed={dashboard?.module_completed[m.id] || 0} total={dashboard?.active_exercises[m.id] || 0} index={i + 1} onClick={() => onOpen(m.id)} />)}</div>
-      <ExerciseLibrary items={exercises} onExercise={onExercise} /></>}
+      <ExerciseLibrary items={exercises} onExercise={onExercise} /></>
       <div className="tip-banner"><div className="tip-icon"><Sparkles/></div><div><strong>Подсказка для взрослых</strong><p>Короткую практику можно закончить в любой момент. Частоту, длительность и цели согласуйте со специалистом и состоянием ребёнка.</p></div></div>
     </div>
   );
@@ -1394,7 +1447,10 @@ function createSensoryRound(itemCount: number, optionCount: 2 | 3 | 4, excludedT
 }
 
 function SensoryGame({ exercise, soundEnabled, onBack, onComplete }: { exercise?: Exercise; soundEnabled: boolean; onBack: () => void; onComplete: (score: number, exerciseId: number, measurement: GameMeasurement, details?: Record<string, unknown>) => Promise<unknown> | void }) {
-  const items: SensoryItem[] = (exercise?.engine?.content.stimuli || []).map((item) => ({
+  const sourceStimuli = exercise?.engine?.content.stimuli || [];
+  const mixesVisualSystems = sourceStimuli.some((item) => Boolean(item.media_ref)) && sourceStimuli.some((item) => Boolean(item.visual_token));
+  const consistentStimuli = mixesVisualSystems ? sourceStimuli.filter((item) => Boolean(item.media_ref)) : sourceStimuli;
+  const items: SensoryItem[] = consistentStimuli.map((item) => ({
     key: item.key,
     word: item.label,
     speech: item.speech,
@@ -1645,7 +1701,7 @@ function AACVisual({ card, compact = false }: { card: AACCard; compact?: boolean
   const Icon = aacIconByLabel[card.label] || aacCategoryIcons[card.category] || MessageCircle;
   const relation = card.label === "На столе" ? "above" : card.label === "В коробке" ? "inside" : card.label === "Под стулом" ? "below" : "";
   const past = ["Вчера", "Играл", "Гулял"].includes(card.label);
-  return <span className={`aac-visual aac-${card.category} ${!pictogram && relation ? `relation-${relation}` : ""} ${compact ? "compact" : ""}`} data-label={card.label} aria-hidden="true">{pictogram ? <Image className="aac-pictogram-image" src={`/aac-pictograms/${pictogram}.png`} alt="" width={128} height={128}/> : <><Icon strokeWidth={1.75}/>{relation && <i className="aac-relation-dot"/>}{past && <i className="aac-past-mark"/>}</>}</span>;
+  return <span className={`aac-visual aac-${card.category} ${!pictogram && relation ? `relation-${relation}` : ""} ${compact ? "compact" : ""}`} data-label={card.label} aria-hidden="true">{pictogram && !compact ? <Image className="aac-pictogram-image" src={`/aac-pictograms/${pictogram}.png`} alt="" width={128} height={128}/> : <><Icon strokeWidth={1.75}/>{relation && <i className="aac-relation-dot"/>}{past && <i className="aac-past-mark"/>}</>}</span>;
 }
 
 function PhraseGame({ childId, canManage, exercise, freeMode = false, soundEnabled, onBack, onComplete }: { childId?: number; canManage: boolean; exercise?: Exercise; freeMode?: boolean; soundEnabled: boolean; onBack: () => void; onComplete?: (score: number, phrase: string, exerciseId: number, measurement: GameMeasurement) => Promise<unknown> | void }) {
@@ -1658,6 +1714,7 @@ function PhraseGame({ childId, canManage, exercise, freeMode = false, soundEnabl
   }[exercise?.target || ""] || "favorites"));
   const [history, setHistory] = useState<Array<{ id: number; phrase: string }>>([]);
   const [cardQuery, setCardQuery] = useState("");
+  const [categoriesOpen, setCategoriesOpen] = useState(false);
   const [customOpen, setCustomOpen] = useState(false);
   const [custom, setCustom] = useState({ label: "", speech: "", category: "needs" });
   const [aacNotice, setAacNotice] = useState("");
@@ -1782,7 +1839,7 @@ function PhraseGame({ childId, canManage, exercise, freeMode = false, soundEnabl
     speak(phrase, 0.72, soundEnabled);
   };
   const activeCategory = aacCategories.find((item) => item.id === category) || aacCategories[0];
-  const quickCards = ["Помоги", "Больно", "Стоп", "Перерыв", "Не хочу", "Да", "Нет"].flatMap((label) => cards.find((card) => card.label === label) || []);
+  const quickCards = ["Помоги", "Больно", "Стоп", "Перерыв", "Не хочу", "Да"].flatMap((label) => cards.find((card) => card.label === label) || []);
   return <div className="page-enter game-page aac-page redesigned">
     <GameHeader title={freeMode ? "Сказать" : exercise?.title || "Учебное AAC-задание"} subtitle={freeMode ? "Свободное сообщение без оценок" : "Практика с карточками AAC"} step={freeMode ? "Всегда доступно" : scenarioEvaluation.stepLabel} onBack={onBack}/>
     {freeMode && <section className="aac-quick" aria-label="Быстрые сообщения"><div className="aac-quick-head"><div><span className="kicker">СКАЗАТЬ СЕЙЧАС</span><strong>Важное сообщение - одним нажатием</strong></div><ShieldCheck size={22}/></div><div>{quickCards.map((card) => <button key={card.id} disabled={speechPending} onClick={() => sendQuickMessage(card)}><AACVisual card={card} compact/><span>{card.label}</span></button>)}</div>{aacNotice && <p role="status">{aacNotice}{selected[0]?.label === "Перерыв" && <button onClick={onBack}>Сделать паузу</button>}</p>}</section>}
@@ -1795,8 +1852,8 @@ function PhraseGame({ childId, canManage, exercise, freeMode = false, soundEnabl
       </section>
       {safetyCards.length > 0 && <section className="aac-guided-safety" aria-label="Важные сообщения"><div><span className="kicker">МОЖНО СКАЗАТЬ В ЛЮБОЙ МОМЕНТ</span><strong>Помощь, перерыв или отказ</strong></div><div>{safetyCards.map((card) => <button key={card.id} disabled={speechPending} onClick={() => sendQuickMessage(card)}><AACVisual card={card} compact/><span>{card.label}</span></button>)}</div></section>}
     </div> : <div className="aac-workspace">
-      <aside className="aac-category-panel"><div><span className="kicker">КАТЕГОРИИ</span><h3>Выбери слово или фразу</h3></div><nav className="aac-tabs" aria-label="Категории карточек">{aacCategories.map((item) => { const Icon = item.icon; const count = item.id === "favorites" ? availableCards.filter((card) => card.favorite || card.is_core).length : availableCards.filter((card) => card.category === item.id).length; return <button key={item.id} className={category === item.id ? "active" : ""} aria-pressed={category === item.id} onClick={() => { setCategory(item.id); setCardQuery(""); }}><Icon size={18}/><span>{item.label}</span><small>{count}</small></button>; })}</nav>{history.length > 0 && <div className="aac-history"><span className="kicker">НЕДАВНИЕ</span>{history.slice(0,3).map((item) => <button key={item.id} onClick={() => replayHistory(item.phrase)}><RotateCcw size={14}/><span>{item.phrase}</span></button>)}</div>}</aside>
-      <section className="aac-board"><div className="aac-toolbar"><div><span className="kicker">{category === "favorites" ? "БЫСТРЫЙ ДОСТУП" : "КАТЕГОРИЯ"}</span><h3>{activeCategory.label}</h3></div><div className="aac-tools"><label className="aac-search"><Search size={16}/><input value={cardQuery} onChange={(event) => setCardQuery(event.target.value)} placeholder="Найти слово" aria-label="Найти слово"/></label><button className="small-button" onClick={() => document.querySelector<HTMLElement>(".aac-page")?.requestFullscreen?.()}><LayoutDashboard size={15}/> На весь экран</button>{canManage && freeMode && <button className="small-button" onClick={() => setCustomOpen((value) => !value)}><Plus size={15}/> Своя карточка</button>}</div></div>
+      <aside className="aac-category-panel"><div><span className="kicker">МОИ КАРТОЧКИ</span><h3>{category === "favorites" ? "Главные и любимые" : activeCategory.label}</h3></div><nav className="aac-tabs primary-aac-tabs" aria-label="Основные категории карточек"><button className={category === "favorites" ? "active" : ""} aria-pressed={category === "favorites"} onClick={() => { setCategory("favorites"); setCardQuery(""); }}><Star size={19}/><span>Главные</span><small>{availableCards.filter((card) => card.favorite || card.is_core).length}</small></button><button className={categoriesOpen ? "active" : ""} aria-expanded={categoriesOpen} aria-controls="more-aac-categories" onClick={() => setCategoriesOpen((value) => !value)}><Plus size={19}/><span>Ещё</span><small>{aacCategories.length - 1}</small></button></nav>{categoriesOpen && <nav id="more-aac-categories" className="aac-tabs more-aac-tabs" aria-label="Дополнительные категории">{aacCategories.filter((item) => item.id !== "favorites").map((item) => { const Icon = item.icon; const count = availableCards.filter((card) => card.category === item.id).length; return <button key={item.id} className={category === item.id ? "active" : ""} aria-pressed={category === item.id} onClick={() => { setCategory(item.id); setCardQuery(""); }}><Icon size={18}/><span>{item.label}</span><small>{count}</small></button>; })}</nav>}{history.length > 0 && <div className="aac-history"><span className="kicker">НЕДАВНИЕ</span>{history.slice(0,3).map((item) => <button key={item.id} onClick={() => replayHistory(item.phrase)}><RotateCcw size={14}/><span>{item.phrase}</span></button>)}</div>}</aside>
+      <section className="aac-board"><div className="aac-toolbar"><div><span className="kicker">{category === "favorites" ? "БЫСТРЫЙ ДОСТУП" : "КАТЕГОРИЯ"}</span><h3>{category === "favorites" ? "Выбери карточку" : activeCategory.label}</h3></div><div className="aac-tools">{(categoriesOpen || canManage) && <label className="aac-search"><Search size={16}/><input value={cardQuery} onChange={(event) => setCardQuery(event.target.value)} placeholder="Найти слово" aria-label="Найти слово"/></label>}<button className="small-button" onClick={() => document.querySelector<HTMLElement>(".aac-page")?.requestFullscreen?.()}><LayoutDashboard size={15}/> На весь экран</button>{canManage && freeMode && <button className="small-button" onClick={() => setCustomOpen((value) => !value)}><Plus size={15}/> Своя карточка</button>}</div></div>
         {customOpen && <form className="aac-custom-form" onSubmit={createCustom}><input value={custom.label} onChange={(e) => setCustom({...custom,label:e.target.value})} placeholder="Короткая подпись" required/><input value={custom.speech} onChange={(e) => setCustom({...custom,speech:e.target.value})} placeholder="Что должна сказать карточка" required/><select value={custom.category} onChange={(e) => setCustom({...custom,category:e.target.value})}>{aacCategories.filter((item) => item.id !== "favorites").map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select><button className="primary-button">Добавить</button></form>}
         <div className="aac-card-grid">{visibleCards.map((card) => <div className={`aac-card aac-card-${card.category} ${card.is_core ? "core" : ""}`} key={card.id}><button className="aac-card-main" disabled={selected.some((item) => item.id === card.id)} onClick={() => addCard(card)}><AACVisual card={card}/><strong>{card.label}</strong><small>{card.speech}</small></button><button className={`aac-favorite ${card.favorite ? "active" : ""}`} onClick={() => toggleFavorite(card)} aria-label={card.favorite ? `Убрать ${card.label} из избранного` : `Добавить ${card.label} в избранное`}><Star size={15} fill={card.favorite ? "currentColor" : "none"}/></button></div>)}</div>
         {!visibleCards.length && <div className="aac-empty"><Search size={24}/><strong>Карточки не найдены</strong><span>Измените поиск или выберите другую категорию.</span></div>}
@@ -1805,15 +1862,16 @@ function PhraseGame({ childId, canManage, exercise, freeMode = false, soundEnabl
   </div>;
 }
 
-function ProgressScreen({ childId, dashboard }: { childId?: number; dashboard: Dashboard | null }) {
+function ProgressScreen({ childId, dashboard, onStartPractice }: { childId?: number; dashboard: Dashboard | null; onStartPractice: () => void }) {
   const [data, setData] = useState<{ child?: Child; overall: number; total_sessions: number; skill_progress: SkillProgress[] } | null>(null);
   const [progressError, setProgressError] = useState("");
   const [progressReload, setProgressReload] = useState(0);
+  const [progressLoading, setProgressLoading] = useState(true);
   useEffect(() => {
     if (!childId) return;
     api<typeof data>(`/api/progress/${childId}`).then((value) => { setData(value); setProgressError(""); }).catch((cause) => {
       setProgressError(cause instanceof Error ? cause.message : "Не удалось загрузить историю практики");
-    });
+    }).finally(() => setProgressLoading(false));
   }, [childId, progressReload]);
   const skillColors = ["coral", "blue", "mint", "lavender", "coral", "blue"];
   const skills = (data?.skill_progress || dashboard?.skill_progress || []).map((skill, index) => ({ ...skill, color: skillColors[index] }));
@@ -1821,9 +1879,12 @@ function ProgressScreen({ childId, dashboard }: { childId?: number; dashboard: D
   const daysWithData = chartDays.filter((point) => point.sensory !== null).length;
   const chartCoordinates = (module: ModuleName) => chartDays.flatMap((point, index) => point[module] === null ? [] : [{ x: index * (700 / 6), y: 205 - Number(point[module]) * 1.7 }]);
   const chartPoints = (module: ModuleName) => chartCoordinates(module).map((point) => `${point.x},${point.y}`).join(" ");
+  const totalSessions = dashboard?.total_sessions ?? data?.total_sessions ?? 0;
+  if (progressLoading && !data && !dashboard) return <div className="page-enter progress-loading-state" role="status"><Timer size={28}/><strong>Загружаем историю практики…</strong></div>;
+  if (!progressError && totalSessions === 0) return <div className="page-enter progress-empty-page"><PageTitle eyebrow="ИСТОРИЯ ПРАКТИКИ" title={`Занятия ${data?.child?.name || "ребёнка"}`} subtitle="Здесь появятся наблюдения после первых сохранённых занятий."/><section><span><BarChart3 size={34}/></span><h2>Пока недостаточно наблюдений</h2><p>Начните с одного короткого занятия. Söyle покажет участие и использованную помощь без диагноза и сравнения с другими детьми.</p><button className="primary-button" onClick={onStartPractice}><Play size={19} fill="currentColor"/> Выбрать занятие</button></section></div>;
   return (
     <div className="page-enter stack-xl progress-page">
-      {progressError && <div className="game-error" role="alert"><ShieldAlert size={18}/><span>{progressError}</span><button type="button" className="small-button" onClick={() => setProgressReload((value) => value + 1)}>Повторить</button></div>}
+      {progressError && <div className="game-error" role="alert"><ShieldAlert size={18}/><span>{progressError}</span><button type="button" className="small-button" onClick={() => { setProgressLoading(true); setProgressReload((value) => value + 1); }}>Повторить</button></div>}
       <section className="progress-hero"><div><span className="kicker">ИСТОРИЯ ПРАКТИКИ</span><h1>{`Занятия ${data?.child?.name || "ребёнка"}`}</h1><p>Процент справа означает только охват доступных заданий. Результаты игр, участие и помощь показываются отдельно и не оценивают развитие речи.</p></div><div className="progress-hero-score"><strong>{dashboard?.overall ?? data?.overall ?? 0}%</strong><span>охват заданий попытками</span></div></section>
       <div className="stats-row"><StatCard icon={<TrendingUp/>} value={`${dashboard?.overall ?? data?.overall ?? 0}%`} label="охват доступных заданий" /><StatCard icon={<Timer/>} value={String(dashboard?.total_minutes || 0)} label="минут практики" /><StatCard icon={<Star/>} value={String(dashboard?.stars || 0)} label="звёзд за игры" /><StatCard icon={<Target/>} value={String(dashboard?.total_sessions ?? data?.total_sessions ?? 0)} label="игровых попыток" /></div>
       <div className="progress-grid">
@@ -1916,6 +1977,17 @@ function AIParentScreen({ child }: { child?: Child }) {
       </section>
     </div>
   </div>;
+}
+
+function ParentMoreScreen({ onOpen }: { onOpen: (screen: Screen) => void }) {
+  const items: Array<{ screen: Screen; title: string; text: string; icon: LucideIcon }> = [
+    { screen: "goals", title: "Цели и занятия", text: "Индивидуальные цели, предпочтения и короткие планы", icon: Target },
+    { screen: "ai", title: "Локальный помощник", text: "Безопасные подсказки по прозрачным правилам", icon: Bot },
+    { screen: "parent", title: "Профиль ребёнка и данные", text: "Детский вход, согласия, экспорт и удаление", icon: UserRound },
+    { screen: "settings", title: "Настройки", text: "Камера, звук, язык и оформление", icon: Settings },
+    { screen: "profile", title: "Мой аккаунт", text: "Информация о текущем профиле", icon: CircleUserRound },
+  ];
+  return <div className="page-enter parent-more-page"><PageTitle eyebrow="ЕЩЁ" title="Управление и поддержка" subtitle="Разделы, которые нужны не каждый день."/><div className="parent-more-grid">{items.map((item) => { const Icon = item.icon; return <button key={item.screen} aria-label={item.title} onClick={() => onOpen(item.screen)}><span><Icon size={25}/></span><div><strong>{item.title}</strong><small>{item.text}</small></div><ChevronRight size={23}/></button>; })}</div></div>;
 }
 
 function ParentScreen({ child, childProfiles, onSelectChild, onDeleted, dashboard, onConsentChange }: { child?: Child; childProfiles: Child[]; onSelectChild: (id: number) => void; onDeleted: (id: number) => void; dashboard: Dashboard | null; onConsentChange: (consent: ChildConsent) => void }) {
@@ -2014,6 +2086,7 @@ function AdminScreen() {
   const [formMessage, setFormMessage] = useState("");
   const [adminError, setAdminError] = useState("");
   const [apiHealthy, setApiHealthy] = useState<boolean | null>(null);
+  const reviewReturnScrollRef = useRef(0);
   const load = useCallback(async () => {
     setAdminError("");
     const results = await Promise.allSettled([
@@ -2093,8 +2166,22 @@ function AdminScreen() {
   };
   const openReview = async (versionId: number) => {
     setAdminError("");
-    try { setReviewWorkspace(await api<ContentReviewWorkspaceData>(`/api/admin/exercise-drafts/${versionId}/preview`)); }
+    reviewReturnScrollRef.current = window.scrollY;
+    try { setReviewWorkspace(await api<ContentReviewWorkspaceData>(`/api/admin/exercise-drafts/${versionId}/preview`)); window.scrollTo({ top: 0 }); }
     catch (cause) { setAdminError(cause instanceof Error ? cause.message : "Не удалось открыть проверку"); }
+  };
+  const closeReviewWorkspace = () => {
+    setReviewWorkspace(null);
+    window.requestAnimationFrame(() => window.scrollTo({ top: reviewReturnScrollRef.current }));
+  };
+  const openHomePreview = (item: HomeActivityDraft) => {
+    reviewReturnScrollRef.current = window.scrollY;
+    setHomePreview(item);
+    window.scrollTo({ top: 0 });
+  };
+  const closeHomePreview = () => {
+    setHomePreview(null);
+    window.requestAnimationFrame(() => window.scrollTo({ top: reviewReturnScrollRef.current }));
   };
   const reviewContent = async (stage: "technical" | "methodology" | "accessibility" | "publication", decision: "passed" | "approved" | "changes_requested", comment: string) => {
     if (!reviewWorkspace) return;
@@ -2108,13 +2195,13 @@ function AdminScreen() {
   const formatTokens = (value: number) => value.toLocaleString("ru-RU");
   const formatCost = (value: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 4, maximumFractionDigits: 6 }).format(value);
   const maxDailyTokens = Math.max(0, ...usage.daily.map((item) => item.total_tokens));
+  if (tab === "exercises" && reviewWorkspace) return <div className="page-enter admin-review-page"><ContentReviewWorkspace data={reviewWorkspace} onClose={closeReviewWorkspace} onSpeak={(text, rate) => speak(text, rate, true)} onReview={reviewContent}/></div>;
+  if (tab === "exercises" && homePreview) return <div className="page-enter admin-review-page"><HomeActivityReviewPreview activity={homePreview} onClose={closeHomePreview}/></div>;
   return <div className="page-enter stack-xl admin-page">
     <div className="admin-heading"><PageTitle eyebrow="УПРАВЛЕНИЕ ПЛАТФОРМОЙ" title="Админ-панель" subtitle="Пользователи, контент и прозрачный учёт автоматических функций."/><span className={`system-status ${apiHealthy === false ? "blocked" : ""}`}><i/> {apiHealthy === null ? "Проверяем API" : apiHealthy ? "API доступен" : "API недоступен"}</span></div>
     {adminError && <div className="game-error" role="alert"><ShieldAlert size={18}/><span>{adminError}</span><button className="small-button" onClick={() => void load()}>Повторить</button></div>}
     <div className="stats-row admin-stats"><StatCard icon={<Users/>} value={String(stats.users)} label="аккаунтов"/><StatCard icon={<UserRound/>} value={String(stats.children)} label="профилей детей"/><StatCard icon={<Target/>} value={String(stats.sessions)} label="сохранённых попыток"/><StatCard icon={<Gamepad2/>} value={String(stats.exercises)} label="активных заданий"/></div>
     <div className="admin-tabs" role="tablist" aria-label="Разделы админ-панели"><button type="button" role="tab" aria-selected={tab === "users"} className={tab === "users" ? "active" : ""} onClick={() => setTab("users")}><Users size={17}/>Пользователи</button><button type="button" role="tab" aria-selected={tab === "exercises"} className={tab === "exercises" ? "active" : ""} onClick={() => setTab("exercises")}><Gamepad2 size={17}/>Задания</button><button type="button" role="tab" aria-selected={tab === "usage"} className={tab === "usage" ? "active" : ""} onClick={() => { setTab("usage"); void loadUsage(usageDays); }}><BarChart3 size={17}/>Архив API</button><button type="button" role="tab" aria-selected={tab === "audit"} className={tab === "audit" ? "active" : ""} onClick={() => setTab("audit")}><ShieldCheck size={17}/>Журнал</button></div>
-    {tab === "exercises" && reviewWorkspace && <ContentReviewWorkspace data={reviewWorkspace} onClose={() => setReviewWorkspace(null)} onSpeak={(text, rate) => speak(text, rate, true)} onReview={reviewContent}/>}
-    {tab === "exercises" && homePreview && <HomeActivityReviewPreview activity={homePreview} onClose={() => setHomePreview(null)}/>}
     {tab === "users" && <section className="admin-card"><div className="admin-card-head"><div><span className="kicker">ДОСТУП И РОЛИ</span><h3>Взрослые аккаунты</h3><p>Роль определяет доступ к семейным и административным разделам.</p></div></div><div className="admin-table-wrap"><table className="account-table"><caption className="sr-only">Взрослые аккаунты и их права доступа</caption><thead><tr><th scope="col">Пользователь</th><th scope="col">Роль</th><th scope="col">Статус</th><th scope="col">Действие</th></tr></thead><tbody>{users.map((item) => <tr key={item.id}><td data-label="Пользователь"><b>{item.full_name}</b><small>{item.email}</small></td><td data-label="Роль"><select aria-label={`Роль пользователя ${item.full_name}`} value={item.role} onChange={(e) => changeRole(item.id, e.target.value as Exclude<Role,"student">)}><option value="parent">Родитель</option><option value="admin">Администратор</option></select></td><td data-label="Статус"><i className={`status ${item.is_active ? "active" : "blocked"}`}>{item.is_active ? "Активен" : "Отключён"}</i></td><td data-label="Действие"><button type="button" className="small-button" onClick={() => toggleUser(item)}>{item.is_active ? "Отключить" : "Включить"}</button></td></tr>)}</tbody></table></div><div className="student-accounts"><div className="student-accounts-head"><span className="kicker">УЧЕНИЧЕСКИЕ АККАУНТЫ</span><small>{students.length} всего</small></div><div className="student-account-grid">{students.map((item) => <article key={item.id}><span className="student-icon"><Backpack/></span><div><strong>{item.child_name}</strong><small>Логин: {item.username}</small><small>Родитель: {item.parent_name}</small></div><i className="status active">Ученик</i></article>)}</div></div></section>}
     {tab === "exercises" && <section className="admin-card">
       <div className="admin-card-head"><div><span className="kicker">ВЕРСИОНИРУЕМЫЙ КОНТЕНТ</span><h3>Библиотека заданий</h3><p>Ребёнок видит только опубликованные версии после технической, методической, проверки доступности и отдельного разрешения выпуска.</p></div><button type="button" className="primary-button" aria-expanded={formOpen} onClick={() => setFormOpen(!formOpen)}>{formOpen ? "Закрыть форму" : "+ Новый черновик"}</button></div>
@@ -2122,7 +2209,7 @@ function AdminScreen() {
       {formMessage && <div className="usage-note" role="status"><ShieldCheck size={18}/><p>{formMessage}</p></div>}
       <div className="admin-content-columns"><div><span className="kicker">ОПУБЛИКОВАНО</span><div className="admin-exercises">{exercises.map((item) => <div key={item.id}><span><Image src={moduleImages[item.module]} alt="" width={42} height={42}/></span><div><strong>{item.title}</strong><small>{item.engine?.mechanic === "auditory_choice" ? "Выбор на слух" : "AAC-сценарий"} · v{item.engine?.version || 1} · уровень {item.difficulty}</small></div><button type="button" onClick={() => archiveExercise(item.id)}>В архив</button></div>)}</div></div><div><span className="kicker">ЧЕРНОВИКИ И ПРОВЕРКА</span><div className="draft-list">{drafts.length ? drafts.map((item) => <article key={item.version.id}><div><strong>{item.version.title}</strong><small>Версия {item.version.version} · {item.version.mechanic}</small></div><div className="draft-review-statuses"><span>Техника: {item.version.technical_status === "passed" ? "проверено" : item.version.technical_status === "automated_passed" ? "только автопроверка" : "ожидается"}</span><span>Методика: {item.version.methodology_status === "approved" ? "утверждено" : "ожидается"}</span><span>Доступность: {item.version.accessibility_status === "approved" ? "проверена" : "ожидается"}</span><span>Публикация: {item.version.release_status === "approved" ? "разрешена" : "закрыта"}</span></div>{item.errors.length > 0 && <ul>{item.errors.map((error) => <li key={error}>{error}</li>)}</ul>}<p>{item.blocker || "Все этапы завершены"}</p><button type="button" className="small-button" onClick={() => void openReview(item.version.id)}>Открыть проверку</button></article>) : <div className="empty-state">Черновиков пока нет.</div>}</div></div></div>
     </section>}
-    {tab === "exercises" && <section className="admin-card home-draft-review"><div className="admin-card-head"><div><span className="kicker">БЫТОВЫЕ ИГРЫ · DRAFT</span><h3>Контент на методической проверке</h3><p>Родителю видны только названия. Здесь можно открыть точный preview будущей инструкции.</p></div><span className="period-pill">{homeDrafts.length} черновиков</span></div><div>{homeDrafts.map((item) => <article key={item.id}><div><strong>{item.title}</strong><p>{item.objective}</p></div><span className="status blocked">DRAFT · pending</span><button type="button" className="small-button" onClick={() => setHomePreview(item)}>Открыть preview</button></article>)}</div></section>}
+    {tab === "exercises" && <section className="admin-card home-draft-review"><div className="admin-card-head"><div><span className="kicker">БЫТОВЫЕ ИГРЫ · DRAFT</span><h3>Контент на методической проверке</h3><p>Родителю видны только названия. Здесь можно открыть точный preview будущей инструкции.</p></div><span className="period-pill">{homeDrafts.length} черновиков</span></div><div>{homeDrafts.map((item) => <article key={item.id}><div><strong>{item.title}</strong><p>{item.objective}</p></div><span className="status blocked">DRAFT · pending</span><button type="button" className="small-button" onClick={() => openHomePreview(item)}>Открыть preview</button></article>)}</div></section>}
     {tab === "usage" && <section className="usage-dashboard" aria-busy={usageLoading}>
       <div className="usage-toolbar">
         <div><span className="kicker">ВНЕШНЯЯ API ОТКЛЮЧЕНА</span><h2>Архив прежних запросов</h2><p>Новые планы и подсказки работают локально. Здесь остаётся только исторический технический журнал.</p></div>
@@ -2191,7 +2278,7 @@ function ProfileScreen({ user, child, dashboard, settings, onOpen, onLogout }: {
   </div>;
 }
 
-function SettingsScreen({ settings, saving, onChange, onLogout }: { settings: AppSettings; saving: boolean; onChange: (settings: AppSettings) => void; onLogout: () => void }) {
+function SettingsScreen({ role, settings, saving, onChange, onLogout, onOpenParent }: { role: Role; settings: AppSettings; saving: boolean; onChange: (settings: AppSettings) => void; onLogout: () => void; onOpenParent: () => void }) {
   const themes = [
     { id: "peach", name: "Спокойная", description: "Нейтральный фон и синий акцент", colors: ["#1668c7", "#eaf3ff", "#ffffff"] },
     { id: "ocean", name: "Океан", description: "Приглушённый бирюзовый акцент", colors: ["#2d7180", "#e5f2f4", "#ffffff"] },
@@ -2201,6 +2288,14 @@ function SettingsScreen({ settings, saving, onChange, onLogout }: { settings: Ap
   const languages = [{id:"ru",short:"RU",name:"Русский - проверенная версия"}] as const;
   const update = <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => onChange({ ...settings, [key]: value });
   const activeTheme = themes.find((item) => item.id === settings.theme) || themes[0];
+  if (role === "student") return <div className="page-enter child-settings-page">
+    <PageTitle eyebrow="МОИ НАСТРОЙКИ" title="Как тебе удобнее?" subtitle="Выбери звук, спокойный режим и оформление."/>
+    <div className="child-settings-grid">
+      <section className="child-settings-section"><div className="settings-section-heading"><span className="kicker">ВО ВРЕМЯ ЗАНЯТИЯ</span><h2>Звук и движение</h2></div><SettingRow icon={<Volume2/>} title="Звуковые подсказки" text="Слушать слова и сообщения" value={settings.sound_enabled} onChange={(value) => update("sound_enabled", value)}/><SettingRow icon={<Pause/>} title="Спокойный режим" text="Без звёзд и лишней анимации" value={settings.calm_mode} onChange={(value) => update("calm_mode", value)}/></section>
+      <section className="child-settings-section"><div className="settings-section-heading"><span className="kicker">ОФОРМЛЕНИЕ</span><h2>Цвета и контраст</h2></div><div className="child-theme-options" role="group" aria-label="Оформление экрана">{themes.map((item) => <button type="button" key={item.id} className={settings.theme === item.id ? "active" : ""} aria-pressed={settings.theme === item.id} onClick={() => update("theme", item.id as AppSettings["theme"])}><span className="theme-swatch">{item.colors.map((color) => <i key={color} style={{background:color}}/>)}</span><span><strong>{item.name}</strong><small>{item.id === "contrast" ? "Самые чёткие границы" : item.description}</small></span>{settings.theme === item.id && <Check size={20}/>}</button>)}</div></section>
+    </div>
+    <div className="child-settings-footer"><span aria-live="polite">{saving ? "Сохраняем…" : "Настройки сохранены"}</span><button type="button" className="profile-logout" onClick={onLogout}><LogOut size={18}/> Выйти</button></div>
+  </div>;
   return <div className="page-enter settings-page redesigned-settings">
     <PageTitle eyebrow="НАСТРОЙКИ" title="Удобно для вашей семьи" subtitle="Оформление и параметры занятий применяются сразу и сохраняются в аккаунте."/>
     <div className="settings-layout">
@@ -2234,6 +2329,7 @@ function SettingsScreen({ settings, saving, onChange, onLogout }: { settings: Ap
         <section className="settings-section account-setting">
           <div className="settings-section-heading"><span className="kicker">АККАУНТ</span><h3>Данные и сеанс</h3></div>
           <div className="setting-row"><div className="setting-icon"><LockKeyhole/></div><div><strong>Данные защищены</strong><span>Видео не сохраняется; результаты находятся в профиле ребёнка</span></div><span className="status active">Защищено</span></div>
+          {role === "parent" && <div className="setting-row"><div className="setting-icon"><ShieldCheck/></div><div><strong>Приватность и разрешения</strong><span>Согласие на сохранение, камера, экспорт и удаление данных</span></div><button type="button" className="small-button" onClick={onOpenParent}>Открыть</button></div>}
           <div className="setting-row"><div className="setting-icon danger"><LogOut/></div><div><strong>Выйти из аккаунта</strong><span>На этом устройстве потребуется повторный вход</span></div><button type="button" className="small-button" onClick={onLogout}>Выйти</button></div>
         </section>
       </div>

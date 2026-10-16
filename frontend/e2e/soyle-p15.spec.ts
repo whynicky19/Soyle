@@ -58,6 +58,10 @@ async function login(page: Page, username: string, password: string, student = f
 async function openMainSection(page: Page, name: string) {
   const menu = page.getByRole("button", { name: "Открыть меню" });
   if (await menu.isVisible()) await menu.click();
+  const target = page.getByRole("button", { name, exact: true });
+  if (await target.count() === 0 || !(await target.first().isVisible())) {
+    await page.getByRole("button", { name: "Ещё", exact: true }).click();
+  }
   await page.getByRole("button", { name, exact: true }).click();
 }
 
@@ -97,6 +101,7 @@ test("animal choices use one consistent illustrated pictogram set", async ({ pag
   await page.locator(".aac-card-main").filter({ has: page.locator("strong", { hasText: /^Мама$/ }) }).click();
   await page.locator(".speak-button").click();
   await page.getByRole("button", { name: "Закончить практику" }).click();
+  await page.locator("details.child-more-games > summary").click();
   await page.getByRole("button", { name: /Домашние животные/ }).click();
   await page.locator(".runner-levels button").filter({ hasText: /^4$/ }).click();
   await page.getByRole("button", { name: /Понятно, начать/ }).click();
@@ -118,7 +123,7 @@ test("break and refusal are accepted without exposing a draft", async ({ page })
   await openMainSection(page, "Занятия");
   await page.getByRole("button", { name: /Игрушки/ }).first().click();
   await page.getByRole("button", { name: "Перерыв" }).click();
-  await expect(page.getByRole("heading", { name: "Выбери приключение" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Выбери одну игру" })).toBeVisible();
   await page.getByRole("button", { name: /Игрушки/ }).first().click();
   await page.getByRole("button", { name: "Не хочу" }).click();
   await expect(page.getByRole("heading", { name: "Сообщение принято" })).toBeVisible();
@@ -163,7 +168,7 @@ test("two, three and four picture choices keep equal geometry at every viewport"
     expect(new Set(boxes.map((box) => box.height)).size).toBe(1);
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     expect(overflow).toBeLessThanOrEqual(1);
-    await page.getByRole("button", { name: "Назад" }).click();
+    await page.getByRole("button", { name: "Вернуться к занятиям" }).click();
   }
 });
 
@@ -266,7 +271,7 @@ test("parent sees saved result and an active session survives reload", async ({ 
     await page.getByRole("button", { name: "Добавить домашнюю цель" }).click();
     await expect(page.locator(".practice-goal-card")).toHaveCount(1);
   }
-  await openMainSection(page, "Главная");
+  await openMainSection(page, "Сегодня");
   await page.getByRole("button", { name: /Начать занятие|Продолжить занятие/ }).first().click();
   await expect(page.getByRole("heading", { name: "Короткая практика шаг за шагом" })).toBeVisible();
   await page.reload();

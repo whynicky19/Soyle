@@ -97,13 +97,14 @@ test("security headers cover framing, MIME sniffing and browser capabilities", a
   assert.match(config, /wasm-unsafe-eval/);
 });
 
-test("daily goal renders real weekday activity instead of filling dots by attempt count", async () => {
+test("parent home avoids a fabricated daily quota and shows a bounded observation", async () => {
   const [app, api] = await Promise.all([
     readProjectFile("components/SoyleApp.tsx"),
     readProjectFile("lib/api.ts"),
   ]);
   assert.match(api, /week_activity:/);
-  assert.match(app, /weekActivity\.map/);
+  assert.match(app, /parent-observation/);
+  assert.doesNotMatch(app, /weekActivity\.map/);
   assert.doesNotMatch(app, /day\s*<\s*Math\.min\(dashboard\?\.week_sessions/);
 });
 

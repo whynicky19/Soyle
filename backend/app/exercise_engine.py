@@ -211,7 +211,7 @@ def legacy_engine_payload(exercise: dict) -> dict[str, Any]:
     }
 
 
-def validate_version(version: dict) -> list[str]:
+def validate_version(version: dict, *, enforce_visual_consistency: bool = True) -> list[str]:
     errors: list[str] = []
     for field, label in (
         ("title", "название"),
@@ -295,6 +295,13 @@ def validate_version(version: dict) -> list[str]:
                 errors.append("Ключи стимулов не должны повторяться")
             if len(labels) != len(set(labels)):
                 errors.append("Подписи стимулов не должны повторяться")
+            visual_systems = {
+                "illustration" if stimulus.get("media_ref") else "token"
+                for stimulus in stimuli
+                if isinstance(stimulus, dict) and (stimulus.get("media_ref") or stimulus.get("visual_token"))
+            }
+            if enforce_visual_consistency and len(visual_systems) > 1:
+                errors.append("Стимулы одного задания нельзя смешивать: используйте единый проверенный набор иллюстраций")
         if version.get("response_mode") != "single_tap":
             errors.append("Механика выбора на слух требует response_mode=single_tap")
         if version.get("completion_rule", {}).get("success") != "matching_stimulus_key":

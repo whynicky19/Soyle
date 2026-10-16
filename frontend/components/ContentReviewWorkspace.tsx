@@ -102,7 +102,7 @@ function StimulusReview({ data, onSpeak }: { data: ContentReviewWorkspaceData; o
   }
   return <div className="stimulus-review-grid">{(version.content.stimuli || []).map((stimulus) => {
     const indexed = data.stimuli_index.find((item) => item.stimulus_key === stimulus.key);
-    return <article key={stimulus.key}><Image src={stimulus.media_ref || "/soyle-icon.png"} alt={indexed?.metadata.alt || stimulus.label} width={200} height={150}/><div><span className="kicker">{stimulus.key}</span><strong>{stimulus.label}</strong><p>{stimulus.hint || "Подсказка не задана"}</p><small>При инструкции «{stimulus.speech}» правильный ключ: {stimulus.key}</small></div><button type="button" className="small-button" onClick={() => void onSpeak(stimulus.speech, .78)}><Volume2 size={16}/> Прослушать</button></article>;
+    return <article key={stimulus.key}><Image src={stimulus.media_ref || "/soyle-icon.png"} alt={indexed?.metadata.alt || stimulus.label} width={200} height={200}/><div><span className="kicker">{stimulus.key}</span><strong>{stimulus.label}</strong><p>{stimulus.hint || "Подсказка не задана"}</p><small>При инструкции «{stimulus.speech}» правильный ключ: {stimulus.key}</small></div><button type="button" className="small-button" onClick={() => void onSpeak(stimulus.speech, .78)}><Volume2 size={16}/> Прослушать</button></article>;
   })}</div>;
 }
 

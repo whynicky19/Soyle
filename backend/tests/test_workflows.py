@@ -781,12 +781,13 @@ def test_admin_constructor_creates_safe_draft_and_blocks_unreviewed_publish(clie
     created = client.post("/api/admin/exercise-drafts", headers=admin_headers, json=payload)
     assert created.status_code == 201, created.text
     preview = created.json()
-    assert preview["valid"] is True
+    assert preview["valid"] is False
     assert preview["can_publish"] is False
-    assert preview["blocker"] == "Нужна ручная техническая проверка"
+    assert preview["blocker"] is None
+    assert any("единый проверенный набор иллюстраций" in error for error in preview["errors"])
     version_id = preview["version"]["id"]
     exercise_id = preview["version"]["exercise_id"]
-    assert client.post(f"/api/admin/exercise-drafts/{version_id}/publish", headers=admin_headers).status_code == 409
+    assert client.post(f"/api/admin/exercise-drafts/{version_id}/publish", headers=admin_headers).status_code == 422
     assert exercise_id not in {item["id"] for item in client.get("/api/exercises", headers=admin_headers).json()}
 
 
