@@ -174,7 +174,7 @@ def test_review_stages_require_independent_permissions_and_keep_history(client, 
             )
 
 
-def test_legacy_publications_are_demo_only_and_hidden_when_demo_mode_is_disabled(client):
+def test_legacy_publications_remain_available_and_marked_unreviewed_when_demo_mode_is_disabled(client):
     with connect() as db:
         demo_rows = exercise_engine.published_exercise_rows(db)
     assert demo_rows
@@ -183,7 +183,9 @@ def test_legacy_publications_are_demo_only_and_hidden_when_demo_mode_is_disabled
     try:
         exercise_engine.ALLOW_UNREVIEWED_DEMO_CONTENT = False
         with connect() as db:
-            assert exercise_engine.published_exercise_rows(db) == []
+            rows = exercise_engine.published_exercise_rows(db)
+        assert {row["id"] for row in rows} == {row["id"] for row in demo_rows}
+        assert all(row["engine"]["review_gate"]["demo_only"] for row in rows)
     finally:
         exercise_engine.ALLOW_UNREVIEWED_DEMO_CONTENT = original
 

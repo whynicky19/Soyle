@@ -39,7 +39,7 @@ export function ExerciseFocusShell({
   children: ReactNode;
 }) {
   return (
-    <div className="exercise-focus-shell student-mode">
+    <div className="exercise-focus-shell student-mode soyle-parent-v2 soyle-unified">
       <header className="exercise-focus-header">
         <button type="button" className="focus-back" onClick={onBack} aria-label="Вернуться к занятиям">
           <ArrowLeft size={23}/><span>Назад</span>

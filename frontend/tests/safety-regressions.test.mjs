@@ -143,7 +143,8 @@ test("public child navigation does not expose motor prototypes", async () => {
   const app = await readProjectFile("components/SoyleApp.tsx");
   const modulesBlock = app.slice(app.indexOf("const modules = ["), app.indexOf("const moduleImages"));
   assert.doesNotMatch(modulesBlock, /id:\s*["']motor["']/);
-  assert.match(app, /\["all","sensory","mixed"\]/);
+  assert.match(app, /<ExerciseLibrary items=\{exercises\}/);
+  assert.doesNotMatch(app, /<details className="child-more-games"/);
 });
 
 test("sensory practice always exposes break and refusal actions", async () => {

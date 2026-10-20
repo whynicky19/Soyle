@@ -13,34 +13,34 @@ ALLOW_UNREVIEWED_DEMO_CONTENT = env_enabled("SOYLE_ALLOW_UNREVIEWED_DEMO_CONTENT
 
 SENSORY_CONTENT: dict[str, list[dict[str, str]]] = {
     "animals": [
-        {"key": "cat", "label": "Кот", "speech": "Кот", "hint": "Домашнее животное, которое мяукает", "media_ref": "/aac-pictograms/cat.png"},
-        {"key": "dog", "label": "Собака", "speech": "Собака", "hint": "Домашнее животное, которое лает", "media_ref": "/aac-pictograms/dog.png"},
-        {"key": "fish", "label": "Рыба", "speech": "Рыба", "hint": "Она живёт в воде", "media_ref": "/aac-pictograms/fish.png"},
-        {"key": "bird", "label": "Птица", "speech": "Птица", "hint": "У неё есть крылья", "media_ref": "/aac-pictograms/bird.png"},
-        {"key": "rabbit", "label": "Кролик", "speech": "Кролик", "hint": "У него длинные уши", "media_ref": "/aac-pictograms/rabbit.png"},
-        {"key": "turtle", "label": "Черепаха", "speech": "Черепаха", "hint": "У неё есть панцирь", "media_ref": "/aac-pictograms/turtle.png"},
-        {"key": "snail", "label": "Улитка", "speech": "Улитка", "hint": "Она носит домик на спине", "media_ref": "/aac-pictograms/snail.png"},
-        {"key": "bug", "label": "Жук", "speech": "Жук", "hint": "Маленькое насекомое", "media_ref": "/aac-pictograms/bug.png"},
+        {"key": "cat", "label": "Кот", "speech": "Кот", "hint": "Домашнее животное, которое мяукает", "media_ref": "/app-illustrations/exercise-stimulus-cat.webp"},
+        {"key": "dog", "label": "Собака", "speech": "Собака", "hint": "Домашнее животное, которое лает", "media_ref": "/app-illustrations/exercise-stimulus-dog.webp"},
+        {"key": "fish", "label": "Рыба", "speech": "Рыба", "hint": "Она живёт в воде", "media_ref": "/app-illustrations/exercise-stimulus-fish.webp"},
+        {"key": "bird", "label": "Птица", "speech": "Птица", "hint": "У неё есть крылья", "media_ref": "/app-illustrations/exercise-stimulus-bird.webp"},
+        {"key": "rabbit", "label": "Кролик", "speech": "Кролик", "hint": "У него длинные уши", "media_ref": "/app-illustrations/exercise-stimulus-rabbit.webp"},
+        {"key": "turtle", "label": "Черепаха", "speech": "Черепаха", "hint": "У неё есть панцирь", "media_ref": "/app-illustrations/exercise-stimulus-turtle.webp"},
+        {"key": "snail", "label": "Улитка", "speech": "Улитка", "hint": "Она носит домик на спине", "media_ref": "/app-illustrations/exercise-stimulus-snail.webp"},
+        {"key": "bug", "label": "Жук", "speech": "Жук", "hint": "Маленькое насекомое", "media_ref": "/app-illustrations/exercise-stimulus-bug.webp"},
     ],
     "food": [
-        {"key": "apple", "label": "Яблоко", "speech": "Яблоко", "hint": "Фрукт круглой формы", "media_ref": "/aac-pictograms/apple.png"},
-        {"key": "banana", "label": "Банан", "speech": "Банан", "hint": "Длинный жёлтый фрукт", "media_ref": "/aac-pictograms/banana.png"},
-        {"key": "milk", "label": "Молоко", "speech": "Молоко", "hint": "Белый напиток", "visual_token": "milk"},
-        {"key": "juice", "label": "Сок", "speech": "Сок", "hint": "Фруктовый напиток", "media_ref": "/aac-pictograms/juice.png"},
-        {"key": "water", "label": "Вода", "speech": "Вода", "hint": "Прозрачный напиток", "media_ref": "/aac-pictograms/water.png"},
-        {"key": "soup", "label": "Суп", "speech": "Суп", "hint": "Его едят ложкой", "media_ref": "/aac-pictograms/soup.png"},
-        {"key": "bread", "label": "Хлеб", "speech": "Хлеб", "hint": "Его нарезают кусочками", "media_ref": "/aac-pictograms/bread.png"},
-        {"key": "porridge", "label": "Каша", "speech": "Каша", "hint": "Её едят из тарелки", "media_ref": "/aac-pictograms/porridge.png"},
+        {"key": "apple", "label": "Яблоко", "speech": "Яблоко", "hint": "Фрукт круглой формы", "media_ref": "/app-illustrations/exercise-stimulus-apple.webp"},
+        {"key": "banana", "label": "Банан", "speech": "Банан", "hint": "Длинный жёлтый фрукт", "media_ref": "/app-illustrations/exercise-stimulus-banana.webp"},
+        {"key": "milk", "label": "Молоко", "speech": "Молоко", "hint": "Белый напиток", "media_ref": "/app-illustrations/exercise-stimulus-milk.webp"},
+        {"key": "juice", "label": "Сок", "speech": "Сок", "hint": "Фруктовый напиток", "media_ref": "/app-illustrations/exercise-stimulus-juice.webp"},
+        {"key": "water", "label": "Вода", "speech": "Вода", "hint": "Прозрачный напиток", "media_ref": "/app-illustrations/exercise-stimulus-water.webp"},
+        {"key": "soup", "label": "Суп", "speech": "Суп", "hint": "Его едят ложкой", "media_ref": "/app-illustrations/exercise-stimulus-soup.webp"},
+        {"key": "bread", "label": "Хлеб", "speech": "Хлеб", "hint": "Его нарезают кусочками", "media_ref": "/app-illustrations/exercise-stimulus-bread.webp"},
+        {"key": "porridge", "label": "Каша", "speech": "Каша", "hint": "Её едят из тарелки", "media_ref": "/app-illustrations/exercise-stimulus-porridge.webp"},
     ],
     "toys": [
-        {"key": "ball", "label": "Мяч", "speech": "Мяч", "hint": "Круглая игрушка", "media_ref": "/aac-pictograms/ball.png"},
-        {"key": "toy-car", "label": "Машинка", "speech": "Машинка", "hint": "Игрушка на колёсах", "media_ref": "/aac-pictograms/toy-car.png"},
-        {"key": "blocks", "label": "Кубики", "speech": "Кубики", "hint": "Из них можно строить", "visual_token": "blocks"},
-        {"key": "doll", "label": "Кукла", "speech": "Кукла", "hint": "Игрушка в виде человека", "media_ref": "/aac-pictograms/doll.png"},
-        {"key": "book", "label": "Книга", "speech": "Книга", "hint": "В ней рассматривают картинки и читают", "media_ref": "/aac-pictograms/book.png"},
-        {"key": "puzzle", "label": "Пазл", "speech": "Пазл", "hint": "Картинка из частей", "media_ref": "/aac-pictograms/puzzle.png"},
-        {"key": "paint", "label": "Краски", "speech": "Краски", "hint": "Ими рисуют", "media_ref": "/aac-pictograms/draw.png"},
-        {"key": "drum", "label": "Барабан", "speech": "Барабан", "hint": "Игрушечный музыкальный инструмент", "visual_token": "drum"},
+        {"key": "ball", "label": "Мяч", "speech": "Мяч", "hint": "Круглая игрушка", "media_ref": "/app-illustrations/exercise-stimulus-ball.webp"},
+        {"key": "toy-car", "label": "Машинка", "speech": "Машинка", "hint": "Игрушка на колёсах", "media_ref": "/app-illustrations/exercise-stimulus-toy-car.webp"},
+        {"key": "blocks", "label": "Кубики", "speech": "Кубики", "hint": "Из них можно строить", "media_ref": "/app-illustrations/exercise-stimulus-blocks.webp"},
+        {"key": "doll", "label": "Кукла", "speech": "Кукла", "hint": "Игрушка в виде человека", "media_ref": "/app-illustrations/exercise-stimulus-doll.webp"},
+        {"key": "book", "label": "Книга", "speech": "Книга", "hint": "В ней рассматривают картинки и читают", "media_ref": "/app-illustrations/exercise-stimulus-book.webp"},
+        {"key": "puzzle", "label": "Пазл", "speech": "Пазл", "hint": "Картинка из частей", "media_ref": "/app-illustrations/exercise-stimulus-puzzle.webp"},
+        {"key": "paint", "label": "Краски", "speech": "Краски", "hint": "Ими рисуют", "media_ref": "/app-illustrations/exercise-stimulus-paint.webp"},
+        {"key": "drum", "label": "Барабан", "speech": "Барабан", "hint": "Игрушечный музыкальный инструмент", "media_ref": "/app-illustrations/exercise-stimulus-drum.webp"},
     ],
 }
 
@@ -408,8 +408,13 @@ def published_exercise_rows(db) -> list[dict]:
            JOIN exercise_versions v ON v.exercise_id=e.id
            WHERE e.is_active=1 AND v.review_status='approved' AND v.publication_status='published'
              AND v.mechanic<>'local_face_mirror'
+             -- Keep historically published activities playable without inventing
+             -- new review approvals. Their response still carries demo_only=true.
              AND ((v.technical_status='passed' AND v.methodology_status='approved'
-                   AND v.accessibility_status='approved' AND v.release_status='approved') OR ?=1)
+                   AND v.accessibility_status='approved' AND v.release_status='approved')
+                  OR (v.technical_status='legacy_publication' AND v.methodology_status='legacy_publication'
+                      AND v.accessibility_status='legacy_publication' AND v.release_status='legacy_publication')
+                  OR ?=1)
              AND v.version=(SELECT MAX(v2.version) FROM exercise_versions v2
                             WHERE v2.exercise_id=e.id AND v2.review_status='approved'
                               AND v2.publication_status='published')

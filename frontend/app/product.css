@@ -525,6 +525,58 @@
 .soyle-unified .module-card,
 .soyle-unified .exercise-card,
 .soyle-unified .profile-quick-links > button { border: 1px solid var(--v2-line); border-radius: 21px; background: #fff; box-shadow: 0 9px 24px rgba(56,77,104,.055); }
+
+/* Exercise catalogue and focus screens share the same illustrated product language. */
+.soyle-unified .exercise-catalog-page { width: min(1410px, 100%); margin-inline: auto; gap: 22px; }
+.soyle-unified .exercise-catalog-hero { min-height: 292px; display: grid; grid-template-columns: minmax(0,1fr) minmax(340px,47%); align-items: stretch; overflow: hidden; border: 1px solid var(--v2-line); border-radius: 29px; background: linear-gradient(115deg,#fff4e7 0%,#fff9ef 48%,#e5f5f4 100%); box-shadow: var(--v2-shadow); }
+.soyle-unified .exercise-catalog-hero-copy { align-self: center; padding: clamp(24px,4vw,50px); position: relative; z-index: 1; }
+.soyle-unified .exercise-catalog-hero h1 { margin: 10px 0 11px; font-size: clamp(38px,4vw,64px); letter-spacing: -.045em; line-height: 1.05; }
+.soyle-unified .exercise-catalog-hero p { max-width: 570px; margin: 0; color: var(--v2-copy); font-size: clamp(16px,1.35vw,21px); line-height: 1.5; }
+.soyle-unified .exercise-catalog-hero > img { width: 100%; height: 100%; max-height: 330px; object-fit: cover; object-position: 44% center; mask-image: linear-gradient(90deg,transparent,#000 15%); }
+.soyle-unified .exercise-catalog-page .unreviewed-demo-banner { margin: 0; border-radius: 18px; }
+.soyle-unified .exercise-catalog-page .child-aac-entry { min-height: 112px; grid-template-columns: 78px minmax(0,1fr) auto; border: 1px solid rgba(20,156,152,.18); border-radius: 22px; background: linear-gradient(100deg,#eaf8f4,#f6fcfa); box-shadow: 0 10px 28px rgba(40,108,111,.07); }
+.soyle-unified .exercise-catalog-page .child-aac-entry > img { width: 78px; height: 78px; object-fit: cover; border-radius: 17px; }
+.soyle-unified .exercise-catalog-page .child-aac-entry strong { font-size: 21px; }
+.soyle-unified .exercise-library .section-heading { margin-bottom: 17px; }
+.soyle-unified .exercise-library .section-heading h2 { font-size: clamp(25px,2.3vw,34px); }
+.soyle-unified .exercise-library .exercise-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 18px; }
+.soyle-unified .exercise-library .exercise-card { min-width: 0; min-height: 0; padding: 0; display: flex; flex-direction: column; overflow: hidden; text-align: left; transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease; }
+.soyle-unified .exercise-library .exercise-card:hover { transform: translateY(-3px); border-color: rgba(20,156,152,.36); box-shadow: 0 16px 36px rgba(41,80,102,.13); }
+.soyle-unified .exercise-library .exercise-card:focus-visible { outline: 3px solid var(--v2-teal); outline-offset: 3px; }
+.soyle-unified .exercise-card-visual { width: 100%; aspect-ratio: 1.9; display: block; overflow: hidden; background: #eef6f2; }
+.soyle-unified .exercise-card:nth-child(4n+2) .exercise-card-visual { background: #fff3e9; }
+.soyle-unified .exercise-card:nth-child(4n+3) .exercise-card-visual { background: #eaf4ff; }
+.soyle-unified .exercise-card:nth-child(4n+4) .exercise-card-visual { background: #f0efff; }
+.soyle-unified .exercise-card-visual img { width: 100%; height: 100%; object-fit: contain; object-position: center; transition: transform .25s ease; }
+.soyle-unified .exercise-card:hover .exercise-card-visual img { transform: scale(1.035); }
+.soyle-unified .exercise-card-copy { min-height: 184px; padding: 18px 21px 20px; display: flex; flex-direction: column; align-items: flex-start; }
+.soyle-unified .exercise-card-copy small { color: var(--v2-teal-dark); font-size: 12px; font-weight: 800; }
+.soyle-unified .exercise-card-copy strong { margin-top: 7px; font: 850 21px/1.2 var(--font-display); }
+.soyle-unified .exercise-card-copy p { margin: 7px 0 14px; color: var(--v2-copy); font-size: 14px; line-height: 1.45; }
+.soyle-unified .exercise-card-open { margin-top: auto; display: inline-flex; align-items: center; gap: 7px; color: var(--v2-teal-dark); font-size: 14px; font-weight: 850; }
+.soyle-unified .game-page .game-header { background: #fff; }
+.soyle-unified .game-layout { grid-template-columns: minmax(0,1.12fr) minmax(340px,.88fr); gap: 18px; }
+.soyle-unified .camera-panel { min-height: 570px; border: 1px solid var(--v2-line); border-radius: 27px; background: #ecf7f4; box-shadow: var(--v2-shadow); }
+.soyle-unified .camera-placeholder { display: grid; grid-template-rows: 61% 39%; align-items: stretch; padding: 0; background: #f0f8f6; }
+.soyle-unified .camera-placeholder-art { position: relative; width: 100%; height: 100%; object-fit: cover; object-position: center; }
+.soyle-unified .camera-placeholder-content { position: relative; z-index: 1; width: 100%; height: 100%; padding: 18px 26px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: linear-gradient(180deg,#fff8ed,#fffaf2); }
+.soyle-unified .camera-placeholder h3 { margin: 0 0 7px; color: var(--v2-navy); font: 850 23px/1.2 var(--font-display); }
+.soyle-unified .camera-placeholder p { max-width: 560px; margin: 0 0 15px; color: var(--v2-copy); font-size: 13px; line-height: 1.5; }
+.soyle-unified .camera-placeholder .primary-button { min-height: 46px; }
+.soyle-unified .instruction-panel { padding: 28px; }
+.soyle-unified .instruction-panel .mouth-demo { flex: 0 0 auto; }
+.soyle-unified .listen-card,.soyle-unified .phrase-builder,.soyle-unified .phrase-result { border-radius: 27px; }
+.soyle-unified .listen-card:has(.sensory-demo) { background: radial-gradient(circle at 50% 18%,#eaf7f4 0 15%,transparent 15.2%),linear-gradient(145deg,#fffaf2,#fff 65%); }
+.soyle-unified .sensory-demo { min-height: 590px; padding: 32px 24px 42px; }
+.soyle-unified .sensory-demo .sensory-visual { width: clamp(160px,17vw,218px); height: clamp(160px,17vw,218px); margin-bottom: 24px; overflow: hidden; border-radius: 28px; background: #fffaf1; box-shadow: 0 15px 35px rgba(51,77,99,.09); }
+.soyle-unified .sensory-demo .sensory-visual img { width: 100%; height: 100%; object-fit: cover; }
+.soyle-unified .sensory-demo h2 { max-width: 720px; font-size: clamp(26px,2.7vw,39px); line-height: 1.17; }
+.soyle-unified .sensory-demo p { max-width: 600px; font-size: 15px; }
+.soyle-unified .picture-options button { border-radius: 23px; background: linear-gradient(160deg,#fff,#f8fbfa); box-shadow: 0 9px 22px rgba(56,77,104,.055); }
+.soyle-unified .picture-options .sensory-visual { width: min(85%,148px); height: 148px; background: transparent; }
+.soyle-unified .picture-options .sensory-visual img { width: 100%; height: 100%; object-fit: contain; }
+@media (max-width: 1100px) { .soyle-unified .exercise-library .exercise-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } .soyle-unified .game-layout { grid-template-columns: minmax(0,1fr); } }
+@media (max-width: 650px) { .soyle-unified .exercise-catalog-hero { grid-template-columns: minmax(0,1fr); } .soyle-unified .exercise-catalog-hero-copy { padding: 27px 23px 12px; } .soyle-unified .exercise-catalog-hero > img { height: 170px; mask-image: linear-gradient(180deg,transparent,#000 30%); } .soyle-unified .exercise-library .exercise-grid { grid-template-columns: minmax(0,1fr); } .soyle-unified .exercise-catalog-page .child-aac-entry { grid-template-columns: 62px minmax(0,1fr) auto; padding: 12px; } .soyle-unified .exercise-catalog-page .child-aac-entry > img { width: 62px; height: 62px; } .soyle-unified .exercise-catalog-page .child-aac-entry strong { font-size: 17px; } .soyle-unified .camera-panel { min-height: 500px; } .soyle-unified .camera-placeholder { grid-template-rows: 52% 48%; } .soyle-unified .camera-placeholder-content { padding: 16px; } }
 .soyle-unified .aac-page.redesigned .aac-goal { border-radius: 22px; background: linear-gradient(130deg,#eef8ff,#eef9ef); }
 .soyle-unified .aac-quick { border: 1px solid rgba(231,169,115,.24); border-radius: 24px; background: linear-gradient(125deg,#fff5ea,#fffdfa); box-shadow: var(--v2-shadow); }
 .soyle-unified .aac-quick > div:nth-child(2) > button { border: 1px solid rgba(66,113,132,.12); border-radius: 17px; background: #fff; }

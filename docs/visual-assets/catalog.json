@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-20T19:50:42.208300+00:00",
+  "generated_at": "2026-10-20T20:50:23.825526+00:00",
   "assets": [
     {
       "asset": "/aac-pictograms/angry.png",
@@ -34,10 +34,6 @@
           "line": 132
         },
         {
-          "file": "backend/app/exercise_engine.py",
-          "line": 26
-        },
-        {
           "file": "backend/app/p1_content.py",
           "line": 67
         },
@@ -65,10 +61,6 @@
         {
           "file": "backend/app/database.py",
           "line": 133
-        },
-        {
-          "file": "backend/app/exercise_engine.py",
-          "line": 36
         },
         {
           "file": "backend/app/p1_content.py",
@@ -104,10 +96,6 @@
           "line": 145
         },
         {
-          "file": "backend/app/exercise_engine.py",
-          "line": 27
-        },
-        {
           "file": "backend/app/p1_content.py",
           "line": 156
         }
@@ -124,10 +112,6 @@
       "sha256": "147975a4e10ac6250427c3e87371b14a24bfcca452adb6202429ec4fe6446628",
       "phash": "7a9d91498e34cc36",
       "references": [
-        {
-          "file": "backend/app/exercise_engine.py",
-          "line": 19
-        },
         {
           "file": "backend/app/p15_content.py",
           "line": 144
@@ -148,10 +132,6 @@
         {
           "file": "backend/app/database.py",
           "line": 166
-        },
-        {
-          "file": "backend/app/exercise_engine.py",
-          "line": 40
         },
         {
           "file": "backend/app/p1_content.py",
@@ -177,10 +157,6 @@
         {
           "file": "backend/app/database.py",
           "line": 162
-        },
-        {
-          "file": "backend/app/exercise_engine.py",
-          "line": 32
         }
       ]
     },
@@ -232,12 +208,7 @@
       ],
       "sha256": "5df0cd040c4201f10ebf2d71b38d87a46facd5e1eba31a3bb8cfdffbfb4282e5",
       "phash": "2ce3c34ccc30cf1b",
-      "references": [
-        {
-          "file": "backend/app/exercise_engine.py",
-          "line": 23
-        }
-      ]
+      "references": []
     },
     {
       "asset": "/aac-pictograms/calm.png",
@@ -270,10 +241,6 @@
         {
           "file": "backend/app/database.py",
           "line": 134
-        },
-        {
-          "file": "backend/app/exercise_engine.py",
-          "line": 16
         },
         {
           "file": "backend/app/p15_content.py",
@@ -314,10 +281,6 @@
       "phash": "689fa5c29223da9c",
       "references": [
         {
-          "file": "backend/app/exercise_engine.py",
-          "line": 17
-        },
-        {
           "file": "backend/app/p15_content.py",
           "line": 142
         }
@@ -337,10 +300,6 @@
         {
           "file": "backend/app/database.py",
           "line": 147
-        },
-        {
-          "file": "backend/app/exercise_engine.py",
-          "line": 39
         },
         {
           "file": "backend/app/p1_content.py",
@@ -387,10 +346,6 @@
         {
           "file": "backend/app/database.py",
           "line": 168
-        },
-        {
-          "file": "backend/app/exercise_engine.py",
-          "line": 42
         }
       ]
     },
@@ -456,10 +411,6 @@
       "sha256": "44e16af1f28b44c61b74bce6fcda22eef2e9f361a453a4ecc041090ca4f090f3",
       "phash": "72a6844bcb7c31a3",
       "references": [
-        {
-          "file": "backend/app/exercise_engine.py",
-          "line": 18
-        },
         {
           "file": "backend/app/p15_content.py",
           "line": 145
@@ -653,10 +604,6 @@
         {
           "file": "backend/app/database.py",
           "line": 131
-        },
-        {
-          "file": "backend/app/exercise_engine.py",
-          "line": 29
         }
       ]
     },
@@ -881,10 +828,6 @@
         {
           "file": "backend/app/database.py",
           "line": 164
-        },
-        {
-          "file": "backend/app/exercise_engine.py",
-          "line": 33
         }
       ]
     },
@@ -904,10 +847,6 @@
           "line": 167
         },
         {
-          "file": "backend/app/exercise_engine.py",
-          "line": 41
-        },
-        {
           "file": "backend/app/p1_content.py",
           "line": 66
         }
@@ -924,10 +863,6 @@
       "sha256": "6a26ef3a70ad0fb27db2fdd94b68e02e5df7b548e3e160d1ae2abd932723c4f9",
       "phash": "2c9c4bcc94d39273",
       "references": [
-        {
-          "file": "backend/app/exercise_engine.py",
-          "line": 20
-        },
         {
           "file": "backend/app/p15_content.py",
           "line": 143
@@ -1097,12 +1032,7 @@
       ],
       "sha256": "1978c29559de66eb4d78ef39d3607adbca4caac01034917baa7a7f698d55927d",
       "phash": "2b9dd062c368ec35",
-      "references": [
-        {
-          "file": "backend/app/exercise_engine.py",
-          "line": 22
-        }
-      ]
+      "references": []
     },
     {
       "asset": "/aac-pictograms/soup.png",
@@ -1118,10 +1048,6 @@
         {
           "file": "backend/app/database.py",
           "line": 163
-        },
-        {
-          "file": "backend/app/exercise_engine.py",
-          "line": 31
         }
       ]
     },
@@ -1196,10 +1122,6 @@
           "line": 146
         },
         {
-          "file": "backend/app/exercise_engine.py",
-          "line": 37
-        },
-        {
           "file": "backend/app/p1_content.py",
           "line": 63
         },
@@ -1220,10 +1142,6 @@
       "sha256": "9d3b3faaa60bbe133379bd46676858f4a80ea9a0af1ba13e6f4747671a54477d",
       "phash": "7b85847ad3212cd3",
       "references": [
-        {
-          "file": "backend/app/exercise_engine.py",
-          "line": 21
-        },
         {
           "file": "backend/app/p15_content.py",
           "line": 146
@@ -1320,10 +1238,6 @@
         {
           "file": "backend/app/database.py",
           "line": 144
-        },
-        {
-          "file": "backend/app/exercise_engine.py",
-          "line": 30
         },
         {
           "file": "frontend/components/ProductExperience.tsx",
@@ -1424,7 +1338,7 @@
       "references": [
         {
           "file": "frontend/components/SoyleApp.tsx",
-          "line": 1748
+          "line": 1718
         }
       ]
     },
@@ -1445,7 +1359,7 @@
         },
         {
           "file": "frontend/components/SoyleApp.tsx",
-          "line": 1735
+          "line": 1705
         }
       ]
     },
@@ -1462,7 +1376,7 @@
       "references": [
         {
           "file": "frontend/components/SoyleApp.tsx",
-          "line": 1739
+          "line": 1709
         }
       ]
     },
@@ -1483,7 +1397,7 @@
         },
         {
           "file": "frontend/components/SoyleApp.tsx",
-          "line": 1735
+          "line": 1705
         }
       ]
     },
@@ -1500,7 +1414,7 @@
       "references": [
         {
           "file": "frontend/components/SoyleApp.tsx",
-          "line": 1747
+          "line": 1717
         }
       ]
     },
@@ -1517,7 +1431,7 @@
       "references": [
         {
           "file": "frontend/components/SoyleApp.tsx",
-          "line": 1746
+          "line": 1716
         }
       ]
     },
@@ -1538,7 +1452,7 @@
         },
         {
           "file": "frontend/components/SoyleApp.tsx",
-          "line": 1734
+          "line": 1704
         }
       ]
     },
@@ -1555,7 +1469,7 @@
       "references": [
         {
           "file": "frontend/components/SoyleApp.tsx",
-          "line": 1750
+          "line": 1720
         }
       ]
     },
@@ -1572,7 +1486,7 @@
       "references": [
         {
           "file": "frontend/components/SoyleApp.tsx",
-          "line": 1743
+          "line": 1713
         }
       ]
     },
@@ -1589,7 +1503,7 @@
       "references": [
         {
           "file": "frontend/components/SoyleApp.tsx",
-          "line": 1740
+          "line": 1710
         }
       ]
     },
@@ -1606,7 +1520,7 @@
       "references": [
         {
           "file": "frontend/components/SoyleApp.tsx",
-          "line": 1749
+          "line": 1719
         }
       ]
     },
@@ -1623,7 +1537,7 @@
       "references": [
         {
           "file": "frontend/components/SoyleApp.tsx",
-          "line": 1742
+          "line": 1712
         }
       ]
     },
@@ -1640,7 +1554,7 @@
       "references": [
         {
           "file": "frontend/components/SoyleApp.tsx",
-          "line": 1737
+          "line": 1707
         }
       ]
     },
@@ -1657,7 +1571,7 @@
       "references": [
         {
           "file": "frontend/components/SoyleApp.tsx",
-          "line": 1747
+          "line": 1717
         }
       ]
     },
@@ -1674,7 +1588,7 @@
       "references": [
         {
           "file": "frontend/components/SoyleApp.tsx",
-          "line": 1737
+          "line": 1707
         }
       ]
     },
@@ -1691,7 +1605,7 @@
       "references": [
         {
           "file": "frontend/components/SoyleApp.tsx",
-          "line": 1737
+          "line": 1707
         }
       ]
     },
@@ -1708,7 +1622,7 @@
       "references": [
         {
           "file": "frontend/components/SoyleApp.tsx",
-          "line": 1739
+          "line": 1709
         }
       ]
     },
@@ -1725,7 +1639,7 @@
       "references": [
         {
           "file": "frontend/components/SoyleApp.tsx",
-          "line": 1743
+          "line": 1713
         }
       ]
     },
@@ -1742,7 +1656,7 @@
       "references": [
         {
           "file": "frontend/components/SoyleApp.tsx",
-          "line": 1750
+          "line": 1720
         }
       ]
     },
@@ -1759,7 +1673,7 @@
       "references": [
         {
           "file": "frontend/components/SoyleApp.tsx",
-          "line": 1742
+          "line": 1712
         }
       ]
     },
@@ -1776,7 +1690,7 @@
       "references": [
         {
           "file": "frontend/components/SoyleApp.tsx",
-          "line": 1741
+          "line": 1711
         }
       ]
     },
@@ -1793,7 +1707,7 @@
       "references": [
         {
           "file": "frontend/components/SoyleApp.tsx",
-          "line": 1742
+          "line": 1712
         }
       ]
     },
@@ -1814,7 +1728,11 @@
         },
         {
           "file": "frontend/components/SoyleApp.tsx",
-          "line": 1734
+          "line": 964
+        },
+        {
+          "file": "frontend/components/SoyleApp.tsx",
+          "line": 1704
         }
       ]
     },
@@ -1831,7 +1749,7 @@
       "references": [
         {
           "file": "frontend/components/SoyleApp.tsx",
-          "line": 1741
+          "line": 1711
         }
       ]
     },
@@ -1848,7 +1766,7 @@
       "references": [
         {
           "file": "frontend/components/SoyleApp.tsx",
-          "line": 1748
+          "line": 1718
         }
       ]
     },
@@ -1865,7 +1783,7 @@
       "references": [
         {
           "file": "frontend/components/SoyleApp.tsx",
-          "line": 1744
+          "line": 1714
         }
       ]
     },
@@ -1882,7 +1800,7 @@
       "references": [
         {
           "file": "frontend/components/SoyleApp.tsx",
-          "line": 1739
+          "line": 1709
         }
       ]
     },
@@ -1899,7 +1817,7 @@
       "references": [
         {
           "file": "frontend/components/SoyleApp.tsx",
-          "line": 1749
+          "line": 1719
         }
       ]
     },
@@ -1916,7 +1834,7 @@
       "references": [
         {
           "file": "frontend/components/SoyleApp.tsx",
-          "line": 1740
+          "line": 1710
         }
       ]
     },
@@ -1933,7 +1851,7 @@
       "references": [
         {
           "file": "frontend/components/SoyleApp.tsx",
-          "line": 1738
+          "line": 1708
         }
       ]
     },
@@ -1950,7 +1868,7 @@
       "references": [
         {
           "file": "frontend/components/SoyleApp.tsx",
-          "line": 1738
+          "line": 1708
         }
       ]
     },
@@ -1967,7 +1885,7 @@
       "references": [
         {
           "file": "frontend/components/SoyleApp.tsx",
-          "line": 1739
+          "line": 1709
         }
       ]
     },
@@ -1984,7 +1902,7 @@
       "references": [
         {
           "file": "frontend/components/SoyleApp.tsx",
-          "line": 1741
+          "line": 1711
         }
       ]
     },
@@ -2001,7 +1919,7 @@
       "references": [
         {
           "file": "frontend/components/SoyleApp.tsx",
-          "line": 1744
+          "line": 1714
         }
       ]
     },
@@ -2018,7 +1936,7 @@
       "references": [
         {
           "file": "frontend/components/SoyleApp.tsx",
-          "line": 1736
+          "line": 1706
         }
       ]
     },
@@ -2035,7 +1953,7 @@
       "references": [
         {
           "file": "frontend/components/SoyleApp.tsx",
-          "line": 1743
+          "line": 1713
         }
       ]
     },
@@ -2052,7 +1970,7 @@
       "references": [
         {
           "file": "frontend/components/SoyleApp.tsx",
-          "line": 1745
+          "line": 1715
         }
       ]
     },
@@ -2069,7 +1987,7 @@
       "references": [
         {
           "file": "frontend/components/SoyleApp.tsx",
-          "line": 1744
+          "line": 1714
         }
       ]
     },
@@ -2086,7 +2004,7 @@
       "references": [
         {
           "file": "frontend/components/SoyleApp.tsx",
-          "line": 1746
+          "line": 1716
         }
       ]
     },
@@ -2103,7 +2021,7 @@
       "references": [
         {
           "file": "frontend/components/SoyleApp.tsx",
-          "line": 1747
+          "line": 1717
         }
       ]
     },
@@ -2120,7 +2038,7 @@
       "references": [
         {
           "file": "frontend/components/SoyleApp.tsx",
-          "line": 1747
+          "line": 1717
         }
       ]
     },
@@ -2137,7 +2055,7 @@
       "references": [
         {
           "file": "frontend/components/SoyleApp.tsx",
-          "line": 1738
+          "line": 1708
         }
       ]
     },
@@ -2154,7 +2072,7 @@
       "references": [
         {
           "file": "frontend/components/SoyleApp.tsx",
-          "line": 1741
+          "line": 1711
         }
       ]
     },
@@ -2171,7 +2089,7 @@
       "references": [
         {
           "file": "frontend/components/SoyleApp.tsx",
-          "line": 1736
+          "line": 1706
         }
       ]
     },
@@ -2188,7 +2106,7 @@
       "references": [
         {
           "file": "frontend/components/SoyleApp.tsx",
-          "line": 1743
+          "line": 1713
         }
       ]
     },
@@ -2205,7 +2123,7 @@
       "references": [
         {
           "file": "frontend/components/SoyleApp.tsx",
-          "line": 1740
+          "line": 1710
         }
       ]
     },
@@ -2222,7 +2140,7 @@
       "references": [
         {
           "file": "frontend/components/SoyleApp.tsx",
-          "line": 1749
+          "line": 1719
         }
       ]
     },
@@ -2239,7 +2157,7 @@
       "references": [
         {
           "file": "frontend/components/SoyleApp.tsx",
-          "line": 1750
+          "line": 1720
         }
       ]
     },
@@ -2256,7 +2174,7 @@
       "references": [
         {
           "file": "frontend/components/SoyleApp.tsx",
-          "line": 1748
+          "line": 1718
         }
       ]
     },
@@ -2273,7 +2191,7 @@
       "references": [
         {
           "file": "frontend/components/SoyleApp.tsx",
-          "line": 1746
+          "line": 1716
         }
       ]
     },
@@ -2294,7 +2212,7 @@
         },
         {
           "file": "frontend/components/SoyleApp.tsx",
-          "line": 1734
+          "line": 1704
         }
       ]
     },
@@ -2311,7 +2229,7 @@
       "references": [
         {
           "file": "frontend/components/SoyleApp.tsx",
-          "line": 1746
+          "line": 1716
         }
       ]
     },
@@ -2332,7 +2250,7 @@
         },
         {
           "file": "frontend/components/SoyleApp.tsx",
-          "line": 1735
+          "line": 1705
         }
       ]
     },
@@ -2349,7 +2267,7 @@
       "references": [
         {
           "file": "frontend/components/SoyleApp.tsx",
-          "line": 1736
+          "line": 1706
         }
       ]
     },
@@ -2366,7 +2284,7 @@
       "references": [
         {
           "file": "frontend/components/SoyleApp.tsx",
-          "line": 1737
+          "line": 1707
         }
       ]
     },
@@ -2383,7 +2301,7 @@
       "references": [
         {
           "file": "frontend/components/SoyleApp.tsx",
-          "line": 1742
+          "line": 1712
         }
       ]
     },
@@ -2404,7 +2322,7 @@
         },
         {
           "file": "frontend/components/SoyleApp.tsx",
-          "line": 1735
+          "line": 1705
         }
       ]
     },
@@ -2421,7 +2339,7 @@
       "references": [
         {
           "file": "frontend/components/SoyleApp.tsx",
-          "line": 1745
+          "line": 1715
         }
       ]
     },
@@ -2438,7 +2356,7 @@
       "references": [
         {
           "file": "frontend/components/SoyleApp.tsx",
-          "line": 1748
+          "line": 1718
         }
       ]
     },
@@ -2455,7 +2373,7 @@
       "references": [
         {
           "file": "frontend/components/SoyleApp.tsx",
-          "line": 1745
+          "line": 1715
         }
       ]
     },
@@ -2472,7 +2390,7 @@
       "references": [
         {
           "file": "frontend/components/SoyleApp.tsx",
-          "line": 1738
+          "line": 1708
         }
       ]
     },
@@ -2493,7 +2411,7 @@
         },
         {
           "file": "frontend/components/SoyleApp.tsx",
-          "line": 1734
+          "line": 1704
         }
       ]
     },
@@ -2510,7 +2428,7 @@
       "references": [
         {
           "file": "frontend/components/SoyleApp.tsx",
-          "line": 1736
+          "line": 1706
         }
       ]
     },
@@ -2527,7 +2445,7 @@
       "references": [
         {
           "file": "frontend/components/SoyleApp.tsx",
-          "line": 1744
+          "line": 1714
         }
       ]
     },
@@ -2544,7 +2462,7 @@
       "references": [
         {
           "file": "frontend/components/SoyleApp.tsx",
-          "line": 1740
+          "line": 1710
         }
       ]
     },
@@ -2561,7 +2479,7 @@
       "references": [
         {
           "file": "frontend/components/SoyleApp.tsx",
-          "line": 1745
+          "line": 1715
         }
       ]
     },
@@ -2753,6 +2671,448 @@
       ]
     },
     {
+      "asset": "/app-illustrations/exercise-camera-hero.webp",
+      "format": "webp",
+      "bytes": 131294,
+      "dimensions": [
+        1536,
+        1024
+      ],
+      "sha256": "d7f96bfda895e23027b91b7a996db789438adcec87f4b42873a21c8f25a70267",
+      "phash": "61f0c667c7cc1c8a",
+      "references": [
+        {
+          "file": "frontend/components/SoyleApp.tsx",
+          "line": 1274
+        }
+      ]
+    },
+    {
+      "asset": "/app-illustrations/exercise-library-hero.webp",
+      "format": "webp",
+      "bytes": 148338,
+      "dimensions": [
+        1536,
+        1024
+      ],
+      "sha256": "a396700d91a87e9f1d64b8855d06b67db18888fcd54a2b70e80ec06860781bed",
+      "phash": "447d95f616b09352",
+      "references": [
+        {
+          "file": "frontend/components/SoyleApp.tsx",
+          "line": 961
+        }
+      ]
+    },
+    {
+      "asset": "/app-illustrations/exercise-stimulus-apple.webp",
+      "format": "webp",
+      "bytes": 101208,
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "sha256": "d154be5b7f496c17b263833697af3ddcae6e5967e093223846b05404de78b3c0",
+      "phash": "6dcb90788b749d30",
+      "references": [
+        {
+          "file": "backend/app/exercise_engine.py",
+          "line": 26
+        }
+      ]
+    },
+    {
+      "asset": "/app-illustrations/exercise-stimulus-ball.webp",
+      "format": "webp",
+      "bytes": 135040,
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "sha256": "a10755c5e0008d497048a93df652579788cd08429ce41a88625ce8a30b82ffdf",
+      "phash": "3ecac124cf36c83a",
+      "references": [
+        {
+          "file": "backend/app/exercise_engine.py",
+          "line": 36
+        }
+      ]
+    },
+    {
+      "asset": "/app-illustrations/exercise-stimulus-banana.webp",
+      "format": "webp",
+      "bytes": 33112,
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "sha256": "265c0993a578c5e88524b6fb291ef5ff0ca188236834f685c9deb65700b1aa0c",
+      "phash": "2f87e078d020f8d7",
+      "references": [
+        {
+          "file": "backend/app/exercise_engine.py",
+          "line": 27
+        }
+      ]
+    },
+    {
+      "asset": "/app-illustrations/exercise-stimulus-bird.webp",
+      "format": "webp",
+      "bytes": 73176,
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "sha256": "722743f56c5a0b20783c38770d6c433e72c06952e9e2d5cc2a2eb848b1411313",
+      "phash": "36e5ce5c9033ca98",
+      "references": [
+        {
+          "file": "backend/app/exercise_engine.py",
+          "line": 19
+        }
+      ]
+    },
+    {
+      "asset": "/app-illustrations/exercise-stimulus-blocks.webp",
+      "format": "webp",
+      "bytes": 83576,
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "sha256": "f641afcbe208298777b797284e058fa6c14258b249a9524c4e3a415382ee1030",
+      "phash": "659692c98e789a8e",
+      "references": [
+        {
+          "file": "backend/app/exercise_engine.py",
+          "line": 38
+        }
+      ]
+    },
+    {
+      "asset": "/app-illustrations/exercise-stimulus-book.webp",
+      "format": "webp",
+      "bytes": 79258,
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "sha256": "3e511998f0c3ac3ac6fe066cc41447a63f7a66f774d318088a0ea6801cfbe758",
+      "phash": "3e95c142c47b3dc4",
+      "references": [
+        {
+          "file": "backend/app/exercise_engine.py",
+          "line": 40
+        }
+      ]
+    },
+    {
+      "asset": "/app-illustrations/exercise-stimulus-bread.webp",
+      "format": "webp",
+      "bytes": 151704,
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "sha256": "d45b01dc7d36df4c924806e10d8203f75577a059968552eb00bf202e72c0244c",
+      "phash": "6ac8955799344e72",
+      "references": [
+        {
+          "file": "backend/app/exercise_engine.py",
+          "line": 32
+        }
+      ]
+    },
+    {
+      "asset": "/app-illustrations/exercise-stimulus-bug.webp",
+      "format": "webp",
+      "bytes": 79962,
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "sha256": "f352fb99caa33abcc0105e143d5eea86a6128019409a86ba1ea7256831078e1e",
+      "phash": "3fb5c24a8f0c3471",
+      "references": [
+        {
+          "file": "backend/app/exercise_engine.py",
+          "line": 23
+        }
+      ]
+    },
+    {
+      "asset": "/app-illustrations/exercise-stimulus-cat.webp",
+      "format": "webp",
+      "bytes": 106686,
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "sha256": "ad4cbadb8786443e4b07af2c2264a273e8dd38fffcd0342df7e642bc25b9e033",
+      "phash": "38b4db698c4a934e",
+      "references": [
+        {
+          "file": "backend/app/exercise_engine.py",
+          "line": 16
+        }
+      ]
+    },
+    {
+      "asset": "/app-illustrations/exercise-stimulus-dog.webp",
+      "format": "webp",
+      "bytes": 71720,
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "sha256": "f8cacddb2ab79b2a679f4677f72fd9f1c554a0dc92995ade46234bb6eaae3e8a",
+      "phash": "27e68c39d21e9c70",
+      "references": [
+        {
+          "file": "backend/app/exercise_engine.py",
+          "line": 17
+        }
+      ]
+    },
+    {
+      "asset": "/app-illustrations/exercise-stimulus-doll.webp",
+      "format": "webp",
+      "bytes": 177128,
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "sha256": "7751c303b63a874b45a24785394eed7f4afea8954181a3244b38a9f846d06ced",
+      "phash": "293de0f0970b8bc3",
+      "references": [
+        {
+          "file": "backend/app/exercise_engine.py",
+          "line": 39
+        }
+      ]
+    },
+    {
+      "asset": "/app-illustrations/exercise-stimulus-drum.webp",
+      "format": "webp",
+      "bytes": 71268,
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "sha256": "68ec8d49be12e4a729d64b1782d4ff023e487d70c626e4a19d0d0e1a5c6dd893",
+      "phash": "3f8fc25094731c8b",
+      "references": [
+        {
+          "file": "backend/app/exercise_engine.py",
+          "line": 43
+        }
+      ]
+    },
+    {
+      "asset": "/app-illustrations/exercise-stimulus-fish.webp",
+      "format": "webp",
+      "bytes": 68800,
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "sha256": "7e183f3b1e59c59b64fdb2bba469553c255da31d39b981ce48ab6c6265f150ce",
+      "phash": "6e9699e870079639",
+      "references": [
+        {
+          "file": "backend/app/exercise_engine.py",
+          "line": 18
+        }
+      ]
+    },
+    {
+      "asset": "/app-illustrations/exercise-stimulus-juice.webp",
+      "format": "webp",
+      "bytes": 46734,
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "sha256": "829abc8f39cd4fad288290caa042ccd6ffa3778a55fd25ed7e881f045a5a7a73",
+      "phash": "659f9a648d7984a1",
+      "references": [
+        {
+          "file": "backend/app/exercise_engine.py",
+          "line": 29
+        }
+      ]
+    },
+    {
+      "asset": "/app-illustrations/exercise-stimulus-milk.webp",
+      "format": "webp",
+      "bytes": 36424,
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "sha256": "3286cb5b63d0f24ca20b93ebd3f8a5f6bb998d170fa652d22cec736d19709e6d",
+      "phash": "679f1a64a5608573",
+      "references": [
+        {
+          "file": "backend/app/exercise_engine.py",
+          "line": 28
+        }
+      ]
+    },
+    {
+      "asset": "/app-illustrations/exercise-stimulus-paint.webp",
+      "format": "webp",
+      "bytes": 83878,
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "sha256": "c13b271644b79b61e19b5d84b4cf9bf6ff21623d2ec39c3933f50663e058b2f7",
+      "phash": "6a94c46b9fe0d4c1",
+      "references": [
+        {
+          "file": "backend/app/exercise_engine.py",
+          "line": 42
+        }
+      ]
+    },
+    {
+      "asset": "/app-illustrations/exercise-stimulus-porridge.webp",
+      "format": "webp",
+      "bytes": 52410,
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "sha256": "3e58849f8a7fcf9ea3a14c17b05c20ecc054c4d559b4d81462504d674214b8f6",
+      "phash": "6b9f94608a478f2c",
+      "references": [
+        {
+          "file": "backend/app/exercise_engine.py",
+          "line": 33
+        }
+      ]
+    },
+    {
+      "asset": "/app-illustrations/exercise-stimulus-puzzle.webp",
+      "format": "webp",
+      "bytes": 90552,
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "sha256": "9cb15d6fbe04f98722b9d10ddda3e3b779fbf5a849d842b41d7d27c1bb9c6550",
+      "phash": "79b1c20d9dc2347a",
+      "references": [
+        {
+          "file": "backend/app/exercise_engine.py",
+          "line": 41
+        }
+      ]
+    },
+    {
+      "asset": "/app-illustrations/exercise-stimulus-rabbit.webp",
+      "format": "webp",
+      "bytes": 66872,
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "sha256": "b96a3fe03d6787971ce379d1902d758f6a51c5416d0382f704b0a99769b12b03",
+      "phash": "33c38d19e13ece18",
+      "references": [
+        {
+          "file": "backend/app/exercise_engine.py",
+          "line": 20
+        }
+      ]
+    },
+    {
+      "asset": "/app-illustrations/exercise-stimulus-snail.webp",
+      "format": "webp",
+      "bytes": 83490,
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "sha256": "406438d7b4282110626d058bc435ba63e3bf4c02d56cf3f95804b617ee4128f1",
+      "phash": "3ed1c38c642fc538",
+      "references": [
+        {
+          "file": "backend/app/exercise_engine.py",
+          "line": 22
+        }
+      ]
+    },
+    {
+      "asset": "/app-illustrations/exercise-stimulus-soup.webp",
+      "format": "webp",
+      "bytes": 74048,
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "sha256": "aa0b319ea0c532ad694fbffcdbbf77ebc9d8a35576c705b6137c947d198ee0d6",
+      "phash": "6c9fd1c08e4b896c",
+      "references": [
+        {
+          "file": "backend/app/exercise_engine.py",
+          "line": 31
+        }
+      ]
+    },
+    {
+      "asset": "/app-illustrations/exercise-stimulus-toy-car.webp",
+      "format": "webp",
+      "bytes": 62258,
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "sha256": "e597596575f72c83fd9202dadcb9f74e78599144b36e1de3d675ec5e132ca982",
+      "phash": "6ac1957ec8316af0",
+      "references": [
+        {
+          "file": "backend/app/exercise_engine.py",
+          "line": 37
+        }
+      ]
+    },
+    {
+      "asset": "/app-illustrations/exercise-stimulus-turtle.webp",
+      "format": "webp",
+      "bytes": 86996,
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "sha256": "c03d04525a0f89c093017337cb9004de91bea1a2a668e8fcf4fcfb828ce9ed38",
+      "phash": "3dc0c29fbc32d069",
+      "references": [
+        {
+          "file": "backend/app/exercise_engine.py",
+          "line": 21
+        }
+      ]
+    },
+    {
+      "asset": "/app-illustrations/exercise-stimulus-water.webp",
+      "format": "webp",
+      "bytes": 48510,
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "sha256": "c2dd647f68f45b70c6a2a92a5ffad94a9faecb96cb869edbef73cee05493b779",
+      "phash": "798ec7d186798621",
+      "references": [
+        {
+          "file": "backend/app/exercise_engine.py",
+          "line": 30
+        }
+      ]
+    },
+    {
       "asset": "/app-illustrations/guide-aac-home.webp",
       "format": "webp",
       "bytes": 175050,
@@ -2867,7 +3227,7 @@
       "references": [
         {
           "file": "frontend/components/SoyleApp.tsx",
-          "line": 2039
+          "line": 2009
         }
       ]
     },
@@ -2884,7 +3244,7 @@
       "references": [
         {
           "file": "frontend/components/SoyleApp.tsx",
-          "line": 2042
+          "line": 2012
         }
       ]
     },
@@ -2901,7 +3261,7 @@
       "references": [
         {
           "file": "frontend/components/SoyleApp.tsx",
-          "line": 2040
+          "line": 2010
         }
       ]
     },
@@ -2918,7 +3278,7 @@
       "references": [
         {
           "file": "frontend/components/SoyleApp.tsx",
-          "line": 2038
+          "line": 2008
         }
       ]
     },
@@ -2935,7 +3295,7 @@
       "references": [
         {
           "file": "frontend/components/SoyleApp.tsx",
-          "line": 2037
+          "line": 2007
         }
       ]
     },
@@ -2986,7 +3346,7 @@
       "references": [
         {
           "file": "frontend/components/SoyleApp.tsx",
-          "line": 2332
+          "line": 2302
         }
       ]
     },
@@ -3020,7 +3380,7 @@
       "references": [
         {
           "file": "frontend/app/product.css",
-          "line": 634
+          "line": 686
         }
       ]
     },
@@ -3530,7 +3890,7 @@
       "references": [
         {
           "file": "backend/app/exercise_engine.py",
-          "line": 475
+          "line": 480
         }
       ]
     },
@@ -3547,7 +3907,7 @@
       "references": [
         {
           "file": "backend/app/exercise_engine.py",
-          "line": 475
+          "line": 480
         }
       ]
     },
@@ -4506,7 +4866,7 @@
         },
         {
           "file": "frontend/components/SoyleApp.tsx",
-          "line": 2272
+          "line": 2242
         }
       ]
     },
@@ -4540,7 +4900,7 @@
         },
         {
           "file": "frontend/components/SoyleApp.tsx",
-          "line": 2272
+          "line": 2242
         }
       ]
     },
@@ -4574,7 +4934,7 @@
         },
         {
           "file": "frontend/components/SoyleApp.tsx",
-          "line": 2272
+          "line": 2242
         }
       ]
     },
@@ -4610,7 +4970,7 @@
         },
         {
           "file": "frontend/components/SoyleApp.tsx",
-          "line": 2272
+          "line": 2242
         }
       ]
     },
@@ -4897,7 +5257,7 @@
         },
         {
           "file": "frontend/components/SoyleApp.tsx",
-          "line": 1753
+          "line": 1723
         }
       ]
     }
