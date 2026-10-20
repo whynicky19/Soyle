@@ -860,11 +860,17 @@ function AuthScreen({ onAuthenticated }: { onAuthenticated: (user: User) => void
     try {
       const endpoint = mode === "student" ? "student-login" : mode === "login" ? "login" : "register";
       const payload = mode === "student" ? { username, pin: password } : mode === "login" ? { username, password } : { username, password, full_name: name };
-      const result = await api<{ user: User }>(`/api/auth/${endpoint}`, {
+      await api<{ user: User }>(`/api/auth/${endpoint}`, {
         method: "POST", body: JSON.stringify(payload),
       });
-      clearLegacyAuth(); onAuthenticated(result.user);
-    } catch (cause) { setError(cause instanceof Error ? cause.message : "Ошибка авторизации"); }
+      const currentUser = await api<User>("/api/auth/me");
+      clearLegacyAuth(); onAuthenticated(currentUser);
+    } catch (cause) {
+      const message = cause instanceof Error ? cause.message : "Ошибка авторизации";
+      setError(message === "Не удалось подтвердить авторизацию"
+        ? "Вход не сохранился в браузере. Разрешите cookies или откройте Söyle в Safari/Chrome и попробуйте ещё раз."
+        : message);
+    }
     finally { setLoading(false); }
   };
 

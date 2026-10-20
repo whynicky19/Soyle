@@ -19,6 +19,9 @@ const contentSecurityPolicy = [
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  async rewrites() {
+    return [{ source: "/api/:path*", destination: `${apiOrigin}/api/:path*` }];
+  },
   async headers() {
     const securityHeaders = [
       { key: "Content-Security-Policy", value: contentSecurityPolicy },

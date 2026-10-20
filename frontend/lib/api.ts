@@ -370,7 +370,9 @@ export type NotificationItem = {
 
 export type NotificationsData = { unread: number; items: NotificationItem[] };
 
-export const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8010";
+// In production, keep API cookies first-party even inside mobile in-app browsers.
+// Next.js forwards /api requests to the configured backend.
+export const API_URL = process.env.NODE_ENV === "production" ? "" : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8010");
 let csrfTokenMemory = "";
 
 export function clearLegacyAuth() {
