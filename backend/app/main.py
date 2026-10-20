@@ -1,4 +1,6 @@
 import json
+import base64
+import binascii
 import os
 import hashlib
 import secrets
@@ -17,7 +19,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 
 from .database import connect, init_db, now_iso
-from .schemas import AACCardCreate, AACComposeRequest, AACFavoriteUpdate, AACPhraseCreate, ActiveUpdate, AdaptivePlanRequest, AIAskRequest, AIPlanRequest, AssignedExerciseCreate, ChildCreate, ChildDeleteRequest, ChildGoalCreate, ConsentUpdate, ContentReviewCreate, ExerciseDraftCreate, GoalStatusUpdate, HomeActivityObservationCreate, HomeworkCreate, HomeworkResultUpdate, LearningSessionCreate, LoginRequest, PracticeGoalCreate, PracticeGoalObservationCreate, PracticeGoalUpdate, PracticePreferencesUpdate, RecommendationReview, RegisterRequest, RoleUpdate, SessionCreate, SkillObservationUpdate, SpecialistAssignmentCreate, SpecialistRecommendationCreate, StudentAccountCreate, StudentLoginRequest, TTSRequest, UserSettingsUpdate
+from .schemas import AACCardCreate, AACComposeRequest, AACFavoriteUpdate, AACPhraseCreate, ActiveUpdate, AdaptivePlanRequest, AIAskRequest, AIPlanRequest, AssignedExerciseCreate, ChildCreate, ChildDeleteRequest, ChildGoalCreate, ConsentUpdate, ContentReviewCreate, ExerciseDraftCreate, GoalStatusUpdate, HomeActivityObservationCreate, HomeworkCreate, HomeworkResultUpdate, LearningSessionCreate, LoginRequest, PracticeGoalCreate, PracticeGoalObservationCreate, PracticeGoalUpdate, PracticePreferencesUpdate, RecommendationReview, RegisterRequest, RoleUpdate, SessionCreate, SkillObservationUpdate, SpecialistAssignmentCreate, SpecialistRecommendationCreate, StoryAnswer, StudentAccountCreate, StudentLoginRequest, TTSRequest, UserSettingsUpdate, WorldPhotoCreate
 from .tts_library import bundled_tts_path
 from .aac_grammar import compose_aac_phrase
 from .ai_assistant import DISCLAIMER as LOCAL_ASSISTANT_DISCLAIMER, answer_parent
@@ -26,6 +28,7 @@ from .family_practice import descriptive_results, home_library, save_home_observ
 from .adaptive_planner import create_plan as create_adaptive_plan, get_plan as get_adaptive_plan, plan_history as adaptive_plan_history
 from .practice_goals import create_goal as create_practice_goal, get_preferences, list_goals as list_practice_goals, list_templates as list_practice_goal_templates, save_observation as save_practice_goal_observation, save_preferences, update_goal as update_practice_goal
 from .migrations import LATEST_SCHEMA_VERSION
+from .stories import STORIES, public_story
 from .security import AUTH_COOKIE_NAME, CSRF_COOKIE_NAME, IS_PRODUCTION, clear_auth_cookies, create_access_token, create_student_access_token, get_current_user, hash_password, require_roles, set_auth_cookies, verify_password
 
 
@@ -690,10 +693,125 @@ def aac_cards(child_id: int, user: dict = Depends(get_current_user)) -> list[dic
     return [dict(row) for row in rows]
 
 
+@app.get("/api/world/{child_id}")
+def world_photos(child_id: int, response: Response, user: dict = Depends(get_current_user)) -> list[dict]:
+    ensure_child_access(child_id, user)
+    response.headers["Cache-Control"] = "private, no-store"
+    with connect() as db:
+        rows = db.execute(
+            "SELECT id,name,category,image_data,created_at FROM child_world_photos WHERE child_id=? ORDER BY id DESC",
+            (child_id,),
+        ).fetchall()
+    return [dict(row) for row in rows]
+
+
+@app.post("/api/world/{child_id}", status_code=201)
+def add_world_photo(child_id: int, payload: WorldPhotoCreate, user: dict = Depends(require_roles("parent"))) -> dict:
+    ensure_child_access(child_id, user)
+    ensure_privacy_consent(child_id)
+    mime, separator, encoded = payload.image_data.partition(",")
+    if not separator or mime not in {"data:image/jpeg;base64", "data:image/png;base64", "data:image/webp;base64"}:
+        raise HTTPException(422, "Поддерживаются только фотографии JPEG, PNG и WebP")
+    try:
+        raw = base64.b64decode(encoded, validate=True)
+    except (ValueError, binascii.Error):
+        raise HTTPException(422, "Фотография повреждена") from None
+    signatures = {"data:image/jpeg;base64": raw.startswith(b"\xff\xd8\xff"), "data:image/png;base64": raw.startswith(b"\x89PNG\r\n\x1a\n"), "data:image/webp;base64": raw.startswith(b"RIFF") and raw[8:12] == b"WEBP"}
+    if not signatures[mime] or not 100 <= len(raw) <= 650_000:
+        raise HTTPException(422, "Фотография должна быть изображением размером до 650 КБ")
+    image_hash = hashlib.sha256(raw).hexdigest()
+    with connect() as db:
+        count = db.execute("SELECT COUNT(*) count FROM child_world_photos WHERE child_id=?", (child_id,)).fetchone()["count"]
+        if count >= 24:
+            raise HTTPException(409, "В библиотеке уже 24 фотографии. Удалите ненужную, чтобы добавить новую")
+        if db.execute("SELECT 1 FROM child_world_photos WHERE child_id=? AND image_hash=?", (child_id, image_hash)).fetchone():
+            raise HTTPException(409, "Эта фотография уже есть в библиотеке")
+        cursor = db.execute(
+            "INSERT INTO child_world_photos(child_id,name,category,image_data,image_hash,created_by,created_at) VALUES(?,?,?,?,?,?,?) RETURNING id",
+            (child_id, payload.name.strip(), payload.category, payload.image_data, image_hash, user["id"], now_iso()),
+        )
+        row = db.execute("SELECT id,name,category,image_data,created_at FROM child_world_photos WHERE id=?", (cursor.fetchone()["id"],)).fetchone()
+    return dict(row)
+
+
+@app.delete("/api/world/{child_id}/{photo_id}", status_code=204)
+def delete_world_photo(child_id: int, photo_id: int, user: dict = Depends(require_roles("parent"))) -> Response:
+    ensure_child_access(child_id, user)
+    with connect() as db:
+        cursor = db.execute("DELETE FROM child_world_photos WHERE child_id=? AND id=?", (child_id, photo_id))
+        if cursor.rowcount == 0:
+            raise HTTPException(404, "Фотография не найдена")
+    return Response(status_code=204)
+
+
+@app.get("/api/stories/{child_id}")
+def child_stories(child_id: int, response: Response, user: dict = Depends(get_current_user)) -> list[dict]:
+    ensure_child_access(child_id, user)
+    response.headers["Cache-Control"] = "private, no-store"
+    with connect() as db:
+        rows = db.execute("SELECT story_key,scene_index,completed_at FROM child_story_progress WHERE child_id=?", (child_id,)).fetchall()
+    progress = {row["story_key"]: dict(row) for row in rows}
+    return [public_story(key, story, progress.get(key)) for key, story in STORIES.items()]
+
+
+@app.post("/api/stories/{child_id}/{story_key}/answer")
+def answer_story(child_id: int, story_key: str, payload: StoryAnswer, user: dict = Depends(require_roles("student"))) -> dict:
+    ensure_child_access(child_id, user)
+    ensure_privacy_consent(child_id)
+    story = STORIES.get(story_key)
+    if not story:
+        raise HTTPException(404, "История не найдена")
+    with connect() as db:
+        row = db.execute("SELECT scene_index,completed_at FROM child_story_progress WHERE child_id=? AND story_key=?", (child_id, story_key)).fetchone()
+        current_index = row["scene_index"] if row else 0
+        if payload.scene_index != current_index or current_index >= len(story["scenes"]):
+            raise HTTPException(409, "История изменилась. Откройте её снова")
+        scene = story["scenes"][current_index]
+        if payload.answer_key not in {choice["key"] for choice in scene["choices"]}:
+            raise HTTPException(422, "Такого ответа в этой сцене нет")
+        if payload.answer_key != scene["answer"]:
+            return {"correct": False, "hint": scene["hint"], "scene_index": current_index, "completed": False}
+        next_index = current_index + 1
+        completed_at = now_iso() if next_index == len(story["scenes"]) else (row["completed_at"] if row else None)
+        db.execute(
+            """INSERT INTO child_story_progress(child_id,story_key,scene_index,completed_at,updated_at)
+               VALUES(?,?,?,?,?) ON CONFLICT(child_id,story_key) DO UPDATE SET
+               scene_index=excluded.scene_index,completed_at=COALESCE(child_story_progress.completed_at,excluded.completed_at),updated_at=excluded.updated_at""",
+            (child_id, story_key, next_index, completed_at, now_iso()),
+        )
+    return {"correct": True, "hint": "", "scene_index": next_index, "completed": next_index == len(story["scenes"])}
+
+
+@app.post("/api/stories/{child_id}/{story_key}/restart")
+def restart_story(child_id: int, story_key: str, user: dict = Depends(require_roles("student"))) -> dict:
+    ensure_child_access(child_id, user)
+    if story_key not in STORIES:
+        raise HTTPException(404, "История не найдена")
+    with connect() as db:
+        db.execute(
+            "UPDATE child_story_progress SET scene_index=0,updated_at=? WHERE child_id=? AND story_key=?",
+            (now_iso(), child_id, story_key),
+        )
+    return {"scene_index": 0}
+
+
 @app.post("/api/aac/cards", status_code=201)
 def create_aac_card(payload: AACCardCreate, user: dict = Depends(require_roles("parent"))) -> dict:
     ensure_child_access(payload.child_id, user)
     ensure_privacy_consent(payload.child_id)
+    if payload.image.startswith("data:"):
+        mime, separator, encoded = payload.image.partition(",")
+        if not separator or mime not in {"data:image/jpeg;base64", "data:image/png;base64", "data:image/webp;base64"}:
+            raise HTTPException(422, "Карточке нужна фотография JPEG, PNG или WebP")
+        try:
+            raw = base64.b64decode(encoded, validate=True)
+        except (ValueError, binascii.Error):
+            raise HTTPException(422, "Фотография карточки повреждена") from None
+        valid = {"data:image/jpeg;base64": raw.startswith(b"\xff\xd8\xff"), "data:image/png;base64": raw.startswith(b"\x89PNG\r\n\x1a\n"), "data:image/webp;base64": raw.startswith(b"RIFF") and raw[8:12] == b"WEBP"}
+        if not valid[mime] or not 100 <= len(raw) <= 650_000:
+            raise HTTPException(422, "Фотография карточки должна быть размером до 650 КБ")
+    elif not payload.image.startswith("/") or payload.image.startswith("//") or len(payload.image) > 200:
+        raise HTTPException(422, "Изображение карточки должно быть локальным")
     with connect() as db:
         duplicate = db.execute(
             """SELECT id FROM aac_cards
@@ -706,7 +824,7 @@ def create_aac_card(payload: AACCardCreate, user: dict = Depends(require_roles("
             raise HTTPException(409, "Такая AAC-карточка уже доступна ребёнку")
         cursor = db.execute(
             "INSERT INTO aac_cards(child_id,label,speech,category,lemma,grammatical_role,language,pictogram,image,created_by,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?) RETURNING id",
-            (payload.child_id, payload.label.strip(), payload.speech.strip(), payload.category, payload.lemma or payload.label.lower(), payload.grammatical_role, payload.language, payload.pictogram or payload.image, payload.image, user["id"], now_iso()),
+            (payload.child_id, payload.label.strip(), payload.speech.strip(), payload.category, payload.lemma or payload.label.lower(), payload.grammatical_role, payload.language, payload.pictogram or (payload.image if payload.image.startswith("/") else None), payload.image, user["id"], now_iso()),
         )
         row = db.execute("SELECT *,0 favorite FROM aac_cards WHERE id=?", (cursor.fetchone()["id"],)).fetchone()
     return dict(row)
@@ -1735,6 +1853,8 @@ def export_child_data(child_id: int, user: dict = Depends(require_roles("parent"
             "aac_custom_cards": [dict(row) for row in db.execute("SELECT * FROM aac_cards WHERE child_id=? ORDER BY id", (child_id,)).fetchall()],
             "aac_favorites": [dict(row) for row in db.execute("SELECT * FROM aac_favorites WHERE child_id=? ORDER BY card_id", (child_id,)).fetchall()],
             "aac_history": history_rows,
+            "world_photos": [dict(row) for row in db.execute("SELECT * FROM child_world_photos WHERE child_id=? ORDER BY id", (child_id,)).fetchall()],
+            "story_progress": [dict(row) for row in db.execute("SELECT * FROM child_story_progress WHERE child_id=? ORDER BY story_key", (child_id,)).fetchall()],
             "notifications": [dict(row) for row in db.execute("SELECT * FROM notifications WHERE child_id=? ORDER BY id", (child_id,)).fetchall()],
             "audit_events": audit_rows,
         }

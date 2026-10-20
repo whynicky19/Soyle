@@ -9,6 +9,7 @@
     "start": "next start",
     "lint": "eslint .",
     "test": "node --test tests/*.test.mjs",
+    "audit:visual": "python3 ../scripts/visual_asset_audit.py --write --check",
     "test:e2e": "playwright test"
   },
   "dependencies": {

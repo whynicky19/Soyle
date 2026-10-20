@@ -6,15 +6,15 @@ import type { ReactNode } from "react";
 type ShellProps = { children: ReactNode };
 
 export function ChildShell({ children }: ShellProps) {
-  return <div className="app-shell student-mode child-shell">{children}</div>;
+  return <div className="app-shell student-mode child-shell soyle-parent-v2 soyle-unified">{children}</div>;
 }
 
 export function ParentShell({ children }: ShellProps) {
-  return <div className="app-shell parent-mode parent-shell">{children}</div>;
+  return <div className="app-shell parent-mode parent-shell soyle-parent-v2 soyle-unified">{children}</div>;
 }
 
 export function AdminShell({ children }: ShellProps) {
-  return <div className="app-shell admin-mode admin-shell">{children}</div>;
+  return <div className="app-shell admin-mode admin-shell soyle-parent-v2 soyle-unified">{children}</div>;
 }
 
 export function ExerciseFocusShell({

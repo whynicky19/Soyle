@@ -1,0 +1,46 @@
+{
+  "phash_threshold": 6,
+  "reuse_exceptions": [
+    {
+      "pattern": "/soyle-mark.svg",
+      "reason": "The Söyle brand mark is an explicitly permitted reusable logo."
+    },
+    {
+      "pattern": "/soyle-icon.png",
+      "reason": "The application icon is an explicitly permitted reusable brand asset."
+    },
+    {
+      "pattern": "/aac-pictograms/*",
+      "reason": "AAC symbols intentionally remain stable wherever the same concept must be recognized."
+    },
+    {
+      "pattern": "/app-illustrations/aac-*.webp",
+      "reason": "New AAC symbols intentionally stay identical between the communication board and story choices so the child recognizes the same concept."
+    },
+    {
+      "pattern": "/p1/*",
+      "reason": "Reviewed educational stimuli may repeat only when the exercise requires recognition of the same object or action."
+    },
+    {
+      "pattern": "/p15/*",
+      "reason": "Reviewed educational stimuli may repeat only when the exercise requires recognition of the same object or action."
+    },
+    {
+      "pattern": "/illustrations/module-articulation-fox.png",
+      "reason": "This is the canonical articulation-module identifier; the actual movement stimulus is rendered separately for each exercise."
+    },
+    {
+      "pattern": "/illustrations/hero-landscape.png",
+      "reason": "Repeated declarations are responsive variants of the same parent-home hero, not separate scenes."
+    },
+    {
+      "pattern": "/illustrations/ball.png",
+      "reason": "The same familiar ball is deliberately reused between the reviewed learning data and My World so the child recognizes one stable object."
+    },
+    {
+      "pattern": "/illustrations/juice.png",
+      "reason": "The same familiar drink vessel is deliberately reused between the reviewed learning data and My World so the child recognizes one stable object."
+    }
+  ],
+  "similarity_exceptions": []
+}

@@ -95,10 +95,18 @@ test("only the reviewed Russian interface is selectable", async () => {
 });
 
 test("service worker never caches API or private responses", async () => {
-  const worker = await readProjectFile("public/sw.js");
+  const [worker, app] = await Promise.all([
+    readProjectFile("public/sw.js"),
+    readProjectFile("components/SoyleApp.tsx"),
+  ]);
   assert.match(worker, /pathname\.startsWith\("\/api\/"\)/);
   assert.match(worker, /headers\.has\("authorization"\)/);
   assert.match(worker, /private\|no-store/);
+  assert.match(worker, /event\.request\.mode === "navigate"/);
+  assert.doesNotMatch(worker, /"\/", "\/app"/);
+  assert.match(app, /localDevelopmentHosts\.has\(window\.location\.hostname\)/);
+  assert.match(app, /registration\.unregister\(\)/);
+  assert.match(app, /cacheName\.startsWith\("soyle-"\)/);
 });
 
 test("security headers cover framing, MIME sniffing and browser capabilities", async () => {
@@ -111,12 +119,14 @@ test("security headers cover framing, MIME sniffing and browser capabilities", a
 });
 
 test("parent home avoids a fabricated daily quota and shows a bounded observation", async () => {
-  const [app, api] = await Promise.all([
+  const [app, overview, api] = await Promise.all([
     readProjectFile("components/SoyleApp.tsx"),
+    readProjectFile("components/ParentOverview.tsx"),
     readProjectFile("lib/api.ts"),
   ]);
   assert.match(api, /week_activity:/);
-  assert.match(app, /parent-observation/);
+  assert.match(overview, /dashboard\?\.week_sessions/);
+  assert.match(overview, /dashboard\?\.total_sessions/);
   assert.doesNotMatch(app, /weekActivity\.map/);
   assert.doesNotMatch(app, /day\s*<\s*Math\.min\(dashboard\?\.week_sessions/);
 });
@@ -213,10 +223,13 @@ test("P2.1 goals use a deterministic review-gated planner instead of AI", async 
 });
 
 test("daily duration uses the reviewed rotating session plan and active sessions lock their original duration", async () => {
-  const app = await readProjectFile("components/SoyleApp.tsx");
+  const [app, dashboard] = await Promise.all([
+    readProjectFile("components/SoyleApp.tsx"),
+    readProjectFile("components/ProductExperience.tsx"),
+  ]);
   assert.match(app, /\/api\/session-plan\/\$\{child\.id\}\?minutes=\$\{dailyMinutes\}/);
-  assert.match(app, /disabled=\{Boolean\(currentSession\)\}/);
-  assert.match(app, /SESSION_EXERCISE_COUNTS\[dailyMinutes\]/);
+  assert.match(dashboard, /!currentSession && <div className="v2-minute-picker"/);
+  assert.match(dashboard, /SESSION_EXERCISE_COUNTS\[dailyMinutes\]/);
 });
 
 test("adaptive analysis has no external model SDK or API key dependency", async () => {

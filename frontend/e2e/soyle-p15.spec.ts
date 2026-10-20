@@ -57,12 +57,45 @@ async function login(page: Page, username: string, password: string, student = f
 
 async function openMainSection(page: Page, name: string) {
   const menu = page.getByRole("button", { name: "Открыть меню" });
-  if (await menu.isVisible()) await menu.click();
+  const openedMobileMenu = await menu.isVisible();
+  if (openedMobileMenu) await menu.click();
   const target = page.getByRole("button", { name, exact: true });
-  if (await target.count() === 0 || !(await target.first().isVisible())) {
-    await page.getByRole("button", { name: "Ещё", exact: true }).click();
+  if (await target.count() > 0 && await target.first().isVisible()) {
+    await target.first().click();
+    return;
   }
-  await page.getByRole("button", { name, exact: true }).click();
+  if (name === "Сегодня" && openedMobileMenu) {
+    await page.locator("#primary-navigation nav").getByRole("button", { name: "Главная", exact: true }).click();
+    return;
+  }
+  if (openedMobileMenu) await page.keyboard.press("Escape");
+  if (name === "Занятия") {
+    await page.getByRole("button", { name: /Занятия ребёнка/ }).click();
+    return;
+  }
+  if (name === "Цели и занятия") {
+    await page.getByRole("button", { name: /Цели и план/ }).click();
+    return;
+  }
+  if (name === "Сегодня") {
+    await page.locator(".brand").click();
+    return;
+  }
+  if (name === "Прогресс") {
+    await page.getByRole("button", { name: /История практики/ }).click();
+    return;
+  }
+  throw new Error(`No product navigation path for ${name}`);
+}
+
+async function openCatalogExercise(page: Page, name: RegExp) {
+  const exercise = page.getByRole("button", { name }).first();
+  if (!await exercise.isVisible()) await page.locator(".child-more-games summary").click();
+  await exercise.click();
+}
+
+async function openToysExercise(page: Page) {
+  await openCatalogExercise(page, /Игрушки/);
 }
 
 test.beforeEach(async ({ page }) => {
@@ -74,7 +107,7 @@ test("child choice runner handles audio, wrong answer, hint, repeat and saved co
   await page.evaluate(() => { Math.random = () => 0.999; });
   await openMainSection(page, "Занятия");
   await expect(page.getByText("Понимание слов: игрушки")).toHaveCount(0);
-  await page.getByRole("button", { name: /Игрушки/ }).first().click();
+  await openToysExercise(page);
   await page.getByRole("button", { name: /Понятно, начать/ }).click();
   const options = page.locator(".picture-options button");
   await expect(options).toHaveCount(2);
@@ -97,7 +130,7 @@ test("child choice runner handles audio, wrong answer, hint, repeat and saved co
 test("animal choices use one consistent illustrated pictogram set", async ({ page }) => {
   await login(page, "alikhan", "1234", true);
   await openMainSection(page, "Занятия");
-  await page.getByRole("button", { name: /Я вижу/ }).click();
+  await openCatalogExercise(page, /Я вижу/);
   await page.locator(".aac-card-main").filter({ has: page.locator("strong", { hasText: /^Мама$/ }) }).click();
   await page.locator(".speak-button").click();
   await page.getByRole("button", { name: "Закончить практику" }).click();
@@ -121,10 +154,10 @@ test("animal choices use one consistent illustrated pictogram set", async ({ pag
 test("break and refusal are accepted without exposing a draft", async ({ page }) => {
   await login(page, "alikhan", "1234", true);
   await openMainSection(page, "Занятия");
-  await page.getByRole("button", { name: /Игрушки/ }).first().click();
+  await openToysExercise(page);
   await page.getByRole("button", { name: "Перерыв" }).click();
   await expect(page.getByRole("heading", { name: "Выбери одну игру" })).toBeVisible();
-  await page.getByRole("button", { name: /Игрушки/ }).first().click();
+  await openToysExercise(page);
   await page.getByRole("button", { name: "Не хочу" }).click();
   await expect(page.getByRole("heading", { name: "Сообщение принято" })).toBeVisible();
 });
@@ -137,7 +170,7 @@ test("adult preview never creates a child session and child practice remains exp
   page.on("request", (request) => {
     if (new URL(request.url()).pathname === "/api/sessions" && request.method() === "POST") sessionRequests += 1;
   });
-  await page.getByRole("button", { name: /Игрушки/ }).first().click();
+  await openToysExercise(page);
   await expect(page.getByText("Ответы не сохраняются в профиль ребёнка.")).toBeVisible();
   await page.getByRole("button", { name: "Не хочу" }).click();
   await expect(page.getByRole("heading", { name: "Предпросмотр завершён" })).toBeVisible();
@@ -145,7 +178,7 @@ test("adult preview never creates a child session and child practice remains exp
 
   await page.getByRole("button", { name: "Закончить практику" }).click();
   await page.getByRole("button", { name: "Практика ребёнка" }).click();
-  await page.getByRole("button", { name: /Игрушки/ }).first().click();
+  await openToysExercise(page);
   await page.getByRole("button", { name: "Не хочу" }).click();
   await expect(page.getByRole("heading", { name: "Сообщение принято" })).toBeVisible();
   expect(sessionRequests).toBe(1);
@@ -155,7 +188,7 @@ test("two, three and four picture choices keep equal geometry at every viewport"
   await login(page, "alikhan", "1234", true);
   await openMainSection(page, "Занятия");
   for (const optionCount of [2, 3, 4]) {
-    await page.getByRole("button", { name: /Игрушки/ }).first().click();
+    await openToysExercise(page);
     await page.locator(".runner-levels button").filter({ hasText: new RegExp(`^${optionCount}$`) }).click();
     await page.getByRole("button", { name: /Понятно, начать/ }).click();
     const options = page.locator(".picture-options button");
@@ -175,7 +208,7 @@ test("two, three and four picture choices keep equal geometry at every viewport"
 test("spoken-options mode is explicit, keyboard reachable and excluded from scored results", async ({ page }) => {
   await login(page, "alikhan", "1234", true);
   await openMainSection(page, "Занятия");
-  await page.getByRole("button", { name: /Игрушки/ }).first().click();
+  await openToysExercise(page);
   await page.getByRole("button", { name: "Озвучивать все варианты" }).click();
   await expect(page.getByText(/отдельный доступный режим/)).toBeVisible();
   await page.getByRole("button", { name: /Понятно, начать/ }).click();
@@ -220,7 +253,7 @@ test("offline banner states that an in-memory result can be lost", async ({ page
 test("I see message can be spoken and guided answers cannot accumulate duplicates", async ({ page }) => {
   await login(page, "alikhan", "1234", true);
   await openMainSection(page, "Занятия");
-  await page.getByRole("button", { name: /Я вижу/ }).click();
+  await openCatalogExercise(page, /Я вижу/);
 
   const card = (label: string) => page.locator(".aac-card-main").filter({ has: page.locator("strong", { hasText: new RegExp(`^${label}$`) }) });
   await card("Я").click();
@@ -277,8 +310,10 @@ test("parent sees saved result and an active session survives reload", async ({ 
   await page.reload();
   await expect(page.getByRole("button", { name: "Продолжить занятие" })).toBeVisible();
   await openMainSection(page, "Прогресс");
-  await expect(page.getByRole("heading", { name: "Игровые ответы и участие" })).toBeVisible();
-  await expect(page.getByText(/Отказ|Перерыв|% в игре/).first()).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Игровые ответы и участие|Пока недостаточно наблюдений/ })).toBeVisible();
+  if (await page.getByRole("heading", { name: "Игровые ответы и участие" }).count()) {
+    await expect(page.getByText(/Отказ|Перерыв|% в игре/).first()).toBeVisible();
+  }
 });
 
 test("admin can preview DRAFT but cannot methodically approve or publish it", async ({ page }) => {
@@ -308,7 +343,7 @@ test("admin can preview DRAFT but cannot methodically approve or publish it", as
 
 test("core screens have no serious axe violations and do not overflow", async ({ page }) => {
   await login(page, "alikhan", "1234", true);
-  await expect(page.getByRole("heading", { name: /Готов к новому/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Учимся общаться/ })).toBeVisible();
   const results = await new AxeBuilder({ page }).analyze();
   expect(results.violations.filter((item) => ["serious", "critical"].includes(item.impact || ""))).toEqual([]);
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);

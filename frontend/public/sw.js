@@ -1,10 +1,10 @@
-const CACHE = "soyle-core-v8";
+const CACHE = "soyle-core-v11";
 const CORE = [
-  "/", "/app", "/soyle-mark.svg", "/illustrations/apple.png", "/illustrations/ball.png",
+  "/soyle-mark.svg", "/illustrations/apple.png", "/illustrations/ball.png",
   "/illustrations/cat.png", "/illustrations/juice.png", "/illustrations/love.png",
   "/illustrations/me.png", "/illustrations/mom.png", "/illustrations/dad.png",
   "/illustrations/want.png", "/illustrations/see.png", "/illustrations/mascot-parrot.png",
-  "/illustrations/mascot-parrot-headphones.png"
+  "/illustrations/session-complete-parrot.webp"
 ];
 
 self.addEventListener("install", (event) => {
@@ -17,6 +17,12 @@ self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
   const requestUrl = new URL(event.request.url);
   if (requestUrl.pathname.startsWith("/api/") || event.request.headers.has("authorization")) return;
+  // HTML is always network-only. Caching an app shell here can keep an old UI
+  // alive after a deployment or while developing on localhost.
+  if (event.request.mode === "navigate") {
+    event.respondWith(fetch(event.request));
+    return;
+  }
   event.respondWith(fetch(event.request).then((response) => {
     const cacheControl = response.headers.get("cache-control") || "";
     if (response.ok && requestUrl.origin === self.location.origin && !/(private|no-store)/i.test(cacheControl)) {
@@ -26,8 +32,6 @@ self.addEventListener("fetch", (event) => {
     return response;
   }).catch(() => caches.match(event.request).then((cached) => {
     if (cached) return cached;
-    if (event.request.mode !== "navigate") return Response.error();
-    const pathname = new URL(event.request.url).pathname;
-    return caches.match(pathname.startsWith("/app") ? "/app" : "/");
+    return Response.error();
   })));
 });

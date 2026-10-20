@@ -1,0 +1,44 @@
+Inspect result written to file: /Users/whynicky/Desktop/Projects/Soyle/.presentation-build/draft.pptx.inspect.ndjson
+DRAFT_EXPORTED
+RENDER 1
+RENDER 2
+RENDER 3
+RENDER 4
+RENDER 5
+RENDER 6
+RENDER 7
+RENDER 8
+RENDER 9
+RENDER 10
+RENDER 11
+RENDER 12
+RENDER 13
+RENDER 14
+RENDER 15
+RENDER 16
+RENDER 17
+RENDER 18
+node:internal/modules/cjs/loader:1517
+  const err = new Error(message);
+              ^
+
+Error: Cannot find module '#standard-fonts/Helvetica'
+Require stack:
+- /Users/whynicky/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/@oai/artifact-tool/dist/artifact_tool.mjs
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1517:15)
+    at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)
+    at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1095:10)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1122:12)
+    at Module._load (node:internal/modules/cjs/loader:1294:5)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)
+    at Module.require (node:internal/modules/cjs/loader:1617:12)
+    at require (node:internal/modules/helpers:153:16)
+    at Helvetica (file:///Users/whynicky/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/@oai/artifact-tool/dist/artifact_tool.mjs:142:5455)
+    at VKi (file:///Users/whynicky/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/@oai/artifact-tool/dist/artifact_tool.mjs:93:792) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [
+    '/Users/whynicky/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/@oai/artifact-tool/dist/artifact_tool.mjs'
+  ]
+}
+
+Node.js v24.19.0

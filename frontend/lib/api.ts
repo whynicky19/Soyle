@@ -331,6 +331,33 @@ export type AACCard = {
   favorite: number | boolean;
 };
 
+export type WorldPhoto = {
+  id: number;
+  name: string;
+  category: "people" | "toys" | "food" | "places";
+  image_data: string;
+  created_at: string;
+};
+
+export type Story = {
+  key: string;
+  title: string;
+  summary: string;
+  cover: string;
+  category: string;
+  scene_count: number;
+  scene_index: number;
+  completed_at: string | null;
+  scenes: Array<{
+    image: string;
+    alt: string;
+    text: string;
+    prompt: string;
+    hint: string;
+    choices: Array<{ key: string; label: string; image: string }>;
+  }>;
+};
+
 export type NotificationItem = {
   id: number;
   child_id: number;

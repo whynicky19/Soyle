@@ -187,11 +187,20 @@ class AACCardCreate(BaseModel):
     label: str = Field(min_length=1, max_length=40)
     speech: str = Field(min_length=1, max_length=120)
     category: Literal["help", "wants", "needs", "feelings", "yes_no", "people", "food", "play", "places", "actions"]
-    image: str = Field(default="/soyle-icon.png", min_length=1, max_length=200)
+    image: str = Field(default="/soyle-icon.png", min_length=1, max_length=1_050_000)
     lemma: str | None = Field(default=None, max_length=80)
     grammatical_role: Literal["subject", "action", "object", "ready_message"] = "ready_message"
     language: Literal["ru"] = "ru"
     pictogram: str | None = Field(default=None, max_length=200)
+
+class WorldPhotoCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=60)
+    category: Literal["people", "toys", "food", "places"]
+    image_data: str = Field(min_length=40, max_length=1_050_000)
+
+class StoryAnswer(BaseModel):
+    scene_index: int = Field(ge=0, le=20)
+    answer_key: str = Field(min_length=1, max_length=40)
 
 class AACFavoriteUpdate(BaseModel):
     favorite: bool

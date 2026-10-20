@@ -22,23 +22,23 @@ def test_health_reports_controlled_schema_migration(client):
     for path in ("/api/health", "/health/ready"):
         response = client.get(path)
         assert response.status_code == 200
-        assert response.json() == {"status": "ok", "service": "soyle-api", "schema_version": 16, "required_schema_version": 16}
+        assert response.json() == {"status": "ok", "service": "soyle-api", "schema_version": 17, "required_schema_version": 17}
 
 
 def test_readiness_is_non_2xx_when_schema_is_stale_but_liveness_remains_up(client):
     with connect() as db:
-        applied_at = db.execute("SELECT applied_at FROM schema_migrations WHERE version=16").fetchone()["applied_at"]
-        db.execute("DELETE FROM schema_migrations WHERE version=16")
+        applied_at = db.execute("SELECT applied_at FROM schema_migrations WHERE version=17").fetchone()["applied_at"]
+        db.execute("DELETE FROM schema_migrations WHERE version=17")
     try:
         assert client.get("/health/live").status_code == 200
         response = client.get("/api/health")
         assert response.status_code == 503
         assert response.json()["status"] == "migration_required"
-        assert response.json()["schema_version"] == 15
-        assert response.json()["required_schema_version"] == 16
+        assert response.json()["schema_version"] == 16
+        assert response.json()["required_schema_version"] == 17
     finally:
         with connect() as db:
-            db.execute("INSERT INTO schema_migrations(version,applied_at) VALUES(16,?)", (applied_at,))
+            db.execute("INSERT INTO schema_migrations(version,applied_at) VALUES(17,?)", (applied_at,))
 
 
 def test_cookie_session_csrf_origin_and_logout():
