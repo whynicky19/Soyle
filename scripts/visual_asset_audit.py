@@ -19,9 +19,9 @@ from PIL import Image, UnidentifiedImageError
 
 ROOT = Path(__file__).resolve().parents[1]
 PUBLIC = ROOT / "frontend" / "public"
-POLICY_PATH = ROOT / "docs" / "visual-assets" / "policy.json"
-CATALOG_PATH = ROOT / "docs" / "visual-assets" / "catalog.json"
-REPORT_PATH = ROOT / "docs" / "visual-assets" / "audit.md"
+POLICY_PATH = ROOT / "scripts" / "visual_asset_policy.json"
+CATALOG_PATH = ROOT / ".cache" / "visual-assets" / "catalog.json"
+REPORT_PATH = ROOT / ".cache" / "visual-assets" / "audit.json"
 ASSET_EXTENSIONS = {".avif", ".jpeg", ".jpg", ".png", ".svg", ".webp"}
 RASTER_EXTENSIONS = {".avif", ".jpeg", ".jpg", ".png", ".webp"}
 SOURCE_EXTENSIONS = {".css", ".js", ".json", ".mjs", ".py", ".ts", ".tsx"}
@@ -174,69 +174,16 @@ def audit(assets: list[dict[str, object]], references: dict[str, list[dict[str, 
 
 
 def write_outputs(assets: list[dict[str, object]], results: dict[str, object], policy: dict[str, object]) -> None:
+    CATALOG_PATH.parent.mkdir(parents=True, exist_ok=True)
     generated_at = datetime.now(timezone.utc).isoformat()
     CATALOG_PATH.write_text(json.dumps({"generated_at": generated_at, "assets": assets}, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
-    lines = [
-        "# Visual Asset Diversity Audit",
-        "",
-        f"Generated: {generated_at}",
-        "",
-        f"Status: **{'PASS' if results['passed'] else 'FAIL'}**",
-        "",
-        f"- Runtime visual assets cataloged: {results['asset_count']}",
-        f"- Assets referenced by product source: {results['referenced_asset_count']}",
-        f"- Exact duplicate groups: {len(results['exact_duplicates'])}",
-        f"- Near-duplicate pairs (pHash distance ≤ {policy['phash_threshold']}): {len(results['near_duplicates'])}",
-        f"- Unjustified multi-context reuse: {len(results['unjustified_reuse'])}",
-        f"- Broken direct asset references: {len(results['broken_references'])}",
-        "",
-        "## Exact duplicates",
-        "",
-    ]
-    if results["exact_duplicates"]:
-        for group in results["exact_duplicates"]:
-            lines.append("- " + ", ".join(f"`{asset}`" for asset in group))
-    else:
-        lines.append("None.")
-
-    lines.extend(["", "## Visual near-duplicates", ""])
-    if results["near_duplicates"]:
-        for pair in results["near_duplicates"]:
-            lines.append(f"- `{pair['first']}` ↔ `{pair['second']}` — pHash distance {pair['distance']}")
-    else:
-        lines.append("None.")
-
-    lines.extend(["", "## Multi-context reuse", ""])
-    if results["reused_assets"]:
-        for item in results["reused_assets"]:
-            status = "allowed" if item["allowed"] else "not justified"
-            reason = f" — {item['reason']}" if item["reason"] else ""
-            lines.append(f"- `{item['asset']}` — {item['contexts']} contexts, {status}{reason}")
-    else:
-        lines.append("None.")
-
-    lines.extend(["", "## Broken references", ""])
-    if results["broken_references"]:
-        lines.extend(f"- `{path}`" for path in results["broken_references"])
-    else:
-        lines.append("None.")
-
-    lines.extend([
-        "",
-        "## Scope and rule",
-        "",
-        "The catalog covers product runtime images in `frontend/public`. SHA-256 catches byte-identical files; a 64-bit perceptual hash catches visually close raster files. Direct product-source references are checked separately so one scene cannot silently be reused in multiple contexts. Explicit exceptions are limited to logos, reviewed educational stimuli, stable AAC symbols, and documented same-context responsive declarations.",
-        "",
-        "**ONE SCENE — ONE ORIGINAL ILLUSTRATION.**",
-        "",
-    ])
-    REPORT_PATH.write_text("\n".join(lines), encoding="utf-8")
+    REPORT_PATH.write_text(json.dumps({"generated_at": generated_at, "phash_threshold": policy["phash_threshold"], **results}, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--write", action="store_true", help="Write catalog.json and audit.md")
+    parser.add_argument("--write", action="store_true", help="Write disposable catalog.json and audit.json in .cache/visual-assets")
     parser.add_argument("--check", action="store_true", help="Exit non-zero when the policy fails")
     args = parser.parse_args()
 

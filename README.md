@@ -17,7 +17,6 @@
   <img alt="Без внешней AI API" src="https://img.shields.io/badge/AI%20API-не%20используется-EA580C?style=flat-square" />
 </p>
 
-![Главная страница Söyle](docs/screenshots/landing.png)
 
 ## О проекте
 
@@ -62,7 +61,6 @@ flowchart LR
 
 Никакие ответы ребёнка, родительские вопросы или данные профиля не отправляются внешнему AI-провайдеру. Для работы адаптации не нужны API-ключи, токены или доступ к интернету.
 
-![Объяснимый адаптивный план в кабинете родителя](docs/screenshots/adaptive-plan.png)
 
 ## Технологии
 
@@ -83,7 +81,6 @@ Soyle/
 │   ├── components/
 │   ├── e2e/
 │   └── tests/
-├── docs/screenshots/        # Изображения для README
 ├── start.sh                 # Единый локальный запуск
 └── README.md
 ```

@@ -19,24 +19,24 @@ backend/skills-lock.json
 *.md
 !/README.md
 
-# Local pitch-generation artifacts (Codex)
+# Generated reports, presentations and local caches.
+/.chart-data-*/
 /.codex-build/
 /.codex-finalizer/
-/deliverables/soyle-pitch/
-/output/pdf/
-/tmp/pdfs/
+/.presentation-build/
+/.redesign-build/
+/.slide-build/
+/presentation_assets/
+/output/
+/deliverables/
+/tmp/
+/.cache/
 /frontend/public/pitch/
 /frontend/test-results/
 /frontend/playwright-report/
+.pytest_cache/
+*.tsbuildinfo
 
-# Local implementation report requested outside version control
-/SOYLE_CONTENT_REVIEW.md
-/SOYLE_PERSONALIZATION_DESIGN.md
-/SOYLE_ALALIA_AND_PLATFORM_AUDIT_2026-10-16.md
-/SOYLE_REMEDIATION_PROGRESS.md
-/SOYLE_UI_UX_AUDIT_2026-10-16.md
-/backend/MIGRATIONS.md
-
-# Local files generated while running the frontend for pitch review
+# Framework-generated local instructions.
 /frontend/AGENTS.md
 /frontend/CLAUDE.md

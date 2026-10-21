@@ -3,8 +3,9 @@ import { expect, test, type Page } from '@playwright/test';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
+const captureReports=process.env.SOYLE_CAPTURE_REPORTS==='1';
 test.setTimeout(90000);
-test.use({video:{mode:'on',size:{width:1440,height:1000}}});
+test.use({video:{mode:captureReports?'on':'retain-on-failure',size:{width:1440,height:1000}}});
 const stage=(page:Page)=>page.getByTestId('book-stage');
 async function openBook(page:Page){
   await page.addInitScript(()=>{
@@ -35,7 +36,7 @@ test.describe('illustrated storybook with mini-games',()=>{
   test('six whole illustrations, contextual games, soft transfer and real browser video',async({page},info)=>{
     const errors:string[]=[];page.on('pageerror',error=>errors.push(error.message));await openBook(page);
     await expect(page.locator('.sidebar,.topbar')).toHaveCount(0);
-    const capture=async(name:string)=>{await page.waitForTimeout(info.project.name==='desktop'?1600:1000);await noOverflow(page);await page.screenshot({path:info.outputPath(name+'.png'),fullPage:true});};
+    const capture=async(name:string)=>{await page.waitForTimeout(info.project.name==='desktop'?1600:1000);await noOverflow(page);if(captureReports)await page.screenshot({path:info.outputPath(name+'.png'),fullPage:true});};
     await capture('01-find');
     await page.getByRole('button',{name:'Мяч на ковре',exact:true}).click();await expect(stage(page)).toHaveAttribute('data-ready','false');await expect(page.locator('.book-gentle-feedback')).toContainText('Мяч');
     await page.getByRole('button',{name:'Подсказка',exact:true}).click();await expect(page.getByRole('button',{name:'Мишка на полке',exact:true})).toHaveClass(/book-hotspot-hint/);
@@ -47,7 +48,7 @@ test.describe('illustrated storybook with mini-games',()=>{
     await stage(page).getByRole('button',{name:'Поставить на рельсы',exact:true}).click();await expect(stage(page)).toHaveAttribute('data-ready','true');await capture('05-play-after');await expect(page.locator('.book-train')).toHaveClass(/book-train-on-track/);
     await next(page,'finish');await capture('06-finish');await page.getByRole('button',{name:'Закончить книгу',exact:true}).click();await expect(page.getByRole('heading',{name:'Побудем вместе'})).toBeVisible();
     const a11y=await new AxeBuilder({page}).analyze();expect(a11y.violations.filter(item=>['serious','critical'].includes(item.impact||''))).toEqual([]);expect(errors).toEqual([]);
-    if(['desktop','mobile-320'].includes(info.project.name)){
+    if(captureReports&&['desktop','mobile-320'].includes(info.project.name)){
       const out=path.resolve('../output/storybook-book');await fs.mkdir(out,{recursive:true});
       for(const name of ['01-find','02-match','03-request','04-help-before','04-help-after','05-play-before','05-play-after','06-finish'])await fs.copyFile(info.outputPath(name+'.png'),path.join(out,`${name}-${info.project.name}.png`));
       if(info.project.name==='desktop'){const video=page.video();await page.context().close();if(video)await video.saveAs(path.join(out,'favorite-toy-storybook-walkthrough.webm'));}
