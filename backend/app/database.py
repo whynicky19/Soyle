@@ -178,6 +178,12 @@ AAC_CARDS = [
     ("Дедушка", "Дедушка", "people", "/aac-pictograms/grandfather.png", 0),
     ("Брат", "Брат", "people", "/aac-pictograms/brother.png", 0),
     ("Сестра", "Сестра", "people", "/aac-pictograms/sister.png", 0),
+    ("Чашка", "чашка", "household", "/p15/nouns/home/cup.svg", 0),
+    ("Ложка", "ложка", "household", "/p15/nouns/home/spoon.svg", 0),
+    ("Стул", "стул", "household", "/p15/nouns/home/chair.svg", 0),
+    ("Кровать", "кровать", "household", "/p15/nouns/home/bed.svg", 0),
+    ("Лампа", "лампа", "household", "/p15/nouns/home/lamp.svg", 0),
+    ("Мыть руки", "Мыть руки", "household", "/p15/actions/wash.svg", 0),
 ]
 
 SKILL_BY_TARGET = {

@@ -29,11 +29,17 @@ function composeRussianObservation(cards: AACCard[]): string | null {
   return targetIndex === 1 ? `Вижу ${object}` : `Я вижу ${object}`;
 }
 
-export function composeAACMessage(cards: AACCard[]): { valid: boolean; phrase: string; reason: string } {
+export function composeAACMessage(cards: AACCard[], mode: "guided" | "free" = "guided"): { valid: boolean; phrase: string; reason: string } {
   if (!cards.length) return { valid: false, phrase: "", reason: "Выберите хотя бы одну карточку" };
   const language = cards[0].language || "ru";
   if (cards.some((card) => (card.language || "ru") !== language)) return { valid: false, phrase: "", reason: "Карточки разных языков нельзя объединить" };
   if (cards.length === 1) return { valid: true, phrase: cards[0].speech.trim(), reason: "" };
+  if (mode === "free") {
+    const guided = composeAACMessage(cards);
+    if (guided.valid) return guided;
+    const phrase = cards.map((card) => card.speech.trim() || card.label.trim()).join(" ").replace(/\s+/g, " ").trim();
+    return { valid: Boolean(phrase), phrase, reason: phrase ? "" : "У карточек нет текста для озвучивания" };
+  }
   const observation = language === "ru" ? composeRussianObservation(cards) : null;
   if (observation) return { valid: true, phrase: observation, reason: "" };
   const roles = cards.map((card) => card.grammatical_role || "ready_message");

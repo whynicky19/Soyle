@@ -136,6 +136,7 @@ import { GoalsAndPractice } from "@/components/GoalsAndPractice";
 import { AdminShell, ChildShell, ExerciseFocusShell, ParentShell } from "@/components/AppShells";
 import { AchievementsExperience } from "@/components/AchievementsExperience";
 import { ParentOverview } from "@/components/ParentOverview";
+import { StorybookExperience } from "./storybook/StorybookExperience";
 import { StoryExperience } from "@/components/StoryExperience";
 import { WorldExperience } from "@/components/WorldExperience";
 import {
@@ -144,7 +145,7 @@ import {
   SkillsExperience,
 } from "@/components/ProductExperience";
 
-type Screen = "home" | "stories" | "world" | "skills" | "achievements" | "guides" | "games" | "session" | "exercise-complete" | "motor" | "sensory" | "mixed" | "aac" | "ai" | "progress" | "goals" | "parent" | "profile" | "settings" | "more" | "admin";
+type Screen = "story-preview" | "home" | "stories" | "world" | "skills" | "achievements" | "guides" | "games" | "session" | "exercise-complete" | "motor" | "sensory" | "mixed" | "aac" | "ai" | "progress" | "goals" | "parent" | "profile" | "settings" | "more" | "admin";
 type ModuleName = "motor" | "sensory" | "mixed";
 type GameMeasurement = { attempts_count?: number; correct_answers?: number; prompts_used?: number; gameplay_choices?: number; independent_completions?: number; prompted_completions?: number; attempt_status?: "completed" | "participated" | "refused" | "break" | "technical_error"; independence?: number; prompt_level?: "independent" | "minimal" | "full"; response_ms?: number; communication_initiatives?: number };
 type ExerciseCompletion = { title: string; message: string; nextExercise: Exercise | null; sessionMode: boolean; sessionFinished: boolean };
@@ -722,6 +723,10 @@ function AuthenticatedApp({ user, onLogout, externalError, onDismissExternalErro
     }
   };
 
+  if (screen === "story-preview" && user.role === "parent") {
+    return <StorybookExperience childId={child?.id} onExit={() => openScreen("parent")} onSpeak={speak} onStopSpeech={stopCurrentSpeech} calmMode={settings.calm_mode}/>;
+  }
+
   if (isChildExerciseFocus) {
     const progress = sessionExerciseActive && activeSession
       ? `Шаг ${Math.min(activeSession.current_index + 1, activeSession.exercises.length)} из ${activeSession.exercises.length}`
@@ -805,7 +810,7 @@ function AuthenticatedApp({ user, onLogout, externalError, onDismissExternalErro
         <div className="page">
           {screen === "home" && <HomeScreen onOpen={openScreen} onExercise={openExercise} onStartSession={startDailySession} onResume={resumeSession} activeSession={activeSession} activeSessionLoading={activeSessionLoading} dailyMinutes={dailyMinutes} onMinutesChange={setDailyMinutes} sessionLoading={sessionLoading} sessionError={sessionError} child={child} dashboard={dashboard} consent={consent} userRole={user.role} exercises={exercises} />}
           {screen === "stories" && user.role === "student" && <StoryExperience childId={child?.id}/>}
-          {screen === "world" && ["student", "parent"].includes(user.role) && <WorldExperience childId={child?.id} canManage={user.role === "parent"} onWords={() => openScreen("aac")}/>}
+          {screen === "world" && ["student", "parent"].includes(user.role) && <WorldExperience key={child?.id} childId={child?.id} canManage={user.role === "parent"} onWords={() => openScreen("aac")} onSpeak={(text) => speak(text, .82, true)}/>}
           {screen === "skills" && user.role === "student" && <SkillsExperience child={child} dashboard={dashboard} exercises={exercises} onNavigate={openScreen} onExercise={openExercise}/>}
           {screen === "achievements" && user.role === "student" && <AchievementsExperience childId={child?.id} dashboard={dashboard} onStories={() => openScreen("stories")} onGames={() => openScreen("games")}/>}
           {screen === "guides" && user.role === "parent" && <GuidesExperience child={child} dashboard={dashboard} exercises={exercises} onNavigate={openScreen} onExercise={openExercise}/>}
@@ -1663,7 +1668,7 @@ const aacCategories = [
   { id: "wants", label: "Желания", icon: Heart }, { id: "needs", label: "Потребности", icon: Activity },
   { id: "feelings", label: "Чувства", icon: Smile }, { id: "yes_no", label: "Да / Нет", icon: Check },
   { id: "people", label: "Люди", icon: Users }, { id: "food", label: "Еда", icon: Apple },
-  { id: "play", label: "Игры", icon: Gamepad2 }, { id: "places", label: "Места", icon: MapPin }, { id: "actions", label: "Действия", icon: Play },
+  { id: "play", label: "Игры", icon: Gamepad2 }, { id: "places", label: "Места", icon: MapPin }, { id: "actions", label: "Действия", icon: Play }, { id: "household", label: "Быт", icon: House },
 ] as const;
 
 const aacIconByLabel: Record<string, LucideIcon> = {
@@ -1751,7 +1756,7 @@ function PhraseGame({ childId, canManage, exercise, freeMode = false, soundEnabl
   const [speechPending, setSpeechPending] = useState(false);
   const [promptLevel, setPromptLevel] = useState<"independent" | "minimal" | "full">("independent");
   const savedRef = useRef(false);
-  const composition = composeAACMessage(selected);
+  const composition = composeAACMessage(selected, freeMode ? "free" : "guided");
   const sentence = composition.valid ? composition.phrase : selected.map((item) => item.label).join(" + ");
   const loadBoard = useCallback(() => {
     if (!childId) return;
@@ -1810,12 +1815,12 @@ function PhraseGame({ childId, canManage, exercise, freeMode = false, soundEnabl
     }
     setSpeechPending(true);
     try {
-      const composed = await api<{ valid: boolean; phrase: string; reason: string }>("/api/aac/compose", { method: "POST", body: JSON.stringify({ child_id: childId, card_ids: selected.map((item) => item.id), language: selected[0].language || "ru" }) });
+      const composed = await api<{ valid: boolean; phrase: string; reason: string }>("/api/aac/compose", { method: "POST", body: JSON.stringify({ child_id: childId, card_ids: selected.map((item) => item.id), language: selected[0].language || "ru", mode: freeMode ? "free" : "guided" }) });
       if (!composed.valid) { setAacNotice(composed.reason || "Эту комбинацию пока нельзя озвучить как готовую фразу."); return; }
       setAacNotice("");
       await speak(composed.phrase, 0.72, freeMode || soundEnabled, selected[0]?.language || "ru");
       try {
-        const saved = await api<{ id: number; phrase: string }>("/api/aac/history", { method: "POST", body: JSON.stringify({ child_id: childId, phrase: composed.phrase, card_ids: selected.map((item) => item.id) }) });
+        const saved = await api<{ id: number; phrase: string }>("/api/aac/history", { method: "POST", body: JSON.stringify({ child_id: childId, card_ids: selected.map((item) => item.id), mode: freeMode ? "free" : "guided" }) });
         setHistory((items) => [saved, ...items.filter((item) => item.phrase !== saved.phrase)].slice(0, 12));
       } catch (cause) {
         setAacNotice(cause instanceof Error ? `Сообщение озвучено, но не добавлено в историю: ${cause.message}` : "Сообщение озвучено, но не добавлено в историю");
@@ -2078,6 +2083,7 @@ function ParentScreen({ child, childProfiles, onSelectChild, onDeleted, dashboar
   return <div className="page-enter stack-xl parent-page">
     <PageTitle eyebrow="КАБИНЕТ РОДИТЕЛЯ" title={`Вместе поддерживаем ${child?.name || "ребёнка"}`} subtitle="История практики, ученический вход и понятные настройки приватности." />
     <nav className="v2-parent-cabinet-links" aria-label="Материалы ребёнка"><button onClick={() => onNavigate("world")}><ImageIcon/> Фотографии ребёнка <ChevronRight/></button><button onClick={() => onNavigate("aac")}><MessageCircle/> Карточки AAC <ChevronRight/></button><button onClick={() => onNavigate("progress")}><TrendingUp/> История практики <ChevronRight/></button><button onClick={() => onNavigate("goals")}><Target/> Цели и план <ChevronRight/></button></nav>
+    <section className="storybook-preview-entry"><div><span className="kicker">МАСТЕРСКАЯ ИСТОРИЙ · DRAFT</span><h2>Любимая игрушка</h2><p>Живая книга: найди мишку, попроси помощь и поиграй вместе с Мишей. Шесть новых сцен для предпросмотра взрослого.</p></div><button className="primary-button" onClick={() => onNavigate("story-preview")}><BookOpen/> Открыть живую историю <ChevronRight/></button></section>
     {childProfiles.length > 1 && <div className="child-switcher" aria-label="Выбор профиля ребёнка">{childProfiles.map((item) => <button key={item.id} className={item.id === child?.id ? "active" : ""} onClick={() => onSelectChild(item.id)}><span className="avatar" style={{background:item.avatar_color}}>{item.name[0]}</span><strong>{item.name}</strong></button>)}</div>}
     <section className="parent-overview">
       <div className="parent-profile"><div className="avatar large">{child?.name[0] || "Р"}</div><div><span className="kicker">ПРОФИЛЬ РЕБЁНКА</span><h2>{child?.name || "Ребёнок"}, {age} лет</h2><p>{dashboard?.total_sessions || 0} игровых попыток · {dashboard?.total_minutes || 0} минут практики</p></div></div>

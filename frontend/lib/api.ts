@@ -321,7 +321,7 @@ export type AACCard = {
   child_id: number | null;
   label: string;
   speech: string;
-  category: "help" | "wants" | "needs" | "feelings" | "yes_no" | "people" | "food" | "play" | "places" | "actions";
+  category: "help" | "wants" | "needs" | "feelings" | "yes_no" | "people" | "food" | "play" | "places" | "actions" | "household";
   image: string;
   lemma?: string | null;
   grammatical_role?: "subject" | "action" | "object" | "ready_message";

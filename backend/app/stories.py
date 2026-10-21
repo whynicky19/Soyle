@@ -39,17 +39,7 @@ STORIES = {
             {"image": "/app-illustrations/story-meal-finish.webp", "alt": "Миша ест яблоко за кухонным столом, мишка сидит рядом", "text": "Теперь яблоко лежит на тарелке. Миша ест, а мишка сидит рядом. Что Миша делает?", "prompt": "Выбери действие", "choices": [choice("eat", "Кушать", "eat"), choice("sleep", "Спать", "sleep")], "answer": "eat", "hint": "Миша ест яблоко."},
         ],
     },
-    "toy": {
-        "title": "Любимая игрушка",
-        "summary": "Миша выбирает игрушку и приглашает друга играть.",
-        "cover": "/app-illustrations/story-blanket-train.webp",
-        "category": "Игры",
-        "scenes": [
-            {"image": "/app-illustrations/story-toy-intro.webp", "alt": "Миша заходит в игровую комнату с игрушками и железной дорогой", "text": "В игровой комнате много игрушек. Миша хочет начать игру с другом. Какое слово подойдёт?", "prompt": "Выбери действие", "choices": [choice("play", "Играть", "play"), choice("sleep", "Спать", "sleep")], "answer": "play", "hint": "Миша пришёл поиграть."},
-            {"image": "/app-illustrations/story-toy-choice.webp", "alt": "Миша выбирает между поездом и мягким мишкой у полки", "text": "На полке лежат поезд и мишка. Друг принёс железную дорогу. Что нужно для этой игры?", "prompt": "Выбери игрушку", "choices": [choice("train", "Поезд", "train"), choice("bear", "Мишка", "teddy")], "answer": "train", "hint": "Для железной дороги нужен поезд."},
-            {"image": "/app-illustrations/story-toy-finish.webp", "alt": "Миша и друг вместе строят дорогу, мишка наблюдает с кресла", "text": "Миша и друг построили длинную дорогу и играют вместе. Как Миша себя чувствует?", "prompt": "Выбери чувство", "choices": [choice("happy", "Весело", "happy"), choice("sad", "Грустно", "sad")], "answer": "happy", "hint": "Они улыбаются и радуются игре."},
-        ],
-    },
+
 }
 
 

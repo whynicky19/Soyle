@@ -33,7 +33,7 @@ def _compose_russian_observation(cards: list[dict[str, Any]]) -> str | None:
     return f"Вижу {object_form}" if target_index == 1 else f"Я вижу {object_form}"
 
 
-def compose_aac_phrase(cards: list[dict[str, Any]], language: str) -> dict[str, Any]:
+def compose_aac_phrase(cards: list[dict[str, Any]], language: str, mode: str = "guided") -> dict[str, Any]:
     if language not in LANGUAGE_PATTERNS:
         return {"valid": False, "phrase": "", "reason": "Этот язык пока не поддерживается шаблонами AAC"}
     if not cards:
@@ -45,6 +45,13 @@ def compose_aac_phrase(cards: list[dict[str, Any]], language: str) -> dict[str, 
     if len(cards) == 1:
         phrase = str(cards[0].get("speech") or cards[0].get("label") or "").strip()
         return {"valid": bool(phrase), "phrase": phrase, "reason": "" if phrase else "У карточки нет формы для озвучивания"}
+    if mode == "free":
+        guided = compose_aac_phrase(cards, language)
+        if guided["valid"]:
+            return guided
+        phrase = " ".join(str(card.get("speech") or card.get("label") or "").strip() for card in cards)
+        phrase = " ".join(phrase.split())
+        return {"valid": bool(phrase), "phrase": phrase, "reason": "" if phrase else "У карточек нет текста для озвучивания"}
     observation = _compose_russian_observation(cards) if language == "ru" else None
     if observation:
         return {"valid": True, "phrase": observation, "reason": "", "pattern": "observation"}

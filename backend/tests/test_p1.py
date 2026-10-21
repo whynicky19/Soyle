@@ -206,7 +206,7 @@ def test_results_keep_choices_support_and_stop_outcomes_separate(client, parent_
     assert "не объединяются" in after["disclaimer"]
 
 
-def test_migrations_9_to_17_upgrade_an_old_database_and_are_idempotent(tmp_path):
+def test_migrations_9_to_18_upgrade_an_old_database_and_are_idempotent(tmp_path):
     original_path = database.DB_PATH
     temporary_path = Path(tmp_path) / "soyle-p1-upgrade.db"
     database.DB_PATH = temporary_path
@@ -214,13 +214,13 @@ def test_migrations_9_to_17_upgrade_an_old_database_and_are_idempotent(tmp_path)
         database.init_db()
         with connect() as db:
             assert db.execute("SELECT MAX(version) version FROM schema_migrations").fetchone()["version"] == 8
-        assert apply_migrations() == [9, 10, 11, 12, 13, 14, 15, 16, 17]
+        assert apply_migrations() == [9, 10, 11, 12, 13, 14, 15, 16, 17, 18]
         assert apply_migrations() == []
         with connect() as db:
-            assert db.execute("SELECT MAX(version) version FROM schema_migrations").fetchone()["version"] == 17
+            assert db.execute("SELECT MAX(version) version FROM schema_migrations").fetchone()["version"] == 18
             tables = {row["name"] for row in db.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
             assert {"exercise_versions", "skill_observations", "home_activity_templates", "home_activity_observations", "content_reviews", "content_reviewer_permissions", "content_assets", "practice_goal_templates", "parent_practice_goals", "practice_goal_history", "practice_goal_observations", "adaptive_practice_plans", "adaptive_practice_plan_items"} <= tables
-            assert {"child_world_photos", "child_story_progress"} <= tables
+            assert {"child_world_photos", "child_story_progress", "storybook_progress"} <= tables
             session_columns = {row["name"] for row in db.execute("PRAGMA table_info(sessions)").fetchall()}
             assert {"exercise_version_id", "gameplay_choices", "independent_completions", "prompted_completions", "adaptive_plan_item_id", "actor_role", "response_owner", "support_context"} <= session_columns
             version_columns = {row["name"] for row in db.execute("PRAGMA table_info(exercise_versions)").fetchall()}

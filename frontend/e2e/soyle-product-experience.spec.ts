@@ -22,7 +22,7 @@ test("child sees a unified dashboard, real story reader, AAC and achievements", 
   await page.screenshot({ path: info.outputPath("child-home.png"), animations: "disabled" });
 
   await page.locator("#primary-navigation nav").getByRole("button", { name: "Истории" }).click();
-  await expect(page.locator(".v2-story-grid .v2-story-card")).toHaveCount(3);
+  await expect(page.locator(".v2-story-grid .v2-story-card")).toHaveCount(2);
   await page.locator(".v2-story-hero-copy button").click();
   await expect(page.locator(".v2-story-scene img")).toBeVisible();
   await expect(page.locator(".v2-story-choices button")).toHaveCount(2);

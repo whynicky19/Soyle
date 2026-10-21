@@ -186,15 +186,17 @@ class AACCardCreate(BaseModel):
     child_id: int
     label: str = Field(min_length=1, max_length=40)
     speech: str = Field(min_length=1, max_length=120)
-    category: Literal["help", "wants", "needs", "feelings", "yes_no", "people", "food", "play", "places", "actions"]
+    category: Literal["help", "wants", "needs", "feelings", "yes_no", "people", "food", "play", "places", "actions", "household"]
     image: str = Field(default="/soyle-icon.png", min_length=1, max_length=1_050_000)
     lemma: str | None = Field(default=None, max_length=80)
     grammatical_role: Literal["subject", "action", "object", "ready_message"] = "ready_message"
     language: Literal["ru"] = "ru"
     pictogram: str | None = Field(default=None, max_length=200)
 
-class WorldPhotoCreate(BaseModel):
+class WorldPhotoRename(BaseModel):
     name: str = Field(min_length=1, max_length=60)
+
+class WorldPhotoCreate(WorldPhotoRename):
     category: Literal["people", "toys", "food", "places"]
     image_data: str = Field(min_length=40, max_length=1_050_000)
 
@@ -206,11 +208,13 @@ class AACFavoriteUpdate(BaseModel):
     favorite: bool
 
 class AACPhraseCreate(BaseModel):
+    mode: Literal["guided", "free"] = "guided"
     child_id: int
     phrase: str | None = Field(default=None, min_length=1, max_length=300)
     card_ids: list[int] = Field(min_length=1, max_length=8)
 
 class AACComposeRequest(BaseModel):
+    mode: Literal["guided", "free"] = "guided"
     child_id: int
     card_ids: list[int] = Field(min_length=1, max_length=8)
     language: Literal["ru"] = "ru"
@@ -294,3 +298,19 @@ class AIAskRequest(BaseModel):
 
 class ChildDeleteRequest(BaseModel):
     password: str = Field(min_length=1, max_length=128)
+
+
+class StorybookEvent(BaseModel):
+    version: int = Field(ge=1)
+    expected_revision: int = Field(ge=0)
+    scene_id: str = Field(min_length=1, max_length=50)
+    event_id: str = Field(min_length=8, max_length=80)
+    action: str = Field(min_length=1, max_length=40)
+
+
+class CinematicStorybookEvent(BaseModel):
+    version: int = Field(ge=1)
+    expected_revision: int = Field(ge=0)
+    phase: str = Field(min_length=1, max_length=30)
+    event_id: str = Field(min_length=8, max_length=80)
+    action: str = Field(min_length=1, max_length=40)

@@ -711,6 +711,21 @@ def _migration_17_child_world_and_stories(db) -> None:
     """)
 
 
+def _migration_18_versioned_storybooks(db) -> None:
+    db.executescript("""
+    CREATE TABLE IF NOT EXISTS storybook_progress (
+        child_id BIGINT NOT NULL REFERENCES children(id) ON DELETE CASCADE,
+        story_key TEXT NOT NULL,
+        story_version INTEGER NOT NULL,
+        actor_key TEXT NOT NULL,
+        revision INTEGER NOT NULL DEFAULT 0,
+        state_json TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        PRIMARY KEY(child_id,story_key,story_version,actor_key)
+    );
+    """)
+
+
 MIGRATIONS = (
     (9, _migration_9_exercise_engine),
     (10, _migration_10_content_contracts),
@@ -721,6 +736,7 @@ MIGRATIONS = (
     (15, _migration_15_session_attribution),
     (16, _migration_16_accessibility_review_gate),
     (17, _migration_17_child_world_and_stories),
+    (18, _migration_18_versioned_storybooks),
 )
 LATEST_SCHEMA_VERSION = MIGRATIONS[-1][0]
 

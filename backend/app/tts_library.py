@@ -3,6 +3,7 @@ from pathlib import Path
 
 from .aac_grammar import compose_aac_phrase
 from .database import AAC_CARDS
+from .storybook_content import FAVORITE_TOY
 from .exercise_engine import AAC_SCENARIOS, SENSORY_CONTENT
 from .p1_content import ACTION_RUNNER_DRAFT, INSTRUCTION_RUNNER_DRAFT, WORD_RUNNER_DRAFT
 from .p15_content import P15_EXERCISE_DRAFTS
@@ -56,6 +57,11 @@ def _exercise_speech(exercise: dict) -> set[str]:
 
 def known_russian_tts_texts() -> tuple[str, ...]:
     texts = {"Получилось."}
+    for scene in FAVORITE_TOY["scenes"]:
+        texts.update([scene["narration"], scene["hint"], scene["assisted_reaction"]])
+        for action in scene["actions"]:
+            texts.add(action["reaction"])
+            if action.get("speech"): texts.add(action["speech"])
     cards = _aac_cards()
     texts.update(card["speech"] for card in cards.values())
 

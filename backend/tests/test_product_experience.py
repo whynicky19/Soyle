@@ -14,7 +14,8 @@ def test_story_choices_resume_and_stay_in_child_account(client, parent_headers, 
     selected_child = child_id(client, parent_headers)
     stories = client.get(f"/api/stories/{selected_child}", headers=student_headers)
     assert stories.status_code == 200
-    assert len(stories.json()) >= 4
+    assert len(stories.json()) >= 3
+    assert "toy" not in {story["key"] for story in stories.json()}
     park = next(story for story in stories.json() if story["key"] == "park")
     assert all("answer" not in scene for scene in park["scenes"])
 
@@ -63,3 +64,39 @@ def test_private_world_photos_and_custom_aac_image(client, parent_headers, stude
     assert delete.status_code == 204
     missing = client.get(f"/api/world/{selected_child}", headers=student_headers)
     assert all(item["id"] != photo["id"] for item in missing.json())
+
+
+def test_free_aac_and_household_cards(client, parent_headers, student_headers):
+    selected_child = child_id(client, parent_headers)
+    cards = client.get(f"/api/aac/cards/{selected_child}", headers=student_headers).json()
+    by_label = {card["label"]: card for card in cards}
+    assert len([card for card in cards if card["category"] == "household"]) >= 6
+    payload = {"child_id": selected_child, "card_ids": [by_label[label]["id"] for label in ["Что это?", "Устал"]], "language": "ru"}
+    assert client.post("/api/aac/compose", headers=student_headers, json=payload).json()["valid"] is False
+    payload["mode"] = "free"
+    composed = client.post("/api/aac/compose", headers=student_headers, json=payload)
+    assert composed.json()["phrase"] == "Что это? Я устал"
+    saved = client.post("/api/aac/history", headers=student_headers, json=payload)
+    assert saved.status_code == 201, saved.text
+    assert saved.json()["phrase"] == "Что это? Я устал"
+    custom = client.post("/api/aac/cards", headers=parent_headers, json={"child_id": selected_child, "label": "Моя чашка", "speech": "Моя чашка", "category": "household", "image": "/p15/nouns/home/cup.svg"})
+    assert custom.status_code == 201
+
+
+def test_multiple_world_photos_and_parent_rename(client, parent_headers, student_headers):
+    selected_child = child_id(client, parent_headers)
+    created = []
+    for label, filename in [("Моя вода", "aac-water.webp"), ("Мой мяч", "aac-ball.webp")]:
+        raw = (Path(__file__).resolve().parents[2] / "frontend/public/app-illustrations" / filename).read_bytes()
+        response = client.post(f"/api/world/{selected_child}", headers=parent_headers, json={"name": label, "category": "people", "image_data": "data:image/webp;base64," + base64.b64encode(raw).decode("ascii")})
+        assert response.status_code == 201, response.text
+        created.append(response.json())
+    visible = client.get(f"/api/world/{selected_child}", headers=student_headers).json()
+    assert {photo["id"] for photo in created} <= {photo["id"] for photo in visible}
+    url = f"/api/world/{selected_child}/{created[0]['id']}"
+    assert client.patch(url, headers=student_headers, json={"name": "Нет"}).status_code == 403
+    assert client.patch(url, headers=parent_headers, json={"name": "   "}).status_code == 422
+    renamed = client.patch(url, headers=parent_headers, json={"name": "Мой стакан воды"})
+    assert renamed.status_code == 200
+    assert renamed.json()["name"] == "Мой стакан воды"
+    assert renamed.json()["image_data"] == created[0]["image_data"]

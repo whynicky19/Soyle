@@ -35,3 +35,10 @@ test("unrelated invalid role combinations remain blocked", () => {
   assert.equal(result.valid, false);
   assert.match(result.reason, /проверенные шаблоны/);
 });
+
+test("free communication speaks multiple ready messages while guided tasks keep their rules", () => {
+  const selected = [card(10, "Что это?", "Что это?", "ready_message"), card(11, "Устал", "Я устал", "ready_message")];
+  assert.equal(composeAACMessage(selected).valid, false);
+  assert.deepEqual(composeAACMessage(selected, "free"), { valid: true, phrase: "Что это? Я устал", reason: "" });
+  assert.equal(composeAACMessage([me, see, card(3, "Мама", "Мама", "subject")], "free").phrase, "Я вижу маму");
+});

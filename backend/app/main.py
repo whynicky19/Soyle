@@ -19,7 +19,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 
 from .database import connect, init_db, now_iso
-from .schemas import AACCardCreate, AACComposeRequest, AACFavoriteUpdate, AACPhraseCreate, ActiveUpdate, AdaptivePlanRequest, AIAskRequest, AIPlanRequest, AssignedExerciseCreate, ChildCreate, ChildDeleteRequest, ChildGoalCreate, ConsentUpdate, ContentReviewCreate, ExerciseDraftCreate, GoalStatusUpdate, HomeActivityObservationCreate, HomeworkCreate, HomeworkResultUpdate, LearningSessionCreate, LoginRequest, PracticeGoalCreate, PracticeGoalObservationCreate, PracticeGoalUpdate, PracticePreferencesUpdate, RecommendationReview, RegisterRequest, RoleUpdate, SessionCreate, SkillObservationUpdate, SpecialistAssignmentCreate, SpecialistRecommendationCreate, StoryAnswer, StudentAccountCreate, StudentLoginRequest, TTSRequest, UserSettingsUpdate, WorldPhotoCreate
+from .schemas import AACCardCreate, AACComposeRequest, AACFavoriteUpdate, AACPhraseCreate, ActiveUpdate, AdaptivePlanRequest, AIAskRequest, AIPlanRequest, AssignedExerciseCreate, ChildCreate, ChildDeleteRequest, ChildGoalCreate, ConsentUpdate, ContentReviewCreate, ExerciseDraftCreate, GoalStatusUpdate, HomeActivityObservationCreate, HomeworkCreate, HomeworkResultUpdate, LearningSessionCreate, LoginRequest, PracticeGoalCreate, PracticeGoalObservationCreate, PracticeGoalUpdate, PracticePreferencesUpdate, RecommendationReview, RegisterRequest, RoleUpdate, SessionCreate, SkillObservationUpdate, SpecialistAssignmentCreate, SpecialistRecommendationCreate, StoryAnswer, StudentAccountCreate, StudentLoginRequest, TTSRequest, UserSettingsUpdate, WorldPhotoCreate, WorldPhotoRename, StorybookEvent
 from .tts_library import bundled_tts_path
 from .aac_grammar import compose_aac_phrase
 from .ai_assistant import DISCLAIMER as LOCAL_ASSISTANT_DISCLAIMER, answer_parent
@@ -29,6 +29,10 @@ from .adaptive_planner import create_plan as create_adaptive_plan, get_plan as g
 from .practice_goals import create_goal as create_practice_goal, get_preferences, list_goals as list_practice_goals, list_templates as list_practice_goal_templates, save_observation as save_practice_goal_observation, save_preferences, update_goal as update_practice_goal
 from .migrations import LATEST_SCHEMA_VERSION
 from .stories import STORIES, public_story
+from .schemas import CinematicStorybookEvent
+from .cinematic_storybook import DEFINITION as CINEMATIC_STORY, initial_state as cinematic_initial_state, transition as cinematic_transition
+from .storybook_content import FAVORITE_TOY
+from .storybook_engine import initial_state as storybook_initial_state, transition as storybook_transition
 from .security import AUTH_COOKIE_NAME, CSRF_COOKIE_NAME, IS_PRODUCTION, clear_auth_cookies, create_access_token, create_student_access_token, get_current_user, hash_password, require_roles, set_auth_cookies, verify_password
 
 
@@ -734,6 +738,22 @@ def add_world_photo(child_id: int, payload: WorldPhotoCreate, user: dict = Depen
     return dict(row)
 
 
+@app.patch("/api/world/{child_id}/{photo_id}")
+def rename_world_photo(child_id: int, photo_id: int, payload: WorldPhotoRename, user: dict = Depends(require_roles("parent"))) -> dict:
+    ensure_child_access(child_id, user)
+    name = payload.name.strip()
+    if not name:
+        raise HTTPException(422, "Назовите фотографию")
+    with connect() as db:
+        row = db.execute(
+            "UPDATE child_world_photos SET name=? WHERE child_id=? AND id=? RETURNING id,name,category,image_data,created_at",
+            (name, child_id, photo_id),
+        ).fetchone()
+        if not row:
+            raise HTTPException(404, "Фотография не найдена")
+    return dict(row)
+
+
 @app.delete("/api/world/{child_id}/{photo_id}", status_code=204)
 def delete_world_photo(child_id: int, photo_id: int, user: dict = Depends(require_roles("parent"))) -> Response:
     ensure_child_access(child_id, user)
@@ -793,6 +813,115 @@ def restart_story(child_id: int, story_key: str, user: dict = Depends(require_ro
             (now_iso(), child_id, story_key),
         )
     return {"scene_index": 0}
+
+
+def storybook_access(child_id: int, user: dict) -> str:
+    ensure_child_access(child_id, user)
+    if FAVORITE_TOY["status"] != "PUBLISHED" or FAVORITE_TOY["review_status"] != "approved" or any(scene.get("status") != "PUBLISHED" or scene.get("review_status") != "approved" for scene in FAVORITE_TOY["scenes"]):
+        if user["role"] != "parent":
+            raise HTTPException(403, "История DRAFT доступна только для предпросмотра родителю")
+    return f"preview:{user['id']}" if user["role"] == "parent" else "child"
+
+
+def storybook_snapshot(db, child_id: int, actor: str) -> dict:
+    row = db.execute(
+        "SELECT revision,state_json FROM storybook_progress WHERE child_id=? AND story_key=? AND story_version=? AND actor_key=?",
+        (child_id, FAVORITE_TOY["key"], FAVORITE_TOY["version"], actor),
+    ).fetchone()
+    return {"definition": FAVORITE_TOY, "revision": row["revision"] if row else 0,
+            "state": json.loads(row["state_json"]) if row else storybook_initial_state(), "preview": actor.startswith("preview:")}
+
+
+@app.get("/api/storybooks/{child_id}/toy")
+def get_storybook(child_id: int, response: Response, user: dict = Depends(get_current_user)) -> dict:
+    actor = storybook_access(child_id, user)
+    response.headers["Cache-Control"] = "private, no-store"
+    with connect() as db:
+        return storybook_snapshot(db, child_id, actor)
+
+
+@app.post("/api/storybooks/{child_id}/toy/events")
+def storybook_event(child_id: int, payload: StorybookEvent, user: dict = Depends(get_current_user)) -> dict:
+    actor = storybook_access(child_id, user)
+    if not actor.startswith("preview:"):
+        ensure_privacy_consent(child_id)
+    if payload.version != FAVORITE_TOY["version"]:
+        raise HTTPException(409, "Версия истории изменилась. Откройте историю снова")
+    with connect() as db:
+        snapshot = storybook_snapshot(db, child_id, actor)
+        if snapshot["state"]["last_event_id"] == payload.event_id:
+            return snapshot
+        if snapshot["revision"] != payload.expected_revision or FAVORITE_TOY["scenes"][snapshot["state"]["scene_index"]]["id"] != payload.scene_id:
+            raise HTTPException(409, "Прохождение изменилось в другой вкладке. Откройте историю снова")
+        try:
+            state = storybook_transition(FAVORITE_TOY, snapshot["state"], payload.action, payload.event_id)
+        except ValueError as cause:
+            raise HTTPException(422, str(cause)) from None
+        changed = db.execute(
+            """INSERT INTO storybook_progress(child_id,story_key,story_version,actor_key,revision,state_json,updated_at)
+               VALUES(?,?,?,?,?,?,?) ON CONFLICT(child_id,story_key,story_version,actor_key) DO UPDATE SET
+               revision=excluded.revision,state_json=excluded.state_json,updated_at=excluded.updated_at
+               WHERE storybook_progress.revision=? RETURNING revision""",
+            (child_id, "toy", FAVORITE_TOY["version"], actor, payload.expected_revision + 1, json.dumps(state, ensure_ascii=False), now_iso(), payload.expected_revision),
+        ).fetchone()
+        if not changed:
+            raise HTTPException(409, "Прохождение изменилось. Откройте историю снова")
+    return {**snapshot, "state": state, "revision": changed["revision"]}
+
+
+
+def cinematic_access(child_id: int, user: dict) -> str:
+    ensure_child_access(child_id, user)
+    if CINEMATIC_STORY["status"] != "PUBLISHED" or CINEMATIC_STORY["review_status"] != "approved" or any(value != "approved" for value in CINEMATIC_STORY["approval"].values()):
+        if user["role"] != "parent":
+            raise HTTPException(403, "История DRAFT доступна только для предпросмотра родителю")
+    return f"preview:{user['id']}" if user["role"] == "parent" else "child"
+
+
+def cinematic_snapshot(db, child_id: int, actor: str) -> dict:
+    row = db.execute(
+        "SELECT revision,state_json FROM storybook_progress WHERE child_id=? AND story_key=? AND story_version=? AND actor_key=?",
+        (child_id, "toy", CINEMATIC_STORY["version"], actor),
+    ).fetchone()
+    return {"definition": CINEMATIC_STORY, "revision": row["revision"] if row else 0,
+            "state": json.loads(row["state_json"]) if row else cinematic_initial_state(), "preview": actor.startswith("preview:")}
+
+
+@app.get("/api/cinematic-storybooks/{child_id}/toy")
+def get_cinematic_storybook(child_id: int, response: Response, user: dict = Depends(get_current_user)) -> dict:
+    actor = cinematic_access(child_id, user)
+    response.headers["Cache-Control"] = "private, no-store"
+    with connect() as db:
+        return cinematic_snapshot(db, child_id, actor)
+
+
+@app.post("/api/cinematic-storybooks/{child_id}/toy/events")
+def cinematic_storybook_event(child_id: int, payload: CinematicStorybookEvent, user: dict = Depends(get_current_user)) -> dict:
+    actor = cinematic_access(child_id, user)
+    if not actor.startswith("preview:"):
+        ensure_privacy_consent(child_id)
+    if payload.version != CINEMATIC_STORY["version"]:
+        raise HTTPException(409, "Версия истории изменилась. Откройте историю снова")
+    with connect() as db:
+        snapshot = cinematic_snapshot(db, child_id, actor)
+        if any(event["id"] == payload.event_id for event in snapshot["state"]["events"]):
+            return snapshot
+        if snapshot["revision"] != payload.expected_revision or snapshot["state"]["phase"] != payload.phase:
+            raise HTTPException(409, "Прохождение изменилось в другой вкладке. Откройте историю снова")
+        try:
+            state = cinematic_transition(snapshot["state"], payload.action, payload.event_id)
+        except ValueError as cause:
+            raise HTTPException(422, str(cause)) from None
+        changed = db.execute(
+            """INSERT INTO storybook_progress(child_id,story_key,story_version,actor_key,revision,state_json,updated_at)
+               VALUES(?,?,?,?,?,?,?) ON CONFLICT(child_id,story_key,story_version,actor_key) DO UPDATE SET
+               revision=excluded.revision,state_json=excluded.state_json,updated_at=excluded.updated_at
+               WHERE storybook_progress.revision=? RETURNING revision""",
+            (child_id, "toy", CINEMATIC_STORY["version"], actor, payload.expected_revision + 1, json.dumps(state, ensure_ascii=False), now_iso(), payload.expected_revision),
+        ).fetchone()
+        if not changed:
+            raise HTTPException(409, "Прохождение изменилось. Откройте историю снова")
+    return {**snapshot, "state": state, "revision": changed["revision"]}
 
 
 @app.post("/api/aac/cards", status_code=201)
@@ -860,7 +989,7 @@ def compose_aac(payload: AACComposeRequest, user: dict = Depends(get_current_use
     by_id = {row["id"]: dict(row) for row in rows}
     if len(by_id) != len(unique_ids):
         raise HTTPException(422, "Одна из карточек недоступна")
-    return compose_aac_phrase([by_id[card_id] for card_id in unique_ids], payload.language)
+    return compose_aac_phrase([by_id[card_id] for card_id in unique_ids], payload.language, payload.mode)
 
 
 @app.post("/api/aac/history", status_code=201)
@@ -883,7 +1012,7 @@ def save_aac_phrase(payload: AACPhraseCreate, user: dict = Depends(get_current_u
         languages = {card.get("language") or "ru" for card in ordered_cards}
         if len(languages) != 1:
             raise HTTPException(422, "Карточки разных языков нельзя сохранять как одно сообщение")
-        composed = compose_aac_phrase(ordered_cards, languages.pop())
+        composed = compose_aac_phrase(ordered_cards, languages.pop(), payload.mode)
         if not composed["valid"]:
             raise HTTPException(422, composed["reason"])
         cursor = db.execute(
@@ -1854,6 +1983,7 @@ def export_child_data(child_id: int, user: dict = Depends(require_roles("parent"
             "aac_favorites": [dict(row) for row in db.execute("SELECT * FROM aac_favorites WHERE child_id=? ORDER BY card_id", (child_id,)).fetchall()],
             "aac_history": history_rows,
             "world_photos": [dict(row) for row in db.execute("SELECT * FROM child_world_photos WHERE child_id=? ORDER BY id", (child_id,)).fetchall()],
+            "storybook_progress": [dict(row) for row in db.execute("SELECT * FROM storybook_progress WHERE child_id=? ORDER BY story_key,story_version,actor_key", (child_id,)).fetchall()],
             "story_progress": [dict(row) for row in db.execute("SELECT * FROM child_story_progress WHERE child_id=? ORDER BY story_key", (child_id,)).fetchall()],
             "notifications": [dict(row) for row in db.execute("SELECT * FROM notifications WHERE child_id=? ORDER BY id", (child_id,)).fetchall()],
             "audit_events": audit_rows,
