@@ -1,0 +1,105 @@
+{
+  "version": 3,
+  "style": "Warm Soft 3D Storybook",
+  "generator": "image_gen.imagegen",
+  "review_status": "DRAFT",
+  "images": {
+    "/storybooks/favorite-toy-book/find.webp": {
+      "width": 1672,
+      "height": 941,
+      "source": "exec-4b2ca2cc-5d17-478b-ad61-3684ced59f43.png",
+      "purpose": "find",
+      "format": "webp",
+      "version": 1,
+      "alt_policy": "scene-specific accessible text from story definition"
+    },
+    "/storybooks/favorite-toy-book/match.webp": {
+      "width": 1672,
+      "height": 941,
+      "source": "exec-9617f385-2bcb-4d47-a4b2-6c1c26f8d272.png",
+      "purpose": "match",
+      "format": "webp",
+      "version": 1,
+      "alt_policy": "scene-specific accessible text from story definition"
+    },
+    "/storybooks/favorite-toy-book/request.webp": {
+      "width": 1672,
+      "height": 941,
+      "source": "exec-a9f2e85e-8d9a-4d7e-889a-49b6cf4b7495.png",
+      "purpose": "request",
+      "format": "webp",
+      "version": 1,
+      "alt_policy": "scene-specific accessible text from story definition"
+    },
+    "/storybooks/favorite-toy-book/help.webp": {
+      "width": 1672,
+      "height": 941,
+      "source": "exec-1a71025d-b9aa-4399-8eb0-41ff2f377188.png",
+      "purpose": "help",
+      "format": "webp",
+      "version": 1,
+      "alt_policy": "scene-specific accessible text from story definition"
+    },
+    "/storybooks/favorite-toy-book/received.webp": {
+      "width": 1672,
+      "height": 941,
+      "source": "exec-f68d9f9d-5170-4d81-941c-ef1df94f0f3a.png",
+      "purpose": "received",
+      "format": "webp",
+      "version": 1,
+      "alt_policy": "scene-specific accessible text from story definition"
+    },
+    "/storybooks/favorite-toy-book/play.webp": {
+      "width": 1672,
+      "height": 941,
+      "source": "exec-9926297c-cc11-424b-a3d0-eb4796ce2a22.png",
+      "purpose": "play",
+      "format": "webp",
+      "version": 1,
+      "alt_policy": "scene-specific accessible text from story definition"
+    },
+    "/storybooks/favorite-toy-book/finish.webp": {
+      "width": 1672,
+      "height": 941,
+      "source": "exec-7d6e7cfa-acda-4884-a381-81ab6d1f943d.png",
+      "purpose": "finish",
+      "format": "webp",
+      "version": 1,
+      "alt_policy": "scene-specific accessible text from story definition"
+    }
+  },
+  "objects": {
+    "url": "/storybooks/favorite-toy-book/objects.webp",
+    "width": 1262,
+    "height": 1246,
+    "frames": {
+      "teddy": [
+        47,
+        50,
+        536,
+        579
+      ],
+      "ball": [
+        88,
+        726,
+        467,
+        458
+      ],
+      "train": [
+        719,
+        199,
+        495,
+        458
+      ],
+      "track": [
+        663,
+        773,
+        568,
+        408
+      ]
+    },
+    "source": "exec-6772353e-ac2f-4692-b7e9-19e4bb2e2c3a.png",
+    "generator": "image_gen.imagegen",
+    "purpose": "same toy identities as whole illustrations; independent train for mini-game"
+  }
+}

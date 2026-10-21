@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "stage": {
+    "width": 1280,
+    "height": 720,
+    "fit": "meet",
+    "background_fit": "meet"
+  },
+  "layers": [
+    "room",
+    "shelf_teddy_behind_characters",
+    "moving_shadows",
+    "child_joint_rig",
+    "mother_joint_rig",
+    "held_teddy",
+    "foreground_hand",
+    "accessible_hit_area"
+  ],
+  "marks": {
+    "child_start": 470,
+    "child_reach": 780,
+    "mother_offstage": 1450,
+    "mother_shelf": 950,
+    "mother_transfer": 990,
+    "floor": 610,
+    "teddy_shelf": [
+      1051,
+      203
+    ]
+  },
+  "joint_lengths": {
+    "upper_arm": 70,
+    "forearm_to_grip": 60,
+    "upper_leg": 70,
+    "lower_leg": 70
+  },
+  "attachment": "world right-hand CTM; smooth attachment; foreground forearm after teddy",
+  "review": "DRAFT"
+}

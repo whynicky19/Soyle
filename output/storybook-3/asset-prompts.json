@@ -1,0 +1,10 @@
+{
+  "tool": "image_gen.imagegen",
+  "version": 2,
+  "prompts": {
+    "child": "Edit this animation atlas, preserving EXACT 4 columns by 3 rows and the identity, clothes, colors, warm soft 3D illustration style, transparent background. Make it suitable for a natural human character, NOT a toy puppet. Remove ALL wooden balls, sockets, pins and mechanical connectors. Head has a short natural skin neck with smooth flat bottom, no ball. Torso is ONLY a sleeveless teal shirt trunk with rounded skin shoulder coverage to overlap independent arms; no baked arms hanging off it, no ball at neck. Pelvis is cream shorts waist without mechanical balls. Arms and legs have softly rounded natural skin or fabric ends, NO visible joints or wooden parts. Keep upper arm, forearm+hand, upper leg, lower leg+shoe in the exact same grid positions; straight down, seamless natural anatomical assembly. Generous transparent gaps between cells. No scene or labels.",
+    "mother": "Edit this animation atlas, preserving EXACT 4 columns by 3 rows, friendly mother's face, brown bob haircut, coral cardigan/cream blouse/teal pants/beige shoes, warm soft 3D style and transparency. This must be a natural human mother, NOT a toy puppet. Remove ALL wooden balls, sockets, pins and mechanical connectors. Head has a short natural neck ending smoothly, NO ball. Torso is ONLY sleeveless cardigan/blouse trunk, arm openings concealed by smooth rounded shoulder overlap, NO baked hanging sleeves and NO neck or waist ball. Arms and legs have smoothly rounded fabric/skin ends and natural seamless overlap, NO exposed mechanical joints. Keep separate upper sleeves, forearms+hands, upper pant legs, lower pant legs+shoes in same grid cells. Generous transparent gutters. No labels, no scene."
+  },
+  "method": "Transparent modular atlases, SVG joint rigging, existing fixed room and teddy reused",
+  "review": "DRAFT, pending visual/AAC/methodological/audio approval"
+}

@@ -136,7 +136,7 @@ import { GoalsAndPractice } from "@/components/GoalsAndPractice";
 import { AdminShell, ChildShell, ExerciseFocusShell, ParentShell } from "@/components/AppShells";
 import { AchievementsExperience } from "@/components/AchievementsExperience";
 import { ParentOverview } from "@/components/ParentOverview";
-import { StorybookExperience } from "./storybook/StorybookExperience";
+import { InteractiveBook } from "./storybook/book/InteractiveBook";
 import { StoryExperience } from "@/components/StoryExperience";
 import { WorldExperience } from "@/components/WorldExperience";
 import {
@@ -724,7 +724,7 @@ function AuthenticatedApp({ user, onLogout, externalError, onDismissExternalErro
   };
 
   if (screen === "story-preview" && user.role === "parent") {
-    return <StorybookExperience childId={child?.id} onExit={() => openScreen("parent")} onSpeak={speak} onStopSpeech={stopCurrentSpeech} calmMode={settings.calm_mode}/>;
+    return <InteractiveBook childId={child?.id} onExit={() => openScreen("parent")} calmMode={settings.calm_mode}/>;
   }
 
   if (isChildExerciseFocus) {
@@ -2083,7 +2083,7 @@ function ParentScreen({ child, childProfiles, onSelectChild, onDeleted, dashboar
   return <div className="page-enter stack-xl parent-page">
     <PageTitle eyebrow="КАБИНЕТ РОДИТЕЛЯ" title={`Вместе поддерживаем ${child?.name || "ребёнка"}`} subtitle="История практики, ученический вход и понятные настройки приватности." />
     <nav className="v2-parent-cabinet-links" aria-label="Материалы ребёнка"><button onClick={() => onNavigate("world")}><ImageIcon/> Фотографии ребёнка <ChevronRight/></button><button onClick={() => onNavigate("aac")}><MessageCircle/> Карточки AAC <ChevronRight/></button><button onClick={() => onNavigate("progress")}><TrendingUp/> История практики <ChevronRight/></button><button onClick={() => onNavigate("goals")}><Target/> Цели и план <ChevronRight/></button></nav>
-    <section className="storybook-preview-entry"><div><span className="kicker">МАСТЕРСКАЯ ИСТОРИЙ · DRAFT</span><h2>Любимая игрушка</h2><p>Живая книга: найди мишку, попроси помощь и поиграй вместе с Мишей. Шесть новых сцен для предпросмотра взрослого.</p></div><button className="primary-button" onClick={() => onNavigate("story-preview")}><BookOpen/> Открыть живую историю <ChevronRight/></button></section>
+    <section className="storybook-preview-entry"><div><span className="kicker">МАСТЕРСКАЯ ИСТОРИЙ · DRAFT</span><h2>Любимая игрушка</h2><p>Интерактивная книга: найди мишку, попроси помощь и запусти поезд. Шесть цельных иллюстрированных страниц с маленькими играми.</p></div><button className="primary-button" onClick={() => onNavigate("story-preview")}><BookOpen/> Открыть книгу с играми <ChevronRight/></button></section>
     {childProfiles.length > 1 && <div className="child-switcher" aria-label="Выбор профиля ребёнка">{childProfiles.map((item) => <button key={item.id} className={item.id === child?.id ? "active" : ""} onClick={() => onSelectChild(item.id)}><span className="avatar" style={{background:item.avatar_color}}>{item.name[0]}</span><strong>{item.name}</strong></button>)}</div>}
     <section className="parent-overview">
       <div className="parent-profile"><div className="avatar large">{child?.name[0] || "Р"}</div><div><span className="kicker">ПРОФИЛЬ РЕБЁНКА</span><h2>{child?.name || "Ребёнок"}, {age} лет</h2><p>{dashboard?.total_sessions || 0} игровых попыток · {dashboard?.total_minutes || 0} минут практики</p></div></div>

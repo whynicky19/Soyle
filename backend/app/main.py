@@ -30,6 +30,7 @@ from .practice_goals import create_goal as create_practice_goal, get_preferences
 from .migrations import LATEST_SCHEMA_VERSION
 from .stories import STORIES, public_story
 from .schemas import CinematicStorybookEvent
+from .interactive_storybook import STORY as INTERACTIVE_BOOK, initial_state as book_initial_state, transition as book_transition
 from .cinematic_storybook import DEFINITION as CINEMATIC_STORY, initial_state as cinematic_initial_state, transition as cinematic_transition
 from .storybook_content import FAVORITE_TOY
 from .storybook_engine import initial_state as storybook_initial_state, transition as storybook_transition
@@ -921,6 +922,54 @@ def cinematic_storybook_event(child_id: int, payload: CinematicStorybookEvent, u
         ).fetchone()
         if not changed:
             raise HTTPException(409, "Прохождение изменилось. Откройте историю снова")
+    return {**snapshot, "state": state, "revision": changed["revision"]}
+
+
+
+def interactive_book_access(child_id: int, user: dict) -> str:
+    ensure_child_access(child_id, user)
+    if INTERACTIVE_BOOK["status"] != "PUBLISHED" or INTERACTIVE_BOOK["review_status"] != "approved":
+        if user["role"] != "parent":
+            raise HTTPException(403, "Книга DRAFT доступна только для предпросмотра родителю")
+    return f"preview:{user['id']}" if user["role"] == "parent" else "child"
+
+
+def interactive_book_snapshot(db, child_id: int, actor: str) -> dict:
+    row = db.execute("SELECT revision,state_json FROM storybook_progress WHERE child_id=? AND story_key=? AND story_version=? AND actor_key=?", (child_id, "toy", INTERACTIVE_BOOK["version"], actor)).fetchone()
+    return {"definition": INTERACTIVE_BOOK, "revision": row["revision"] if row else 0, "state": json.loads(row["state_json"]) if row else book_initial_state(), "preview": actor.startswith("preview:")}
+
+
+@app.get("/api/interactive-storybooks/{child_id}/toy")
+def get_interactive_book(child_id: int, response: Response, user: dict = Depends(get_current_user)) -> dict:
+    actor = interactive_book_access(child_id, user)
+    response.headers["Cache-Control"] = "private, no-store"
+    with connect() as db:
+        return interactive_book_snapshot(db, child_id, actor)
+
+
+@app.post("/api/interactive-storybooks/{child_id}/toy/events")
+def interactive_book_event(child_id: int, payload: StorybookEvent, user: dict = Depends(get_current_user)) -> dict:
+    actor = interactive_book_access(child_id, user)
+    if not actor.startswith("preview:"):
+        ensure_privacy_consent(child_id)
+    if payload.version != INTERACTIVE_BOOK["version"]:
+        raise HTTPException(409, "Версия книги изменилась. Откройте её снова")
+    with connect() as db:
+        snapshot = interactive_book_snapshot(db, child_id, actor)
+        if any(event["id"] == payload.event_id for event in snapshot["state"]["events"]):
+            return snapshot
+        scene = INTERACTIVE_BOOK["scenes"][snapshot["state"]["scene_index"]]
+        if snapshot["revision"] != payload.expected_revision or scene["id"] != payload.scene_id:
+            raise HTTPException(409, "Прохождение изменилось в другой вкладке. Откройте книгу снова")
+        try:
+            state = book_transition(snapshot["state"], payload.action, payload.event_id)
+        except ValueError as cause:
+            raise HTTPException(422, str(cause)) from None
+        changed = db.execute("""INSERT INTO storybook_progress(child_id,story_key,story_version,actor_key,revision,state_json,updated_at)
+            VALUES(?,?,?,?,?,?,?) ON CONFLICT(child_id,story_key,story_version,actor_key) DO UPDATE SET revision=excluded.revision,state_json=excluded.state_json,updated_at=excluded.updated_at
+            WHERE storybook_progress.revision=? RETURNING revision""", (child_id, "toy", INTERACTIVE_BOOK["version"], actor, payload.expected_revision + 1, json.dumps(state, ensure_ascii=False), now_iso(), payload.expected_revision)).fetchone()
+        if not changed:
+            raise HTTPException(409, "Прохождение изменилось. Откройте книгу снова")
     return {**snapshot, "state": state, "revision": changed["revision"]}
 
 

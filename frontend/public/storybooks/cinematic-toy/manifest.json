@@ -1,0 +1,397 @@
+{
+  "version": 1,
+  "authoring": "OpenAI image generation; articulated SVG assembly and GSAP timelines",
+  "actors": {
+    "child": {
+      "url": "/storybooks/cinematic-toy/child-parts-v2.webp",
+      "width": 1448,
+      "height": 1086,
+      "parts": {
+        "head": {
+          "box": [
+            36,
+            22,
+            322,
+            340
+          ],
+          "anchor": [
+            0.5,
+            0.9
+          ],
+          "purpose": "head articulated component"
+        },
+        "blink": {
+          "box": [
+            402,
+            22,
+            322,
+            340
+          ],
+          "anchor": [
+            0.5,
+            0.9
+          ],
+          "purpose": "blink articulated component"
+        },
+        "torso": {
+          "box": [
+            771,
+            112,
+            286,
+            250
+          ],
+          "anchor": [
+            0.5,
+            0.08
+          ],
+          "purpose": "torso articulated component"
+        },
+        "pelvis": {
+          "box": [
+            1126,
+            130,
+            293,
+            214
+          ],
+          "anchor": [
+            0.5,
+            0.08
+          ],
+          "purpose": "pelvis articulated component"
+        },
+        "upperL": {
+          "box": [
+            105,
+            398,
+            148,
+            282
+          ],
+          "anchor": [
+            0.5,
+            0.08
+          ],
+          "purpose": "upperL articulated component"
+        },
+        "forearmL": {
+          "box": [
+            507,
+            420,
+            148,
+            297
+          ],
+          "anchor": [
+            0.5,
+            0.08
+          ],
+          "purpose": "forearmL articulated component"
+        },
+        "upperR": {
+          "box": [
+            880,
+            402,
+            148,
+            279
+          ],
+          "anchor": [
+            0.5,
+            0.08
+          ],
+          "purpose": "upperR articulated component"
+        },
+        "forearmR": {
+          "box": [
+            1191,
+            420,
+            134,
+            297
+          ],
+          "anchor": [
+            0.5,
+            0.08
+          ],
+          "purpose": "forearmR articulated component"
+        },
+        "thighL": {
+          "box": [
+            105,
+            738,
+            185,
+            293
+          ],
+          "anchor": [
+            0.5,
+            0.08
+          ],
+          "purpose": "thighL articulated component"
+        },
+        "thighR": {
+          "box": [
+            489,
+            742,
+            185,
+            290
+          ],
+          "anchor": [
+            0.5,
+            0.08
+          ],
+          "purpose": "thighR articulated component"
+        },
+        "shinL": {
+          "box": [
+            800,
+            738,
+            174,
+            308
+          ],
+          "anchor": [
+            0.5,
+            0.08
+          ],
+          "purpose": "shinL articulated component"
+        },
+        "shinR": {
+          "box": [
+            1216,
+            738,
+            170,
+            308
+          ],
+          "anchor": [
+            0.5,
+            0.08
+          ],
+          "purpose": "shinR articulated component"
+        }
+      },
+      "source": "exec-aa71692b-5142-4613-a898-b8ff08e52ecb.png",
+      "format": "webp-alpha",
+      "version": 1
+    },
+    "mother": {
+      "url": "/storybooks/cinematic-toy/mother-parts-v2.webp",
+      "width": 1448,
+      "height": 1086,
+      "parts": {
+        "head": {
+          "box": [
+            33,
+            11,
+            329,
+            333
+          ],
+          "anchor": [
+            0.5,
+            0.9
+          ],
+          "purpose": "head articulated component"
+        },
+        "blink": {
+          "box": [
+            391,
+            11,
+            333,
+            337
+          ],
+          "anchor": [
+            0.5,
+            0.9
+          ],
+          "purpose": "blink articulated component"
+        },
+        "torso": {
+          "box": [
+            820,
+            76,
+            203,
+            275
+          ],
+          "anchor": [
+            0.5,
+            0.08
+          ],
+          "purpose": "torso articulated component"
+        },
+        "pelvis": {
+          "box": [
+            1148,
+            90,
+            282,
+            257
+          ],
+          "anchor": [
+            0.5,
+            0.08
+          ],
+          "purpose": "pelvis articulated component"
+        },
+        "upperL": {
+          "box": [
+            119,
+            384,
+            159,
+            264
+          ],
+          "anchor": [
+            0.5,
+            0.08
+          ],
+          "purpose": "upperL articulated component"
+        },
+        "forearmL": {
+          "box": [
+            510,
+            387,
+            105,
+            290
+          ],
+          "anchor": [
+            0.5,
+            0.08
+          ],
+          "purpose": "forearmL articulated component"
+        },
+        "upperR": {
+          "box": [
+            876,
+            384,
+            156,
+            264
+          ],
+          "anchor": [
+            0.5,
+            0.08
+          ],
+          "purpose": "upperR articulated component"
+        },
+        "forearmR": {
+          "box": [
+            1205,
+            387,
+            109,
+            286
+          ],
+          "anchor": [
+            0.5,
+            0.08
+          ],
+          "purpose": "forearmR articulated component"
+        },
+        "thighL": {
+          "box": [
+            112,
+            724,
+            170,
+            304
+          ],
+          "anchor": [
+            0.5,
+            0.08
+          ],
+          "purpose": "thighL articulated component"
+        },
+        "thighR": {
+          "box": [
+            481,
+            724,
+            174,
+            304
+          ],
+          "anchor": [
+            0.5,
+            0.08
+          ],
+          "purpose": "thighR articulated component"
+        },
+        "shinL": {
+          "box": [
+            807,
+            724,
+            174,
+            337
+          ],
+          "anchor": [
+            0.5,
+            0.08
+          ],
+          "purpose": "shinL articulated component"
+        },
+        "shinR": {
+          "box": [
+            1209,
+            724,
+            181,
+            337
+          ],
+          "anchor": [
+            0.5,
+            0.08
+          ],
+          "purpose": "shinR articulated component"
+        }
+      },
+      "source": "exec-d3a453c5-e569-46b3-80ba-5ad8486244e4.png",
+      "format": "webp-alpha",
+      "version": 1
+    }
+  },
+  "teddy": {
+    "url": "/storybooks/favorite-toy/objects-atlas.webp",
+    "width": 1254,
+    "height": 1254,
+    "parts": {
+      "teddy": {
+        "box": [
+          69,
+          38,
+          508,
+          589
+        ],
+        "anchor": [
+          0.5,
+          0.55
+        ],
+        "purpose": "independent shelf / hand attachment / hug"
+      }
+    }
+  },
+  "environment": {
+    "room": "/storybooks/favorite-toy/room.webp",
+    "sourceWidth": 1536,
+    "sourceHeight": 1024,
+    "composition": "1280x720; preserveAspectRatio meet; fixed room reused across all phases"
+  },
+  "states": {
+    "child": [
+      "sit_idle",
+      "look",
+      "point",
+      "stand_walk",
+      "reach",
+      "request",
+      "receive",
+      "hug"
+    ],
+    "mother": [
+      "enter_walk",
+      "reach",
+      "hold",
+      "transfer",
+      "idle"
+    ],
+    "teddy": [
+      "shelf",
+      "mother",
+      "child"
+    ]
+  },
+  "rig": {
+    "coordinates": "feet origin, local shoulders +/-35,-255; upper arms70 forearms60; hips+/-20,-136 legs70+70",
+    "rotation": "degrees, rounded joint overlap",
+    "attachment": "right hand CTM in root stage coordinates"
+  },
+  "authoring_sheets": {
+    "animation_states": "animation-states.svg",
+    "composition": "composition.json"
+  }
+}
