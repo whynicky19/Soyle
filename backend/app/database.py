@@ -489,7 +489,6 @@ def init_db() -> None:
         # Older builds defaulted specialist access to on. It cannot be treated as
         # informed consent when the required privacy consent was never accepted.
         db.execute("UPDATE child_consents SET specialist_sharing=0,specialist_sharing_at=NULL WHERE privacy_accepted=0")
-        db.execute("UPDATE users SET is_active=0 WHERE role='specialist'")
         if db.backend == "postgresql":
             db.execute("ALTER TABLE child_consents ALTER COLUMN specialist_sharing SET DEFAULT 0")
         db.execute("INSERT INTO schema_migrations(version,applied_at) VALUES(1,?) ON CONFLICT(version) DO NOTHING", (now_iso(),))

@@ -6,12 +6,13 @@ import type { BookScene as Scene, BookState } from '@/lib/storybook/book/types';
 
 export function BookScene({scene,state,hint,busy,motion,onAction,ratio}:{scene:Scene;state:BookState;hint:boolean;busy:boolean;motion:boolean;onAction:(key:string)=>void;ratio:number}){
   const allowed=new Set(activeOptions(scene,state).map(option=>option.key));
-  const result=scene.kind==='help'&&state.ready;
+  const result=['help','instruction','choice'].includes(scene.kind)&&state.ready;
+  const resultImage=scene.options.find(option=>option.key===state.selected)?.result_image || scene.result_image;
   const art=scene.options.find(option=>option.key===state.selected)?.art;
   return <div className={`book-stage ${motion?'book-motion':''} ${state.paused?'book-still':''}`} style={{'--page-ratio':ratio} as CSSProperties} data-testid="book-stage" data-scene={scene.id} data-step={state.step} data-ready={String(state.ready)}>
     <div className="book-world">
-      <Image className="book-illustration" src={scene.image} alt={scene.alt} fill sizes="(max-width: 800px) 100vw, 80vw" unoptimized priority/>
-      {scene.result_image&&<Image className={`book-illustration book-result ${result?'book-result-shown':''}`} src={scene.result_image} alt={result?'Миша получил мишку и обнимает его. Мама улыбается рядом.':''} fill sizes="(max-width: 800px) 100vw, 80vw" unoptimized/>}
+      <Image className="book-illustration" src={scene.step_images?.[state.step] && !state.ready ? scene.step_images[state.step] : scene.image} alt={scene.alt} fill sizes="(max-width: 800px) 100vw, 80vw" unoptimized priority/>
+      {resultImage&&<Image className={`book-illustration book-result ${result?'book-result-shown':''}`} src={resultImage} alt={result?scene.alt:''} fill sizes="(max-width: 800px) 100vw, 80vw" unoptimized/>}
       <div className="book-daylight" aria-hidden="true"/>
       {scene.kind==='sequence'&&<div aria-hidden="true" className={`book-train ${state.step===1?'book-train-selected':''} ${state.ready?'book-train-on-track':''}`}><BookArt art="train"/></div>}
       {scene.hotspots.map(spot=>{

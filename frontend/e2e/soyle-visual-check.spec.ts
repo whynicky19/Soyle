@@ -36,7 +36,8 @@ test("new child experience stays usable from 320 to 1440 pixels", async ({ page 
     await page.screenshot({ path: info.outputPath(`${width}-child-home.png`), fullPage: true, animations: "disabled" });
 
     await openNav(page, "student", "Истории");
-    await expect(page.locator(".v2-story-card").first()).toBeVisible();
+    await expect(page.getByRole("heading", {name: "Истории готовятся"})).toBeVisible();
+    await expect(page.locator(".v2-story-card")).toHaveCount(0);
     await noHorizontalOverflow(page);
     await page.screenshot({ path: info.outputPath(`${width}-child-stories.png`), fullPage: true, animations: "disabled" });
 
@@ -64,6 +65,7 @@ test("parent landing, cabinet and guides use one shell", async ({ page }, info) 
     await page.screenshot({ path: info.outputPath(`${width}-parent-guides.png`), fullPage: true, animations: "disabled" });
 
     await openNav(page, "parent", "Кабинет родителя");
+    await page.getByRole("link", {name: "Материалы", exact: true}).click();
     await expect(page.locator(".v2-parent-cabinet-links")).toBeVisible();
     await noHorizontalOverflow(page);
   }

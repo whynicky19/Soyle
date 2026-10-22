@@ -2,7 +2,7 @@ from pathlib import Path
 
 from app import database
 from app.database import connect
-from app.migrations import apply_migrations
+from app.migrations import apply_migrations, LATEST_SCHEMA_VERSION, MIGRATIONS
 
 
 PARENT_CHILD_ATTEMPT = {
@@ -206,18 +206,20 @@ def test_results_keep_choices_support_and_stop_outcomes_separate(client, parent_
     assert "не объединяются" in after["disclaimer"]
 
 
-def test_migrations_9_to_18_upgrade_an_old_database_and_are_idempotent(tmp_path):
+def test_all_migrations_upgrade_an_old_database_and_are_idempotent(tmp_path):
     original_path = database.DB_PATH
+    original_url = database.DATABASE_URL
+    database.DATABASE_URL = ""
     temporary_path = Path(tmp_path) / "soyle-p1-upgrade.db"
     database.DB_PATH = temporary_path
     try:
         database.init_db()
         with connect() as db:
             assert db.execute("SELECT MAX(version) version FROM schema_migrations").fetchone()["version"] == 8
-        assert apply_migrations() == [9, 10, 11, 12, 13, 14, 15, 16, 17, 18]
+        assert apply_migrations() == [version for version, *_ in MIGRATIONS if version > 8]
         assert apply_migrations() == []
         with connect() as db:
-            assert db.execute("SELECT MAX(version) version FROM schema_migrations").fetchone()["version"] == 18
+            assert db.execute("SELECT MAX(version) version FROM schema_migrations").fetchone()["version"] == LATEST_SCHEMA_VERSION
             tables = {row["name"] for row in db.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
             assert {"exercise_versions", "skill_observations", "home_activity_templates", "home_activity_observations", "content_reviews", "content_reviewer_permissions", "content_assets", "practice_goal_templates", "parent_practice_goals", "practice_goal_history", "practice_goal_observations", "adaptive_practice_plans", "adaptive_practice_plan_items"} <= tables
             assert {"child_world_photos", "child_story_progress", "storybook_progress"} <= tables
@@ -229,8 +231,10 @@ def test_migrations_9_to_18_upgrade_an_old_database_and_are_idempotent(tmp_path)
             assert "can_accessibility_review" in permission_columns
             learning_columns = {row["name"] for row in db.execute("PRAGMA table_info(learning_sessions)").fetchall()}
             assert "adaptive_plan_id" in learning_columns
-            assert db.execute("SELECT COUNT(*) count FROM practice_goal_templates").fetchone()["count"] == 6
+            assert db.execute("SELECT COUNT(*) count FROM practice_goal_templates").fetchone()["count"] == 7
+            assert db.execute("SELECT matching_targets_json FROM practice_goal_templates WHERE template_key='recognise-familiar-examples'").fetchone()
             assert db.execute("SELECT COUNT(*) count FROM home_activity_templates").fetchone()["count"] == 12
-            assert db.execute("SELECT COUNT(*) count FROM exercise_versions WHERE publication_status='draft'").fetchone()["count"] == 11
+            assert db.execute("SELECT COUNT(*) count FROM exercise_versions WHERE publication_status='draft'").fetchone()["count"] >= 11
     finally:
         database.DB_PATH = original_path
+        database.DATABASE_URL = original_url

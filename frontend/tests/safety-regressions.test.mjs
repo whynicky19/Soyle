@@ -57,17 +57,16 @@ test("frontend does not request blocked external fonts or unsupported image qual
   assert.match(landing, /quality=\{75\}/);
 });
 
-test("landing always uses the calm base theme instead of inheriting ocean", async () => {
+test("landing isolates its illustrated palette from the application theme", async () => {
   const [landing, styles] = await Promise.all([
     readProjectFile("components/LandingPage.tsx"),
     readProjectFile("app/landing.css"),
   ]);
-  assert.match(landing, /LANDING_THEME = "peach"/);
-  assert.match(landing, /document\.documentElement\.dataset\.theme = LANDING_THEME/);
-  assert.match(landing, /data-theme=\{LANDING_THEME\}/);
-  assert.match(styles, /--landing-blue: #1668c7/);
-  assert.match(styles, /--landing-canvas: #f5f7fa/);
-  assert.doesNotMatch(styles, /--landing-blue: #245b84/);
+  assert.match(landing, /className="sl-page"/);
+  assert.doesNotMatch(landing, /document\.documentElement\.dataset\.theme\s*=/);
+  assert.match(styles, /--sl-ink:\s*#102b52/);
+  assert.match(styles, /--sl-teal:\s*#078c91/);
+  assert.match(styles, /--sl-cream:\s*#fff8ed/);
 });
 
 test("child AAC vocabulary is not persisted in browser storage", async () => {
@@ -239,7 +238,8 @@ test("daily duration uses the reviewed rotating session plan and active sessions
     readProjectFile("components/SoyleApp.tsx"),
     readProjectFile("components/ProductExperience.tsx"),
   ]);
-  assert.match(app, /\/api\/session-plan\/\$\{child\.id\}\?minutes=\$\{dailyMinutes\}/);
+  assert.match(app, /\/api\/adaptive-plans\/\$\{child\.id\}/);
+  assert.match(app, /adaptive_plan_id: plan.id/);
   assert.match(dashboard, /!currentSession && <div className="v2-minute-picker"/);
   assert.match(dashboard, /SESSION_EXERCISE_COUNTS\[dailyMinutes\]/);
 });

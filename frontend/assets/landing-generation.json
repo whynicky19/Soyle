@@ -1,0 +1,119 @@
+{
+  "tool": "image_gen.imagegen",
+  "generatedAt": "2026-10-22",
+  "style": "Premium children’s animated film storybook 3D, tactile matte textures, warm cinematic light, gentle rounded forms. No lettering or logos. All scenes use the master character reference for consistent boy and bird identities.",
+  "note": "Scene briefs document generated artwork. Original PNGs retained in the generator output directory. Parent cabinet is real HTML showing an illustrative empty state, not a generated screenshot. Speech journey has a separately generated portrait mobile composition.",
+  "assets": [
+    {
+      "file": "public/images/landing/hero-room.webp",
+      "original": "exec-51c39bef-2c03-4c68-ac4a-12d524045318.png",
+      "reference": "mascot-reference.webp",
+      "prompt": "Wide landscape 2:1. Cozy sunlit child’s playroom, window, plants, bookshelves, pastel sofa, teddy bear and wooden blocks. Boy on tummy on rug with bird and navy tablet. Characters right two thirds; quiet cream negative space left third."
+    },
+    {
+      "file": "public/images/landing/speech-journey.webp",
+      "original": "exec-7facfff5-15d1-4e17-a287-c1b94b669b12.png",
+      "reference": "mascot-reference.webp",
+      "prompt": "Very wide panoramic landscape 3:1. Fairytale valley, green hills, winding trail, distant tiny castle, river and arched stone bridge, flowers and trees. Small blue bird flying near center top. No signs or text."
+    },
+    {
+      "file": "public/images/landing/final-night-scene.webp",
+      "original": "exec-b882a805-ce67-402e-9faf-7c2e01bc81da.png",
+      "reference": "mascot-reference.webp",
+      "prompt": "Wide cinematic landscape 2.5:1. Cozy child’s bedroom at night, dark navy sky, fabric teepee, fairy lights, star lamps, cushions and teddy bear. Boy and bird reading open book on right half. Golden book light; left 40 percent dark negative space."
+    },
+    {
+      "file": "public/images/landing/game-first-words.webp",
+      "original": "exec-a3c6d776-cf41-471e-a256-b3d7be9a40e8.png",
+      "reference": "mascot-reference.webp",
+      "prompt": "Bird beside navy tablet with one large picture card showing an orange and white puppy, wooden blocks, plants, peach cream backdrop. No written words."
+    },
+    {
+      "file": "public/images/landing/game-sentences.webp",
+      "original": "exec-6bcbeb22-813e-46ed-997f-eecae3f78845.png",
+      "reference": "mascot-reference.webp",
+      "prompt": "Tablet showing smiling golden sun, three blank white word tiles below; bird right, child’s hands left, colorful blocks, pale blue backdrop."
+    },
+    {
+      "file": "public/images/landing/game-stories.webp",
+      "original": "exec-b9f44b84-0860-4dc5-938e-e9258f160a38.png",
+      "reference": "mascot-reference.webp",
+      "prompt": "Tablet in fairy forest showing boy and friendly bear, three picture choices below: bear, honey pot, cup. Bird beside tablet, leaves and mushrooms."
+    },
+    {
+      "file": "public/images/landing/child-experience.webp",
+      "original": "exec-3e95ca14-98f2-408c-86ea-8ce621dd68d5.png",
+      "reference": "mascot-reference.webp",
+      "prompt": "Curly boy seated with blue tablet on lap, laughing, bird beside him. Cozy peach playroom, cushions and blocks. Characters right two thirds; quiet cream left third."
+    },
+    {
+      "file": "public/images/landing/alalia-intro.webp",
+      "original": "exec-e887aae5-908c-4a58-ad6d-235751ac3a65.png",
+      "reference": "mascot-reference.webp",
+      "prompt": "Thoughtful boy leaning on wooden table chin resting on one hand, looking upward curiously, little plant at edge, not sad."
+    },
+    {
+      "file": "public/images/landing/mascot-icon.webp",
+      "original": "exec-8b680bff-8634-4f3e-a5f7-bb54433460a5.png",
+      "reference": "mascot-reference.webp",
+      "prompt": "ONLY the same blue bird, no boy, centered large bust portrait including blue crest, cream face, orange beak, big kind eyes, cheerful, plain cream background."
+    },
+    {
+      "file": "public/images/landing/alalia-sensory.webp",
+      "original": "exec-053568dc-4d02-44a6-b65f-dddda4c95615.png",
+      "reference": "mascot-reference.webp",
+      "prompt": "Boy holding hand gently cupped behind ear listening with curious kind expression, no distress, pale blush pink background."
+    },
+    {
+      "file": "public/images/landing/alalia-motor.webp",
+      "original": "exec-063176d1-3a92-424f-bbae-6c5e82596036.png",
+      "reference": "mascot-reference.webp",
+      "prompt": "Boy smiling gently raising one hand as if sharing a thought, friendly expressive face, soft sky blue background."
+    },
+    {
+      "file": "public/images/landing/alalia-mixed.webp",
+      "original": "exec-8b2e1d8a-9eec-48f6-8134-81474bb7c481.png",
+      "reference": "mascot-reference.webp",
+      "prompt": "Boy thoughtfully touching chin with one hand, glancing to side, curious face, soft pale mint green background."
+    },
+    {
+      "file": "public/images/landing/benefit-personalization.webp",
+      "original": "exec-5fab4131-c3d4-420f-a7e7-4b4662a74355.png",
+      "reference": "mascot-reference.webp",
+      "prompt": "Same adorable blue bird mascot gently holding a warm golden little heart in its wings. No boy."
+    },
+    {
+      "file": "public/images/landing/benefit-progress.webp",
+      "original": "exec-5b85e5fc-4903-4fca-8e44-f8ea20e25f39.png",
+      "reference": "mascot-reference.webp",
+      "prompt": "A small pastel turquoise notebook open with blank cream pages, tiny golden star badge and short turquoise pencil. No marks or graphs."
+    },
+    {
+      "file": "public/images/landing/benefit-family.webp",
+      "original": "exec-c906be14-2ef6-419c-a459-f06c64e91ae1.png",
+      "reference": "mascot-reference.webp",
+      "prompt": "A warm cozy miniature house with orange roof, cream walls and heart-shaped turquoise window, little plant beside it."
+    },
+    {
+      "file": "public/images/landing/benefit-play.webp",
+      "original": "exec-4a6cacfd-66d7-44ad-8201-c254e3a9e7d8.png",
+      "reference": "mascot-reference.webp",
+      "prompt": "A delightful golden yellow five-point plush star with friendly tiny face and two small teal and coral toy blocks."
+    },
+    {
+      "file": "public/images/landing/mascot-reference.webp",
+      "original": "exec-04025de2-6d58-4dbb-bc35-abea4352995b.png",
+      "reference": null,
+      "prompt": "Create a master character reference for Söyle children's education. Premium animated feature film storybook 3D illustration, soft tactile matte surfaces, warm natural light, no plastic shine. Single adorable small turquoise blue fantasy bird, large round head, creamy white face and tummy, large kind dark eyes, tiny golden orange beak, three blue crest feathers, tiny wings, chubby body and orange feet. Beside bird one cheerful 5-year-old boy, curly chestnut brown hair, warm fair skin, mustard yellow striped t-shirt, blue trousers. Both full body on plain warm cream #FFF8ED background, no text, no panels, no accessories. Their identity must be repeatable for subsequent scenes. Bird on left boy on right. High quality character design matching cozy illustrated preschool learning world."
+    },
+    {
+      "file": "public/images/landing/speech-journey-mobile.webp",
+      "original": "exec-06554f3a-202c-4e22-a5e7-cea58f098899.png",
+      "reference": [
+        "speech-journey.webp",
+        "mascot-reference.webp"
+      ],
+      "prompt": "Separate mobile portrait 3:4 Söyle fairy tale valley. Same bird and world. Rolling hills, winding path, river, arched bridge, distant castle. Small bird upper right, quiet pale sky upper quarter for HTML heading. Four open areas along path for labels. No text, no signs."
+    }
+  ]
+}

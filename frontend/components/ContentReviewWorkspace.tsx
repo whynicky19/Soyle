@@ -86,7 +86,7 @@ function MethodCardView({ card }: { card?: ExerciseMethodCard }) {
       <ReviewList title="Когда остановиться" values={card.stop_conditions} warning/>
       <ReviewList title="Регистрация результата" values={card.result_registration}/>
       <ReviewList title="Перенос в жизнь" values={card.real_life_transfer}/>
-      <section className="method-field"><h4>Источники и основание</h4>{card.sources.length ? <ul>{card.sources.map((source, index) => <li key={index}>{typeof source === "string" ? source : JSON.stringify(source)}</li>)}</ul> : <p>Внешние источники не заявлены.</p>}<p className="method-evidence-note">{card.evidence_note}</p></section>
+      <section className="method-field"><h4>Источники и основание</h4>{card.sources.length ? <ul>{card.sources.map((source, index) => <li key={index}>{typeof source === "string" ? source : <><strong>{source.title || "Источник"}</strong>{source.url?.startsWith("https://") && <p><a href={source.url} target="_blank" rel="noreferrer">Открыть источник</a></p>}{source.population && <p>{source.population}</p>}{source.scope && <p>{source.scope}</p>}{source.limitation && <p>Ограничение: {source.limitation}</p>}</>}</li>)}</ul> : <p>Внешние источники не заявлены.</p>}<p className="method-evidence-note">{card.evidence_note}</p></section>
     </div>
   </div>;
 }
@@ -102,7 +102,7 @@ function StimulusReview({ data, onSpeak }: { data: ContentReviewWorkspaceData; o
   }
   return <div className="stimulus-review-grid">{(version.content.stimuli || []).map((stimulus) => {
     const indexed = data.stimuli_index.find((item) => item.stimulus_key === stimulus.key);
-    return <article key={stimulus.key}><Image src={stimulus.media_ref || "/soyle-icon.png"} alt={indexed?.metadata.alt || stimulus.label} width={200} height={200}/><div><span className="kicker">{stimulus.key}</span><strong>{stimulus.label}</strong><p>{stimulus.hint || "Подсказка не задана"}</p><small>При инструкции «{stimulus.speech}» правильный ключ: {stimulus.key}</small></div><button type="button" className="small-button" onClick={() => void onSpeak(stimulus.speech, .78)}><Volume2 size={16}/> Прослушать</button></article>;
+    return <article key={stimulus.key}><div className="stimulus-exemplars">{[stimulus.media_ref || "/soyle-icon.png", ...(stimulus.exemplars || [])].map((path, index) => <figure key={path}><Image src={path} alt={`${indexed?.metadata.alt || stimulus.label}, пример ${index + 1}`} width={200} height={200}/><figcaption>Пример {index + 1}</figcaption></figure>)}</div><div><span className="kicker">{stimulus.key}</span><strong>{stimulus.label}</strong><p>{stimulus.hint || "Подсказка не задана"}</p><small>При инструкции «{stimulus.speech}» правильный ключ: {stimulus.key}</small></div><button type="button" className="small-button" onClick={() => void onSpeak(stimulus.speech, .78)}><Volume2 size={16}/> Прослушать</button></article>;
   })}</div>;
 }
 

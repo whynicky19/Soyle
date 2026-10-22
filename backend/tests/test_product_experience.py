@@ -10,27 +10,18 @@ def child_id(client, parent_headers):
     return children.json()[0]["id"]
 
 
-def test_story_choices_resume_and_stay_in_child_account(client, parent_headers, student_headers):
+def test_retired_quizzes_are_hidden_without_erasing_family_history(client, parent_headers, student_headers):
+    from app.database import connect, now_iso
     selected_child = child_id(client, parent_headers)
+    with connect() as db:
+        db.execute("""INSERT INTO child_story_progress(child_id,story_key,scene_index,completed_at,updated_at)
+            VALUES(?,'park',1,NULL,?) ON CONFLICT(child_id,story_key) DO UPDATE SET scene_index=1""", (selected_child, now_iso()))
     stories = client.get(f"/api/stories/{selected_child}", headers=student_headers)
     assert stories.status_code == 200
-    assert len(stories.json()) >= 3
-    assert "toy" not in {story["key"] for story in stories.json()}
-    park = next(story for story in stories.json() if story["key"] == "park")
-    assert all("answer" not in scene for scene in park["scenes"])
-
-    restart = client.post(f"/api/stories/{selected_child}/park/restart", headers=student_headers)
-    assert restart.status_code == 200
-    denied = client.post(f"/api/stories/{selected_child}/park/answer", headers=parent_headers, json={"scene_index": 0, "answer_key": "help"})
-    assert denied.status_code == 403
-
-    wrong = client.post(f"/api/stories/{selected_child}/park/answer", headers=student_headers, json={"scene_index": 0, "answer_key": "sleep"})
-    assert wrong.status_code == 200 and wrong.json()["correct"] is False
-    assert wrong.json()["scene_index"] == 0
-    right = client.post(f"/api/stories/{selected_child}/park/answer", headers=student_headers, json={"scene_index": 0, "answer_key": "help"})
-    assert right.status_code == 200 and right.json()["scene_index"] == 1
-    resumed = client.get(f"/api/stories/{selected_child}", headers=student_headers)
-    assert next(story for story in resumed.json() if story["key"] == "park")["scene_index"] == 1
+    assert {"park", "bedtime", "meal"}.isdisjoint({story["key"] for story in stories.json()})
+    denied = client.post(f"/api/stories/{selected_child}/park/answer", headers=student_headers, json={"scene_index": 1, "answer_key": "water"})
+    assert denied.status_code == 404
+    assert client.post(f"/api/stories/{selected_child}/park/restart", headers=student_headers).status_code == 404
     exported = client.get(f"/api/children/{selected_child}/export", headers=parent_headers)
     assert exported.status_code == 200
     assert any(item["story_key"] == "park" and item["scene_index"] == 1 for item in exported.json()["story_progress"])

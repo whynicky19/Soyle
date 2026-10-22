@@ -41,17 +41,21 @@ test("the correct answer is keyed and appears in every possible visual position"
   assert.deepEqual([...positions].sort(), [0, 1, 2, 3]);
 });
 
-test("the correct answer never repeats the same visual position in consecutive rounds", () => {
+test("binary choices can repeat or change sides instead of alternating predictably", () => {
   const random = seededRandom(42024);
-  let previousTarget;
   let previousCorrectIndex;
-  for (let index = 0; index < 100; index += 1) {
-    const round = createChoiceRound(stimuli, 4, previousTarget, random, previousCorrectIndex);
-    const correctIndex = round.optionKeys.indexOf(round.targetKey);
-    if (previousCorrectIndex !== undefined) assert.notEqual(correctIndex, previousCorrectIndex);
-    previousTarget = round.targetKey;
-    previousCorrectIndex = correctIndex;
+  let repeated = 0;
+  let changed = 0;
+  for (let index = 0; index < 200; index += 1) {
+    const round = createChoiceRound(stimuli, 2, undefined, random, previousCorrectIndex);
+    const position = round.optionKeys.indexOf(round.targetKey);
+    if (previousCorrectIndex !== undefined) {
+      if (position === previousCorrectIndex) repeated += 1;
+      else changed += 1;
+    }
+    previousCorrectIndex = position;
   }
+  assert.ok(repeated > 60 && changed > 60);
 });
 
 test("targets do not repeat until the available stimulus set is exhausted", () => {

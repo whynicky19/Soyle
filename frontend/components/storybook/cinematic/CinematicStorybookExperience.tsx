@@ -79,7 +79,7 @@ export function CinematicStorybookExperience({childId,onExit,calmMode=false}:{ch
   const resume=()=>void act('resume',()=>{setPaused(false);rig.current?.setPaused(false);controller.current?.resume();});
   const request=(action:string,text:string)=>void act(action,()=>void controller.current?.request(text));
   const teddy=()=>{if(phase==='HUG')void controller.current?.hug();else{setHint(true);controller.current?.observeTeddy();}};
-  const repeat=()=>{activeAudio.current?.abort();extraAudio.current?.abort();const abort=new AbortController();extraAudio.current=abort;if(sound)void playNarration(captions[phase],abort.signal,snapshot?.definition.audio.clips);};
+  const repeat=()=>{activeAudio.current?.abort();extraAudio.current?.abort();const abort=new AbortController();extraAudio.current=abort;if(sound)void playNarration(captions[phase],abort.signal,snapshot?.definition.audio.clips).catch(()=>{if(!abort.signal.aborted)setVoiceNote('Не удалось включить звук. Можно продолжить по картинкам.');});};
   const exit=()=>{extraAudio.current?.abort();activeAudio.current?.abort();controller.current?.dispose();rig.current?.dispose();onExit();};
   const restart=()=>void act('restart',()=>{setPaused(false);rig.current?.setPaused(false);controller.current?.resume();void controller.current?.replay();});
   return <main className="cinema-player">

@@ -13,7 +13,7 @@ async function login(page: Page, role: "parent" | "student") {
   await expect(page.locator(".soyle-unified")).toBeVisible();
 }
 
-test("child sees a unified dashboard, real story reader, AAC and achievements", async ({ page }, info) => {
+test("child sees dashboard, review-gated stories, AAC and achievements", async ({ page }, info) => {
   test.skip(info.project.name !== "desktop", "Desktop walkthrough; mobile navigation is covered separately.");
   await login(page, "student");
   await expect(page.locator(".v2-dashboard")).toBeVisible();
@@ -22,11 +22,9 @@ test("child sees a unified dashboard, real story reader, AAC and achievements", 
   await page.screenshot({ path: info.outputPath("child-home.png"), animations: "disabled" });
 
   await page.locator("#primary-navigation nav").getByRole("button", { name: "Истории" }).click();
-  await expect(page.locator(".v2-story-grid .v2-story-card")).toHaveCount(2);
-  await page.locator(".v2-story-hero-copy button").click();
-  await expect(page.locator(".v2-story-scene img")).toBeVisible();
-  await expect(page.locator(".v2-story-choices button")).toHaveCount(2);
-  await page.screenshot({ path: info.outputPath("child-story.png"), animations: "disabled" });
+  await expect(page.getByRole("heading", {name: "Истории готовятся"})).toBeVisible();
+  await expect(page.locator(".v2-story-grid .v2-story-card")).toHaveCount(0);
+  await page.screenshot({ path: info.outputPath("child-story-review-gate.png"), animations: "disabled" });
 
   await page.locator("#primary-navigation nav").getByRole("button", { name: "Мои слова" }).click();
   await expect(page.getByRole("heading", { name: "Мои слова" })).toBeVisible();
@@ -77,12 +75,11 @@ test("child More page is mobile-only and the desktop sidebar can sign out", asyn
   await expect(cards).toHaveCount(4);
   await expect(page.locator(".v2-child-more-grid img")).toHaveCount(4);
   await expect.poll(() => page.locator(".v2-child-more img").evaluateAll((images) => images.slice(0, 3).every((image) => (image as HTMLImageElement).complete && (image as HTMLImageElement).naturalWidth > 0))).toBe(true);
-  const first = await cards.nth(0).boundingBox();
-  const second = await cards.nth(1).boundingBox();
-  expect(first).not.toBeNull();
-  expect(second).not.toBeNull();
-  expect(first!.height).toBeGreaterThanOrEqual(140);
-  expect(second!.y - (first!.y + first!.height)).toBeGreaterThanOrEqual(10);
+  await expect.poll(() => cards.evaluateAll(elements => {
+    const [first, second] = elements.map(element => element.getBoundingClientRect());
+    return second.y - first.bottom;
+  })).toBeGreaterThanOrEqual(10);
+  expect(await cards.first().evaluate(element => element.getBoundingClientRect().height)).toBeGreaterThanOrEqual(140);
   await expect(page.locator("#primary-navigation > .sidebar-logout")).toBeHidden();
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
   await page.screenshot({ path: info.outputPath("child-more-mobile.png"), animations: "disabled" });

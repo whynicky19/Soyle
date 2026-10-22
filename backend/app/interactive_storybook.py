@@ -41,12 +41,15 @@ STORY['audio'].update(voice='Milena', source='local_synthesis', clips={text: f"{
 def initial_state():
     return {'scene_index': 0, 'step': 0, 'ready': False, 'completed': False, 'paused': False,
             'feedback': '', 'selected': None, 'request': None, 'hints': [], 'assisted_scenes': [],
-            'break_count': 0, 'refusal_count': 0, 'events': []}
+            'break_count': 0, 'refusal_count': 0, 'events': [], 'choices': {}, 'page_states': {}, 'viewed_scenes': [], 'task_actions': [], 'repeated_scenes': []}
 
 
-def transition(state, action, event_id):
+def transition(state, action, event_id, definition=None):
     result = deepcopy(state)
-    scene = STORY['scenes'][state['scene_index']]
+    definition = definition or STORY
+    scene = definition['scenes'][state['scene_index']]
+    for key, default in [('choices', {}), ('page_states', {}), ('viewed_scenes', []), ('task_actions', []), ('repeated_scenes', [])]:
+        result.setdefault(key, deepcopy(default))
     if action == 'restart':
         result = {**initial_state(), 'events': deepcopy(state['events'])}
     elif action in {'pause', 'break', 'refuse', 'resume'}:
@@ -55,28 +58,54 @@ def transition(state, action, event_id):
         if action == 'refuse': result['refusal_count'] += 1
     elif result['paused'] or result['completed']:
         raise ValueError('Сначала продолжите книгу или начните заново')
+    elif action == 'repeat':
+        result['repeated_scenes'] = list(dict.fromkeys([*result['repeated_scenes'], scene['id']]))
     elif action == 'hint':
         result['hints'] = sorted(set(result['hints'] + [scene['id']]))
         result['feedback'] = scene['hint']
     elif action == 'assist':
         result['assisted_scenes'] = sorted(set(result['assisted_scenes'] + [scene['id']]))
-        result.update(ready=True, step=2 if scene['kind'] == 'sequence' else 1, feedback='Мы помогли вместе. Можно перевернуть страницу.')
+        if scene.get('personal_choice') and not result['ready']:
+            result['feedback'] = 'Взрослый может показать варианты. Любой выбор подойдёт; можно отказаться или сделать перерыв.'
+        else:
+            result.update(ready=True, step=2 if scene['kind'] == 'sequence' else 1, feedback='Мы помогли вместе. Можно перевернуть страницу.')
         if scene['kind'] == 'aac': result['request'] = 'assisted'
     elif action == 'continue':
-        if not result['ready'] and scene['kind'] != 'ending':
+        if not result['ready'] and scene['kind'] not in {'ending', 'watch'}:
             raise ValueError('Сначала помогите Мише или выберите помощь взрослого')
+        result['viewed_scenes'] = list(dict.fromkeys([*result['viewed_scenes'], scene['id']]))
+        result['page_states'][scene['id']] = {key: result[key] for key in ('step', 'ready', 'feedback', 'selected')}
         if scene['kind'] == 'ending': result['completed'] = True
-        else: result.update(scene_index=result['scene_index'] + 1, step=0, ready=False, feedback='', selected=None)
+        else:
+            next_index = result['scene_index'] + 1
+            restored = result['page_states'].get(definition['scenes'][next_index]['id'], {})
+            result.update(scene_index=next_index, step=0, ready=False, feedback='', selected=None)
+            result.update(restored)
+    elif action == 'back':
+        if result['scene_index'] == 0:
+            raise ValueError('Это первая страница')
+        result['page_states'][scene['id']] = {key: result[key] for key in ('step', 'ready', 'feedback', 'selected')}
+        previous = result['scene_index'] - 1
+        result.update(scene_index=previous, step=0, ready=False, feedback='', selected=None)
+        result.update(result['page_states'].get(definition['scenes'][previous]['id'], {}))
     else:
         configured = next((item for item in scene['options'] if item['key'] == action), None)
         if not configured: raise ValueError('Такого действия на этой странице нет')
         if not result['ready']:
-            if scene['kind'] == 'sequence':
+            if scene['kind'] == 'instruction':
+                steps = scene['sequence_steps']
+                if action != steps[result['step']]:
+                    raise ValueError('Сначала выбери предмет, затем место')
+                result['step'] += 1
+                result['ready'] = result['step'] == len(steps)
+                result['task_actions'].append({'scene': scene['id'], 'action': action, 'assisted': scene['id'] in result['hints'] or scene['id'] in result['assisted_scenes'] or scene['id'] in result['repeated_scenes']})
+            elif scene['kind'] == 'sequence':
                 if action == 'pick_train' and result['step'] == 0: result['step'] = 1
                 elif action == 'place_train' and result['step'] == 1: result.update(step=2, ready=True)
                 else: raise ValueError('Сначала возьмите поезд, затем поставьте на рельсы')
             else:
-                result['ready'] = scene['kind'] == 'aac' or configured.get('target', False)
+                result['ready'] = scene['kind'] in {'aac', 'choice'} or configured.get('target', False)
+                if scene['kind'] == 'choice': result['choices'][scene['id']] = action
                 if scene['kind'] == 'aac': result['request'] = action
                 if scene['kind'] == 'help': result['step'] = 1
             result['selected'] = action

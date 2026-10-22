@@ -1,0 +1,62 @@
+{
+  "admin_login_status": 200,
+  "draft_api_status": 200,
+  "local_drafts": [
+    {
+      "id": 54,
+      "exercise_id": 10,
+      "version": 4,
+      "title": "Что делает ребёнок: одинаковые предметы",
+      "publication_status": "draft",
+      "technical_status": "automated_passed",
+      "methodology_status": "pending",
+      "accessibility_status": "pending",
+      "release_status": "pending"
+    },
+    {
+      "id": 53,
+      "exercise_id": 24,
+      "version": 3,
+      "title": "Знакомые предметы: разные примеры",
+      "publication_status": "draft",
+      "technical_status": "automated_passed",
+      "methodology_status": "pending",
+      "accessibility_status": "pending",
+      "release_status": "pending"
+    },
+    {
+      "id": 52,
+      "exercise_id": 10,
+      "version": 3,
+      "title": "Что делает ребёнок: одинаковые предметы",
+      "publication_status": "draft",
+      "technical_status": "automated_passed",
+      "methodology_status": "pending",
+      "accessibility_status": "pending",
+      "release_status": "pending"
+    },
+    {
+      "id": 51,
+      "exercise_id": 24,
+      "version": 2,
+      "title": "Знакомые предметы: разные примеры",
+      "publication_status": "draft",
+      "technical_status": "automated_passed",
+      "methodology_status": "pending",
+      "accessibility_status": "pending",
+      "release_status": "pending"
+    }
+  ],
+  "parent_login_status": 200,
+  "local_parent_comic": {
+    "status": 200,
+    "scenes": 12,
+    "preview": true
+  },
+  "child_login_status": 200,
+  "local_child_stories": {
+    "status": 200,
+    "keys": []
+  },
+  "local_child_draft_comic_status": 403
+}

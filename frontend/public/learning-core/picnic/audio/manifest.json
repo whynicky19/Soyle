@@ -1,0 +1,175 @@
+{
+  "voice": "Milena",
+  "rate": 148,
+  "status": "generated_unreviewed",
+  "clips": [
+    {
+      "text": "Взяли стакан. Теперь положим его в сумку.",
+      "file": "/learning-core/picnic/audio/674f7c0a47190a42.wav",
+      "seconds": 3.35,
+      "sha256": "2325356158b18cb863bdc2de0a2769199d66db248f9ac6de68d7191a5d0b552a"
+    },
+    {
+      "text": "Возьми стакан. Потом положи его в сумку.",
+      "file": "/learning-core/picnic/audio/30c3f97ecaf292c0.wav",
+      "seconds": 3.36,
+      "sha256": "a84b68c92dfe073738af6b05c76a0dd286985ac367a403577681e748b6db75c5"
+    },
+    {
+      "text": "Возьмём книгу. В парке посмотрим картинки вместе.",
+      "file": "/learning-core/picnic/audio/c6dc9f251ab90fbd.wav",
+      "seconds": 4.0,
+      "sha256": "d1be4a19066d7e616a1e0763fad567127a65972383a1714f504365152ef9a5d7"
+    },
+    {
+      "text": "Возьмём мяч. В парке будем катать его вместе.",
+      "file": "/learning-core/picnic/audio/cf55626fd9083e83.wav",
+      "seconds": 3.66,
+      "sha256": "d5053deef8e4958abcbbaacd4afd176a30fad91be756fb8a7a48d4bf48113ced"
+    },
+    {
+      "text": "Вот наша игрушка. Можно играть вместе.",
+      "file": "/learning-core/picnic/audio/972782338ca95b97.wav",
+      "seconds": 3.21,
+      "sha256": "efde45f1258dfd2464c67d94829e2845a121c33de410685ce42cb6f49763fe27"
+    },
+    {
+      "text": "Все идут в парк. Сумка и корзина с ними.",
+      "file": "/learning-core/picnic/audio/6edac3fcee7a36d6.wav",
+      "seconds": 3.14,
+      "sha256": "3588ba0311d39fe197ef5c95d42ca1c5f05c06824e7d328e30f1f0321cc950b1"
+    },
+    {
+      "text": "Корзина закрыта. Можно попросить помочь.",
+      "file": "/learning-core/picnic/audio/4589b1c7762a3af2.wav",
+      "seconds": 3.23,
+      "sha256": "48b3db8c5f7df47c25e3c2e9641e939e72801128ae9ee7f69f244d927b3ee169"
+    },
+    {
+      "text": "Мама открыла корзину. Теперь можно идти.",
+      "file": "/learning-core/picnic/audio/1fbfc0bed67f08d3.wav",
+      "seconds": 3.12,
+      "sha256": "9a06a538eb5df8acfb7ee9e6b978ce69a50709d4dd9d1427fecb26307caac681"
+    },
+    {
+      "text": "Мама предлагает яблоко и банан. Какой фрукт ты выберешь?",
+      "file": "/learning-core/picnic/audio/26e90ad670e3ed34.wav",
+      "seconds": 4.22,
+      "sha256": "d19a2359fc6fe59fb115e78387949d8626ab37cd86d357d046e19e2792540f48"
+    },
+    {
+      "text": "Миша зовёт мишку на пикник. Мама идёт с ними.",
+      "file": "/learning-core/picnic/audio/d3141407b69e3602.wav",
+      "seconds": 3.52,
+      "sha256": "dd4c705f86d86b862b1e55949baf01976e7a6759e83c60e56bc5ec787625c94a"
+    },
+    {
+      "text": "Миша и мама смотрят книгу. Мишка рядом.",
+      "file": "/learning-core/picnic/audio/c8f329bdb6851fc0.wav",
+      "seconds": 3.25,
+      "sha256": "5b05760d06ad207f2cc14b6246bc03da1fbb077863a15d95bca0dc5d0c8349c6"
+    },
+    {
+      "text": "Миша катает мяч. Мама ловит мяч.",
+      "file": "/learning-core/picnic/audio/56a34625b82793c4.wav",
+      "seconds": 3.04,
+      "sha256": "a77a609261ca6072c4d72acb028134e4b05604ec3958a2a96f0d79bedd482dd5"
+    },
+    {
+      "text": "Миша показал на корзину. Мама поняла.",
+      "file": "/learning-core/picnic/audio/971de50e1222b844.wav",
+      "seconds": 3.06,
+      "sha256": "92325b727e162a2ad0924a237fd9b6fd6cdc77457b88f38a82381313046a4b24"
+    },
+    {
+      "text": "Пикник закончился. Можно отдохнуть.",
+      "file": "/learning-core/picnic/audio/3cf5f63f43fa4989.wav",
+      "seconds": 3.03,
+      "sha256": "dae4647b4bfeee83bc1e17472f2393e4b965a33ce8253d1853a6033c0288408e"
+    },
+    {
+      "text": "Пикник закончился. Можно отдохнуть. Ты выбрал: Книга, Банан.",
+      "file": "/learning-core/picnic/audio/034994c21433df93.wav",
+      "seconds": 5.47,
+      "sha256": "080cacb21622e92c0339b78afcf5ed2dcbed119c57c66b9cb50352de8637d4a0"
+    },
+    {
+      "text": "Пикник закончился. Можно отдохнуть. Ты выбрал: Книга, Яблоко.",
+      "file": "/learning-core/picnic/audio/dadae86833e1b3b4.wav",
+      "seconds": 5.61,
+      "sha256": "09a9335488334163ce4a576394b35c0b0697ed591c774b9adf641d407901b25c"
+    },
+    {
+      "text": "Пикник закончился. Можно отдохнуть. Ты выбрал: Мяч, Банан.",
+      "file": "/learning-core/picnic/audio/05f0470b7a5d6fd5.wav",
+      "seconds": 5.4,
+      "sha256": "690a8b087892b442bbb3afa9f2dcee5976a026cb706a77380e085dd4899af396"
+    },
+    {
+      "text": "Пикник закончился. Можно отдохнуть. Ты выбрал: Мяч, Яблоко.",
+      "file": "/learning-core/picnic/audio/3fff62b79af3f602.wav",
+      "seconds": 5.55,
+      "sha256": "918e87b1d3e91661d7a67e5abb976d1713e2376f96675c848fd632a41b3945b2"
+    },
+    {
+      "text": "Положи стакан в сумку.",
+      "file": "/learning-core/picnic/audio/440b88c5c499fe08.wav",
+      "seconds": 1.77,
+      "sha256": "2dc312b912fba75e5c2d97b386da7895d57ee83189897a481b912c9d7d3b9382"
+    },
+    {
+      "text": "Помоги",
+      "file": "/learning-core/picnic/audio/76ee22825e61cc2c.wav",
+      "seconds": 0.77,
+      "sha256": "e798af318a2b0aa3b354b37de856e57dac7a33fe19a596d93f62a63580702fb4"
+    },
+    {
+      "text": "После игры Миша пьёт воду. Мишка отдыхает рядом.",
+      "file": "/learning-core/picnic/audio/3a76849b6162c059.wav",
+      "seconds": 3.77,
+      "sha256": "2fa7cf36aeb3deb6c78751ef6ca5c922e2a529712672f85e280493e9159a795d"
+    },
+    {
+      "text": "Сначала собрали сумку. Потом гуляли. Теперь идём домой.",
+      "file": "/learning-core/picnic/audio/a1a90076d6daf3a7.wav",
+      "seconds": 4.58,
+      "sha256": "0110a023b8f8ccda5124ff837a36770036343c76de03c527d93e9c3ff3bb6456"
+    },
+    {
+      "text": "Стакан в сумке. Вода будет рядом.",
+      "file": "/learning-core/picnic/audio/201163e549f5aef6.wav",
+      "seconds": 2.87,
+      "sha256": "82119da83653fa4397db2a3a52189837b74d1a33434e03f49e081871bbb21cfc"
+    },
+    {
+      "text": "Стакан в сумке. Все вещи с нами.",
+      "file": "/learning-core/picnic/audio/d72a92f64749efd7.wav",
+      "seconds": 2.83,
+      "sha256": "60e3d711ff40e31f0f109e362d1418c54aa4fc496c56b298541f1f926632d89f"
+    },
+    {
+      "text": "Стакан у нас. Теперь нажми на сумку.",
+      "file": "/learning-core/picnic/audio/ba146da70ce3c7ec.wav",
+      "seconds": 2.93,
+      "sha256": "a3f25141fbc0e2005dce08687176339881c7f7369a67882189310b1d1390abc8"
+    },
+    {
+      "text": "Ты выбрал банан. Мама передала его Мише.",
+      "file": "/learning-core/picnic/audio/4b0bfe572d2d7a4a.wav",
+      "seconds": 3.14,
+      "sha256": "7d88ddc8c9e0423ac5de68c2e9281bb4916f9d534d7d11afb0a3190d3bb030cc"
+    },
+    {
+      "text": "Ты выбрал яблоко. Мама передала его Мише.",
+      "file": "/learning-core/picnic/audio/17c36e90cf178e32.wav",
+      "seconds": 3.31,
+      "sha256": "a2170629d28a114dc91301c2d182faf49bd931d29325fe6345b6db03a58c4b86"
+    },
+    {
+      "text": "Что возьмём для игры: мяч или книгу?",
+      "file": "/learning-core/picnic/audio/530fd34419677e1b.wav",
+      "seconds": 3.01,
+      "sha256": "c30cd34759c2ac5ef3f30c3466afabfef5fed0345d1a5e526e36a86b75eef6b3"
+    }
+  ]
+}

@@ -4,8 +4,15 @@ export type ChoiceStimulus = {
   speech: string;
   hint?: string;
   media_ref?: string;
+  exemplars?: string[];
   visual_token?: string;
 };
+
+export function chooseExemplar(stimulus: ChoiceStimulus, previous?: string, random: () => number = Math.random): string | undefined {
+  const candidates = [...new Set([stimulus.media_ref, ...(stimulus.exemplars || [])].filter((path): path is string => Boolean(path)))];
+  const unseen = candidates.filter((path) => path !== previous);
+  return shuffleWithRandom(unseen.length ? unseen : candidates, random)[0];
+}
 
 export type DifficultyLevel = {
   level: 1 | 2 | 3;
@@ -48,7 +55,7 @@ export function createChoiceRound(
   optionCount: 2 | 3 | 4,
   excludedTargetKeys?: string | readonly string[] | ReadonlySet<string>,
   random: () => number = Math.random,
-  previousCorrectIndex?: number,
+  _previousCorrectIndex?: number,
 ): ChoiceRound {
   if (stimuli.length < optionCount) throw new Error("Недостаточно стимулов для выбранной сложности");
   const excluded = typeof excludedTargetKeys === "string"
@@ -58,11 +65,6 @@ export function createChoiceRound(
   const target = shuffleWithRandom(possibleTargets.length ? possibleTargets : stimuli, random)[0];
   const distractors = shuffleWithRandom(stimuli.filter((item) => item.key !== target.key), random).slice(0, optionCount - 1);
   const optionKeys = shuffleWithRandom([target, ...distractors], random).map((item) => item.key);
-  const correctIndex = optionKeys.indexOf(target.key);
-  if (previousCorrectIndex !== undefined && optionKeys.length > 1 && correctIndex === previousCorrectIndex) {
-    const swapIndex = (correctIndex + 1 + Math.floor(random() * (optionKeys.length - 1))) % optionKeys.length;
-    [optionKeys[correctIndex], optionKeys[swapIndex]] = [optionKeys[swapIndex], optionKeys[correctIndex]];
-  }
   return { targetKey: target.key, optionKeys };
 }
 

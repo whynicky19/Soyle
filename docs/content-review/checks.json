@@ -1,0 +1,61 @@
+{
+  "date": "2026-10-22",
+  "review": "AI self-review, not independent clinical expertise",
+  "backend": {
+    "database": "SQLite",
+    "passed": 108,
+    "scope": "full current workspace suite"
+  },
+  "frontend_unit_tests": {
+    "passed": 66
+  },
+  "browser": {
+    "unique_scenarios_passed": 56,
+    "core_and_comic": 48,
+    "lost_response_and_aac_refusal": 8,
+    "action_image_resolution_recheck": 4,
+    "viewports": [
+      "desktop 1440",
+      "tablet",
+      "phone 390",
+      "phone 320"
+    ],
+    "scope": "selected new suites; not all legacy e2e files"
+  },
+  "build": {
+    "typescript": "passed",
+    "lint": "passed",
+    "production_build": "passed"
+  },
+  "assets": {
+    "generated_images": 34,
+    "required_images_opened": 35,
+    "hashed_assets": 62,
+    "comic_narration_clips": 28,
+    "new_common_narration_files": 8
+  },
+  "local_versions": {
+    "words": {
+      "exercise_id": 24,
+      "version_id": 53,
+      "version": 3,
+      "state": "draft"
+    },
+    "actions": {
+      "exercise_id": 10,
+      "version_id": 54,
+      "version": 4,
+      "state": "draft"
+    },
+    "comic": {
+      "key": "picnic",
+      "version": 1,
+      "state": "DRAFT"
+    }
+  },
+  "production_publication": false,
+  "local_child_draft_comic_api_status": 403,
+  "local_parent_comic_api_status": 200,
+  "physical_devices_tested": false,
+  "new_postgresql_run": false
+}

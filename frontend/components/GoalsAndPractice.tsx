@@ -22,10 +22,11 @@ const resultLabels = {
   technical_error: "Техническая ошибка",
 } as const;
 
-export function GoalsAndPractice({ child, targetMinutes, onStartPlan }: {
+export function GoalsAndPractice({ child, targetMinutes, onStartPlan, onPracticeChanged }: {
   child?: Child;
   targetMinutes: 3 | 5 | 10;
   onStartPlan: (plan: AdaptivePlan) => Promise<void>;
+  onPracticeChanged: () => void;
 }) {
   const [templates, setTemplates] = useState<PracticeGoalTemplate[]>([]);
   const [goals, setGoals] = useState<PracticeGoal[]>([]);
@@ -89,6 +90,8 @@ export function GoalsAndPractice({ child, targetMinutes, onStartPlan }: {
       setBaseline("");
       setMessage("Домашняя практическая цель добавлена. Это не профессиональное назначение.");
       await load();
+      setPlan(null);
+      onPracticeChanged();
     } catch (cause) { setMessage(cause instanceof Error ? cause.message : "Не удалось добавить цель"); }
     finally { setLoading(false); }
   };
@@ -103,6 +106,8 @@ export function GoalsAndPractice({ child, targetMinutes, onStartPlan }: {
       });
       setMessage("Статус цели сохранён в истории версий.");
       await load();
+      setPlan(null);
+      onPracticeChanged();
     } catch (cause) { setMessage(cause instanceof Error ? cause.message : "Не удалось обновить цель"); }
     finally { setLoading(false); }
   };
@@ -119,6 +124,8 @@ export function GoalsAndPractice({ child, targetMinutes, onStartPlan }: {
       setObservation({ result_type: "independent", prompt_level: "independent", note: "" });
       setMessage("Наблюдение из реальной жизни сохранено отдельно от игровых результатов.");
       await load();
+      setPlan(null);
+      onPracticeChanged();
     } catch (cause) { setMessage(cause instanceof Error ? cause.message : "Не удалось сохранить наблюдение"); }
     finally { setLoading(false); }
   };
@@ -136,6 +143,8 @@ export function GoalsAndPractice({ child, targetMinutes, onStartPlan }: {
         }),
       });
       setMessage("Предпочтения сохранены и будут учтены при следующем плане.");
+      setPlan(null);
+      onPracticeChanged();
     } catch (cause) { setMessage(cause instanceof Error ? cause.message : "Не удалось сохранить предпочтения"); }
     finally { setLoading(false); }
   };
@@ -195,8 +204,8 @@ export function GoalsAndPractice({ child, targetMinutes, onStartPlan }: {
     {linkedExercises.length ? <section className="practice-preferences-card"><div className="admin-card-head"><div><span className="kicker">ПРЕДПОЧТЕНИЯ</span><h2>Что подходит ребёнку</h2><p>Отметки влияют только на порядок связанных опубликованных заданий. «Избегать» полностью исключает задание из нового плана.</p></div></div><div className="preference-list">{linkedExercises.map((exercise) => <label key={exercise.id}><span><strong>{exercise.title}</strong><small>Опубликованная версия {exercise.exercise_version}</small></span><select aria-label={`Предпочтение: ${exercise.title}`} value={preferences[exercise.id] || "neutral"} onChange={(event) => setPreferences({...preferences, [exercise.id]: event.target.value as Preference})}><option value="neutral">Без отметки</option><option value="preferred">Предпочитает</option><option value="avoid">Пока не предлагать</option></select></label>)}</div><label className="preference-note">Что ещё важно учесть<textarea value={preferenceNote} maxLength={600} onChange={(event) => setPreferenceNote(event.target.value)} placeholder="Например: лучше знакомые картинки и короткие занятия"/></label><button type="button" className="secondary-button" disabled={loading} onClick={() => void savePreferenceList()}><Save size={16}/> Сохранить предпочтения</button></section> : null}
 
     <section className="adaptive-plan-card" aria-labelledby="adaptive-plan-title">
-      <div className="adaptive-plan-head"><div><span className="kicker">ПЛАН НА {targetMinutes} МИНУТ</span><h2 id="adaptive-plan-title">Объяснимый подбор занятий</h2><p>Только активные цели и разрешённые версии. Сложность меняется через число вариантов, подсказки и знакомость материалов.</p></div><button type="button" className="primary-button" disabled={loading} onClick={() => void preparePlan()}><Sparkles size={17}/>{loading ? "Проверяем…" : "Подготовить план"}</button></div>
-      {plan && <div className="prepared-plan"><p className="plan-summary">{plan.summary}</p>{plan.items.map((item, index) => <article key={item.id}><span className="plan-number">{index + 1}</span><div><small>{item.module === "sensory" ? "Понимание речи" : "AAC-коммуникация"} · версия задания {item.exercise_version}</small><h3>{item.exercise_title}</h3><p>{item.instruction}</p><div className="difficulty-chips"><span>{item.difficulty_params.option_count ? `${item.difficulty_params.option_count} варианта` : "AAC-карточки"}</span><span>{item.difficulty_params.prompt_mode === "model_and_visual" ? "показ и подсказка" : item.difficulty_params.prompt_mode === "visual" ? "визуальная подсказка" : "подсказка по запросу"}</span><span>{item.difficulty_params.familiar_repetition ? "знакомый формат" : "разнообразие материалов"}</span></div><details><summary>Почему предложено</summary><ul>{item.assignment_reason.messages.map((reason) => <li key={reason}>{reason}</li>)}</ul></details></div></article>)}{plan.notices.map((notice, index) => <div className="plan-notice" key={`${notice.goal_id}-${index}`}><CircleAlert size={17}/><span>{notice.goal_title && <strong>{notice.goal_title}: </strong>}{notice.message}</span></div>)}{plan.items.length ? <button type="button" className="primary-button plan-start" disabled={loading} onClick={() => void startPlan()}><Play size={18} fill="currentColor"/> Начать этот план</button> : null}</div>}
+      <div className="adaptive-plan-head"><div><span className="kicker">ПЛАН НА {targetMinutes} МИНУТ</span><h2 id="adaptive-plan-title">Объяснимый подбор занятий</h2><p>Только активные цели и разрешённые версии. Сложность меняется через число вариантов и раундов.</p></div><button type="button" className="primary-button" disabled={loading} onClick={() => void preparePlan()}><Sparkles size={17}/>{loading ? "Проверяем…" : "Подготовить план"}</button></div>
+      {plan && <div className="prepared-plan"><p className="plan-summary">{plan.summary}</p>{plan.items.map((item, index) => <article key={item.id}><span className="plan-number">{index + 1}</span><div><small>{item.module === "sensory" ? "Понимание речи" : "AAC-коммуникация"} · версия задания {item.exercise_version}</small><h3>{item.exercise_title}</h3><p>{item.instruction}</p><div className="difficulty-chips"><span>{item.difficulty_params.option_count ? `${item.difficulty_params.option_count} варианта` : item.module === "sensory" ? "Инструкция" : "AAC-карточки"}</span><span>{item.difficulty_params.round_count} раундов</span></div><details><summary>Почему предложено</summary><ul>{item.assignment_reason.messages.map((reason) => <li key={reason}>{reason}</li>)}</ul></details></div></article>)}{plan.notices.map((notice, index) => <div className="plan-notice" key={`${notice.goal_id}-${index}`}><CircleAlert size={17}/><span>{notice.goal_title && <strong>{notice.goal_title}: </strong>}{notice.message}</span></div>)}{plan.items.length ? <button type="button" className="primary-button plan-start" disabled={loading} onClick={() => void startPlan()}><Play size={18} fill="currentColor"/> Начать этот план</button> : null}</div>}
     </section>
 
     <section className="plan-history-card"><div><History size={22}/><span><strong>Предыдущие планы</strong><small>Сохраняются версии целей, заданий, параметры сложности и причины выбора.</small></span></div>{history.length ? <div>{history.slice(0, 5).map((item) => <span key={item.id}><b>{new Date(item.created_at).toLocaleDateString("ru-RU")} · {item.items.length} заданий</b><small>{item.status === "started" ? "занятие начато" : "подготовлен"} · правила {item.rules_version}</small></span>)}</div> : <p>История появится после первого подготовленного плана.</p>}</section>

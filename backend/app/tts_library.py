@@ -7,6 +7,7 @@ from .storybook_content import FAVORITE_TOY
 from .exercise_engine import AAC_SCENARIOS, SENSORY_CONTENT
 from .p1_content import ACTION_RUNNER_DRAFT, INSTRUCTION_RUNNER_DRAFT, WORD_RUNNER_DRAFT
 from .p15_content import P15_EXERCISE_DRAFTS
+from .core_content import CORE_EXERCISES
 
 
 BUNDLED_TTS_DIR = Path(__file__).with_name("tts_audio")
@@ -80,7 +81,11 @@ def known_russian_tts_texts() -> tuple[str, ...]:
                 texts.add(speech)
                 texts.add(f"Это {speech.lower()}.")
 
-    for exercise in (WORD_RUNNER_DRAFT, ACTION_RUNNER_DRAFT, INSTRUCTION_RUNNER_DRAFT, *P15_EXERCISE_DRAFTS):
+    for exercise in (WORD_RUNNER_DRAFT, ACTION_RUNNER_DRAFT, INSTRUCTION_RUNNER_DRAFT, *P15_EXERCISE_DRAFTS, *CORE_EXERCISES):
         texts.update(_exercise_speech(exercise))
+    for exercise in CORE_EXERCISES:
+        for stimulus in exercise["content"].get("stimuli", []):
+            label = stimulus["label"].lower()
+            texts.add(f"Ребёнок {label}." if exercise["mechanic"] == "action_choice" else f"Это {label}.")
 
     return tuple(sorted({normalize_tts_text(text) for text in texts if normalize_tts_text(text)}))

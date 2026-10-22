@@ -4,8 +4,9 @@ import Image from "next/image";
 import { ArrowLeft, BookOpen, Check, ChevronRight, Play, RotateCcw, Volume2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { api, type Story } from "@/lib/api";
+import { InteractiveBook } from "./storybook/book/InteractiveBook";
 
-export function StoryExperience({ childId }: { childId?: number }) {
+export function StoryExperience({ childId, calmMode = false }: { childId?: number; calmMode?: boolean }) {
   const [stories, setStories] = useState<Story[]>([]);
   const [activeKey, setActiveKey] = useState<string | null>(null);
   const [filter, setFilter] = useState("Все");
@@ -70,6 +71,9 @@ export function StoryExperience({ childId }: { childId?: number }) {
 
   if (!childId) return <div className="v2-screen v2-story-status" role="status">Сначала открой профиль ребёнка.</div>;
   if (loading) return <div className="v2-screen v2-story-status" role="status">Открываем истории…</div>;
+
+  if (active?.engine === "interactive_book") return <InteractiveBook childId={childId} storyKey={active.key} calmMode={calmMode} onExit={() => setActiveKey(null)}/>;
+  if (!stories.length && !error) return <div className="v2-screen v2-story-status" role="status"><BookOpen/><h1>Истории готовятся</h1><p>Здесь пока нет доступных историй. Можно выбрать игру в разделе «Занятия».</p></div>;
 
   if (active) {
     const scene = active.scenes[active.scene_index];

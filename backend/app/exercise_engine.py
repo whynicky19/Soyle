@@ -9,7 +9,9 @@ from .database import IS_PRODUCTION, env_enabled, now_iso
 
 
 SUPPORTED_PUBLIC_MECHANICS = frozenset({"auditory_choice", "action_choice", "tap_instruction", "guided_aac"})
-ALLOW_UNREVIEWED_DEMO_CONTENT = env_enabled("SOYLE_ALLOW_UNREVIEWED_DEMO_CONTENT", default=not IS_PRODUCTION)
+# An explicit local demonstration is the only exception to the review gate.
+# Production must never accept this environment switch.
+ALLOW_UNREVIEWED_DEMO_CONTENT = not IS_PRODUCTION and env_enabled("SOYLE_ALLOW_UNREVIEWED_DEMO_CONTENT")
 
 SENSORY_CONTENT: dict[str, list[dict[str, str]]] = {
     "animals": [
@@ -287,6 +289,15 @@ def validate_version(version: dict, *, enforce_visual_consistency: bool = True) 
                     errors.append(f"Стимул {index}: нужна локальная иллюстрация или проверенный visual_token")
                 if stimulus.get("media_ref") and not str(stimulus["media_ref"]).startswith("/"):
                     errors.append(f"Стимул {index}: разрешены только локальные media_ref")
+                exemplars = stimulus.get("exemplars")
+                if exemplars is not None:
+                    if not isinstance(exemplars, list) or not 1 <= len(exemplars) <= 5 or any(
+                        not isinstance(path, str) or not path.startswith("/") or path.startswith("//") or ".." in path.split("/")
+                        for path in exemplars
+                    ):
+                        errors.append(f"Стимул {index}: примеры должны содержать от 1 до 5 локальных путей")
+                    elif len(set([stimulus.get("media_ref"), *exemplars])) != len(exemplars) + 1:
+                        errors.append(f"Стимул {index}: примеры должны отличаться от основного изображения и друг от друга")
                 if mechanic == "action_choice" and not stimulus.get("media_ref"):
                     errors.append(f"Стимул {index}: для действия нужна полноценная локальная сцена, а не visual_token")
                 keys.append(key.lower())
@@ -408,12 +419,8 @@ def published_exercise_rows(db) -> list[dict]:
            JOIN exercise_versions v ON v.exercise_id=e.id
            WHERE e.is_active=1 AND v.review_status='approved' AND v.publication_status='published'
              AND v.mechanic<>'local_face_mirror'
-             -- Keep historically published activities playable without inventing
-             -- new review approvals. Their response still carries demo_only=true.
              AND ((v.technical_status='passed' AND v.methodology_status='approved'
                    AND v.accessibility_status='approved' AND v.release_status='approved')
-                  OR (v.technical_status='legacy_publication' AND v.methodology_status='legacy_publication'
-                      AND v.accessibility_status='legacy_publication' AND v.release_status='legacy_publication')
                   OR ?=1)
              AND v.version=(SELECT MAX(v2.version) FROM exercise_versions v2
                             WHERE v2.exercise_id=e.id AND v2.review_status='approved'
@@ -426,15 +433,6 @@ def published_exercise_rows(db) -> list[dict]:
         item = dict(row)
         mechanic = item.pop("mechanic")
         content = json.loads(item.pop("content_json") or "{}")
-        if mechanic == "guided_aac":
-            scenario = AAC_SCENARIOS.get(content.get("scenario_key"), {})
-            # Published built-in scenarios use the current reviewed contract. The
-            # stored version still supplies its scenario key and any unrelated data.
-            content = {**content, **scenario}
-        elif mechanic == "auditory_choice" and item.get("target") in SENSORY_CONTENT:
-            # Built-in exercises keep reviewed visual corrections current even
-            # when an older local database still contains the original payload.
-            content = {**content, "stimuli": SENSORY_CONTENT[item["target"]]}
         item["engine"] = {
             "version_id": item.pop("exercise_version_id"),
             "version": item.pop("content_version"),

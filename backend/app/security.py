@@ -32,13 +32,33 @@ def hash_password(password: str) -> str:
 def verify_password(password: str, encoded: str) -> bool:
     return password_hash.verify(password, encoded)
 
+def _create_session(subject: str, role: str, hours: int) -> str:
+    expires = int((datetime.now(timezone.utc) + timedelta(hours=hours)).timestamp())
+    session_id = secrets.token_urlsafe(32)
+    with connect() as db:
+        db.execute("DELETE FROM auth_sessions WHERE expires_at<=?", (int(datetime.now(timezone.utc).timestamp()),))
+        db.execute("INSERT INTO auth_sessions(id,subject,expires_at) VALUES(?,?,?)", (session_id, subject, expires))
+    return jwt.encode({"sub": subject, "role": role, "exp": expires, "jti": session_id}, SECRET_KEY, algorithm=ALGORITHM)
+
+
 def create_access_token(user_id: int, role: str) -> str:
-    expires = datetime.now(timezone.utc) + timedelta(hours=24)
-    return jwt.encode({"sub": str(user_id), "role": role, "exp": expires}, SECRET_KEY, algorithm=ALGORITHM)
+    return _create_session(str(user_id), role, 24)
+
 
 def create_student_access_token(student_id: int) -> str:
-    expires = datetime.now(timezone.utc) + timedelta(hours=12)
-    return jwt.encode({"sub": f"student:{student_id}", "role": "student", "exp": expires}, SECRET_KEY, algorithm=ALGORITHM)
+    return _create_session(f"student:{student_id}", "student", 12)
+
+
+def revoke_request_session(request: Request, bearer_token: str | None) -> None:
+    token = bearer_token or request.cookies.get(AUTH_COOKIE_NAME)
+    if not token:
+        return
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM], options={"require": ["sub", "exp", "jti"]})
+    except InvalidTokenError:
+        return
+    with connect() as db:
+        db.execute("DELETE FROM auth_sessions WHERE id=? AND subject=?", (payload["jti"], payload["sub"]))
 
 
 def set_auth_cookies(response: Response, token: str, *, max_age: int = COOKIE_MAX_AGE_SECONDS) -> str:
@@ -66,9 +86,13 @@ def get_current_user(request: Request, bearer_token: str | None = Depends(oauth2
     if not token:
         raise error
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM], options={"require": ["sub", "exp", "jti"]})
         subject = str(payload.get("sub", ""))
     except InvalidTokenError:
+        raise error
+    with connect() as db:
+        session = db.execute("SELECT id FROM auth_sessions WHERE id=? AND subject=? AND expires_at>?", (payload["jti"], subject, int(datetime.now(timezone.utc).timestamp()))).fetchone()
+    if not session:
         raise error
     if subject.startswith("student:"):
         try:
@@ -86,7 +110,7 @@ def get_current_user(request: Request, bearer_token: str | None = Depends(oauth2
         raise error
     with connect() as db:
         row = db.execute("SELECT id,username,full_name,role,is_active,created_at FROM users WHERE id=?", (user_id,)).fetchone()
-    if not row or not row["is_active"] or row["role"] == "specialist":
+    if not row or not row["is_active"]:
         raise error
     return dict(row)
 

@@ -1,0 +1,58 @@
+[
+  {
+    "file": "/learning-core/actions/eat.webp",
+    "concept": "eat",
+    "purpose": "action_choice",
+    "origin": "built-in imagegen; shared synthetic reference",
+    "size": [
+      960,
+      720
+    ],
+    "bytes": 79970,
+    "sha256": "4b79f202b036c642e45da6794197407ecf8e0a8ae6353db5b43d43f06b22c97b",
+    "ai_visual_review": "2026-10-22: same child, all four props present, coherent pose; no family photographs; no validation with children",
+    "source_generation": "exec-f2acea6a-36a7-43db-b8f7-cfc5d47e1296.png"
+  },
+  {
+    "file": "/learning-core/actions/drink.webp",
+    "concept": "drink",
+    "purpose": "action_choice",
+    "origin": "built-in imagegen; shared synthetic reference",
+    "size": [
+      960,
+      720
+    ],
+    "bytes": 79294,
+    "sha256": "f9996a93914a7d24ee70cb5826f57524ad46d333678953040e06ea0c083ce170",
+    "ai_visual_review": "2026-10-22: same child, all four props present, coherent pose; no family photographs; no validation with children",
+    "source_generation": "exec-1e80a54a-f434-4452-91c3-ba0694e887d2.png"
+  },
+  {
+    "file": "/learning-core/actions/read.webp",
+    "concept": "read",
+    "purpose": "action_choice",
+    "origin": "built-in imagegen; shared synthetic reference",
+    "size": [
+      960,
+      720
+    ],
+    "bytes": 84012,
+    "sha256": "9d5461fc2e6b912797ba6e349a971dc73f881703172e9c5b12547aaf9ab989d6",
+    "ai_visual_review": "2026-10-22: same child, all four props present, coherent pose; no family photographs; no validation with children",
+    "source_generation": "exec-dce1ef17-607c-4e79-907e-7b0b7ffe3e59.png"
+  },
+  {
+    "file": "/learning-core/actions/play.webp",
+    "concept": "play",
+    "purpose": "action_choice",
+    "origin": "built-in imagegen; shared synthetic reference",
+    "size": [
+      960,
+      720
+    ],
+    "bytes": 77580,
+    "sha256": "6cc239ce272ff4ea662d3ca5ed089f8e9c795b57e6145aab3a8d502580c5d0bf",
+    "ai_visual_review": "2026-10-22: same child, all four props present, coherent pose; no family photographs; no validation with children",
+    "source_generation": "exec-a8552bfb-b98d-4d54-a029-f7299b20578a.png"
+  }
+]

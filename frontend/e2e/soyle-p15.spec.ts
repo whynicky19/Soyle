@@ -117,7 +117,7 @@ test("child choice runner handles audio, wrong answer, hint, repeat and saved co
   await options.nth(0).click();
   await expect(page.getByText("Получилось", { exact: true })).toBeVisible();
 
-  for (const correctIndex of [1, 0, 1]) {
+  for (const correctIndex of [0, 0, 0]) {
     await page.getByRole("button", { name: /Дальше|Завершить/ }).click();
     await expect(page.locator(".picture-options button")).toHaveCount(2);
     await page.locator(".picture-options button").nth(correctIndex).click();
@@ -134,8 +134,7 @@ test("animal choices use one consistent illustrated pictogram set", async ({ pag
   await page.locator(".aac-card-main").filter({ has: page.locator("strong", { hasText: /^Мама$/ }) }).click();
   await page.locator(".speak-button").click();
   await page.getByRole("button", { name: "Закончить практику" }).click();
-  await page.locator("details.child-more-games > summary").click();
-  await page.getByRole("button", { name: /Домашние животные/ }).click();
+  await openCatalogExercise(page, /Домашние животные/);
   await page.locator(".runner-levels button").filter({ hasText: /^4$/ }).click();
   await page.getByRole("button", { name: /Понятно, начать/ }).click();
 
@@ -147,7 +146,7 @@ test("animal choices use one consistent illustrated pictogram set", async ({ pag
     return parsed.searchParams.get("url") || parsed.pathname;
   }));
   for (const source of pictureSources) {
-    expect(source).toMatch(/^\/aac-pictograms\/(cat|dog|fish|bird|rabbit|turtle|snail|bug)\.png$/);
+    expect(source).toMatch(/^\/app-illustrations\/exercise-stimulus-(cat|dog|fish|bird|rabbit|turtle|snail|bug)\.webp$/);
   }
 });
 
@@ -156,7 +155,7 @@ test("break and refusal are accepted without exposing a draft", async ({ page })
   await openMainSection(page, "Занятия");
   await openToysExercise(page);
   await page.getByRole("button", { name: "Перерыв" }).click();
-  await expect(page.getByRole("heading", { name: "Выбери одну игру" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Выбери игру" })).toBeVisible();
   await openToysExercise(page);
   await page.getByRole("button", { name: "Не хочу" }).click();
   await expect(page.getByRole("heading", { name: "Сообщение принято" })).toBeVisible();

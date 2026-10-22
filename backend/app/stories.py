@@ -1,4 +1,13 @@
-"""Reviewed, deterministic interactive stories. Choices never depend on a model."""
+"""Draft deterministic story content; requires independent review before release."""
+
+from random import SystemRandom
+from . import exercise_engine
+
+def story_available(story: dict) -> bool:
+    if story.get("retired_from_child_catalog"):
+        return False
+    return exercise_engine.ALLOW_UNREVIEWED_DEMO_CONTENT or (story.get("status") == "PUBLISHED" and all(story.get("approval", {}).get(stage) == "approved" for stage in ("technical", "methodology", "accessibility", "release")))
+
 
 def choice(key: str, label: str, pictogram: str) -> dict:
     designed = {"help": "/app-illustrations/aac-help.webp", "water": "/app-illustrations/aac-water.webp", "stop": "/app-illustrations/aac-stop.webp", "break": "/app-illustrations/aac-break.webp", "teddy": "/app-illustrations/aac-teddy.webp", "train": "/app-illustrations/aac-train.webp", "apple": "/app-illustrations/aac-apple.webp", "banana": "/app-illustrations/aac-banana.webp"}
@@ -43,8 +52,20 @@ STORIES = {
 }
 
 
+# Retain source definitions and all stored progress. These three-page quizzes
+# are not complete stories and must not reappear through the local demo switch.
+for _legacy_story in STORIES.values():
+    _legacy_story["retired_from_child_catalog"] = True
+    _legacy_story["retirement_reason"] = "Короткий вопросник заменяется содержательным комиксом; история результатов сохранена"
+
+
 def public_story(key: str, story: dict, progress: dict | None = None) -> dict:
     progress = progress or {}
+    scenes = []
+    for scene in story["scenes"]:
+        public = {field: value for field, value in scene.items() if field != "answer"}
+        public["choices"] = SystemRandom().sample(scene["choices"], len(scene["choices"]))
+        scenes.append(public)
     return {
         "key": key,
         "title": story["title"],
@@ -54,5 +75,5 @@ def public_story(key: str, story: dict, progress: dict | None = None) -> dict:
         "scene_count": len(story["scenes"]),
         "scene_index": progress.get("scene_index", 0),
         "completed_at": progress.get("completed_at"),
-        "scenes": [{field: value for field, value in scene.items() if field != "answer"} for scene in story["scenes"]],
+        "scenes": scenes,
     }

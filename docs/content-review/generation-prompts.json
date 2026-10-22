@@ -1,0 +1,119 @@
+{
+  "tool": "Built-in image_gen.imagegen; no family photographs",
+  "words": {
+    "common": "Use case: scientific-educational. Individual vocabulary stimulus, one isolated object centered and entirely visible, realistic gouache illustration, soft even light, plain warm ivory background #faf8f2, minimal grounding shadow. No other objects, text, letters, symbols, border or watermark.",
+    "subjects": {
+      "ball-a": "red rubber ball with subtle curved molded seam",
+      "cup-a": "red empty ceramic cup with open rim and handle",
+      "book-a": "closed red hardcover book, visible cream page block",
+      "spoon-a": "red silicone spoon, complete handle and bowl",
+      "ball-b": "matte blue rubber ball, faint equatorial seam",
+      "cup-b": "low wide blue ceramic teacup",
+      "book-b": "open blue hardcover book, blank cream pages",
+      "spoon-b": "blue plastic teaspoon, opposite diagonal"
+    }
+  },
+  "actions": {
+    "reference": "Fictional child, short dark hair, teal shirt, tan trousers, at low pale wood table in warm ivory room. Realistic gouache, soft even light. All four props in every scene: blue cup, bowl with spoon, green book, red ball. No text or arrows.",
+    "subjects": {
+      "eat": "Spoon carrying food raised to slightly open mouth; other hand steadies bowl",
+      "drink": "Cup rim touching lips and gently tilted; spoon remains resting in bowl",
+      "read": "Both hands hold open picture book; gaze into pages; bowl, cup and ball retained",
+      "play": "Open hands guide ball rolling on table; gaze toward ball; bowl, cup and book retained"
+    },
+    "rejected": "Holds cup: rejected because drinking also entails holding a cup; not installed"
+  },
+  "picnic": {
+    "common": "One complete 4:3 gouache comic scene. Preserve fictional Misha with short dark brown hair, teal shirt, tan trousers; mother with dark brown hair, rust shirt, navy trousers; brown teddy with teal bow; tan canvas tote, wicker basket, blue tumbler, red ball, green picture book. Soft daylight, ivory and sage palette, clear natural hands. No text, speech balloons, symbols, border or watermark. Shared synthetic character reference.",
+    "scenes": [
+      [
+        "02",
+        "Closer floor view in the same room. Misha and mother look down at a red rubber ball and closed green picture book laid beside an open tan canvas bag, giving both items equal visual prominence. Teddy with teal bow sits nearby, wicker basket and blue cup nearby. Neither item chosen yet."
+      ],
+      [
+        "03",
+        "Same room, different meaningful action: Misha holds a BLUE CUP directly above the opening of the tan canvas bag, preparing to put the cup into it. Mother steadies the bag. Teddy sits nearby and closed wicker basket awaits. The selected toy is already packed, invisible INSIDE bag: DO NOT SHOW ANY ball or book outside bag."
+      ],
+      [
+        "04",
+        "Same room: close view of Misha sitting in front of a CLOSED wicker basket, fingers gently on lid, looking to mother for help, calm not upset. Canvas bag stands open to one side, BLUE CUP clearly visible INSIDE it. Teddy nearby. No ball or book visible, they are inside bag."
+      ],
+      [
+        "05",
+        "Mother now OPENS the wicker basket lid with both hands while Misha watches gratefully, both smiling gently. Interior shows apple and banana wrapped for picnic. Same room, teddy and tan canvas bag with blue cup inside nearby. Do not show ball or book."
+      ],
+      [
+        "06",
+        "Misha and mother WALK together on a safe leafy park path, teddy tucked comfortably under Misha's free arm, mother carries wicker basket and tan canvas bag CLOSED so contents invisible. Same clothes and faces, full readable walking poses, no roads or cars. Soft daylight, same gouache style. No toys outside bag."
+      ],
+      [
+        "07-ball",
+        "Park picnic blanket scene. Misha ROLLS the red rubber ball to mother on a low green blanket; mother reaches to receive it, both look at ball, teddy sits watching. Tan canvas bag and wicker basket at blanket edge, blue cup visible. NO BOOK anywhere: it was not chosen. Fruit still in basket."
+      ],
+      [
+        "07-book",
+        "Park picnic blanket scene. Misha and mother sit side by side LOOKING AT the OPEN green picture book, teddy between them. Natural hands hold the book, gaze at inside pages; no text on book. Tan canvas bag and wicker basket at blanket edge, blue cup visible. NO BALL anywhere: it was not chosen. Fruit still in basket."
+      ],
+      [
+        "08",
+        "At the same picnic blanket mother OFFERS one apple in one open palm and one peeled banana in the other at equal height, equal prominence. Misha looks between them, free to choose. Teddy sits beside child, basket and closed tan bag behind them, blue cup nearby. No ball or book visible: toy put back into bag."
+      ],
+      [
+        "08-apple",
+        "Same picnic blanket and characters. Mother has handed Misha the APPLE: Misha holds the apple in both hands, visibly receiving it from mother's open hand. Banana remains visible in open wicker basket. Teddy nearby, closed tan bag, blue cup. NO book or ball visible."
+      ],
+      [
+        "08-banana",
+        "Same picnic blanket and characters. Mother has handed Misha the BANANA: Misha holds peeled banana in one hand, visibly receiving it from mother's open hand. Apple remains visible in open wicker basket. Teddy nearby, closed tan bag, blue cup. NO book or ball visible."
+      ],
+      [
+        "09",
+        "Calm pause at park blanket: Misha DRINKS water from BLUE CUP, rim at lips, mother rests alongside him and teddy sits nearby. Wicker basket now closed, tan canvas bag closed, no fruit or toys visible; no fruit implied chosen either way. No thirst distress."
+      ],
+      [
+        "10",
+        "Preparing to leave picnic: Misha kneels at blanket edge holding BLUE CUP near OPEN tan canvas bag, looking at bag. Mother folds blanket, teddy sitting safely nearby, wicker basket closed. The cup is clearly OUTSIDE the bag. No ball or book visible."
+      ],
+      [
+        "10-packed",
+        "Same packing scene: BLUE CUP now clearly INSIDE OPEN tan canvas bag, Misha points gently toward cup with empty hands. Mother folds blanket, teddy nearby, wicker basket closed. No ball or book visible. This is the visible result state after putting cup in bag."
+      ],
+      [
+        "11",
+        "Mother and Misha WALK HOME along the leafy path toward a welcoming front door. Mother carries closed wicker basket and CLOSED tan canvas bag, Misha carries teddy with teal bow. Clear walking body poses; no toys or fruits visible outside bag, all packed. Warm afternoon light, same clothes."
+      ],
+      [
+        "12",
+        "Back at the same original living room, mother and Misha rest together on rug with teddy sitting between them. Tan canvas bag rests empty nearby; BLUE CUP on low table. RED BALL and GREEN BOOK both stored together on a low shelf in background (both belong at home regardless of chosen picnic toy). Closed wicker basket by doorway. Calm clear ending, no celebration effects."
+      ]
+    ],
+    "objects": [
+      [
+        "book",
+        "one CLOSED GREEN hardcover picture book, blank cover without writing, cream page block, no text"
+      ],
+      [
+        "cup",
+        "one simple BLUE handleless drinking tumbler, empty, visibly open circular rim"
+      ],
+      [
+        "bag",
+        "one OPEN TAN canvas tote bag with two short handles, empty inside, open top clearly visible"
+      ],
+      [
+        "apple",
+        "one ordinary red apple, entire fruit, short natural stem, no bite"
+      ],
+      [
+        "banana",
+        "one yellow banana, half peeled with three peel strips, entire fruit visible"
+      ]
+    ],
+    "revisions": [
+      "08, 08-apple, 08-banana, 10, 10-packed: replace indoor room with outdoor park using the approved park reference; keep hands, faces and who holds which object unchanged; hide packed toys.",
+      "09: remove unchosen ball and book, preserving drinking pose and outdoor park.",
+      "Book choice object: add matching sunny meadow landscape to green cover; no text.",
+      "10-before: put blue cup upright on blanket outside bag; child reaches with empty hands; preserve outdoor setting and character identities."
+    ]
+  }
+}

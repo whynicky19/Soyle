@@ -18,6 +18,7 @@ const contentSecurityPolicy = [
 ].join("; ");
 
 const nextConfig: NextConfig = {
+  distDir: process.env.SOYLE_E2E_BUILD === "true" ? ".next-e2e" : ".next",
   reactStrictMode: true,
   devIndicators: false,
   async rewrites() {

@@ -1,8 +1,8 @@
 from datetime import date, datetime
 from typing import Any, Literal
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
-Role = Literal["admin", "parent"]
+Role = Literal["admin", "parent", "specialist"]
 ModuleName = Literal["motor", "sensory", "mixed"]
 SkillName = Literal["articulation", "vocabulary", "speech_comprehension", "word_repetition", "phrase_building", "communication"]
 
@@ -30,6 +30,7 @@ class ChildCreate(BaseModel):
     avatar_color: str = Field(default="#f07d68", pattern=r"^#[0-9a-fA-F]{6}$")
 
 class SessionCreate(BaseModel):
+    event_id: str | None = Field(default=None, min_length=8, max_length=80)
     child_id: int
     exercise_id: int
     module: ModuleName
@@ -58,6 +59,10 @@ class LearningSessionCreate(BaseModel):
     exercise_ids: list[int] = Field(default_factory=list, min_length=1, max_length=5)
     target_minutes: Literal[3, 5, 10] = 5
     adaptive_plan_id: int | None = None
+
+class LearningSessionPauseRequest(BaseModel):
+    paused: bool = True
+
 
 class ExerciseCreate(BaseModel):
     module: ModuleName
@@ -286,6 +291,7 @@ class AdaptivePlanRequest(BaseModel):
 
 class ConsentUpdate(BaseModel):
     privacy_accepted: bool
+    specialist_sharing: bool = False
     camera_processing: bool = False
     ai_processing: bool = False
     analytics_processing: bool = False
@@ -314,3 +320,23 @@ class CinematicStorybookEvent(BaseModel):
     phase: str = Field(min_length=1, max_length=30)
     event_id: str = Field(min_length=8, max_length=80)
     action: str = Field(min_length=1, max_length=40)
+
+
+class SpecialistAccessCreate(BaseModel):
+    username: str = Field(min_length=3, max_length=40, pattern=r"^[a-zA-Z0-9_.-]+$")
+
+
+class SpecialistObservationCreate(BaseModel):
+    result_type: Literal["independent", "with_help", "not_observed", "refused", "break", "technical_error"]
+    prompt_level: Literal["independent", "minimal", "full"]
+    context: str = Field(min_length=3, max_length=300)
+    note: str = Field(min_length=3, max_length=1000)
+    goal_id: int | None = None
+
+    @model_validator(mode="after")
+    def consistent_support(self):
+        if self.result_type == "independent" and self.prompt_level != "independent":
+            raise ValueError("Самостоятельный ответ не может включать подсказку")
+        if self.result_type == "with_help" and self.prompt_level == "independent":
+            raise ValueError("Укажите уровень помощи для ответа с подсказкой")
+        return self

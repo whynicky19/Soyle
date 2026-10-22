@@ -20,12 +20,12 @@ async function openBook(page:Page){
   const menu=page.getByRole('button',{name:'Открыть меню',exact:true});if(await menu.isVisible())await menu.click();
   await page.locator('#primary-navigation nav').getByRole('button',{name:'Кабинет родителя',exact:true}).click();
   const response=page.waitForResponse(res=>res.url().includes('/api/interactive-storybooks/')&&res.request().method()==='GET');
-  await page.getByRole('button',{name:/Открыть книгу с играми/}).click();const loaded=await response;expect(loaded.status()).toBe(200);const saved=await loaded.json();
+  await page.getByRole('link',{name:'Материалы',exact:true}).click();await page.getByRole('button',{name:/Открыть книгу с играми/}).click();const loaded=await response;expect(loaded.status()).toBe(200);const saved=await loaded.json();
   const status=await page.evaluate(async({saved,url})=>{
     const csrf=document.cookie.split('; ').find(value=>value.startsWith('soyle_csrf='))?.split('=')[1]||'';
     return (await fetch(url+'/events',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json','X-CSRF-Token':decodeURIComponent(csrf)},body:JSON.stringify({version:3,expected_revision:saved.revision,scene_id:saved.definition.scenes[saved.state.scene_index].id,event_id:crypto.randomUUID(),action:'restart'})})).status;
   },{saved,url:loaded.url().replace(':8011',':8010')});expect(status).toBe(200);
-  await page.getByRole('button',{name:'В кабинет',exact:true}).click();await page.getByRole('button',{name:/Открыть книгу с играми/}).click();
+  await page.getByRole('button',{name:'В кабинет',exact:true}).click();await page.getByRole('link',{name:'Материалы',exact:true}).click();await page.getByRole('button',{name:/Открыть книгу с играми/}).click();
   await page.getByRole('button',{name:/Открыть книгу|Продолжить чтение/,exact:true}).click();await expect(stage(page)).toHaveAttribute('data-scene','find');
 }
 async function next(page:Page,id:string){await page.getByRole('button',{name:'Дальше',exact:true}).click();await expect(stage(page)).toHaveAttribute('data-scene',id);}
@@ -63,7 +63,7 @@ test.describe('book recovery and accessible interaction',()=>{
     const teddy=page.getByRole('button',{name:'Мишка на полке',exact:true});await teddy.focus();await page.keyboard.press('Enter');await next(page,'match');
     const a11y=await new AxeBuilder({page}).analyze();expect(a11y.violations.filter(item=>['serious','critical'].includes(item.impact||''))).toEqual([]);
     await page.getByRole('button',{name:'Не хочу',exact:true}).click();await expect(page.getByRole('dialog')).toBeVisible();await page.getByRole('dialog').getByRole('button',{name:'Выйти в кабинет',exact:true}).click();
-    await page.getByRole('button',{name:/Открыть книгу с играми/}).click();await page.getByRole('button',{name:'Продолжить чтение',exact:true}).click();await expect(stage(page)).toHaveAttribute('data-scene','match');await expect(page.getByRole('dialog')).toBeVisible();
+    await page.getByRole('link',{name:'Материалы',exact:true}).click();await page.getByRole('button',{name:/Открыть книгу с играми/}).click();await page.getByRole('button',{name:'Продолжить чтение',exact:true}).click();await expect(stage(page)).toHaveAttribute('data-scene','match');await expect(page.getByRole('dialog')).toBeVisible();
     await page.getByRole('dialog').getByRole('button',{name:'Продолжить',exact:true}).click();await expect(page.getByRole('dialog')).not.toBeVisible();
     await page.locator('.book-adult-help summary').click();await page.getByRole('button',{name:'Помочь вместе',exact:true}).click();await expect(stage(page)).toHaveAttribute('data-ready','true');await next(page,'request');await noOverflow(page);
     await expect(page.getByLabel('Мягкие движения',{exact:true})).toBeDisabled();

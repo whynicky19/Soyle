@@ -8,7 +8,7 @@ export default defineConfig({
   workers: 1,
   reporter: [["list"]],
   use: {
-    baseURL: "http://localhost:3000",
+    baseURL: "http://localhost:3003",
     reducedMotion: "reduce",
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
@@ -21,16 +21,16 @@ export default defineConfig({
   ],
   webServer: [
     {
-      command: "SOYLE_DB_PATH=/tmp/soyle-playwright.db SOYLE_SEED_DEMO_DATA=true SOYLE_SECRET_KEY=soyle-playwright-secret-key-at-least-32-bytes SOYLE_ALLOWED_ORIGINS=http://localhost:3000 PYTHONPATH=. .venv/bin/python -m app.e2e_server",
+      command: "SOYLE_DB_PATH=/tmp/soyle-playwright.db SOYLE_SEED_DEMO_DATA=true SOYLE_ALLOW_UNREVIEWED_DEMO_CONTENT=true SOYLE_SECRET_KEY=soyle-playwright-secret-key-at-least-32-bytes SOYLE_ALLOWED_ORIGINS=http://localhost:3003 PYTHONPATH=. .venv/bin/python -m app.e2e_server",
       cwd: "../backend",
       url: "http://localhost:8011/health",
       reuseExistingServer: false,
       timeout: 120_000,
     },
     {
-      command: "npm run dev -- --hostname localhost --port 3000",
-      url: "http://localhost:3000/app",
-      reuseExistingServer: true,
+      command: "SOYLE_E2E_BUILD=true npm run dev -- --hostname localhost --port 3003",
+      url: "http://localhost:3003/app",
+      reuseExistingServer: false,
       timeout: 120_000,
     },
   ],

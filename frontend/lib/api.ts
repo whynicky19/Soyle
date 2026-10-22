@@ -1,4 +1,4 @@
-export type Role = "admin" | "parent" | "student";
+export type Role = "admin" | "parent" | "student" | "specialist";
 export type SkillName = "articulation" | "vocabulary" | "speech_comprehension" | "word_repetition" | "phrase_building" | "communication";
 
 export type SkillProgress = {
@@ -47,6 +47,7 @@ export type Dashboard = {
   skill_progress: SkillProgress[];
   weakest_skill: SkillProgress | null;
   recommended_exercise: Exercise | null;
+  recommended_exercises: Exercise[];
   progress_delta: number | null;
   daily: Array<{ date: string; label: string; motor: number | null; sensory: number | null; mixed: number | null }>;
   achievements: { first_five: boolean; good_listener: boolean; phrase_master: boolean; week_streak: boolean };
@@ -67,6 +68,7 @@ export type ChildConsent = {
   camera_processing: boolean;
   ai_processing: boolean;
   analytics_processing: boolean;
+  specialist_sharing?: boolean;
   version: string;
   updated_at: string | null;
   consented_by_user_id?: number | null;
@@ -138,6 +140,7 @@ export type Exercise = {
         speech: string;
         hint?: string;
         media_ref?: string;
+        exemplars?: string[];
         visual_token?: string;
       }>;
       difficulty_levels?: Array<{ level: 1 | 2 | 3; option_count: 2 | 3 | 4; rounds: number; max_attempts: number }>;
@@ -189,9 +192,6 @@ export type AdaptiveDifficultyParams = {
   round_count: number;
   instruction_step_count: 1;
   action_count: 1;
-  prompt_mode: "model_and_visual" | "visual" | "on_request";
-  visual_diversity: "familiar" | "configured";
-  familiar_repetition: boolean;
 };
 
 export type AdaptiveAssignmentReason = {
@@ -340,6 +340,7 @@ export type WorldPhoto = {
 };
 
 export type Story = {
+  engine?: "interactive_book";
   key: string;
   title: string;
   summary: string;
@@ -386,6 +387,15 @@ export function getCsrfToken() {
   return value ? decodeURIComponent(value.split("=", 2)[1] || "") : "";
 }
 
+export class ApiError extends Error {
+  status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+  }
+}
+
 export async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
   const headers = new Headers(options.headers);
   if (!headers.has("Content-Type") && options.body) headers.set("Content-Type", "application/json");
@@ -413,7 +423,7 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
     return undefined as T;
   }
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data.detail || "Не удалось выполнить запрос");
+  if (!response.ok) throw new ApiError(data.detail || "Не удалось выполнить запрос", response.status);
   if (data && typeof data === "object" && "csrf_token" in data && typeof data.csrf_token === "string" && data.csrf_token) {
     csrfTokenMemory = data.csrf_token;
   }

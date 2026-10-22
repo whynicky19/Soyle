@@ -1,0 +1,90 @@
+.soyle-logo {
+  display: inline-block;
+  max-width: 100%;
+  flex-shrink: 0;
+  vertical-align: middle;
+  line-height: 0;
+}
+.soyle-logo img {
+  display: block;
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+}
+.soyle-logo picture {
+  display: block;
+}
+a > .soyle-logo,
+button > .soyle-logo {
+  transition:
+    transform 0.25s ease,
+    opacity 0.25s ease;
+}
+a:hover > .soyle-logo,
+button:hover > .soyle-logo {
+  transform: translateY(-1px);
+}
+.brand > .soyle-logo {
+  width: 170px !important;
+}
+.mobile-logo > .soyle-logo {
+  width: 116px !important;
+}
+.auth-card-brand > .soyle-logo {
+  width: 230px !important;
+  display: block;
+}
+.auth-brand > .soyle-logo {
+  width: 270px !important;
+}
+.auth-loading .soyle-logo {
+  animation: soyle-logo-arrive 0.8s ease both;
+}
+.auth-loading > .brand-mark {
+  width: 82px;
+  height: 82px;
+  animation: none;
+}
+.auth-loading .brand-mark .soyle-logo {
+  width: 76px !important;
+}
+.onboarding-card .brand {
+  height: auto;
+}
+.onboarding-card .brand > .soyle-logo {
+  width: 150px !important;
+}
+.professional-sidebar .cabinet-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+.professional-sidebar .cabinet-brand > .soyle-logo {
+  width: 165px !important;
+}
+.professional-sidebar .cabinet-brand > small {
+  font-size: 11px;
+  color: #536b62;
+  margin-left: 4px;
+}
+@keyframes soyle-logo-arrive {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .soyle-logo,
+  .soyle-logo *,
+  a > .soyle-logo,
+  button > .soyle-logo {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+  }
+}

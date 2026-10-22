@@ -1,0 +1,18 @@
+{
+  "tool": "image_gen.imagegen",
+  "date": "2026-10-22",
+  "reference": "User-supplied Söyle identity board: turquoise bird reading a star-covered book",
+  "assembly": "Generated transparent mascot and simplified head; wordmark and exact Cyrillic subtitle typeset from local Nunito Black and Onest Bold fonts using Next ImageResponse. PNG and WebP variants composed by scripts/build-branding.mjs. This is raster artwork, not traced vector artwork.",
+  "assets": [
+    {"source":"mascot-master.png","outputs":["soyle-mascot","soyle-logo-primary","soyle-logo-compact","soyle-logo-vertical","soyle-logo-light","soyle-logo-dark"],"prompt":"Brand mascot icon ONLY, no lettering. Recreate very faithfully the little turquoise bird reading an open turquoise book with a golden yellow star on its cover shown in supplied brand board reference. Same rounded cream face, black oval friendly eyes, tiny orange open beak smiling, blush pink cheeks, blue turquoise crest, little wings, two golden yellow teardrop accents right of face. Clean premium softly shaded illustration, warm tactile painted finish, clear crisp silhouette. Entire bird crest and entire open book visible, centered, very little empty padding. No background, no card, no rounded square, no shadow outside subject, no words or letters. Transparent background. Single isolated logo mark, NOT a brand board."},
+    {"source":"head-master.png","outputs":["soyle-icon-small","favicon","app/icon.png"],"prompt":"Create the simplified small favicon version of EXACT turquoise bird head from supplied brand board. Head only, three turquoise crest feathers, cream face, two simple black oval eyes, tiny orange open beak, pink cheek dots. Rounded clean graphic silhouette, minimal details for legibility at 16 to32 pixels. Same identity as reference, not owl or parrot. No body no book no text no background no square no container, truly transparent background."}
+  ],
+  "foliage": {
+    "commonPrompt": "Standalone decorative foliage asset for Söyle children's educational storybook landing page. Premium soft tactile animated film illustration, warm natural light, matte painterly leaves, gentle rounded forms, palette sage olive deep teal and warm green, tiny golden highlights. Entire illustration isolated on truly transparent background, no text, no lettering, no frame, no white backdrop, no drop shadows outside plant. NOT photorealistic.",
+    "variants": [
+      {"file":"public/images/landing/foliage-tall.webp","prompt":"Tall graceful lush branch of oval leafy foliage growing from bottom left curving up along left edge, asymmetrical organic silhouette, several layers of olive and sage leaves and small coral peach flowers near bottom. Composition tall portrait, branches hug left edge, tips angle toward right with open negative space to right. No pot."},
+      {"file":"public/images/landing/foliage-canopy.webp","prompt":"Leafy botanical corner canopy: dense rounded sage green and turquoise broad leaves spilling down from top RIGHT corner, a few long curved stems, tiny warm yellow leaves. Organic asymmetrical corner silhouette, open negative space left and bottom, no pot. Full foliage visible."},
+      {"file":"public/images/landing/foliage-garden.webp","prompt":"Small lush ground-level corner garden cluster: layered rounded olive green leaves, blue green fern leaves, warm coral orange small flowers and yellow blossoms, two small smooth mossy stones, curved stems. Wide low asymmetrical composition growing from lower right edge, open space above and left. No pot."}
+    ]
+  }
+}

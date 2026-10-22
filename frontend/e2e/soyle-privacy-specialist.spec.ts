@@ -1,0 +1,138 @@
+import AxeBuilder from "@axe-core/playwright";
+import { expect, test } from "@playwright/test";
+
+const API = "http://localhost:8011";
+test("family invitation requires confirmation, workspaces stay navigable and revocation works", async ({ page, request }, info) => {
+  test.setTimeout(90_000);
+  const suffix = `${info.project.name}-${Date.now()}`;
+  const password = "PrivacyTest123!";
+  const register = async (username: string) => {
+    const response = await request.post(`${API}/api/auth/register`, { headers: { "X-Soyle-Auth-Mode": "bearer" }, data: { username, password, full_name: username } });
+    expect(response.status()).toBe(201);
+    const body = await response.json();
+    return { user: body.user, auth: { Authorization: `Bearer ${body.access_token}` } };
+  };
+  const parent = await register(`family-${suffix}`), specialist = await register(`spec-${suffix}`);
+  const adminLogin = await request.post(`${API}/api/auth/login`, { headers: { "X-Soyle-Auth-Mode": "bearer" }, data: { username: "admin", password: "Admin123!" } });
+  const admin = { Authorization: `Bearer ${(await adminLogin.json()).access_token}` };
+  expect((await request.patch(`${API}/api/admin/users/${specialist.user.id}/role`, { headers: admin, data: { role: "specialist" } })).status()).toBe(200);
+  const response = await request.post(`${API}/api/children`, { headers: parent.auth, data: { name: "Тестовый профиль", birth_date: "2020-01-01" } });
+  expect(response.status()).toBe(201);
+  const child = (await response.json()).id;
+  const otherResponse = await request.post(`${API}/api/children`, {headers: parent.auth, data: {name: "Второй профиль", birth_date: "2021-01-01"}});
+  expect(otherResponse.status()).toBe(201);
+  const otherChild = (await otherResponse.json()).id;
+  await request.put(`${API}/api/children/${child}/consent`, { headers: parent.auth, data: { privacy_accepted: true } });
+  await page.route("http://localhost:8010/**", route => route.continue({ url: route.request().url().replace(":8010", ":8011") }));
+  const login = async (username: string) => {
+    await page.goto("/app");
+    await page.getByLabel("Логин", { exact: true }).fill(username);
+    await page.getByLabel("Пароль", { exact: true }).fill(password);
+    await page.getByRole("button", { name: "Войти", exact: true }).click();
+  };
+  await login(parent.user.username);
+  await page.getByRole("button", { name: "Открыть кабинет", exact: true }).click();
+  await page.getByRole("combobox", {name: "Профиль ребёнка", exact: true}).selectOption(String(otherChild));
+  await page.reload();
+  await expect(page.getByRole("combobox", {name: "Профиль ребёнка", exact: true})).toHaveValue(String(otherChild));
+  let releaseConsent!: () => void;
+  const consentGate = new Promise<void>(resolve => { releaseConsent = resolve; });
+  await page.route(`http://localhost:8010/api/children/${child}/consent`, async route => {
+    if (route.request().method() === "GET") await consentGate;
+    await route.continue({ url: route.request().url().replace(":8010", ":8011") });
+  });
+  await page.getByRole("combobox", {name: "Профиль ребёнка", exact: true}).selectOption(String(child));
+  await page.getByRole("link", { name: "Доступ и данные", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Сохранить разрешения" })).toBeDisabled();
+  releaseConsent();
+  await expect(page.getByRole("checkbox", { name: /Сохранение программы и результатов/ })).toBeChecked();
+  await page.getByRole("checkbox", { name: /Доступ выбранного специалиста/ }).check();
+  await page.getByRole("button", { name: "Сохранить разрешения" }).click();
+  await expect(page.getByText("Настройки приватности сохранены")).toBeVisible();
+  await page.getByRole("link", { name: "Специалист", exact: true }).click();
+  await page.getByRole("button", { name: "Создать ссылку-приглашение" }).click();
+  const inviteUrl = await page.getByLabel("Ссылка для специалиста").inputValue();
+  expect(inviteUrl).toContain("/app#invite=");
+  await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
+  await page.getByRole("button", { name: "Копировать ссылку" }).click();
+  await expect(page.getByRole("button", { name: "Скопировано" })).toBeVisible();
+  const axe = await new AxeBuilder({ page }).analyze();
+  expect(axe.violations.filter(item => ["serious", "critical"].includes(item.impact || ""))).toEqual([]);
+  // A second browser context has an independent specialist cookie session.
+  const context = await page.context().browser()!.newContext({ viewport: page.viewportSize()! });
+  const specPage = await context.newPage();
+  await specPage.route("http://localhost:8010/**", route => route.continue({ url: route.request().url().replace(":8010", ":8011") }));
+  await specPage.goto(inviteUrl);
+  await expect(specPage.getByRole("heading", { name: "Присоединиться как специалист" })).toBeVisible();
+  await specPage.getByLabel("Логин", { exact: true }).fill(specialist.user.username);
+  await specPage.getByLabel("Пароль", { exact: true }).fill(password);
+  await specPage.getByRole("button", { name: "Войти", exact: true }).click();
+  await specPage.getByRole("button", { name: "Отправить запрос родителю" }).click();
+  await expect(specPage.getByRole("heading", { name: "Запрос отправлен родителю" })).toBeVisible();
+  await expect(specPage.getByRole("heading", { name: "Нет доступных профилей" })).toBeVisible();
+  await specPage.getByRole("button", { name: "Перейти в кабинет" }).click();
+  await page.getByRole("button", { name: "Обновить запросы" }).click();
+  await expect(page.locator(".invitation-request")).toContainText(specialist.user.username);
+  await page.getByRole("button", { name: "Подтвердить доступ", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Отозвать доступ", exact: true })).toBeVisible();
+  await specPage.getByRole("button", { name: "Обновить список детей" }).click();
+  await specPage.getByRole("button", { name: /Тестовый профиль Открыть наблюдения/ }).click();
+  await expect(specPage.getByRole("heading", { name: "Наблюдение вне игры" })).toBeVisible();
+  await specPage.getByLabel("Что наблюдалось").selectOption("with_help");
+  await specPage.getByLabel("Уровень помощи").selectOption("minimal");
+  await specPage.getByLabel("Ситуация").fill("Игра с другой игрушкой дома");
+  await specPage.getByLabel("Наблюдаемые действия").fill("Выбрал игрушку после указательного жеста");
+  await specPage.getByRole("button", { name: "Сохранить наблюдение", exact: true }).click();
+  await expect(specPage.getByText("Наблюдение сохранено отдельно от игровых результатов.")).toBeVisible();
+  await expect(specPage.getByText("Игра с другой игрушкой дома: Выбрал игрушку после указательного жеста")).toBeVisible();
+  const specAxe = await new AxeBuilder({ page: specPage }).analyze();
+  expect(specAxe.violations.filter(item => ["serious", "critical"].includes(item.impact || ""))).toEqual([]);
+  expect(await specPage.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
+  await specPage.screenshot({ path: info.outputPath("specialist-workspace.png"), fullPage: true });
+  await specPage.getByRole("link", {name: "Рекомендации", exact: true}).click();
+  await specPage.getByLabel("Упражнение", {exact: false}).selectOption({index: 1});
+  await specPage.getByLabel("Как поддержать ребёнка").fill("Начните с выбора знакомого предмета, спокойно дождитесь ответа ребёнка.");
+  await specPage.getByRole("button", {name: "Сохранить рекомендацию", exact: true}).click();
+  await expect(specPage.getByText("Рекомендация сохранена. Семья сама выбирает, когда заниматься.")).toBeVisible();
+  await page.goto("/app");
+  await expect(page.getByRole("heading", {name: "С чего начать", exact: true})).toBeVisible();
+  await expect(page.locator(".parent-specialist-advice")).toContainText("Начните с выбора знакомого предмета");
+  await expect(page.locator(".parent-specialist-advice")).toContainText(specialist.user.full_name);
+  await page.screenshot({path: info.outputPath("parent-specialist-first-step.png"), fullPage: true});
+  await page.getByRole("button", {name: "Открыть задание", exact: true}).click();
+  await expect(page.getByRole("button", {name: /Назад к занятиям|Вернуться к занятиям/, exact: true})).toBeVisible();
+  await page.goto("/app");
+  await page.getByRole("button", {name: "Все рекомендации", exact: true}).click();
+  await page.reload();
+  await expect(page.getByRole("link", { name: "Специалист", exact: true })).toHaveAttribute("aria-current", "page");
+  await expect(page.getByText("Игра с другой игрушкой дома: Выбрал игрушку после указательного жеста")).toBeVisible();
+  for (const name of ["Обзор", "Практика", "Материалы", "Доступ и данные", "Специалист"]) {
+    await page.getByRole("link", {name, exact: true}).click();
+    const audit = await new AxeBuilder({page}).analyze();
+    expect(audit.violations.filter(item => ["serious", "critical"].includes(item.impact || ""))).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
+  }
+  for (const name of ["Рекомендации", "Цели и история", "Дети", "Наблюдения"]) {
+    await specPage.getByRole("link", {name, exact: true}).click();
+    const audit = await new AxeBuilder({page: specPage}).analyze();
+    expect(audit.violations.filter(item => ["serious", "critical"].includes(item.impact || ""))).toEqual([]);
+  }
+  await page.getByRole("button", { name: "Отозвать доступ", exact: true }).click();
+  await expect(page.getByText("Доступ специалиста отозван.")).toBeVisible();
+  await specPage.reload();
+  await expect(specPage.getByRole("heading", { name: "Нет доступных профилей" })).toBeVisible();
+  await page.goto("/app");
+  await expect(page.getByRole("heading", {name: "Рекомендации специалиста", exact: true})).toBeVisible();
+  await expect(page.locator(".parent-specialist-advice")).not.toContainText("Начните с выбора знакомого предмета");
+  await context.close();
+});
+
+test("privacy shows MVP gaps without fictional contact details", async ({ page }) => {
+  await page.route("http://localhost:8010/**", route => route.continue({ url: route.request().url().replace(":8010", ":8011") }));
+  await page.goto("/privacy");
+  await expect(page.getByRole("heading", { name: "Приватность в Söyle" })).toBeVisible();
+  await expect(page.getByText("Пока не определено", { exact: true })).toHaveCount(7);
+  await expect(page.getByRole("link", { name: "hello@soyle.app" })).toHaveCount(0);
+  const results = await new AxeBuilder({ page }).analyze();
+  expect(results.violations.filter(item => ["serious", "critical"].includes(item.impact || ""))).toEqual([]);
+});

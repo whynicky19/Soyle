@@ -1,6 +1,6 @@
-const CACHE = "soyle-core-v11";
+const CACHE = "soyle-core-v11-brand-20261022";
 const CORE = [
-  "/soyle-mark.svg", "/illustrations/apple.png", "/illustrations/ball.png",
+  "/branding/soyle-mascot.webp", "/branding/soyle-logo-compact.webp", "/illustrations/apple.png", "/illustrations/ball.png",
   "/illustrations/cat.png", "/illustrations/juice.png", "/illustrations/love.png",
   "/illustrations/me.png", "/illustrations/mom.png", "/illustrations/dad.png",
   "/illustrations/want.png", "/illustrations/see.png", "/illustrations/mascot-parrot.png",

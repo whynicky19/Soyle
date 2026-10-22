@@ -1,0 +1,122 @@
+[
+  {
+    "file": "/learning-core/words/ball-a.webp",
+    "concept": "ball",
+    "variant": "a",
+    "purpose": "receptive_word_choice",
+    "origin": "built-in imagegen",
+    "size": [
+      640,
+      640
+    ],
+    "bytes": 18878,
+    "sha256": "2ae1ffde4a52b5e2504851da19082e4985a12f9f1ff8cf9f1fb262a84e2272ce",
+    "ai_visual_review": "2026-10-22: isolated object, no labels, matched ivory background; not tested with children",
+    "source_generation": "exec-18e0019d-ac73-4b11-aa0e-71b603ea167e.png"
+  },
+  {
+    "file": "/learning-core/words/cup-a.webp",
+    "concept": "cup",
+    "variant": "a",
+    "purpose": "receptive_word_choice",
+    "origin": "built-in imagegen",
+    "size": [
+      640,
+      640
+    ],
+    "bytes": 25236,
+    "sha256": "9e3e6363dd650ee6fa22b200dc32da2d8857ab910b75eb2713262f726e4b31e1",
+    "ai_visual_review": "2026-10-22: isolated object, no labels, matched ivory background; not tested with children",
+    "source_generation": "exec-1e3c1389-e72e-4ad5-80e8-309d2d61f389.png"
+  },
+  {
+    "file": "/learning-core/words/book-a.webp",
+    "concept": "book",
+    "variant": "a",
+    "purpose": "receptive_word_choice",
+    "origin": "built-in imagegen",
+    "size": [
+      640,
+      640
+    ],
+    "bytes": 25848,
+    "sha256": "78d9a216940c2cdc2cdeaa9040a8391f0bc021a87a975fd60c70f01034496f26",
+    "ai_visual_review": "2026-10-22: isolated object, no labels, matched ivory background; not tested with children",
+    "source_generation": "exec-e4a5f5f1-fbfc-4d35-b92a-e8f6be52614c.png"
+  },
+  {
+    "file": "/learning-core/words/spoon-a.webp",
+    "concept": "spoon",
+    "variant": "a",
+    "purpose": "receptive_word_choice",
+    "origin": "built-in imagegen",
+    "size": [
+      640,
+      640
+    ],
+    "bytes": 10516,
+    "sha256": "2b11619be1f8a48d409bde6d9c1e8bb4e8fbdfa18d4d8857d585a006cf054f20",
+    "ai_visual_review": "2026-10-22: isolated object, no labels, matched ivory background; not tested with children",
+    "source_generation": "exec-5405cf49-9782-4407-8ba2-772128ce57ca.png"
+  },
+  {
+    "file": "/learning-core/words/ball-b.webp",
+    "concept": "ball",
+    "variant": "b",
+    "purpose": "receptive_word_choice",
+    "origin": "built-in imagegen",
+    "size": [
+      640,
+      640
+    ],
+    "bytes": 20690,
+    "sha256": "1c7bac688822b72a776fe5c0cc267bd7e8554b9eeccea5aea237353ab91d3f94",
+    "ai_visual_review": "2026-10-22: isolated object, no labels, matched ivory background; not tested with children",
+    "source_generation": "exec-831f5369-1fba-4b0b-8657-da1c468329f5.png"
+  },
+  {
+    "file": "/learning-core/words/cup-b.webp",
+    "concept": "cup",
+    "variant": "b",
+    "purpose": "receptive_word_choice",
+    "origin": "built-in imagegen",
+    "size": [
+      640,
+      640
+    ],
+    "bytes": 24790,
+    "sha256": "8798c1c65abca4e6679c1c105541214debb681a3c8a21110b2ebbed3b555ef0f",
+    "ai_visual_review": "2026-10-22: isolated object, no labels, matched ivory background; not tested with children",
+    "source_generation": "exec-6f464a3f-b8a4-4202-aeac-7481032f8b59.png"
+  },
+  {
+    "file": "/learning-core/words/book-b.webp",
+    "concept": "book",
+    "variant": "b",
+    "purpose": "receptive_word_choice",
+    "origin": "built-in imagegen",
+    "size": [
+      640,
+      640
+    ],
+    "bytes": 17332,
+    "sha256": "a5026a7ebb75f1a2069ab37a19a8f030e1610b947bc3718a644b1644d8e33da6",
+    "ai_visual_review": "2026-10-22: isolated object, no labels, matched ivory background; not tested with children",
+    "source_generation": "exec-fbbae938-8cce-49b4-a96d-2dd9aa3e0b0d.png"
+  },
+  {
+    "file": "/learning-core/words/spoon-b.webp",
+    "concept": "spoon",
+    "variant": "b",
+    "purpose": "receptive_word_choice",
+    "origin": "built-in imagegen",
+    "size": [
+      640,
+      640
+    ],
+    "bytes": 17954,
+    "sha256": "66a1c73d630a5a4d197fe5ed13517335ed134041cce41065aca2171306267f48",
+    "ai_visual_review": "2026-10-22: isolated object, no labels, matched ivory background; not tested with children",
+    "source_generation": "exec-a47b3f3b-a6f6-4793-9620-c20dd2434b89.png"
+  }
+]

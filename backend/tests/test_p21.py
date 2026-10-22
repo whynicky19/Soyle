@@ -47,7 +47,8 @@ def test_goal_catalog_parent_flow_history_and_version_conflict(client, parent_he
     child = _new_child(client, parent_headers)
     templates = client.get("/api/practice-goal-templates", headers=parent_headers)
     assert templates.status_code == 200
-    assert len(templates.json()) == 6
+    assert len(templates.json()) == 7
+    assert "recognise-familiar-examples" in {item["template_key"] for item in templates.json()}
     assert {item["skill_category"] for item in templates.json()} >= {
         "object_understanding", "action_understanding", "instruction_understanding", "aac_use", "self_advocacy",
     }
@@ -127,7 +128,7 @@ def test_planner_uses_only_related_published_non_motor_versions(client, parent_h
     )
     assert response.status_code == 201, response.text
     plan = response.json()
-    assert plan["rules_version"] == "p2.2-weighted-rotation-1"
+    assert plan["rules_version"] == "p2.4-comparable-evidence-1"
     assert plan["items"]
     assert {item["target"] for item in plan["items"]} <= {"animals", "food", "toys"}
     assert all(item["module"] != "motor" for item in plan["items"])
@@ -190,7 +191,7 @@ def test_difficulty_never_increases_after_one_success_and_ignores_breaks(client,
         body = {
             **PARENT_CHILD_ATTEMPT,
             "child_id": child["id"], "exercise_id": exercise["id"], "module": "sensory",
-            "score": 100, "duration_seconds": 20, "details": {"source": "p21-test"}, "attempt_status": status,
+            "score": 100, "duration_seconds": 20, "details": {"source": "p21-test", "difficulty_level": 1, "option_count": 2}, "attempt_status": status,
         }
         if status == "completed":
             body.update({"attempts_count": 4, "correct_answers": 4, "gameplay_choices": 4, "independent_completions": 1, "prompts_used": 0, "prompt_level": "independent"})
@@ -209,7 +210,7 @@ def test_difficulty_never_increases_after_one_success_and_ignores_breaks(client,
     save(); save()
     later_plan = client.post(f"/api/adaptive-plans/{child['id']}", headers=parent_headers, json={"target_minutes": 5}).json()
     later_item = next(item for item in later_plan["items"] if item["exercise_id"] == exercise["id"])
-    assert later_item["difficulty_params"]["difficulty_level"] == 2
+    assert later_item["difficulty_params"]["difficulty_level"] == 1
     assert later_item["assignment_reason"]["evidence"]["recorded_sessions"] == 3
 
 
@@ -225,10 +226,10 @@ def test_recent_results_are_weighted_without_one_miss_erasing_stable_progress(cl
         response = client.post("/api/sessions", headers=parent_headers, json={
             **PARENT_CHILD_ATTEMPT,
             "child_id": child["id"], "exercise_id": exercise["id"], "module": "sensory",
-            "score": correct * 25, "duration_seconds": 20, "details": {"source": "weighted-test"},
+            "score": correct * 25, "duration_seconds": 20, "details": {"source": "weighted-test", "difficulty_level": 1, "option_count": 2},
             "attempt_status": "completed", "attempts_count": 4, "correct_answers": correct,
-            "gameplay_choices": 4, "independent_completions": 1 if correct else 0,
-            "prompted_completions": 0 if correct else 1,
+            "gameplay_choices": 4, "independent_completions": correct,
+            "prompted_completions": 0,
             "prompts_used": 0 if correct else 1,
             "prompt_level": "independent" if correct else "minimal",
         })
@@ -240,11 +241,13 @@ def test_recent_results_are_weighted_without_one_miss_erasing_stable_progress(cl
     plan = client.post(
         f"/api/adaptive-plans/{child['id']}", headers=parent_headers, json={"target_minutes": 5},
     ).json()
-    evidence = plan["items"][0]["assignment_reason"]["evidence"]
+    measured = next(item for item in plan["items"] if item["exercise_id"] == exercise["id"])
+    evidence = measured["assignment_reason"]["evidence"]
     assert evidence["recorded_sessions"] == 8
     assert evidence["weighted_accuracy"] > 0.8
     assert evidence["recency_weights"][0] > evidence["recency_weights"][-1]
-    assert all(item["difficulty_params"]["difficulty_level"] == 2 for item in plan["items"])
+    assert measured["difficulty_params"]["difficulty_level"] == 2
+    assert all(item["difficulty_params"]["difficulty_level"] == 1 for item in plan["items"] if item["exercise_id"] != exercise["id"])
 
 
 def test_planner_rotates_unused_exercises_before_repeating(client, parent_headers):
@@ -254,9 +257,19 @@ def test_planner_rotates_unused_exercises_before_repeating(client, parent_header
     first = client.post(
         f"/api/adaptive-plans/{child['id']}", headers=parent_headers, json={"target_minutes": 3},
     ).json()
+    client.post("/api/learning-sessions", headers=parent_headers, json={"child_id": child["id"], "exercise_ids": [item["exercise_id"] for item in first["items"]], "target_minutes": 3, "adaptive_plan_id": first["id"]}).raise_for_status()
     second = client.post(
         f"/api/adaptive-plans/{child['id']}", headers=parent_headers, json={"target_minutes": 3},
     ).json()
+    # Starting a plan does not mean every item has been shown or answered.
+    assert [item["exercise_id"] for item in second["items"]] == [item["exercise_id"] for item in first["items"]]
+    for item in first["items"]:
+        saved = client.post("/api/sessions", headers=parent_headers, json={
+            **PARENT_CHILD_ATTEMPT, "child_id": child["id"], "exercise_id": item["exercise_id"],
+            "module": item["module"], "score": 0, "duration_seconds": 5, "attempt_status": "participated",
+        })
+        assert saved.status_code == 201, saved.text
+    second = client.post(f"/api/adaptive-plans/{child['id']}", headers=parent_headers, json={"target_minutes": 3}).json()
     first_ids = [item["exercise_id"] for item in first["items"]]
     second_ids = [item["exercise_id"] for item in second["items"]]
     assert len(first_ids) == len(set(first_ids)) == 2
@@ -284,6 +297,7 @@ def test_published_exercise_catalog_has_no_duplicate_tasks_or_round_items(client
 
 def test_legacy_local_plan_also_rotates_completed_tasks(client, parent_headers):
     child = _new_child(client, parent_headers)
+    _add_goal(client, parent_headers, child["id"])
     first = client.get(
         f"/api/session-plan/{child['id']}?minutes=3", headers=parent_headers,
     ).json()["exercises"]
@@ -300,7 +314,7 @@ def test_legacy_local_plan_also_rotates_completed_tasks(client, parent_headers):
     second = client.get(
         f"/api/session-plan/{child['id']}?minutes=3", headers=parent_headers,
     ).json()["exercises"]
-    assert {item["id"] for item in first}.isdisjoint({item["id"] for item in second})
+    assert len({item["id"] for item in first + second}) == 3
 
 
 def test_learning_session_preserves_plan_goal_and_difficulty_snapshot(client, parent_headers):

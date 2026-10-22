@@ -171,7 +171,7 @@ def _related_exercises(db, goal: dict) -> list[dict]:
     ]
 
 
-def list_goals(db, child_id: int) -> list[dict]:
+def list_goals(db, child_id: int, *, full: bool = False) -> list[dict]:
     rows = db.execute(
         """SELECT * FROM parent_practice_goals WHERE child_id=?
            ORDER BY CASE status WHEN 'active' THEN 0 WHEN 'paused' THEN 1 ELSE 2 END,updated_at DESC,id DESC""",
@@ -183,13 +183,13 @@ def list_goals(db, child_id: int) -> list[dict]:
         item["linked_exercises"] = _related_exercises(db, item)
         item["observations"] = [dict(observation) for observation in db.execute(
             """SELECT * FROM practice_goal_observations WHERE goal_id=? AND child_id=?
-               ORDER BY observed_at DESC,id DESC LIMIT 20""",
+               ORDER BY observed_at DESC,id DESC""" + ("" if full else " LIMIT 20"),
             (item["id"], child_id),
         ).fetchall()]
         item["history"] = [
             {**dict(history), "snapshot": _loads(history["snapshot_json"], {})}
             for history in db.execute(
-                "SELECT * FROM practice_goal_history WHERE goal_id=? ORDER BY id DESC LIMIT 20",
+                "SELECT * FROM practice_goal_history WHERE goal_id=? ORDER BY id DESC" + ("" if full else " LIMIT 20"),
                 (item["id"],),
             ).fetchall()
         ]

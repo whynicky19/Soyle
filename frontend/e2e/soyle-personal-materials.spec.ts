@@ -53,6 +53,7 @@ test("free AAC speaks a combination and offers household vocabulary", async ({ p
 test("parent can upload multiple named photos, rename and speak one, and use styled cabinet links", async ({ page }, info) => {
   await login(page);
   await navigate(page, "Кабинет родителя");
+  await page.getByRole("link", {name: "Материалы", exact: true}).click();
   const tools = page.locator(".v2-parent-cabinet-links");
   await expect(tools.getByRole("button")).toHaveCount(4);
   await expect(tools.getByRole("button").first()).toHaveCSS("border-radius", "18px");
@@ -87,6 +88,7 @@ test("parent can upload multiple named photos, rename and speak one, and use sty
   await page.screenshot({ path: info.outputPath("world-two-photos.png"), fullPage: true });
   expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
   await navigate(page, "Кабинет родителя");
+  await page.getByRole("link", {name: "Материалы", exact: true}).click();
   await page.locator(".v2-parent-cabinet-links").getByRole("button", { name: /Фотографии ребёнка/ }).click();
   await expect(page.locator(".v2-photo-card")).toHaveCount(2);
   // A duplicate must not prevent the next valid file in the same batch from being saved.

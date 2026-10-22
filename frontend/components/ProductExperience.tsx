@@ -35,7 +35,7 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { Child, Dashboard, Exercise, LearningSession, SkillProgress } from "@/lib/api";
-import { SESSION_EXERCISE_COUNTS, exerciseCountLabel, selectHomeExercises } from "@/lib/homePractice";
+import { SESSION_EXERCISE_COUNTS, exerciseCountLabel } from "@/lib/homePractice";
 
 export type ProductDestination = "games" | "aac" | "progress" | "goals" | "parent" | "settings" | "profile" | "ai" | "achievements";
 
@@ -86,13 +86,7 @@ export function ParentDashboardExperience({
   onProductScreen: (screen: "stories" | "world" | "skills" | "guides") => void;
   childMode?: boolean;
 }) {
-  const recommended = selectHomeExercises({
-    exercises,
-    completedExerciseIds: dashboard?.completed_exercise_ids || [],
-    totalAttempts: dashboard?.total_sessions || 0,
-    recommendedExercise: dashboard?.recommended_exercise,
-    limit: 3,
-  });
+  const recommended = (dashboard?.recommended_exercises || []).filter(item => exercises.some(exercise => exercise.id === item.id));
   const planCount = currentSession?.exercises.length || SESSION_EXERCISE_COUNTS[dailyMinutes];
   const completed = currentSession?.current_index || 0;
   const progress = currentSession ? percent((completed / Math.max(1, planCount)) * 100) : percent(dashboard?.overall);
@@ -178,8 +172,8 @@ const skillNodes = [
   { key: "communication", title: "Просьбы", text: "Просит о помощи и предметах", icon: MessageCircle, tone: "peach" },
   { key: "vocabulary", title: "Выбор", text: "Выбирает из нескольких вариантов", icon: Target, tone: "blue" },
   { key: "phrase_building", title: "AAC", text: "Использует карточки и жесты", icon: ImageIcon, tone: "sky" },
-  { key: "word_repetition", title: "Действия", text: "Выполняет простые действия", icon: Settings, tone: "lilac" },
-  { key: "articulation", title: "Быт", text: "Навыки повседневной жизни", icon: Home, tone: "sand" },
+  { key: "word_repetition", title: "Повторение слов", text: "Сохранённые игровые результаты", icon: Settings, tone: "lilac" },
+  { key: "articulation", title: "Практика перед зеркалом", text: "Сохранённое участие", icon: Home, tone: "sand" },
 ] as const;
 
 function skillValue(items: SkillProgress[] | undefined, key: string) {
@@ -193,7 +187,7 @@ export function SkillsExperience({ dashboard, onNavigate }: SharedProps) {
     <section className="v2-skills-hero"><Image src="/app-illustrations/skills-milestone-path.webp" alt="Мальчик идёт по дорожке навыков к знаку помощи" fill priority sizes="(max-width: 900px) 100vw, 80vw"/><div className="v2-skills-copy"><h1>Карта навыков</h1><p>Сохранённые игровые попытки</p><span className="v2-kicker"><Target/> Доступные задания</span><h2>{dashboard?.completed_exercise_ids.length || 0} с попытками</h2><small>Здесь отмечаются только выполненные действия, без сравнения с другими детьми.</small><div className="v2-goal-progress"><i style={{ width: `${percent(dashboard?.overall)}%` }}/></div></div></section>
     <section className="v2-skill-map" aria-label="Визуальная карта развития">
       <svg className="v2-map-path" viewBox="0 0 1200 380" preserveAspectRatio="none" aria-hidden="true"><path d="M70 210 C210 60 330 330 490 180 S790 60 930 210 S1090 330 1160 120"/></svg>
-      {skillNodes.map((node, index) => { const Icon = node.icon; const value = skillValue(dashboard?.skill_progress, node.key); return <button key={node.key} className={`v2-skill-node ${node.tone} node-${index + 1}`} onClick={() => onNavigate("progress")}><span><Icon/></span><div><h3>{node.title}</h3><p>{node.text}</p><small className={value === null ? "support" : value > 70 ? "ready" : "learning"}>{value === null ? <CircleEllipsis/> : value > 70 ? <Check/> : <CircleEllipsis/>}{value === null ? "Пока нет данных" : `${value}% охвата`}</small></div><ChevronRight/></button>; })}
+      {skillNodes.map((node, index) => { const Icon = node.icon; const value = skillValue(dashboard?.skill_progress, node.key); return <button key={node.key} className={`v2-skill-node ${node.tone} node-${index + 1}`} onClick={() => onNavigate("progress")}><span><Icon/></span><div><h3>{node.title}</h3><p>{node.text}</p><small className={value === null ? "support" : value > 70 ? "ready" : "learning"}>{value === null ? <CircleEllipsis/> : value > 70 ? <Check/> : <CircleEllipsis/>}{value === null ? "Пока нет данных" : `${value}% в игре`}</small></div><ChevronRight/></button>; })}
       <span className="v2-map-sun" aria-hidden="true"/><span className="v2-map-flag" aria-hidden="true">⚑</span>
     </section>
     <div className="v2-skill-bottom"><button onClick={() => onNavigate("progress")}><Users/><span><strong>Наблюдения родителей</strong><small>{dashboard?.week_sessions ? `${dashboard.week_sessions} занятий за эту неделю` : "Добавьте заметку о самостоятельном действии"}</small></span><ChevronRight/></button><button onClick={() => onNavigate("games")}><Lightbulb/><span><strong>Что потренировать сегодня</strong><small>Подборка коротких заданий по текущей цели</small></span><ChevronRight/></button></div>

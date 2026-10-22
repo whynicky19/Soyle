@@ -1,0 +1,24 @@
+{
+  "sessions": {
+    "unchanged": true,
+    "before": 90,
+    "after": 90
+  },
+  "learning_sessions": {
+    "unchanged": true,
+    "before": 12,
+    "after": 12
+  },
+  "child_story_progress": {
+    "unchanged": true,
+    "before": 0,
+    "after": 0
+  },
+  "practice_goal_history": {
+    "unchanged": true,
+    "before": 1,
+    "after": 1
+  },
+  "published_payloads_unchanged": true,
+  "local_schema": 24
+}

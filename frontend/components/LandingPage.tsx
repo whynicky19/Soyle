@@ -1,356 +1,878 @@
 "use client";
 
 import Image from "next/image";
+import { BrandLogo } from "@/components/BrandLogo";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import {
   ArrowRight,
-  ChevronDown,
-  Menu,
-  X,
-  Sparkles,
-  Volume2,
-  RotateCcw,
+  BookOpen,
   Check,
+  ChevronDown,
+  Heart,
+  History,
+  Menu,
+  MessageCircle,
+  Puzzle,
+  ShieldCheck,
+  Sparkles,
+  Star,
+  Target,
+  Volume2,
+  X,
 } from "lucide-react";
 import "@/app/landing.css";
 
-const LANDING_THEME = "peach" as const;
-
-const features = [
+const art = "/images/landing/";
+const games = [
   {
-    label: "Понимание речи",
-    title: "Слышать задачу - без спешки и перегрузки",
-    text: "Ребёнок получает один понятный шаг, слушает короткую инструкцию и выбирает ответ в своём темпе.",
-    points: ["Без таймера и штрафов", "Повтор инструкции в любой момент"],
-    image: "/landing/feature-listening-choice.webp",
-    alt: "Мальчик слушает короткую инструкцию и выбирает одну из трёх равнозначных карточек",
+    title: "Первые слова",
+    text: "Знакомимся с миром через звуки, слова и яркие картинки.",
+    image: "game-first-words",
+    tag: "СЛУШАЕМ И УЗНАЁМ",
+    tone: "peach",
+    alt: "Птичка Söyle рядом с планшетом с картинкой собаки",
   },
   {
-    label: "AAC-коммуникация",
-    title: "Важное можно сказать не только словами",
-    text: "Визуальные карточки помогают попросить, отказаться, сообщить о самочувствии и составить короткую фразу.",
-    points: ["Доступно до, во время и после занятия", "Выбор ребёнка не оценивается"],
-    image: "/landing/feature-aac-tea-party.webp",
-    alt: "Мальчик собирает просьбу из карточек во время игры с плюшевым мишкой",
+    title: "Собираем фразы",
+    text: "Учимся соединять слова и выражать свои мысли.",
+    image: "game-sentences",
+    tag: "СОЕДИНЯЕМ СЛОВА",
+    tone: "sky",
+    alt: "Солнце и карточки для фразы на игровом планшете",
   },
   {
-    label: "Кабинет родителя",
-    title: "Вместо потока данных - ясный следующий шаг",
-    text: "История практики, настройки приватности и спокойные рекомендации собраны отдельно от детского режима.",
-    points: ["Прогресс без диагностических выводов", "Адаптация без внешней AI API"],
-    image: "/landing/feature-parent-evening-review.webp",
-    alt: "Мама вечером просматривает спокойную сводку занятия на планшете",
+    title: "Интерактивные истории",
+    text: "Развиваем общение через увлекательные игровые истории.",
+    image: "game-stories",
+    tag: "ИГРАЕМ ВМЕСТЕ",
+    tone: "sage",
+    alt: "Сказочная история с мальчиком и медвежонком на планшете",
   },
 ];
-
-const steps = [
-  ["01", "Создайте профиль", "Укажите только то, что помогает настроить удобную практику."],
-  ["02", "Выберите 3, 5 или 10 минут", "Короткий формат легче встроить в реальный семейный день."],
-  ["03", "Начните с одного действия", "Söyle ведёт по шагам, а остановиться можно в любой момент."],
+const forms = [
+  {
+    title: "Сенсорная алалия",
+    text: "Ребёнку трудно понимать обращённую речь.",
+    image: "alalia-sensory",
+    tone: "rose",
+    icon: Volume2,
+  },
+  {
+    title: "Моторная алалия",
+    text: "Ребёнку трудно формировать и произносить слова, даже когда понимание речи относительно сохранно.",
+    image: "alalia-motor",
+    tone: "sky",
+    icon: MessageCircle,
+  },
+  {
+    title: "Смешанная форма",
+    text: "Трудности затрагивают и понимание речи, и её самостоятельное формирование.",
+    image: "alalia-mixed",
+    tone: "sage",
+    icon: Puzzle,
+  },
+];
+const benefits = [
+  [
+    "benefit-play",
+    "Игровой подход",
+    "Знакомые сюжеты и маленькие открытия помогают вовлечь ребёнка в занятие.",
+  ],
+  [
+    "benefit-personalization",
+    "В своём темпе",
+    "Короткая практика с учётом предпочтений. Всегда можно сделать паузу.",
+  ],
+  [
+    "benefit-progress",
+    "Понятно родителям",
+    "История заданий и ваши наблюдения помогают замечать маленькие шаги.",
+  ],
+  [
+    "benefit-family",
+    "Удобно заниматься дома",
+    "Выбирайте 3, 5 или 10 минут практики и занимайтесь рядом с ребёнком.",
+  ],
+];
+const questions = [
+  [
+    "С чего начать?",
+    "Откройте Söyle, создайте аккаунт родителя и профиль ребёнка. Выберите направление и удобную длительность практики: 3, 5 или 10 минут. Начните рядом с ребёнком, без спешки.",
+  ],
+  [
+    "Söyle заменяет логопеда?",
+    "Нет. Söyle помогает организовать игровые занятия и домашнюю практику. Платформа не ставит диагноз и не заменяет диагностику и работу с квалифицированными специалистами.",
+  ],
+  [
+    "Нужна ли камера?",
+    "Для большинства занятий камера не нужна. Для отдельных упражнений она включается с отдельного согласия. Обработка происходит в браузере, кадры не отправляются на сервер.",
+  ],
+  [
+    "Что я увижу в кабинете родителя?",
+    "Историю занятий, результаты упражнений, цели и план домашней практики. Вы также можете сохранять собственные наблюдения. Игровые результаты не являются оценкой речевого развития.",
+  ],
 ];
 
-const faqs = [
-  ["С чего начать, если ребёнок быстро устаёт?", "Выберите практику на 3 минуты: в таком плане два задания. Начните рядом с ребёнком, повторяйте инструкцию при необходимости и делайте паузу, когда она нужна. Завершать весь план необязательно."],
-  ["Нужна ли камера для всех занятий?", "Нет. Камера нужна только для отдельных упражнений и включается с отдельного согласия. Анализ выполняется в браузере, кадры и координаты лица не сохраняются и не отправляются на сервер."],
-  ["Что родитель увидит после занятия?", "Историю выполненных заданий, результаты практики и объяснение следующего предложенного шага. Бытовые наблюдения сохраняются отдельно от игровых результатов."],
-  ["Можно ли исключить неудобное задание?", "Да. Родитель управляет предпочтениями и исключениями. При составлении плана платформа учитывает эти настройки и активные цели."],
-  ["Söyle заменяет логопеда?", "Нет. Платформа помогает организовать домашнюю практику, но не ставит диагноз и не заменяет врача или логопеда."],
-  ["Как работает адаптивный подбор?", "Söyle локально анализирует последние игровые ответы: свежие результаты имеют больший вес, а задания проходят ротацию без лишних повторов."],
-  ["AAC доступна вне занятия?", "Да. Ребёнок может открыть экран «Сказать» в любой момент и сообщить о важном без награды или оценки."],
-  ["Что передаётся внешней AI?", "Ничего. Подбор сложности и подсказки работают по локальным проверяемым правилам без подключения к поставщику модели."],
-];
-
+function Illustration({
+  name,
+  alt = "",
+  className = "",
+  priority = false,
+  mobileName,
+  sizes = "(max-width: 760px) 100vw, 40vw",
+}: {
+  name: string;
+  alt?: string;
+  className?: string;
+  priority?: boolean;
+  mobileName?: string;
+  sizes?: string;
+}) {
+  const image = (
+    <Image
+      className={className}
+      src={`${art}${name}.webp`}
+      alt={alt}
+      fill
+      quality={75}
+      sizes={sizes}
+      {...(priority ? { preload: true } : { loading: "lazy" as const })}
+    />
+  );
+  return mobileName ? (
+    <picture>
+      <source media="(max-width: 650px)" srcSet={`${art}${mobileName}.webp`} />
+      {image}
+    </picture>
+  ) : (
+    image
+  );
+}
 function Logo() {
   return (
-    <span className="landing-logo">
-      <Image src="/soyle-mark.svg" alt="" width={42} height={42} />
-      <span><b>Söyle</b><small>общение и практика</small></span>
-    </span>
+    <BrandLogo
+      variant="primary"
+      width={190}
+      responsive
+      className="sl-brand-logo"
+    />
+  );
+}
+
+function Foliage({
+  kind,
+  className,
+}: {
+  kind: "tall" | "canopy" | "garden";
+  className: string;
+}) {
+  return (
+    <div
+      className={`sl-foliage sl-foliage-${kind} ${className}`}
+      aria-hidden="true"
+    >
+      <Image
+        src={`${art}foliage-${kind}.webp`}
+        alt=""
+        fill
+        sizes="(max-width: 650px) 80px, 190px"
+        loading="lazy"
+      />
+    </div>
+  );
+}
+
+function OrganicWave({
+  edge = "bottom",
+  alternate = false,
+}: {
+  edge?: "top" | "bottom";
+  alternate?: boolean;
+}) {
+  return (
+    <svg
+      className={`sl-wave sl-wave-${edge}`}
+      viewBox="0 0 1440 64"
+      preserveAspectRatio="none"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path
+        d={
+          alternate
+            ? "M0 23C145 4 260 57 440 35S690 2 856 30S1130 63 1440 13V64H0Z"
+            : "M0 30C170 60 310 3 487 25S755 57 937 28S1210 4 1440 32V64H0Z"
+        }
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+function Action({
+  secondary = false,
+  href = "/app",
+  children = "Попробовать Söyle",
+}: {
+  secondary?: boolean;
+  href?: string;
+  children?: React.ReactNode;
+}) {
+  return (
+    <Link
+      className={`sl-button ${secondary ? "sl-secondary" : "sl-primary"}`}
+      href={href}
+    >
+      {children}
+      <ArrowRight size={18} aria-hidden="true" />
+    </Link>
   );
 }
 
 export function LandingPage() {
   const [menuOpen, setMenuOpen] = useState(false);
-  const [selectedCard, setSelectedCard] = useState("water");
-  const [spoken, setSpoken] = useState(false);
-  const [speechError, setSpeechError] = useState(false);
-  const speechAudio = useRef<HTMLAudioElement>(null);
-  const [exerciseTab, setExerciseTab] = useState(0);
-  const [duration, setDuration] = useState(5);
-  const closeMenu = () => setMenuOpen(false);
-
+  const [selected, setSelected] = useState("water");
+  const [speaking, setSpeaking] = useState(false);
+  const [audioError, setAudioError] = useState(false);
+  const audio = useRef<HTMLAudioElement>(null);
+  const root = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    const previousTheme = document.documentElement.dataset.theme;
-    document.documentElement.dataset.theme = LANDING_THEME;
-    const restoreTheme = () => {
-      if (previousTheme) document.documentElement.dataset.theme = previousTheme;
-      else delete document.documentElement.dataset.theme;
-    };
-    const root = document.querySelector(".landing-page");
-    const items = document.querySelectorAll<HTMLElement>("[data-reveal]");
-    const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const syncMotion = () => root?.classList.toggle("motion-ready", !motion.matches);
-    motion.addEventListener("change", syncMotion);
-    const handleEscape = (event: KeyboardEvent) => {
+    const element = root.current;
+    if (!element) return;
+    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const sync = () => element.classList.toggle("sl-motion", !media.matches);
+    sync();
+    media.addEventListener("change", sync);
+    const observer = new IntersectionObserver(
+      (entries) =>
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("sl-visible");
+            observer.unobserve(entry.target);
+          }
+        }),
+      { threshold: 0.08 },
+    );
+    element
+      .querySelectorAll("[data-reveal]")
+      .forEach((item) => observer.observe(item));
+    const escape = (event: KeyboardEvent) => {
       if (event.key === "Escape") setMenuOpen(false);
     };
-    window.addEventListener("keydown", handleEscape);
-    if (!root || !items.length) return () => {
-      window.removeEventListener("keydown", handleEscape);
-      motion.removeEventListener("change", syncMotion);
-      restoreTheme();
-    };
-
-    syncMotion();
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add("is-visible");
-          observer.unobserve(entry.target);
-        }
-      });
-    }, { threshold: 0.08, rootMargin: "0px 0px -4%" });
-
-    items.forEach((item) => observer.observe(item));
+    window.addEventListener("keydown", escape);
     return () => {
       observer.disconnect();
-      window.removeEventListener("keydown", handleEscape);
-      root.classList.remove("motion-ready");
-      motion.removeEventListener("change", syncMotion);
-      restoreTheme();
+      media.removeEventListener("change", sync);
+      window.removeEventListener("keydown", escape);
     };
   }, []);
+  const close = () => setMenuOpen(false);
+  const speak = () => {
+    if (!audio.current) return;
+    if (speaking) {
+      audio.current.pause();
+      setSpeaking(false);
+      return;
+    }
+    audio.current.src = `/audio/landing/${selected}.wav`;
+    setAudioError(false);
+    setSpeaking(true);
+    void audio.current.play().catch(() => {
+      setSpeaking(false);
+      setAudioError(true);
+    });
+  };
 
   return (
-    <div className="landing-page" data-theme={LANDING_THEME}>
-      <a className="skip-link" href="#main-content">Перейти к содержанию</a>
-
-      <header className="landing-header">
-        <div className="reading-progress" aria-hidden="true" />
-        <div className="landing-container nav-wrap">
-          <Link href="/" aria-label="Söyle - главная"><Logo /></Link>
-          <nav id="landing-navigation" className={menuOpen ? "open" : ""} aria-label="Навигация по странице">
-            <a href="#features" onClick={closeMenu}>Возможности</a>
-            <a href="#practice" onClick={closeMenu}>Занятия</a>
-            <a href="#parents" onClick={closeMenu}>Родителям</a>
-            <a href="#how" onClick={closeMenu}>Как начать</a>
-            <a href="#faq" onClick={closeMenu}>Вопросы</a>
-            <Link className="mobile-login" href="/app" onClick={closeMenu}>Войти</Link>
+    <div className="sl-page" ref={root}>
+      <a className="sl-skip" href="#main-content">
+        Перейти к содержанию
+      </a>
+      <header className="sl-header">
+        <div className="sl-container sl-nav">
+          <Link href="/" aria-label="Söyle — главная">
+            <Logo />
+          </Link>
+          <nav
+            id="sl-navigation"
+            className={menuOpen ? "sl-open" : ""}
+            aria-label="Основная навигация"
+          >
+            <a href="#about" onClick={close}>
+              О продукте
+            </a>
+            <a href="#family" onClick={close}>
+              Для кого
+            </a>
+            <a href="#journey" onClick={close}>
+              Как это работает
+            </a>
+            <a href="#benefits" onClick={close}>
+              Преимущества
+            </a>
+            <a href="#questions" onClick={close}>
+              Вопросы
+            </a>
+            <Link className="sl-mobile-login" href="/app">
+              Войти в Söyle <ArrowRight size={16} />
+            </Link>
           </nav>
-          <div className="nav-actions">
-            <Link className="button ghost" href="/app">Войти</Link>
-            <Link className="button primary" href="/app">Начать <ArrowRight size={17} /></Link>
+          <div className="sl-nav-actions">
+            <Link href="/app" className="sl-login">
+              Войти
+            </Link>
+            <Action />
           </div>
-          <button className="mobile-menu" onClick={() => setMenuOpen((open) => !open)} aria-expanded={menuOpen} aria-controls="landing-navigation" aria-label={menuOpen ? "Закрыть меню" : "Открыть меню"}>
+          <button
+            type="button"
+            className="sl-menu"
+            aria-label={menuOpen ? "Закрыть меню" : "Открыть меню"}
+            aria-expanded={menuOpen}
+            aria-controls="sl-navigation"
+            onClick={() => setMenuOpen(!menuOpen)}
+          >
             {menuOpen ? <X /> : <Menu />}
           </button>
         </div>
       </header>
-
       <main id="main-content">
-        <section className="landing-hero">
-          <div className="landing-container hero-grid">
-            <div className="landing-hero-copy" data-reveal>
-              <span className="eyebrow"><Sparkles size={14} /> Маленькие шаги. Большое понимание.</span>
-              <h1>Общаться. Играть.<br /><em>Понимать друг друга.</em></h1>
-              <p>Söyle помогает семье заниматься дома: понимать речь, собирать фразы из карточек и практиковаться короткими игровыми шагами. Ребёнок выбирает свой темп. Родитель видит, что делать дальше.</p>
-              <div className="hero-actions">
-                <Link className="button primary large" href="/app">Попробовать Söyle <ArrowRight size={19} /></Link>
-                <a className="hero-text-link" href="#try">Попробовать карточки</a>
+        <section className="sl-hero" id="about">
+          <Foliage kind="tall" className="sl-hero-leaves-left" />
+          <Foliage kind="canopy" className="sl-hero-leaves-right" />
+          <div className="sl-hero-art">
+            <Illustration
+              name="hero-room"
+              priority
+              alt="Мальчик и птичка Söyle вместе играют с планшетом в уютной солнечной комнате"
+              sizes="100vw"
+            />
+          </div>
+          <div className="sl-container sl-hero-inner">
+            <div className="sl-hero-copy">
+              <span className="sl-eyebrow">
+                <Star size={13} fill="currentColor" /> Развитие речи через игру
+              </span>
+              <h1>
+                <span>Каждое слово —</span>
+                <span>маленькое открытие.</span>
+              </h1>
+              <p>
+                Игровые занятия, которые помогают детям развивать речь,
+                понимание и общение в естественной и радостной форме.
+              </p>
+              <div className="sl-actions">
+                <Action />
+                <Action secondary href="#games">
+                  Узнать больше
+                </Action>
               </div>
-              <dl className="hero-facts" aria-label="Ключевые преимущества">
-                <div><dt>3-10 минут</dt><dd>длительность практики</dd></div>
-                <div><dt>Всегда</dt><dd>можно сделать паузу</dd></div>
-                <div><dt>Локально</dt><dd>работает адаптация</dd></div>
-              </dl>
-            </div>
-
-            <figure className="hero-photo" data-reveal>
-              <span className="photo-orbit" aria-hidden="true" />
-              <span className="floating-note note-top"><span>✦</span> В своём темпе</span>
-              <Image
-                src="/landing/hero-family-aac-request.webp"
-                alt="Папа слушает сына, который показывает карточку с просьбой о воде"
-                width={1672}
-                height={941}
-                priority
-                quality={75}
-                sizes="(max-width: 980px) calc(100vw - 32px), 56vw"
-              />
-              <figcaption><span className="note-check"><Check size={18} /></span><span><b>Меня понимают</b><small>И это уже большой шаг</small></span></figcaption>
-            </figure>
-          </div>
-        </section>
-
-        <section className="principles" aria-label="Принципы Söyle">
-          <div className="landing-container principles-grid">
-            <div data-reveal><span>01</span><strong>Один шаг</strong><p>На экране только одно понятное действие.</p></div>
-            <div data-reveal><span>02</span><strong>AAC всегда рядом</strong><p>Коммуникация не зависит от результата занятия.</p></div>
-            <div data-reveal><span>03</span><strong>Без диагностики</strong><p>Только поддержка домашней практики.</p></div>
-          </div>
-        </section>
-
-        <section className="landing-section demo-section" id="try">
-          <div className="landing-container demo-grid">
-            <div className="demo-copy" data-reveal><span className="section-tag">ПОПРОБУЙТЕ ПРЯМО ЗДЕСЬ</span><h2>Иногда одна карточка<br />говорит о многом.</h2><p>Выберите, что хочется сказать. Так визуальные карточки помогают ребёнку сообщить о своём желании.</p><span className="demo-hint"><Sparkles size={18} /> Маленький пример AAC-коммуникации</span></div>
-            <div className="aac-preview" data-reveal="scale">
-              <div className="preview-heading"><span><i /> Экран «Сказать»</span><small>Демо</small></div>
-              <div className="demo-sentence" aria-live="polite"><span>Я хочу</span><strong key={selectedCard}>{selectedCard === "water" ? "воду" : selectedCard === "apple" ? "яблоко" : "играть"}</strong></div>
-              <div className="demo-cards">{[{ id: "water", label: "Воду", image: "/p15/nouns/food/water.svg" }, { id: "apple", label: "Яблоко", image: "/p15/nouns/food/apple.svg" }, { id: "play", label: "Играть", image: "/p15/nouns/toys/ball.svg" }].map((card) => <button key={card.id} aria-pressed={selectedCard === card.id} onClick={() => { speechAudio.current?.pause(); setSelectedCard(card.id); setSpoken(false); setSpeechError(false); }}><Image src={card.image} alt="" width={72} height={72} /><span>{card.label}</span>{selectedCard === card.id && <Check size={16} className="card-check" />}</button>)}</div>
-              <audio ref={speechAudio} preload="none" onEnded={() => setSpoken(false)} onError={() => { setSpoken(false); setSpeechError(true); }} />
-              <div className="demo-controls"><button className="button primary" onClick={() => {
-                const audio = speechAudio.current;
-                if (!audio) return;
-                if (spoken) { audio.pause(); setSpoken(false); return; }
-                audio.src = `/audio/landing/${selectedCard}.wav`;
-                audio.volume = 0.85;
-                setSpeechError(false);
-                setSpoken(true);
-                void audio.play().catch(() => { setSpoken(false); setSpeechError(true); });
-              }}><Volume2 size={19} /> {spoken ? "Остановить" : "Произнести"}</button><button className="demo-reset" aria-label="Сбросить пример" onClick={() => { speechAudio.current?.pause(); setSelectedCard("water"); setSpoken(false); setSpeechError(false); }}><RotateCcw size={19} /></button></div>
-              {speechError && <p role="status" className="demo-caption">Не удалось включить звук. Попробуйте ещё раз.</p>}
-              <p className="demo-caption">Без оценок. Просто возможность быть услышанным.</p>
-            </div>
-          </div>
-        </section>
-
-        <section className="landing-section feature-section" id="features">
-          <div className="landing-container">
-            <div className="section-heading" data-reveal>
-              <span className="section-tag">ВОЗМОЖНОСТИ</span>
-              <h2>Меньше барьеров.<br />Больше моментов вместе.</h2>
-              <p>Мы разделили детский режим, коммуникацию и кабинет родителя, чтобы каждый экран отвечал на один конкретный вопрос.</p>
-            </div>
-            <div className="feature-stories">
-              {features.map((feature, index) => (
-                  <article className="feature-story" key={feature.label}>
-                    <span className="feature-index">0{index + 1}</span>
-                    <figure className="story-media" data-reveal="image">
-                      <Image src={feature.image} alt={feature.alt} width={1536} height={1024} quality={75} sizes="(max-width: 760px) calc(100vw - 32px), 54vw" />
-                    </figure>
-                    <div className="story-copy" data-reveal="side">
-                      <span className="feature-label">{feature.label}</span>
-                      <h3>{feature.title}</h3>
-                      <p>{feature.text}</p>
-                      <ul>{feature.points.map((point) => <li key={point}>{point}</li>)}</ul>
-                    </div>
-                  </article>
-                ))}
-            </div>
-          </div>
-        </section>
-
-        <section className="landing-section exercise-section" id="practice">
-          <div className="landing-container">
-            <div className="section-heading" data-reveal><span className="section-tag">ВНУТРИ ЗАНЯТИЯ</span><h2>Понятные задания.<br />Разные способы участвовать.</h2><p>Послушать, выбрать картинку, собрать фразу — задания связаны с конкретным действием. Можно повторить инструкцию или остановиться.</p></div>
-            <div className="exercise-tabs" role="group" aria-label="Примеры направлений практики">{["Понимание речи", "Артикуляция", "Фразы и желания"].map((label, index) => <button key={label} aria-pressed={exerciseTab === index} onClick={() => setExerciseTab(index)}>{label}</button>)}</div>
-            <div className="exercise-showcase" data-reveal>
-              <div className="exercise-illustration"><Image src={["/landing/practice-listening-girl.webp", "/landing/practice-articulation-mirror.webp", "/landing/practice-phrases-banana.webp"][exerciseTab]} alt={["Девочка слушает инструкцию и выбирает из карточек с ложкой, чашкой и книгой", "Мальчик и мама тренируют движение губ перед зеркалом", "Мальчик составляет просьбу о банане из двух карточек"][exerciseTab]} width={1585} height={992} sizes="(max-width: 760px) 85vw, 40vw" /></div>
-              <div className="exercise-description" key={exerciseTab} aria-live="polite"><span className="section-tag">ПРИМЕР НАПРАВЛЕНИЯ</span><h3>{["Услышать и выбрать", "Повторить движение", "Сообщить о своём желании"][exerciseTab]}</h3><p>{["Ребёнок слушает короткую инструкцию и выбирает подходящую картинку. Повторное прослушивание помогает вернуться к заданию без спешки.", "Визуальный пример помогает понять, какое движение нужно выполнить. Для заданий с камерой требуется отдельное согласие: обработка идёт на устройстве.", "Визуальные карточки помогают собрать короткую фразу. Общение остаётся доступным и за пределами практики — на экране «Сказать»."][exerciseTab]}</p><ul><li>Одна инструкция за раз</li><li>Пауза и отказ без штрафов</li><li>Темп выбирает ребёнок</li></ul><a className="text-link" href="#try">Попробовать пример с карточками <ArrowRight size={17} /></a></div>
-            </div>
-          </div>
-        </section>
-
-        <section className="landing-section routine-section">
-          <div className="landing-container routine-grid">
-            <div data-reveal><span className="section-tag">ПРАКТИКА В ОБЫЧНОЙ ЖИЗНИ</span><h2>Не отдельный большой урок.<br />Небольшая часть дня.</h2><p>Выберите момент, когда ребёнку удобно. Söyle помогает организовать практику, а длительность можно менять от занятия к занятию.</p><Link className="text-link" href="/app">Выбрать первую практику <ArrowRight size={17} /></Link></div>
-            <div className="routine-list">{[["До занятия", "Подготовьте спокойное место", "Откройте план вместе с ребёнком. Проверьте звук, посмотрите первое задание и дайте время освоиться."], ["Во время", "Следуйте за темпом ребёнка", "Повторите инструкцию, сделайте паузу или откройте AAC. Можно отказаться от задания и закончить раньше."], ["После", "Посмотрите, что было удобно", "Откройте историю практики. При желании добавьте своё наблюдение и скорректируйте цели следующего занятия."]].map(([label,title,text]) => <article key={label} data-reveal><span>{label}</span><h3>{title}</h3><p>{text}</p></article>)}</div>
-          </div>
-        </section>
-
-        <section className="landing-section adaptation-section" id="adaptation">
-          <div className="landing-container">
-            <div className="section-heading" data-reveal><span className="section-tag">ПОНЯТНАЯ АДАПТАЦИЯ</span><h2>Следующий шаг имеет причину.</h2><p>План учитывает недавнюю практику, активные цели и настройки семьи. Родитель может посмотреть, почему предложено конкретное задание.</p></div>
-            <ol className="adaptation-flow">{[["01", "Последние ответы", "Учитываются до восьми последних завершённых результатов. Свежие ответы влияют на подбор сильнее."], ["02", "Подходящий уровень", "Оцениваются точность и самостоятельность. Если данных мало, сохраняется спокойный стартовый уровень."], ["03", "Разнообразие заданий", "Сначала предлагаются новые и реже использованные упражнения. Внутри плана задания не повторяются."], ["04", "Объяснение родителю", "Причины выбора сохраняются вместе с планом: можно понять, как получился следующий шаг."]].map(([n,title,text]) => <li key={n} data-reveal><span>{n}</span><h3>{title}</h3><p>{text}</p></li>)}</ol>
-            <div className="adaptation-note" data-reveal><strong>Перерыв — это перерыв.</strong><p>Отказ, пауза и техническая ошибка не считаются неправильным ответом. Алгоритм работает по проверяемым правилам без внешней AI API.</p></div>
-          </div>
-        </section>
-
-        <section className="landing-section parent-detail-section" id="parents">
-          <div className="landing-container parent-detail-grid">
-            <figure data-reveal="image"><Image src="/landing/parent-controls-family.webp" alt="Родители вместе настраивают приватность и параметры практики, пока ребёнок играет рядом" width={1586} height={992} sizes="(max-width: 860px) 90vw, 45vw" /><figcaption>Наблюдения семьи и игровые результаты хранятся отдельно.</figcaption></figure>
-            <div data-reveal="side"><span className="section-tag">ДЛЯ РОДИТЕЛЯ</span><h2>Видеть картину.<br />Управлять следующим шагом.</h2><p>Взрослая часть отделена от детского режима. Здесь можно спокойно посмотреть историю и настроить практику под вашу семью.</p><dl className="parent-tools"><div><dt>Цели практики</dt><dd>Определяйте, над чем хотите работать, и возвращайтесь к целям по мере занятий.</dd></div><div><dt>История и наблюдения</dt><dd>Смотрите завершённые занятия и сохраняйте то, что заметили в повседневной жизни.</dd></div><div><dt>Предпочтения и исключения</dt><dd>Убирайте неудобные задания из подбора и меняйте настройки практики.</dd></div><div><dt>Приватность и согласия</dt><dd>Управляйте разрешениями в кабинете и отзывайте согласие, когда это нужно.</dd></div></dl></div>
-          </div>
-        </section>
-
-        <section className="landing-section how-section" id="how">
-          <div className="landing-container how-grid">
-            <div className="how-intro" data-reveal>
-              <span className="section-tag">КАК ЭТО РАБОТАЕТ</span>
-              <h2>От регистрации до первого занятия - три шага</h2>
-              <p>Настройка занимает несколько минут. Остальное можно менять позже в кабинете родителя.</p>
-              <div className="practice-picker">
-                <span id="duration-label">Сколько времени есть сегодня?</span>
-                <div role="group" aria-labelledby="duration-label" className="duration-options">{[3, 5, 10].map((minutes) => <button key={minutes} aria-pressed={duration === minutes} onClick={() => setDuration(minutes)}>{minutes} мин</button>)}</div>
-                <p aria-live="polite" key={duration} className="duration-note">{duration === 3 ? "Для первого знакомства или короткой паузы в делах." : duration === 5 ? "Немного практики, которую легко встроить в день." : "Больше времени на задания — с паузами, когда нужно."}</p>
-                <small>Это пример длительности. Настройка занятия — в приложении.</small>
+              <div className="sl-trust">
+                <div>
+                  <span className="sl-icon rose">
+                    <Heart fill="currentColor" />
+                  </span>
+                  Короткие занятия
+                  <br />в своём темпе
+                </div>
+                <div>
+                  <span className="sl-icon sky">
+                    <MessageCircle fill="currentColor" />
+                  </span>
+                  Для ребёнка
+                  <br />и родителей
+                </div>
+                <div>
+                  <span className="sl-icon yellow">
+                    <ShieldCheck />
+                  </span>
+                  Без рекламы
+                  <br />и лишнего шума
+                </div>
               </div>
-              <Link href="/app" className="text-link">Открыть Söyle <ArrowRight size={17} /></Link>
             </div>
-            <div className="how-copy">
-              <ol className="steps-list">
-                {steps.map(([number, title, text]) => (
-                  <li key={number} data-reveal>
-                    <span>{number}</span>
-                    <div><h3>{title}</h3><p>{text}</p></div>
-                  </li>
-                ))}
-              </ol>
-              <p className="how-note"><strong>Важно:</strong> ребёнок может остановиться или открыть AAC в любой момент. Завершение занятия не является обязательным.</p>
+            <div className="sl-speech-bubble" aria-hidden="true">
+              Новые слова!
+              <br />
+              Новые открытия!
+              <Sparkles size={20} />
             </div>
+          </div>
+          <OrganicWave />
+        </section>
+
+        <section className="sl-games sl-container" id="games">
+          <div className="sl-section-heading" data-reveal>
+            <div>
+              <h2>
+                Игры, которые говорят сами за себя{" "}
+                <span className="sl-heading-spark" aria-hidden="true">
+                  ✦
+                </span>
+              </h2>
+              <p>
+                Разнообразные интерактивные занятия
+                <br className="sl-desktop-break" /> для развития речи и
+                коммуникации.
+              </p>
+            </div>
+            <Action secondary href="/app">
+              Посмотреть занятия
+            </Action>
+          </div>
+          <div className="sl-game-grid">
+            {games.map((game, i) => (
+              <Link
+                className={`sl-game ${game.tone}`}
+                href="/app"
+                key={game.title}
+                data-reveal
+                style={{ "--delay": `${i * 85}ms` } as React.CSSProperties}
+              >
+                <div className="sl-game-copy">
+                  <span className="sl-game-number">0{i + 1}</span>
+                  <h3>{game.title}</h3>
+                  <p>{game.text}</p>
+                </div>
+                <div className="sl-game-image">
+                  <Illustration
+                    name={game.image}
+                    alt={game.alt}
+                    sizes="(max-width: 650px) 100vw, 33vw"
+                  />
+                </div>
+                <div className="sl-game-bottom">
+                  <span>{game.tag}</span>
+                  <ArrowRight size={18} />
+                </div>
+              </Link>
+            ))}
           </div>
         </section>
 
-        <section className="landing-section safety-section" id="safety">
-          <div className="landing-container safety-panel">
-            <div className="safety-copy" data-reveal>
-              <span className="section-tag">ПРИВАТНОСТЬ И КОНТРОЛЬ</span>
-              <h2>Технология помогает. Решения остаются за семьёй.</h2>
-              <p>Адаптивный анализ работает внутри платформы: учитывает последние ответы, выбирает уровень и не отправляет данные во внешнюю AI API.</p>
+        <section className="sl-alalia" id="alalia">
+          <OrganicWave edge="top" alternate />
+          <Foliage kind="tall" className="sl-alalia-leaves" />
+          <div className="sl-container sl-alalia-grid">
+            <div className="sl-alalia-intro" data-reveal>
+              <div className="sl-thoughtful">
+                <Illustration
+                  name="alalia-intro"
+                  alt="Задумчивый мальчик за столом"
+                  sizes="(max-width: 650px) 42vw, 20vw"
+                />
+                <span aria-hidden="true">?</span>
+              </div>
+              <div className="sl-alalia-copy">
+                <h2>Что такое алалия?</h2>
+                <p>
+                  Алалия — выраженное нарушение развития речи, связанное с
+                  трудностями формирования речевых функций.
+                </p>
+                <p>
+                  Проявления у детей могут различаться, поэтому занятия должны
+                  учитывать индивидуальные особенности ребёнка.
+                </p>
+                <a
+                  className="sl-button sl-secondary"
+                  href="#alalia-details"
+                  onClick={() => {
+                    const details = document.getElementById("alalia-details");
+                    if (details instanceof HTMLDetailsElement)
+                      details.open = true;
+                  }}
+                >
+                  Узнать больше об алалии <ArrowRight size={16} />
+                </a>
+              </div>
             </div>
-            <ul className="safety-points">
-              <li data-reveal><span>01</span><b>Не ставит диагноз</b><small>Söyle не заменяет специалиста.</small></li>
-              <li data-reveal><span>02</span><b>Согласие можно отозвать</b><small>Настройки всегда доступны родителю.</small></li>
-              <li data-reveal><span>03</span><b>Детский режим отделён</b><small>В нём нет отчётов и взрослых настроек.</small></li>
-            </ul>
-          </div>
-        </section>
-
-        <section className="landing-section faq-section" id="faq">
-          <div className="landing-container faq-grid">
-            <div data-reveal>
-              <span className="section-tag">ЧАСТЫЕ ВОПРОСЫ</span>
-              <h2>Коротко о важном</h2>
-              <p>Собрали ответы о практике, AAC и приватности.</p>
-              <a href="mailto:hello@soyle.app" className="text-link">Задать свой вопрос <ArrowRight size={16} /></a>
-            </div>
-            <div className="faq-list">
-              {faqs.map(([question, answer]) => (
-                <details key={question} data-reveal>
-                  <summary>{question}<ChevronDown /></summary>
-                  <p>{answer}</p>
-                </details>
+            <div className="sl-form-grid">
+              {forms.map((form, i) => (
+                <article
+                  className={`sl-form ${form.tone}`}
+                  key={form.title}
+                  data-reveal
+                  style={{ "--delay": `${i * 80}ms` } as React.CSSProperties}
+                >
+                  <h3>
+                    <form.icon size={19} />
+                    {form.title}
+                  </h3>
+                  <div className="sl-form-image">
+                    <Illustration
+                      name={form.image}
+                      sizes="(max-width: 650px) 32vw, 16vw"
+                    />
+                  </div>
+                  <p>{form.text}</p>
+                </article>
               ))}
             </div>
           </div>
+          <div className="sl-container sl-alalia-note">
+            <details id="alalia-details">
+              <summary>
+                Каждому ребёнку — своя поддержка <ChevronDown size={16} />
+              </summary>
+              <p>
+                Эти описания упрощены для родителей и не подходят для
+                самостоятельной диагностики. При вопросах о развитии речи
+                обратитесь к квалифицированному специалисту.
+              </p>
+            </details>
+            <p>
+              Söyle помогает организовать игровые занятия и домашнюю практику.
+              Платформа не заменяет диагностику и работу со специалистами.
+            </p>
+          </div>
+          <OrganicWave alternate />
         </section>
 
-        <section className="landing-cta">
-          <div className="landing-container cta-inner" data-reveal>
-            <div><span className="section-tag">НАЧАТЬ С МАЛОГО</span><h2>Один понятный шаг сегодня</h2><p>Создайте профиль и выберите удобную длительность первой практики.</p></div>
-            <Link href="/app" className="button primary large">Попробовать Söyle <ArrowRight size={19} /></Link>
+        <section className="sl-family sl-container" id="family">
+          <article className="sl-child-panel" data-reveal>
+            <Illustration
+              name="child-experience"
+              alt="Мальчик занимается с планшетом рядом с птичкой Söyle"
+              sizes="(max-width: 800px) 100vw, 50vw"
+            />
+            <div className="sl-child-copy">
+              <span className="sl-tag sl-peach-tag">Для ребёнка</span>
+              <h2>
+                Играй. Исследуй.
+                <br />
+                Говори!
+              </h2>
+              <p>
+                Любимые герои и знакомые сюжеты превращают занятия в маленькое
+                приключение.
+              </p>
+              <ul>
+                {[
+                  "Интерактивные занятия",
+                  "Знакомые игровые сценарии",
+                  "Поддержка общения",
+                  "Комфортный темп",
+                ].map((text) => (
+                  <li key={text}>
+                    <Check size={15} />
+                    {text}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </article>
+          <article className="sl-parent-panel" data-reveal>
+            <div className="sl-parent-copy">
+              <span className="sl-tag">Для родителей</span>
+              <h2>
+                Наблюдайте
+                <br />
+                за прогрессом
+              </h2>
+              <p>
+                Замечайте маленькие шаги и поддерживайте ребёнка в повседневной
+                жизни.
+              </p>
+              <ul>
+                <li>
+                  <History />
+                  История занятий
+                </li>
+                <li>
+                  <Target />
+                  Результаты упражнений
+                </li>
+                <li>
+                  <BookOpen />
+                  План домашней практики
+                </li>
+                <li>
+                  <Heart />
+                  Наблюдения родителей
+                </li>
+              </ul>
+            </div>
+            <div className="sl-parent-preview">
+              <div className="sl-preview-head">
+                <Logo />
+                <span>Кабинет родителя</span>
+              </div>
+              <strong>
+                Каждый маленький
+                <br />
+                шаг важен
+              </strong>
+              <div className="sl-preview-stats">
+                <div>
+                  <b>—</b>
+                  <span>занятий за неделю</span>
+                </div>
+                <div>
+                  <b>—</b>
+                  <span>заданий с попытками</span>
+                </div>
+              </div>
+              <div className="sl-preview-row">
+                <History size={18} />
+                <div>
+                  <b>История практики</b>
+                  <small>Здесь появятся ваши занятия</small>
+                </div>
+              </div>
+              <div className="sl-preview-row">
+                <BookOpen size={18} />
+                <div>
+                  <b>Цели и план</b>
+                  <small>Практика в удобном темпе</small>
+                </div>
+              </div>
+              <Link href="/app">
+                Открыть кабинет <ArrowRight size={14} />
+              </Link>
+              <small className="sl-preview-caption">
+                Пример кабинета до начала занятий
+              </small>
+            </div>
+          </article>
+        </section>
+
+        <section className="sl-journey" id="journey">
+          <OrganicWave edge="top" />
+          <div className="sl-journey-art">
+            <Illustration
+              name="speech-journey"
+              mobileName="speech-journey-mobile"
+              alt="Сказочная долина с тропинкой, речкой, мостом и маленьким замком вдали"
+              sizes="100vw"
+            />
+          </div>
+          <div className="sl-container sl-journey-content">
+            <h2 data-reveal>
+              Путь к большим разговорам
+              <br />с маленьких шагов
+            </h2>
+            <ol>
+              {[
+                "Знакомимся со звуками",
+                "Учим первые слова",
+                "Собираем фразы",
+                "Общаемся в разных ситуациях",
+              ].map((step, i) => (
+                <li
+                  data-reveal
+                  key={step}
+                  style={{ "--delay": `${i * 100}ms` } as React.CSSProperties}
+                >
+                  <span>0{i + 1}</span>
+                  {step}
+                </li>
+              ))}
+            </ol>
+            <p>Возможные направления занятий. У каждого ребёнка свой путь.</p>
+          </div>
+          <OrganicWave alternate />
+        </section>
+
+        <section className="sl-benefits sl-container" id="benefits">
+          <Foliage kind="tall" className="sl-benefits-leaves-left" />
+          <Foliage kind="garden" className="sl-benefits-leaves-right" />
+          <div data-reveal>
+            <h2>
+              Почему выбирают Söyle{" "}
+              <span className="sl-heading-spark" aria-hidden="true">
+                ✦
+              </span>
+            </h2>
+            <p>
+              Игровой формат, понятные шаги и забота —<br />
+              чтобы открывать мир общения вместе.
+            </p>
+          </div>
+          <div className="sl-benefit-grid">
+            {benefits.map(([name, title, text], i) => (
+              <article
+                key={name}
+                data-reveal
+                style={{ "--delay": `${i * 80}ms` } as React.CSSProperties}
+              >
+                <div className="sl-benefit-art">
+                  <Illustration name={name} sizes="110px" />
+                </div>
+                <h3>{title}</h3>
+                <p>{text}</p>
+              </article>
+            ))}
           </div>
         </section>
-      </main>
 
-      <footer className="landing-footer">
-        <div className="landing-container footer-grid">
-          <div><Logo /><p>Домашняя практика и поддерживаемая коммуникация для семьи.</p></div>
-          <div><b>Платформа</b><a href="#features">Возможности</a><a href="#how">Как это работает</a><a href="#faq">Вопросы</a></div>
-          <div><b>Документы</b><Link href="/privacy">Конфиденциальность</Link><Link href="/terms">Соглашение</Link><a href="mailto:hello@soyle.app">Контакты</a></div>
+        <section className="sl-try sl-container" id="try" data-reveal>
+          <div>
+            <span className="sl-tag">Маленькое знакомство</span>
+            <h2>
+              Иногда одна карточка
+              <br />
+              говорит о многом.
+            </h2>
+            <p>
+              Попробуйте выбрать, что хочется сказать.
+              <br />
+              Так работают визуальные карточки общения.
+            </p>
+          </div>
+          <div className="sl-aac">
+            <span className="sl-aac-label">
+              Экран «Сказать» <span>Демо</span>
+            </span>
+            <p aria-live="polite">
+              Я хочу{" "}
+              <strong>
+                {selected === "water"
+                  ? "воду"
+                  : selected === "apple"
+                    ? "яблоко"
+                    : "играть"}
+              </strong>
+            </p>
+            <div className="sl-aac-options">
+              {[
+                { id: "water", label: "Воду", path: "food/water" },
+                { id: "apple", label: "Яблоко", path: "food/apple" },
+                { id: "play", label: "Играть", path: "toys/ball" },
+              ].map((item) => (
+                <button
+                  key={item.id}
+                  aria-pressed={selected === item.id}
+                  onClick={() => {
+                    audio.current?.pause();
+                    setSelected(item.id);
+                    setSpeaking(false);
+                    setAudioError(false);
+                  }}
+                >
+                  <Image
+                    src={`/p15/nouns/${item.path}.svg`}
+                    width={48}
+                    height={48}
+                    alt=""
+                  />
+                  {item.label}
+                  {selected === item.id && <Check size={13} />}
+                </button>
+              ))}
+            </div>
+            <button className="sl-button sl-primary" onClick={speak}>
+              <Volume2 size={18} />
+              {speaking ? "Остановить" : "Произнести"}
+            </button>
+            <audio
+              ref={audio}
+              preload="none"
+              onEnded={() => setSpeaking(false)}
+              onError={() => {
+                setSpeaking(false);
+                setAudioError(true);
+              }}
+            />
+            {audioError && (
+              <small role="status">Звук недоступен. Попробуйте ещё раз.</small>
+            )}
+          </div>
+        </section>
+
+        <section className="sl-faq sl-container" id="questions">
+          <div data-reveal>
+            <span className="sl-tag">Родителям на заметку</span>
+            <h2>
+              О важном —<br />
+              простыми словами.
+            </h2>
+            <p>Вопросы перед первым занятием.</p>
+          </div>
+          <div className="sl-faq-list">
+            {questions.map(([q, a]) => (
+              <details key={q} data-reveal>
+                <summary>
+                  {q}
+                  <ChevronDown size={18} />
+                </summary>
+                <p>{a}</p>
+              </details>
+            ))}
+          </div>
+        </section>
+
+        <section className="sl-night">
+          <OrganicWave edge="top" alternate />
+          <Foliage kind="tall" className="sl-night-leaves" />
+          <div className="sl-night-art">
+            <Illustration
+              name="final-night-scene"
+              alt="В уютной вечерней комнате мальчик и птичка Söyle вместе читают книгу под тёплой гирляндой"
+              sizes="100vw"
+            />
+          </div>
+          <span className="sl-night-star sl-star-one" aria-hidden="true">
+            ✦
+          </span>
+          <span className="sl-night-star sl-star-two" aria-hidden="true">
+            ✦
+          </span>
+          <div className="sl-container sl-night-inner">
+            <div data-reveal>
+              <h2>
+                Давайте вместе
+                <br />
+                <em>открывать мир слов</em>
+              </h2>
+              <p>
+                Познакомьтесь с Söyle и откройте для ребёнка мир игровых
+                занятий, маленьких открытий и новых возможностей общения.
+              </p>
+              <div className="sl-actions">
+                <Action />
+                <Action secondary href="#games">
+                  Узнать больше
+                </Action>
+              </div>
+            </div>
+          </div>
+          <OrganicWave />
+        </section>
+      </main>
+      <footer className="sl-footer">
+        <div className="sl-container sl-footer-grid">
+          <div>
+            <Link href="/" aria-label="Söyle — главная">
+              <Logo />
+            </Link>
+            <p>Развиваем речь. Открываем мир.</p>
+          </div>
+          <div>
+            <b>Продукт</b>
+            <a href="#games">Занятия</a>
+            <a href="#family">Для семьи</a>
+            <a href="#journey">Как это работает</a>
+          </div>
+          <div>
+            <b>Полезное</b>
+            <a href="#alalia">Об алалии</a>
+            <a href="#questions">Вопросы и ответы</a>
+            <Link href="/app">Кабинет родителя</Link>
+          </div>
+          <div>
+            <b>Документы</b>
+            <Link href="/privacy">Конфиденциальность</Link>
+            <Link href="/terms">Пользовательское соглашение</Link>
+            <a href="mailto:hello@soyle.app">hello@soyle.app</a>
+          </div>
         </div>
-        <div className="landing-container footer-bottom"><span>© 2026 Söyle</span><p>Söyle не является медицинским изделием и не заменяет консультацию врача или логопеда.</p></div>
+        <div className="sl-container sl-footer-bottom">
+          <span>© 2026 Söyle</span>
+          <p>
+            Домашняя практика и поддержка общения. Не заменяет консультацию
+            специалиста.
+          </p>
+          <span>Русский</span>
+        </div>
       </footer>
     </div>
   );

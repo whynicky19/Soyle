@@ -19,7 +19,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 
 from .database import connect, init_db, now_iso
-from .schemas import AACCardCreate, AACComposeRequest, AACFavoriteUpdate, AACPhraseCreate, ActiveUpdate, AdaptivePlanRequest, AIAskRequest, AIPlanRequest, AssignedExerciseCreate, ChildCreate, ChildDeleteRequest, ChildGoalCreate, ConsentUpdate, ContentReviewCreate, ExerciseDraftCreate, GoalStatusUpdate, HomeActivityObservationCreate, HomeworkCreate, HomeworkResultUpdate, LearningSessionCreate, LoginRequest, PracticeGoalCreate, PracticeGoalObservationCreate, PracticeGoalUpdate, PracticePreferencesUpdate, RecommendationReview, RegisterRequest, RoleUpdate, SessionCreate, SkillObservationUpdate, SpecialistAssignmentCreate, SpecialistRecommendationCreate, StoryAnswer, StudentAccountCreate, StudentLoginRequest, TTSRequest, UserSettingsUpdate, WorldPhotoCreate, WorldPhotoRename, StorybookEvent
+from .data_lifecycle import delete_child_records, delete_parent_records
+from .privacy import privacy_profile
+from .schemas import AACCardCreate, AACComposeRequest, AACFavoriteUpdate, AACPhraseCreate, ActiveUpdate, AdaptivePlanRequest, AIAskRequest, AIPlanRequest, AssignedExerciseCreate, ChildCreate, ChildDeleteRequest, ChildGoalCreate, ConsentUpdate, ContentReviewCreate, ExerciseDraftCreate, GoalStatusUpdate, HomeActivityObservationCreate, HomeworkCreate, HomeworkResultUpdate, LearningSessionCreate, LearningSessionPauseRequest, LoginRequest, PracticeGoalCreate, PracticeGoalObservationCreate, PracticeGoalUpdate, PracticePreferencesUpdate, RecommendationReview, RegisterRequest, RoleUpdate, SessionCreate, SkillObservationUpdate, SpecialistAssignmentCreate, SpecialistRecommendationCreate, SpecialistAccessCreate, SpecialistObservationCreate, StoryAnswer, StudentAccountCreate, StudentLoginRequest, TTSRequest, UserSettingsUpdate, WorldPhotoCreate, WorldPhotoRename, StorybookEvent
 from .tts_library import bundled_tts_path
 from .aac_grammar import compose_aac_phrase
 from .ai_assistant import DISCLAIMER as LOCAL_ASSISTANT_DISCLAIMER, answer_parent
@@ -28,13 +30,14 @@ from .family_practice import descriptive_results, home_library, save_home_observ
 from .adaptive_planner import create_plan as create_adaptive_plan, get_plan as get_adaptive_plan, plan_history as adaptive_plan_history
 from .practice_goals import create_goal as create_practice_goal, get_preferences, list_goals as list_practice_goals, list_templates as list_practice_goal_templates, save_observation as save_practice_goal_observation, save_preferences, update_goal as update_practice_goal
 from .migrations import LATEST_SCHEMA_VERSION
-from .stories import STORIES, public_story
+from .stories import STORIES, public_story, story_available
+from .picnic_content import PICNIC
 from .schemas import CinematicStorybookEvent
 from .interactive_storybook import STORY as INTERACTIVE_BOOK, initial_state as book_initial_state, transition as book_transition
 from .cinematic_storybook import DEFINITION as CINEMATIC_STORY, initial_state as cinematic_initial_state, transition as cinematic_transition
 from .storybook_content import FAVORITE_TOY
 from .storybook_engine import initial_state as storybook_initial_state, transition as storybook_transition
-from .security import AUTH_COOKIE_NAME, CSRF_COOKIE_NAME, IS_PRODUCTION, clear_auth_cookies, create_access_token, create_student_access_token, get_current_user, hash_password, require_roles, set_auth_cookies, verify_password
+from .security import AUTH_COOKIE_NAME, CSRF_COOKIE_NAME, IS_PRODUCTION, oauth2_scheme, revoke_request_session, clear_auth_cookies, create_access_token, create_student_access_token, get_current_user, hash_password, require_roles, set_auth_cookies, verify_password
 
 
 @asynccontextmanager
@@ -122,7 +125,14 @@ def ensure_child_access(child_id: int, user: dict) -> dict:
         child = db.execute("SELECT * FROM children WHERE id=?", (child_id,)).fetchone()
     if not child:
         raise HTTPException(404, "Профиль ребёнка не найден")
-    if user["role"] not in {"admin", "parent", "student"}:
+    if user["role"] == "specialist":
+        with connect() as db:
+            access = db.execute("""SELECT 1 FROM specialist_children sc
+                JOIN child_consents c ON c.child_id=sc.child_id
+                WHERE sc.child_id=? AND sc.specialist_id=? AND c.privacy_accepted=1 AND c.specialist_sharing=1""", (child_id, user["id"])).fetchone()
+        if not access:
+            raise HTTPException(403, "Нет действующего разрешения семьи на доступ специалиста")
+    elif user["role"] not in {"admin", "parent", "student"}:
         raise HTTPException(403, "Для этой роли доступ к профилю ребёнка не настроен")
     if user["role"] == "parent" and child["parent_id"] != user["id"]:
         raise HTTPException(403, "Нет доступа к профилю ребёнка")
@@ -139,6 +149,7 @@ def consent_record(child_id: int) -> dict:
             "child_id": child_id,
             "privacy_accepted": False,
             "camera_processing": False,
+            "specialist_sharing": False,
             "ai_processing": False,
             "analytics_processing": False,
             "version": CONSENT_VERSION,
@@ -154,6 +165,7 @@ def consent_record(child_id: int) -> dict:
         "child_id": row["child_id"],
         "privacy_accepted": bool(row["privacy_accepted"]),
         "camera_processing": bool(row["camera_processing"]) and camera_consent_is_current,
+        "specialist_sharing": bool(row["specialist_sharing"]),
         "ai_processing": bool(row["ai_processing"]),
         "analytics_processing": bool(row["analytics_processing"]),
         "version": row["version"],
@@ -198,6 +210,11 @@ def active_exercise_rows(db) -> list[dict]:
     return published_exercise_rows(db)
 
 
+def child_exercise_rows(db, child_id: int) -> list[dict]:
+    avoided = set(get_preferences(db, child_id)["avoided_exercise_ids"])
+    return [item for item in active_exercise_rows(db) if item["id"] not in avoided]
+
+
 SESSION_COMPLETION_STATUSES = {"completed", "participated", "refused"}
 
 
@@ -211,17 +228,22 @@ def learning_session_payload(db, session_row) -> dict:
     """
     session = dict(session_row)
     planned_ids = json.loads(session["exercise_ids"])
-    exercise_rows = active_exercise_rows(db)
+    exercise_rows = child_exercise_rows(db, session["child_id"])
     by_id = {row["id"]: dict(row) for row in exercise_rows}
     adaptive_by_exercise: dict[int, dict] = {}
     if session.get("adaptive_plan_id"):
         for item_row in db.execute(
-            """SELECT i.*,g.title goal_title FROM adaptive_practice_plan_items i
+            """SELECT i.*,g.title goal_title,g.status goal_status,g.version current_goal_version FROM adaptive_practice_plan_items i
                JOIN parent_practice_goals g ON g.id=i.goal_id
                WHERE i.plan_id=? ORDER BY i.position,i.id""",
             (session["adaptive_plan_id"],),
         ).fetchall():
             item = dict(item_row)
+            if (item["goal_status"] != "active" or item["goal_version"] != item["current_goal_version"]
+                    or item["exercise_id"] not in by_id
+                    or by_id[item["exercise_id"]]["engine"]["version_id"] != item["exercise_version_id"]):
+                by_id.pop(item["exercise_id"], None)
+                continue
             adaptive_by_exercise[item["exercise_id"]] = {
                 "plan_item_id": item["id"],
                 "goal_id": item["goal_id"],
@@ -487,9 +509,6 @@ def login(payload: LoginRequest, request: Request, response: Response) -> dict:
     if not row or not verify_password(payload.password, row["password_hash"]):
         record_login_attempt(identifiers, False)
         raise HTTPException(401, "Неверный логин или пароль")
-    if row["role"] == "specialist":
-        record_login_attempt(identifiers, False)
-        raise HTTPException(403, "Роль специалиста больше не используется в Söyle")
     if not row["is_active"]:
         record_login_attempt(identifiers, False)
         raise HTTPException(403, "Аккаунт отключён администратором")
@@ -521,7 +540,8 @@ def me(request: Request, user: dict = Depends(get_current_user)) -> dict:
 
 
 @app.post("/api/auth/logout", status_code=204)
-def logout(response: Response) -> None:
+def logout(request: Request, response: Response, bearer_token: str | None = Depends(oauth2_scheme)) -> None:
+    revoke_request_session(request, bearer_token)
     clear_auth_cookies(response)
 
 
@@ -548,7 +568,7 @@ def update_settings(payload: UserSettingsUpdate, user: dict = Depends(get_curren
 
 
 @app.post("/api/tts")
-def text_to_speech(payload: TTSRequest, _: dict = Depends(get_current_user)) -> FileResponse:
+def text_to_speech(payload: TTSRequest, _: dict = Depends(require_roles("admin", "parent", "student"))) -> FileResponse:
     text = " ".join(payload.text.split()).strip()
     bundled_path = bundled_tts_path(text, payload.language)
     if bundled_path.exists():
@@ -630,6 +650,10 @@ def list_children(user: dict = Depends(get_current_user)) -> list[dict]:
             rows = db.execute("SELECT * FROM children WHERE parent_id=? ORDER BY id", (user["id"],)).fetchall()
         elif user["role"] == "student":
             rows = db.execute("SELECT * FROM children WHERE id=?", (user["child_id"],)).fetchall()
+        elif user["role"] == "specialist":
+            rows = db.execute("""SELECT c.* FROM children c JOIN specialist_children sc ON sc.child_id=c.id
+                JOIN child_consents cc ON cc.child_id=c.id WHERE sc.specialist_id=?
+                AND cc.privacy_accepted=1 AND cc.specialist_sharing=1 ORDER BY c.id""", (user["id"],)).fetchall()
         else:
             rows = db.execute("SELECT c.*,u.full_name parent_name,u.username parent_username FROM children c JOIN users u ON u.id=c.parent_id ORDER BY c.id").fetchall()
     return [dict(row) for row in rows]
@@ -666,6 +690,7 @@ def save_student_account(child_id: int, payload: StudentAccountCreate, user: dic
             raise HTTPException(409, "Этот ученический логин уже занят")
         existing = db.execute("SELECT id FROM student_accounts WHERE child_id=?", (child_id,)).fetchone()
         if existing:
+            db.execute("DELETE FROM auth_sessions WHERE subject=?", (f"student:{existing['id']}",))
             db.execute("UPDATE student_accounts SET username=?,pin_hash=?,is_active=1 WHERE child_id=?", (username, hash_password(payload.pin), child_id))
         else:
             db.execute("INSERT INTO student_accounts(child_id,username,pin_hash,created_at) VALUES(?,?,?,?)", (child_id, username, hash_password(payload.pin), now_iso()))
@@ -674,18 +699,19 @@ def save_student_account(child_id: int, payload: StudentAccountCreate, user: dic
 
 
 @app.get("/api/exercises")
-def list_exercises(module: str | None = Query(default=None), child_id: int | None = Query(default=None), user: dict = Depends(get_current_user)) -> list[dict]:
+def list_exercises(module: str | None = Query(default=None), child_id: int | None = Query(default=None), user: dict = Depends(require_roles("admin", "parent", "student"))) -> list[dict]:
     with connect() as db:
         if child_id is not None:
             ensure_child_access(child_id, user)
-        rows = active_exercise_rows(db)
+        selected_child_id = child_id if child_id is not None else user.get("child_id")
+        rows = child_exercise_rows(db, selected_child_id) if selected_child_id else active_exercise_rows(db)
     if module:
         rows = [row for row in rows if row["module"] == module]
     return rows
 
 
 @app.get("/api/aac/cards/{child_id}")
-def aac_cards(child_id: int, user: dict = Depends(get_current_user)) -> list[dict]:
+def aac_cards(child_id: int, user: dict = Depends(require_roles("admin", "parent", "student"))) -> list[dict]:
     ensure_child_access(child_id, user)
     with connect() as db:
         rows = db.execute(
@@ -699,7 +725,7 @@ def aac_cards(child_id: int, user: dict = Depends(get_current_user)) -> list[dic
 
 
 @app.get("/api/world/{child_id}")
-def world_photos(child_id: int, response: Response, user: dict = Depends(get_current_user)) -> list[dict]:
+def world_photos(child_id: int, response: Response, user: dict = Depends(require_roles("admin", "parent", "student"))) -> list[dict]:
     ensure_child_access(child_id, user)
     response.headers["Cache-Control"] = "private, no-store"
     with connect() as db:
@@ -766,13 +792,19 @@ def delete_world_photo(child_id: int, photo_id: int, user: dict = Depends(requir
 
 
 @app.get("/api/stories/{child_id}")
-def child_stories(child_id: int, response: Response, user: dict = Depends(get_current_user)) -> list[dict]:
+def child_stories(child_id: int, response: Response, user: dict = Depends(require_roles("admin", "parent", "student"))) -> list[dict]:
     ensure_child_access(child_id, user)
     response.headers["Cache-Control"] = "private, no-store"
     with connect() as db:
         rows = db.execute("SELECT story_key,scene_index,completed_at FROM child_story_progress WHERE child_id=?", (child_id,)).fetchall()
     progress = {row["story_key"]: dict(row) for row in rows}
-    return [public_story(key, story, progress.get(key)) for key, story in STORIES.items()]
+    catalogue = [public_story(key, story, progress.get(key)) for key, story in STORIES.items() if story_available(story)]
+    if comic_is_released(PICNIC):
+        with connect() as db:
+            saved = db.execute("SELECT state_json,updated_at FROM storybook_progress WHERE child_id=? AND story_key=? AND story_version=? AND actor_key='child'", (child_id, PICNIC["key"], PICNIC["version"])).fetchone()
+        state = json.loads(saved["state_json"]) if saved else book_initial_state()
+        catalogue.append({"key": PICNIC["key"], "title": PICNIC["title"], "summary": PICNIC["subtitle"], "cover": PICNIC["scenes"][0]["image"], "category": "Выбор и помощь", "engine": "interactive_book", "scene_count": len(PICNIC["scenes"]), "scene_index": len(PICNIC["scenes"]) if state["completed"] else state["scene_index"], "completed_at": saved["updated_at"] if saved and state["completed"] else None, "scenes": []})
+    return catalogue
 
 
 @app.post("/api/stories/{child_id}/{story_key}/answer")
@@ -780,7 +812,7 @@ def answer_story(child_id: int, story_key: str, payload: StoryAnswer, user: dict
     ensure_child_access(child_id, user)
     ensure_privacy_consent(child_id)
     story = STORIES.get(story_key)
-    if not story:
+    if not story or not story_available(story):
         raise HTTPException(404, "История не найдена")
     with connect() as db:
         row = db.execute("SELECT scene_index,completed_at FROM child_story_progress WHERE child_id=? AND story_key=?", (child_id, story_key)).fetchone()
@@ -806,7 +838,7 @@ def answer_story(child_id: int, story_key: str, payload: StoryAnswer, user: dict
 @app.post("/api/stories/{child_id}/{story_key}/restart")
 def restart_story(child_id: int, story_key: str, user: dict = Depends(require_roles("student"))) -> dict:
     ensure_child_access(child_id, user)
-    if story_key not in STORIES:
+    if story_key not in STORIES or not story_available(STORIES[story_key]):
         raise HTTPException(404, "История не найдена")
     with connect() as db:
         db.execute(
@@ -834,7 +866,7 @@ def storybook_snapshot(db, child_id: int, actor: str) -> dict:
 
 
 @app.get("/api/storybooks/{child_id}/toy")
-def get_storybook(child_id: int, response: Response, user: dict = Depends(get_current_user)) -> dict:
+def get_storybook(child_id: int, response: Response, user: dict = Depends(require_roles("admin", "parent", "student"))) -> dict:
     actor = storybook_access(child_id, user)
     response.headers["Cache-Control"] = "private, no-store"
     with connect() as db:
@@ -842,7 +874,7 @@ def get_storybook(child_id: int, response: Response, user: dict = Depends(get_cu
 
 
 @app.post("/api/storybooks/{child_id}/toy/events")
-def storybook_event(child_id: int, payload: StorybookEvent, user: dict = Depends(get_current_user)) -> dict:
+def storybook_event(child_id: int, payload: StorybookEvent, user: dict = Depends(require_roles("admin", "parent", "student"))) -> dict:
     actor = storybook_access(child_id, user)
     if not actor.startswith("preview:"):
         ensure_privacy_consent(child_id)
@@ -889,7 +921,7 @@ def cinematic_snapshot(db, child_id: int, actor: str) -> dict:
 
 
 @app.get("/api/cinematic-storybooks/{child_id}/toy")
-def get_cinematic_storybook(child_id: int, response: Response, user: dict = Depends(get_current_user)) -> dict:
+def get_cinematic_storybook(child_id: int, response: Response, user: dict = Depends(require_roles("admin", "parent", "student"))) -> dict:
     actor = cinematic_access(child_id, user)
     response.headers["Cache-Control"] = "private, no-store"
     with connect() as db:
@@ -897,7 +929,7 @@ def get_cinematic_storybook(child_id: int, response: Response, user: dict = Depe
 
 
 @app.post("/api/cinematic-storybooks/{child_id}/toy/events")
-def cinematic_storybook_event(child_id: int, payload: CinematicStorybookEvent, user: dict = Depends(get_current_user)) -> dict:
+def cinematic_storybook_event(child_id: int, payload: CinematicStorybookEvent, user: dict = Depends(require_roles("admin", "parent", "student"))) -> dict:
     actor = cinematic_access(child_id, user)
     if not actor.startswith("preview:"):
         ensure_privacy_consent(child_id)
@@ -940,7 +972,7 @@ def interactive_book_snapshot(db, child_id: int, actor: str) -> dict:
 
 
 @app.get("/api/interactive-storybooks/{child_id}/toy")
-def get_interactive_book(child_id: int, response: Response, user: dict = Depends(get_current_user)) -> dict:
+def get_interactive_book(child_id: int, response: Response, user: dict = Depends(require_roles("admin", "parent", "student"))) -> dict:
     actor = interactive_book_access(child_id, user)
     response.headers["Cache-Control"] = "private, no-store"
     with connect() as db:
@@ -948,7 +980,7 @@ def get_interactive_book(child_id: int, response: Response, user: dict = Depends
 
 
 @app.post("/api/interactive-storybooks/{child_id}/toy/events")
-def interactive_book_event(child_id: int, payload: StorybookEvent, user: dict = Depends(get_current_user)) -> dict:
+def interactive_book_event(child_id: int, payload: StorybookEvent, user: dict = Depends(require_roles("admin", "parent", "student"))) -> dict:
     actor = interactive_book_access(child_id, user)
     if not actor.startswith("preview:"):
         ensure_privacy_consent(child_id)
@@ -970,6 +1002,62 @@ def interactive_book_event(child_id: int, payload: StorybookEvent, user: dict = 
             WHERE storybook_progress.revision=? RETURNING revision""", (child_id, "toy", INTERACTIVE_BOOK["version"], actor, payload.expected_revision + 1, json.dumps(state, ensure_ascii=False), now_iso(), payload.expected_revision)).fetchone()
         if not changed:
             raise HTTPException(409, "Прохождение изменилось. Откройте книгу снова")
+    return {**snapshot, "state": state, "revision": changed["revision"]}
+
+
+def comic_is_released(definition: dict) -> bool:
+    return definition["status"] == "PUBLISHED" and definition["review_status"] == "approved" and all(
+        definition["approval"].get(stage) == "approved" for stage in ("technical", "methodology", "accessibility", "release")
+    )
+
+
+def comic_access(child_id: int, story_key: str, user: dict) -> tuple[dict, str]:
+    ensure_child_access(child_id, user)
+    if story_key != PICNIC["key"]:
+        raise HTTPException(404, "История не найдена")
+    definition = PICNIC
+    released = comic_is_released(definition)
+    if not released and user["role"] != "parent":
+        raise HTTPException(403, "Комикс DRAFT доступен только для предпросмотра родителю")
+    return definition, f"preview:{user['id']}" if user["role"] == "parent" else "child"
+
+
+def comic_snapshot(db, child_id: int, definition: dict, actor: str) -> dict:
+    row = db.execute("SELECT revision,state_json FROM storybook_progress WHERE child_id=? AND story_key=? AND story_version=? AND actor_key=?", (child_id, definition["key"], definition["version"], actor)).fetchone()
+    return {"definition": definition, "revision": row["revision"] if row else 0, "state": json.loads(row["state_json"]) if row else book_initial_state(), "preview": actor.startswith("preview:")}
+
+
+@app.get("/api/interactive-storybooks/{child_id}/{story_key}")
+def get_comic(child_id: int, story_key: str, response: Response, user: dict = Depends(require_roles("parent", "student"))) -> dict:
+    definition, actor = comic_access(child_id, story_key, user)
+    response.headers["Cache-Control"] = "private, no-store"
+    with connect() as db:
+        return comic_snapshot(db, child_id, definition, actor)
+
+
+@app.post("/api/interactive-storybooks/{child_id}/{story_key}/events")
+def comic_event(child_id: int, story_key: str, payload: StorybookEvent, user: dict = Depends(require_roles("parent", "student"))) -> dict:
+    definition, actor = comic_access(child_id, story_key, user)
+    if not actor.startswith("preview:"):
+        ensure_privacy_consent(child_id)
+    if payload.version != definition["version"]:
+        raise HTTPException(409, "Версия комикса изменилась. Откройте его снова")
+    with connect() as db:
+        snapshot = comic_snapshot(db, child_id, definition, actor)
+        if any(event["id"] == payload.event_id for event in snapshot["state"]["events"]):
+            return snapshot
+        scene = definition["scenes"][snapshot["state"]["scene_index"]]
+        if snapshot["revision"] != payload.expected_revision or scene["id"] != payload.scene_id:
+            raise HTTPException(409, "Прохождение изменилось в другой вкладке. Восстановите страницу")
+        try:
+            state = book_transition(snapshot["state"], payload.action, payload.event_id, definition)
+        except ValueError as cause:
+            raise HTTPException(422, str(cause)) from None
+        changed = db.execute("""INSERT INTO storybook_progress(child_id,story_key,story_version,actor_key,revision,state_json,updated_at)
+            VALUES(?,?,?,?,?,?,?) ON CONFLICT(child_id,story_key,story_version,actor_key) DO UPDATE SET revision=excluded.revision,state_json=excluded.state_json,updated_at=excluded.updated_at
+            WHERE storybook_progress.revision=? RETURNING revision""", (child_id, definition["key"], definition["version"], actor, payload.expected_revision + 1, json.dumps(state, ensure_ascii=False), now_iso(), payload.expected_revision)).fetchone()
+        if not changed:
+            raise HTTPException(409, "Прохождение изменилось. Восстановите страницу")
     return {**snapshot, "state": state, "revision": changed["revision"]}
 
 
@@ -1009,7 +1097,7 @@ def create_aac_card(payload: AACCardCreate, user: dict = Depends(require_roles("
 
 
 @app.patch("/api/aac/cards/{card_id}/favorite")
-def favorite_aac_card(card_id: int, child_id: int, payload: AACFavoriteUpdate, user: dict = Depends(get_current_user)) -> dict:
+def favorite_aac_card(card_id: int, child_id: int, payload: AACFavoriteUpdate, user: dict = Depends(require_roles("admin", "parent", "student"))) -> dict:
     ensure_child_access(child_id, user)
     ensure_privacy_consent(child_id)
     with connect() as db:
@@ -1024,7 +1112,7 @@ def favorite_aac_card(card_id: int, child_id: int, payload: AACFavoriteUpdate, u
 
 
 @app.post("/api/aac/compose")
-def compose_aac(payload: AACComposeRequest, user: dict = Depends(get_current_user)) -> dict:
+def compose_aac(payload: AACComposeRequest, user: dict = Depends(require_roles("admin", "parent", "student"))) -> dict:
     ensure_child_access(payload.child_id, user)
     unique_ids = list(dict.fromkeys(payload.card_ids))
     if len(unique_ids) != len(payload.card_ids):
@@ -1042,7 +1130,7 @@ def compose_aac(payload: AACComposeRequest, user: dict = Depends(get_current_use
 
 
 @app.post("/api/aac/history", status_code=201)
-def save_aac_phrase(payload: AACPhraseCreate, user: dict = Depends(get_current_user)) -> dict:
+def save_aac_phrase(payload: AACPhraseCreate, user: dict = Depends(require_roles("admin", "parent", "student"))) -> dict:
     ensure_child_access(payload.child_id, user)
     ensure_analytics_consent(payload.child_id)
     unique_ids = list(dict.fromkeys(payload.card_ids))
@@ -1075,7 +1163,7 @@ def save_aac_phrase(payload: AACPhraseCreate, user: dict = Depends(get_current_u
 
 
 @app.get("/api/aac/history/{child_id}")
-def aac_history(child_id: int, user: dict = Depends(get_current_user)) -> list[dict]:
+def aac_history(child_id: int, user: dict = Depends(require_roles("admin", "parent", "student"))) -> list[dict]:
     ensure_child_access(child_id, user)
     consent = consent_record(child_id)
     if not consent["privacy_accepted"] or not consent["analytics_processing"]:
@@ -1085,8 +1173,18 @@ def aac_history(child_id: int, user: dict = Depends(get_current_user)) -> list[d
     return [{**dict(row), "card_ids": json.loads(row["card_ids"])} for row in rows]
 
 
+def saved_attempt_response(row, *, replayed: bool = False) -> dict:
+    result = dict(row)
+    result["details"] = json.loads(result["details"])
+    reliable = result["support_context"] in {"independent", "caregiver_supported"}
+    status = result["attempt_status"]
+    result["awarded_stars"] = 0 if replayed or not reliable else (1 if status == "participated" else max(1, result["score"] // 20) if status == "completed" else 0)
+    result.pop("request_hash", None)
+    return result
+
+
 @app.post("/api/sessions", status_code=201)
-def create_session(payload: SessionCreate, user: dict = Depends(get_current_user)) -> dict:
+def create_session(payload: SessionCreate, user: dict = Depends(require_roles("admin", "parent", "student"))) -> dict:
     ensure_child_access(payload.child_id, user)
     ensure_privacy_consent(payload.child_id)
     if user["role"] not in {"parent", "student"}:
@@ -1107,9 +1205,22 @@ def create_session(payload: SessionCreate, user: dict = Depends(get_current_user
         raise HTTPException(422, "Правильных ответов не может быть больше числа попыток")
     if payload.attempts_count is not None and payload.independent_completions + payload.prompted_completions > payload.attempts_count:
         raise HTTPException(422, "Самостоятельных и выполненных с подсказкой раундов не может быть больше общего числа раундов")
+    request_hash = hashlib.sha256(json.dumps(payload.model_dump(mode="json"), sort_keys=True, ensure_ascii=False).encode()).hexdigest()
+    if payload.correct_answers is not None and payload.independent_completions + payload.prompted_completions > payload.correct_answers:
+        raise HTTPException(422, "Завершений раундов не может быть больше правильных ответов")
     attempt_status = "refused" if payload.prompt_level == "refused" and payload.attempt_status == "completed" else payload.attempt_status
     with connect() as db:
+        if payload.learning_session_id:
+            db.execute("UPDATE learning_sessions SET current_index=current_index WHERE id=? AND child_id=?", (payload.learning_session_id, payload.child_id))
+        if payload.event_id:
+            existing = db.execute("SELECT * FROM sessions WHERE child_id=? AND event_id=?", (payload.child_id, payload.event_id)).fetchone()
+            if existing:
+                if existing["request_hash"] != request_hash:
+                    raise HTTPException(409, "Идентификатор попытки уже использован для другого результата")
+                return saved_attempt_response(existing, replayed=True)
         exercise = published_exercise(db, payload.exercise_id)
+        if exercise and payload.exercise_id in get_preferences(db, payload.child_id)["avoided_exercise_ids"]:
+            raise HTTPException(409, "Родитель исключил это задание из практики")
         if not exercise:
             raise HTTPException(422, "Задание не опубликовано или находится на проверке")
         if exercise["module"] != payload.module:
@@ -1130,35 +1241,52 @@ def create_session(payload: SessionCreate, user: dict = Depends(get_current_user
             learning = db.execute("SELECT * FROM learning_sessions WHERE id=? AND child_id=?", (payload.learning_session_id, payload.child_id)).fetchone()
             if not learning:
                 raise HTTPException(422, "Занятие не найдено")
+            if learning["status"] != "in_progress":
+                raise HTTPException(409, "Занятие приостановлено или завершено. Обновите план перед продолжением")
+            final_result = db.execute(
+                "SELECT id FROM sessions WHERE learning_session_id=? AND exercise_id=? AND attempt_status IN ('completed','participated','refused') LIMIT 1",
+                (payload.learning_session_id, payload.exercise_id),
+            ).fetchone()
+            if final_result:
+                raise HTTPException(409, "Результат этого шага уже сохранён. Обновите план занятия")
             planned_ids = json.loads(learning["exercise_ids"])
             if payload.exercise_id not in planned_ids:
                 raise HTTPException(422, "Это упражнение не входит в текущее занятие")
             if learning["adaptive_plan_id"]:
                 adaptive_item = db.execute(
-                    """SELECT id,exercise_version_id FROM adaptive_practice_plan_items
-                       WHERE plan_id=? AND exercise_id=?""",
+                    """SELECT i.id,i.exercise_version_id,i.goal_version,g.version current_goal_version,g.status
+                       FROM adaptive_practice_plan_items i JOIN parent_practice_goals g ON g.id=i.goal_id
+                       WHERE i.plan_id=? AND i.exercise_id=?""",
                     (learning["adaptive_plan_id"], payload.exercise_id),
                 ).fetchone()
                 if not adaptive_item or adaptive_item["exercise_version_id"] != exercise["engine"]["version_id"]:
                     raise HTTPException(409, "План ссылается на другую версию задания. Подготовьте новый план")
+                if adaptive_item["status"] != "active" or adaptive_item["goal_version"] != adaptive_item["current_goal_version"]:
+                    raise HTTPException(409, "Цель изменилась. Подготовьте новый план")
                 adaptive_plan_item_id = adaptive_item["id"]
         measurement_source = "local_automated_movement_check" if payload.details.get("source") == "local-face-movement-check" else "caregiver_or_user_observation"
         cursor = db.execute(
             """INSERT INTO sessions(child_id,exercise_id,exercise_version_id,module,score,duration_seconds,details,measurement_version,
                learning_session_id,sequence_index,independence,prompt_level,response_ms,communication_initiatives,
                attempts_count,correct_answers,prompts_used,gameplay_choices,independent_completions,prompted_completions,
-               attempt_status,adaptive_plan_item_id,actor_role,response_owner,support_context,created_at)
-               VALUES(?,?,?,?,?,?,?,3,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) RETURNING id""",
+               attempt_status,adaptive_plan_item_id,actor_role,response_owner,support_context,created_at,event_id,request_hash)
+               VALUES(?,?,?,?,?,?,?,3,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(child_id,event_id) DO NOTHING RETURNING id""",
             (payload.child_id, payload.exercise_id, exercise["engine"]["version_id"], payload.module, game_score, payload.duration_seconds,
              json.dumps({**payload.details, "measurement_source": measurement_source}, ensure_ascii=False), payload.learning_session_id, payload.sequence_index,
              payload.independence, payload.prompt_level, payload.response_ms, payload.communication_initiatives,
              payload.attempts_count, payload.correct_answers, payload.prompts_used, payload.gameplay_choices,
              payload.independent_completions, payload.prompted_completions, attempt_status, adaptive_plan_item_id,
-             user["role"], payload.response_owner, payload.support_context, now_iso()),
+             user["role"], payload.response_owner, payload.support_context, now_iso(), payload.event_id, request_hash),
         )
-        row = db.execute("SELECT * FROM sessions WHERE id=?", (cursor.fetchone()["id"],)).fetchone()
+        inserted = cursor.fetchone()
+        if not inserted:
+            existing = db.execute("SELECT * FROM sessions WHERE child_id=? AND event_id=?", (payload.child_id, payload.event_id)).fetchone()
+            if existing["request_hash"] != request_hash:
+                raise HTTPException(409, "Идентификатор попытки уже использован для другого результата")
+            return saved_attempt_response(existing, replayed=True)
+        row = db.execute("SELECT * FROM sessions WHERE id=?", (inserted["id"],)).fetchone()
         if payload.learning_session_id:
-            published_ids = {item["id"] for item in active_exercise_rows(db)}
+            published_ids = {item["id"] for item in child_exercise_rows(db, payload.child_id)}
             available_planned_ids = [exercise_id for exercise_id in planned_ids if exercise_id in published_ids]
             completed_ids = {
                 item["exercise_id"]
@@ -1175,15 +1303,12 @@ def create_session(payload: SessionCreate, user: dict = Depends(get_current_user
             if completed_count >= planned_count:
                 db.execute("UPDATE learning_sessions SET status='completed',current_index=?,completed_at=? WHERE id=?", (planned_count, now_iso(), payload.learning_session_id))
             else:
-                db.execute("UPDATE learning_sessions SET current_index=? WHERE id=?", (completed_count, payload.learning_session_id))
+                next_status = "paused" if attempt_status in {"refused", "break", "technical_error"} else "in_progress"
+                db.execute("UPDATE learning_sessions SET current_index=?,status=?,paused_at=? WHERE id=?", (completed_count, next_status, now_iso() if next_status == "paused" else None, payload.learning_session_id))
         if attempt_status in {"completed", "participated"}:
             db.execute("UPDATE assigned_exercises SET status='completed',completed_at=? WHERE child_id=? AND exercise_id=? AND status='assigned'", (now_iso(), payload.child_id, payload.exercise_id))
             create_module_notification(db, payload.child_id, payload.exercise_id)
-    result = dict(row)
-    result["details"] = json.loads(result["details"])
-    reliable_evidence = payload.support_context in {"independent", "caregiver_supported"}
-    result["awarded_stars"] = (1 if attempt_status == "participated" else max(1, game_score // 20) if attempt_status == "completed" else 0) if reliable_evidence else 0
-    return result
+    return saved_attempt_response(row)
 
 
 def build_skill_progress(rows, exercise_rows) -> list[dict]:
@@ -1294,12 +1419,12 @@ def progress_data(child_id: int, user: dict) -> dict:
 
 
 @app.get("/api/progress/{child_id}")
-def progress(child_id: int, user: dict = Depends(get_current_user)) -> dict:
+def progress(child_id: int, user: dict = Depends(require_roles("admin", "parent", "student"))) -> dict:
     return progress_data(child_id, user)
 
 
 @app.get("/api/dashboard/{child_id}")
-def dashboard(child_id: int, user: dict = Depends(get_current_user)) -> dict:
+def dashboard(child_id: int, user: dict = Depends(require_roles("admin", "parent", "student"))) -> dict:
     child = ensure_child_access(child_id, user)
     with connect() as db:
         rows = db.execute(
@@ -1311,7 +1436,8 @@ def dashboard(child_id: int, user: dict = Depends(get_current_user)) -> dict:
                ORDER BY created_at,id""",
             (child_id,),
         ).fetchall()
-        exercise_rows = active_exercise_rows(db)
+        exercise_rows = child_exercise_rows(db, child_id)
+        suggested = create_adaptive_plan(db, child_id, 5, child["parent_id"], persist=False)["exercises"]
     scored_rows = [
         row for row in rows
         if row["attempt_status"] == "completed"
@@ -1413,7 +1539,8 @@ def dashboard(child_id: int, user: dict = Depends(get_current_user)) -> dict:
         "active_exercises": exercise_counts,
         "skill_progress": skill_progress,
         "weakest_skill": None,
-        "recommended_exercise": None,
+        "recommended_exercise": suggested[0] if suggested else None,
+        "recommended_exercises": suggested,
         "progress_delta": None,
         "daily": daily,
         "achievements": {
@@ -1427,47 +1554,18 @@ def dashboard(child_id: int, user: dict = Depends(get_current_user)) -> dict:
 
 
 @app.get("/api/session-plan/{child_id}")
-def session_plan(child_id: int, minutes: int = Query(default=5), user: dict = Depends(get_current_user)) -> dict:
+def session_plan(child_id: int, minutes: int = Query(default=5), user: dict = Depends(require_roles("admin", "parent", "student"))) -> dict:
     if minutes not in {3, 5, 10}:
         raise HTTPException(422, "Продолжительность занятия: 3, 5 или 10 минут")
     child = ensure_child_access(child_id, user)
     with connect() as db:
-        all_exercises = active_exercise_rows(db)
-        history_rows = db.execute(
-            """SELECT exercise_id FROM sessions
-               WHERE child_id=? AND exercise_id IS NOT NULL AND measurement_version>=1
-                 AND response_owner='child' AND support_context<>'unknown'
-               ORDER BY id DESC""",
-            (child_id,),
-        ).fetchall()
-    usage_count: dict[int, int] = defaultdict(int)
-    last_used_rank: dict[int, int] = {}
-    for rank, row in enumerate(history_rows):
-        exercise_id = row["exercise_id"]
-        usage_count[exercise_id] += 1
-        last_used_rank.setdefault(exercise_id, rank)
-    # Keep transitions low: each exercise is a complete activity, not a single tap.
-    target_count = {3: 2, 5: 3, 10: 5}[minutes]
-    selected: list[dict] = []
-    seen: set[int] = set()
-    candidates = [dict(row) for row in all_exercises if row["id"] not in seen]
-    while candidates and len(selected) < target_count:
-        module_counts = {name: sum(1 for item in selected if item["module"] == name) for name in ("motor", "sensory", "mixed")}
-        candidates.sort(key=lambda item: (
-            usage_count[item["id"]],
-            module_counts[item["module"]],
-            -last_used_rank.get(item["id"], 10**9),
-            item["difficulty"],
-            item["id"],
-        ))
-        item = candidates.pop(0)
-        selected.append(item)
-        seen.add(item["id"])
-    return {"child": child, "focus_skill": None, "selection_method": "local_least_used_rotation", "estimated_minutes": minutes, "exercises": selected}
+        preview = create_adaptive_plan(db, child_id, minutes, user["id"], persist=False)
+    return {"child": child, "focus_skill": None, "selection_method": "active_goal_rotation",
+            "estimated_minutes": minutes, **preview}
 
 
 @app.post("/api/adaptive-plans/{child_id}", status_code=201)
-def prepare_adaptive_plan(child_id: int, payload: AdaptivePlanRequest, user: dict = Depends(get_current_user)) -> dict:
+def prepare_adaptive_plan(child_id: int, payload: AdaptivePlanRequest, user: dict = Depends(require_roles("admin", "parent", "student"))) -> dict:
     child = ensure_child_access(child_id, user)
     ensure_privacy_consent(child_id)
     creator_id = user["id"] if user["role"] == "parent" else child["parent_id"]
@@ -1487,7 +1585,7 @@ def list_adaptive_plan_history(child_id: int, user: dict = Depends(require_roles
 
 
 @app.get("/api/adaptive-plans/{child_id}/{plan_id}")
-def read_adaptive_plan(child_id: int, plan_id: int, user: dict = Depends(get_current_user)) -> dict:
+def read_adaptive_plan(child_id: int, plan_id: int, user: dict = Depends(require_roles("admin", "parent", "student"))) -> dict:
     ensure_child_access(child_id, user)
     with connect() as db:
         result = get_adaptive_plan(db, plan_id, child_id)
@@ -1497,21 +1595,25 @@ def read_adaptive_plan(child_id: int, plan_id: int, user: dict = Depends(get_cur
 
 
 @app.post("/api/learning-sessions", status_code=201)
-def create_learning_session(payload: LearningSessionCreate, user: dict = Depends(get_current_user)) -> dict:
+def create_learning_session(payload: LearningSessionCreate, user: dict = Depends(require_roles("admin", "parent", "student"))) -> dict:
     ensure_child_access(payload.child_id, user)
     ensure_privacy_consent(payload.child_id)
-    with connect() as db:
-        existing = db.execute(
-            "SELECT id FROM learning_sessions WHERE child_id=? AND status IN ('in_progress','paused') ORDER BY id DESC LIMIT 1",
-            (payload.child_id,),
-        ).fetchone()
-    if existing:
-        return get_learning_session(existing["id"], user)
     unique_ids = list(dict.fromkeys(payload.exercise_ids))
     if len(unique_ids) != len(payload.exercise_ids):
         raise HTTPException(422, "В занятии не должно быть повторяющихся заданий")
     with connect() as db:
-        available = {item["id"]: item for item in active_exercise_rows(db)}
+        db.execute("UPDATE children SET name=name WHERE id=?", (payload.child_id,))
+        existing = db.execute(
+            "SELECT * FROM learning_sessions WHERE child_id=? AND status IN ('in_progress','paused') ORDER BY id DESC LIMIT 1",
+            (payload.child_id,),
+        ).fetchone()
+        if existing:
+            current = learning_session_payload(db, existing)
+            if current["status"] != "completed":
+                if payload.adaptive_plan_id and current["adaptive_plan_id"] != payload.adaptive_plan_id:
+                    raise HTTPException(409, "Есть незавершённое занятие по другому плану")
+                return current
+        available = {item["id"]: item for item in child_exercise_rows(db, payload.child_id)}
         if any(item_id not in available for item_id in unique_ids):
             raise HTTPException(422, "Одно из заданий не опубликовано или находится на проверке")
         if payload.adaptive_plan_id:
@@ -1522,8 +1624,9 @@ def create_learning_session(payload: LearningSessionCreate, user: dict = Depends
             if not plan:
                 raise HTTPException(422, "Адаптивный план не найден")
             plan_items = db.execute(
-                """SELECT exercise_id,exercise_version_id FROM adaptive_practice_plan_items
-                   WHERE plan_id=? ORDER BY position,id""",
+                """SELECT i.exercise_id,i.exercise_version_id,i.goal_version,g.version current_goal_version,g.status
+                   FROM adaptive_practice_plan_items i JOIN parent_practice_goals g ON g.id=i.goal_id
+                   WHERE i.plan_id=? ORDER BY i.position,i.id""",
                 (payload.adaptive_plan_id,),
             ).fetchall()
             planned_ids = [item["exercise_id"] for item in plan_items]
@@ -1531,6 +1634,8 @@ def create_learning_session(payload: LearningSessionCreate, user: dict = Depends
                 raise HTTPException(422, "Состав занятия не совпадает с подготовленным планом")
             if any(available[item["exercise_id"]]["engine"]["version_id"] != item["exercise_version_id"] for item in plan_items):
                 raise HTTPException(409, "Версия одного из заданий изменилась. Подготовьте новый план")
+            if any(item["status"] != "active" or item["goal_version"] != item["current_goal_version"] for item in plan_items):
+                raise HTTPException(409, "Цель изменилась. Подготовьте новый план")
         cursor = db.execute(
             """INSERT INTO learning_sessions(
                    child_id,status,exercise_ids,current_index,target_minutes,started_at,adaptive_plan_id)
@@ -1549,20 +1654,26 @@ def create_learning_session(payload: LearningSessionCreate, user: dict = Depends
 
 
 @app.patch("/api/learning-sessions/{session_id}/pause")
-def pause_learning_session(session_id: int, user: dict = Depends(get_current_user)) -> dict:
+def pause_learning_session(session_id: int, payload: LearningSessionPauseRequest | None = None, user: dict = Depends(require_roles("admin", "parent", "student"))) -> dict:
     with connect() as db:
         row = db.execute("SELECT * FROM learning_sessions WHERE id=?", (session_id,)).fetchone()
         if not row:
             raise HTTPException(404, "Занятие не найдено")
         ensure_child_access(row["child_id"], user)
         ensure_privacy_consent(row["child_id"])
-        next_status = "in_progress" if row["status"] == "paused" else "paused"
-        db.execute("UPDATE learning_sessions SET status=?,paused_at=? WHERE id=?", (next_status, None if next_status == "in_progress" else now_iso(), session_id))
+        db.execute("UPDATE learning_sessions SET current_index=current_index WHERE id=?", (session_id,))
+        row = db.execute("SELECT * FROM learning_sessions WHERE id=?", (session_id,)).fetchone()
+        current = learning_session_payload(db, row)
+        if current["status"] == "completed":
+            raise HTTPException(409, "Занятие уже завершено. Обновите страницу занятия")
+        next_status = "paused" if payload is None or payload.paused else "in_progress"
+        paused_at = (row["paused_at"] or now_iso()) if next_status == "paused" else None
+        db.execute("UPDATE learning_sessions SET status=?,paused_at=? WHERE id=?", (next_status, paused_at, session_id))
     return {"id": session_id, "status": next_status}
 
 
 @app.get("/api/learning-sessions/{session_id}")
-def get_learning_session(session_id: int, user: dict = Depends(get_current_user)) -> dict:
+def get_learning_session(session_id: int, user: dict = Depends(require_roles("admin", "parent", "student"))) -> dict:
     with connect() as db:
         session = db.execute("SELECT * FROM learning_sessions WHERE id=?", (session_id,)).fetchone()
         if not session:
@@ -1572,7 +1683,7 @@ def get_learning_session(session_id: int, user: dict = Depends(get_current_user)
 
 
 @app.get("/api/children/{child_id}/active-session")
-def get_active_learning_session(child_id: int, user: dict = Depends(get_current_user)) -> dict | None:
+def get_active_learning_session(child_id: int, user: dict = Depends(require_roles("admin", "parent", "student"))) -> dict | None:
     ensure_child_access(child_id, user)
     with connect() as db:
         row = db.execute(
@@ -1584,26 +1695,11 @@ def get_active_learning_session(child_id: int, user: dict = Depends(get_current_
     session = get_learning_session(row["id"], user)
     if session["status"] == "completed":
         return None
-    desired_count = {3: 2, 5: 3, 10: 5}.get(session["target_minutes"], 3)
-    stored_ids = list(session["exercise_ids"])
-    available_ids = [exercise["id"] for exercise in session["exercises"]]
-    if len(available_ids) < desired_count and not session.get("adaptive_plan_id"):
-        with connect() as db:
-            candidates = [item for item in active_exercise_rows(db) if item["id"] not in set(stored_ids)]
-            while candidates and len(available_ids) < desired_count:
-                module_counts = {name: sum(1 for exercise in session["exercises"] if exercise["module"] == name) for name in ("motor", "sensory", "mixed")}
-                candidates.sort(key=lambda item: (module_counts[item["module"]], item["id"]))
-                chosen = candidates.pop(0)
-                stored_ids.append(chosen["id"])
-                available_ids.append(chosen["id"])
-                session["exercises"].append({"module": chosen["module"]})
-            db.execute("UPDATE learning_sessions SET exercise_ids=? WHERE id=?", (json.dumps(stored_ids), row["id"]))
-        session = get_learning_session(row["id"], user)
     return session
 
 
 @app.post("/api/ai/plan/{child_id}")
-def ai_plan(child_id: int, payload: AIPlanRequest, user: dict = Depends(get_current_user)) -> dict:
+def ai_plan(child_id: int, payload: AIPlanRequest, user: dict = Depends(require_roles("admin", "parent", "student"))) -> dict:
     ensure_child_access(child_id, user)
     plan = session_plan(child_id, payload.target_minutes, user)
     plan.update({
@@ -1634,7 +1730,7 @@ def ai_ask(child_id: int, payload: AIAskRequest, user: dict = Depends(require_ro
     }
 
 
-@app.get("/api/specialist/children/{child_id}", include_in_schema=False)
+@app.get("/api/specialist/children/{child_id}")
 def specialist_child(child_id: int, user: dict = Depends(require_roles("specialist"))) -> dict:
     dashboard_data = dashboard(child_id, user)
     progress_details = progress_data(child_id, user)
@@ -1652,14 +1748,18 @@ def specialist_child(child_id: int, user: dict = Depends(require_roles("speciali
     goal_items = []
     for row in goals:
         item = dict(row); item["exercise_ids"] = json.loads(item["exercise_ids"]); goal_items.append(item)
-    return {"dashboard": dashboard_data, "support_metrics": progress_details["support_metrics"], "assigned_exercises": [dict(row) for row in assigned], "recommendations": [dict(row) for row in reviews], "goals": goal_items, "homework": [dict(row) for row in homework]}
+    with connect() as db:
+        family_goals = list_practice_goals(db, child_id)
+        available = child_exercise_rows(db, child_id)
+        observations = [dict(row) for row in db.execute("SELECT * FROM specialist_observations WHERE child_id=? AND specialist_id=? ORDER BY id DESC LIMIT 50", (child_id, user["id"])).fetchall()]
+    return {"practice_goals": family_goals, "available_exercises": available, "observations": observations, "dashboard": dashboard_data, "support_metrics": progress_details["support_metrics"], "assigned_exercises": [dict(row) for row in assigned], "recommendations": [dict(row) for row in reviews], "goals": goal_items, "homework": [dict(row) for row in homework]}
 
 
 @app.post("/api/specialist/assigned-exercises", status_code=201, include_in_schema=False)
 def assign_exercise(payload: AssignedExerciseCreate, user: dict = Depends(require_roles("specialist"))) -> dict:
     ensure_child_access(payload.child_id, user)
     with connect() as db:
-        exercise = db.execute("SELECT id FROM exercises WHERE id=? AND is_active=1", (payload.exercise_id,)).fetchone()
+        exercise = next((item for item in child_exercise_rows(db, payload.child_id) if item["id"] == payload.exercise_id), None)
         if not exercise:
             raise HTTPException(404, "Упражнение не найдено")
         cursor = db.execute(
@@ -1674,7 +1774,7 @@ def assign_exercise(payload: AssignedExerciseCreate, user: dict = Depends(requir
 def create_specialist_recommendation(payload: SpecialistRecommendationCreate, user: dict = Depends(require_roles("specialist"))) -> dict:
     ensure_child_access(payload.child_id, user)
     with connect() as db:
-        if payload.exercise_id and not db.execute("SELECT 1 FROM exercises WHERE id=? AND is_active=1", (payload.exercise_id,)).fetchone():
+        if payload.exercise_id and not next((item for item in child_exercise_rows(db, payload.child_id) if item["id"] == payload.exercise_id), None):
             raise HTTPException(404, "Упражнение не найдено")
         cursor = db.execute(
             """INSERT INTO specialist_recommendations(child_id,specialist_id,suggested_skill,exercise_id,source,status,comment,created_at)
@@ -1691,7 +1791,7 @@ def create_specialist_recommendation(payload: SpecialistRecommendationCreate, us
 
 
 @app.get("/api/goals/{child_id}", include_in_schema=False)
-def list_goals(child_id: int, user: dict = Depends(get_current_user)) -> list[dict]:
+def list_goals(child_id: int, user: dict = Depends(require_roles("admin", "parent", "student"))) -> list[dict]:
     ensure_child_access(child_id, user)
     with connect() as db:
         rows = db.execute(
@@ -1718,10 +1818,9 @@ def create_goal(payload: ChildGoalCreate, user: dict = Depends(require_roles("sp
             raise HTTPException(422, "Срок должен быть в формате YYYY-MM-DD")
     with connect() as db:
         if payload.exercise_ids:
-            placeholders = ",".join("?" for _ in payload.exercise_ids)
-            count = db.execute(f"SELECT COUNT(*) count FROM exercises WHERE id IN ({placeholders}) AND is_active=1", tuple(payload.exercise_ids)).fetchone()["count"]
-            if count != len(set(payload.exercise_ids)):
-                raise HTTPException(422, "Одно из обязательных упражнений недоступно")
+            available = {item["id"] for item in child_exercise_rows(db, payload.child_id)}
+            if not set(payload.exercise_ids) <= available:
+                raise HTTPException(422, "Одно из предложенных упражнений недоступно")
         stamp = now_iso()
         cursor = db.execute(
             """INSERT INTO child_goals(child_id,specialist_id,title,target_skill,due_date,success_criterion,difficulty,exercise_ids,position,status,created_at,updated_at)
@@ -1733,7 +1832,7 @@ def create_goal(payload: ChildGoalCreate, user: dict = Depends(require_roles("sp
         for exercise_id in payload.exercise_ids:
             db.execute(
                 "INSERT INTO assigned_exercises(child_id,specialist_id,exercise_id,note,status,created_at) VALUES(?,?,?,?,'assigned',?)",
-                (payload.child_id, user["id"], exercise_id, f"Обязательное упражнение для цели «{payload.title}»", stamp),
+                (payload.child_id, user["id"], exercise_id, f"Предложенное упражнение для цели «{payload.title}»", stamp),
             )
         row = db.execute("SELECT * FROM child_goals WHERE id=?", (goal_id,)).fetchone()
     audit(user, "goal.create", "child_goal", goal_id, {"child_id": payload.child_id})
@@ -1758,7 +1857,7 @@ def update_goal_status(goal_id: int, payload: GoalStatusUpdate, user: dict = Dep
 
 
 @app.get("/api/homework/{child_id}", include_in_schema=False)
-def list_homework(child_id: int, user: dict = Depends(get_current_user)) -> list[dict]:
+def list_homework(child_id: int, user: dict = Depends(require_roles("admin", "parent", "student"))) -> list[dict]:
     ensure_child_access(child_id, user)
     with connect() as db:
         rows = db.execute("SELECT * FROM homework_assignments WHERE child_id=? ORDER BY id DESC LIMIT 30", (child_id,)).fetchall()
@@ -1942,7 +2041,7 @@ def get_consent(child_id: int, user: dict = Depends(require_roles("parent", "stu
 @app.put("/api/children/{child_id}/consent")
 def update_consent(child_id: int, payload: ConsentUpdate, user: dict = Depends(require_roles("parent"))) -> dict:
     ensure_child_access(child_id, user)
-    if not payload.privacy_accepted and (payload.camera_processing or payload.ai_processing or payload.analytics_processing):
+    if not payload.privacy_accepted and (payload.camera_processing or payload.ai_processing or payload.analytics_processing or payload.specialist_sharing):
         raise HTTPException(422, "Дополнительные разрешения можно включить только после принятия обязательных условий")
     previous = consent_record(child_id)
     stamp = now_iso()
@@ -1955,23 +2054,26 @@ def update_consent(child_id: int, payload: ConsentUpdate, user: dict = Depends(r
                    analytics_processing_at,version,updated_at)
                VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(child_id) DO UPDATE SET
                    parent_id=excluded.parent_id,privacy_accepted=excluded.privacy_accepted,
-                   camera_processing=excluded.camera_processing,specialist_sharing=0,ai_processing=excluded.ai_processing,
+                   camera_processing=excluded.camera_processing,specialist_sharing=excluded.specialist_sharing,ai_processing=excluded.ai_processing,
                    analytics_processing=excluded.analytics_processing,consented_by_user_id=excluded.consented_by_user_id,
                    privacy_accepted_at=excluded.privacy_accepted_at,camera_processing_at=excluded.camera_processing_at,
-                   specialist_sharing_at=NULL,ai_processing_at=excluded.ai_processing_at,
+                   specialist_sharing_at=excluded.specialist_sharing_at,ai_processing_at=excluded.ai_processing_at,
                    analytics_processing_at=excluded.analytics_processing_at,
                    version=excluded.version,updated_at=excluded.updated_at""",
             (
                 child_id, user["id"], int(payload.privacy_accepted), int(payload.camera_processing),
-                0, int(payload.ai_processing), int(payload.analytics_processing), user["id"],
+                int(payload.specialist_sharing), int(payload.ai_processing), int(payload.analytics_processing), user["id"],
                 accepted_at("privacy_accepted", payload.privacy_accepted),
                 accepted_at("camera_processing", payload.camera_processing),
-                None,
+                accepted_at("specialist_sharing", payload.specialist_sharing),
                 accepted_at("ai_processing", payload.ai_processing),
                 accepted_at("analytics_processing", payload.analytics_processing),
                 CONSENT_VERSION, stamp,
             ),
         )
+        if not payload.specialist_sharing or not payload.privacy_accepted:
+            db.execute("DELETE FROM specialist_children WHERE child_id=?", (child_id,))
+            db.execute("UPDATE specialist_invitations SET status='cancelled' WHERE child_id=? AND status IN ('open','pending')", (child_id,))
     audit(user, "consent.update", "child", child_id, {
         "privacy": payload.privacy_accepted,
         "camera": payload.camera_processing,
@@ -2020,14 +2122,16 @@ def export_child_data(child_id: int, user: dict = Depends(require_roles("parent"
             ).fetchall()],
             "assigned_exercises": [dict(row) for row in db.execute("SELECT * FROM assigned_exercises WHERE child_id=? ORDER BY id", (child_id,)).fetchall()],
             "specialist_access": [dict(row) for row in db.execute("SELECT * FROM specialist_children WHERE child_id=? ORDER BY assigned_at", (child_id,)).fetchall()],
+            "specialist_invitations": [dict(row) for row in db.execute("SELECT id,status,claimed_by,created_at,expires_at FROM specialist_invitations WHERE child_id=? ORDER BY id", (child_id,)).fetchall()],
             "specialist_recommendations": [dict(row) for row in db.execute("SELECT * FROM specialist_recommendations WHERE child_id=? ORDER BY id", (child_id,)).fetchall()],
+            "specialist_observations": [dict(row) for row in db.execute("SELECT * FROM specialist_observations WHERE child_id=? ORDER BY id", (child_id,)).fetchall()],
             "goals": goal_rows,
             "homework": [dict(row) for row in db.execute("SELECT * FROM homework_assignments WHERE child_id=? ORDER BY id", (child_id,)).fetchall()],
             "skill_observations": [dict(row) for row in db.execute("SELECT * FROM skill_observations WHERE child_id=? ORDER BY id", (child_id,)).fetchall()],
             "home_activity_observations": [dict(row) for row in db.execute("SELECT * FROM home_activity_observations WHERE child_id=? ORDER BY id", (child_id,)).fetchall()],
-            "practice_goals": list_practice_goals(db, child_id),
+            "practice_goals": list_practice_goals(db, child_id, full=True),
             "practice_preferences": get_preferences(db, child_id),
-            "adaptive_practice_plans": adaptive_plan_history(db, child_id),
+            "adaptive_practice_plans": adaptive_plan_history(db, child_id, full=True),
             "aac_custom_cards": [dict(row) for row in db.execute("SELECT * FROM aac_cards WHERE child_id=? ORDER BY id", (child_id,)).fetchall()],
             "aac_favorites": [dict(row) for row in db.execute("SELECT * FROM aac_favorites WHERE child_id=? ORDER BY card_id", (child_id,)).fetchall()],
             "aac_history": history_rows,
@@ -2048,8 +2152,7 @@ def delete_child_data(child_id: int, payload: ChildDeleteRequest, user: dict = D
         account = db.execute("SELECT password_hash FROM users WHERE id=?", (user["id"],)).fetchone()
         if not account or not verify_password(payload.password, account["password_hash"]):
             raise HTTPException(403, "Пароль не подтверждён")
-        db.execute("DELETE FROM children WHERE id=? AND parent_id=?", (child_id, user["id"]))
-    audit(user, "child.delete", "child", child_id)
+        delete_child_records(db, child_id)
 
 
 @app.patch("/api/specialist/recommendations/{recommendation_id}", include_in_schema=False)
@@ -2122,7 +2225,7 @@ def admin_stats(_: dict = Depends(require_roles("admin"))) -> dict:
 @app.get("/api/admin/users")
 def admin_users(_: dict = Depends(require_roles("admin"))) -> list[dict]:
     with connect() as db:
-        return [public_user(row) for row in db.execute("SELECT * FROM users WHERE role<>'specialist' ORDER BY created_at DESC").fetchall()]
+        return [public_user(row) for row in db.execute("SELECT * FROM users ORDER BY created_at DESC").fetchall()]
 
 
 @app.get("/api/admin/students")
@@ -2144,12 +2247,12 @@ def admin_usage(
         totals = db.execute("SELECT COUNT(*) requests,COALESCE(SUM(input_tokens),0) input_tokens,COALESCE(SUM(output_tokens),0) output_tokens,COALESCE(SUM(estimated_cost_usd),0) cost FROM usage_events WHERE provider='openai' AND created_at >= ?", (cutoff,)).fetchone()
         breakdown = db.execute("SELECT provider,model,feature,COUNT(*) requests,SUM(input_tokens) input_tokens,SUM(output_tokens) output_tokens,SUM(estimated_cost_usd) cost FROM usage_events WHERE provider='openai' AND created_at >= ? GROUP BY provider,model,feature ORDER BY requests DESC", (cutoff,)).fetchall()
         daily_rows = db.execute(
-            """SELECT substr(created_at,1,10) day,COUNT(*) requests,
+            """SELECT substr(created_at,1,10) AS usage_day,COUNT(*) requests,
                       COALESCE(SUM(input_tokens),0) input_tokens,
                       COALESCE(SUM(output_tokens),0) output_tokens,
                       COALESCE(SUM(estimated_cost_usd),0) cost
                FROM usage_events WHERE provider='openai' AND created_at >= ?
-               GROUP BY substr(created_at,1,10) ORDER BY day""",
+               GROUP BY substr(created_at,1,10) ORDER BY usage_day""",
             (cutoff,),
         ).fetchall()
         recent = db.execute(
@@ -2174,7 +2277,7 @@ def admin_usage(
                ORDER BY e.id DESC LIMIT ?""",
             (cutoff, limit),
         ).fetchall()
-    daily_by_date = {row["day"]: dict(row) for row in daily_rows}
+    daily_by_date = {row["usage_day"]: dict(row) for row in daily_rows}
     daily = []
     for days_ago in range(days - 1, -1, -1):
         day = (today - timedelta(days=days_ago)).isoformat()
@@ -2222,6 +2325,7 @@ def update_role(user_id: int, payload: RoleUpdate, admin: dict = Depends(require
             active_admins = db.execute("SELECT COUNT(*) count FROM users WHERE role='admin' AND is_active=1").fetchone()["count"]
             if active_admins <= 1:
                 raise HTTPException(409, "Нельзя изменить роль последнего активного администратора")
+        db.execute("DELETE FROM auth_sessions WHERE subject=?", (str(user_id),))
         db.execute("UPDATE users SET role=? WHERE id=?", (payload.role, user_id))
         row = db.execute("SELECT * FROM users WHERE id=?", (user_id,)).fetchone()
     audit(admin, "user.role", "user", user_id, {"role": payload.role})
@@ -2240,6 +2344,7 @@ def update_active(user_id: int, payload: ActiveUpdate, admin: dict = Depends(req
             active_admins = db.execute("SELECT COUNT(*) count FROM users WHERE role='admin' AND is_active=1").fetchone()["count"]
             if active_admins <= 1:
                 raise HTTPException(409, "Нельзя отключить последнего активного администратора")
+        db.execute("DELETE FROM auth_sessions WHERE subject=?", (str(user_id),))
         db.execute("UPDATE users SET is_active=? WHERE id=?", (int(payload.is_active), user_id))
         row = db.execute("SELECT * FROM users WHERE id=?", (user_id,)).fetchone()
     audit(admin, "user.active", "user", user_id, {"active": payload.is_active})
@@ -2327,3 +2432,91 @@ def delete_exercise(exercise_id: int, _: dict = Depends(require_roles("admin")))
     with connect() as db:
         db.execute("UPDATE exercises SET is_active=0 WHERE id=?", (exercise_id,))
         db.execute("UPDATE exercise_versions SET publication_status='archived' WHERE exercise_id=? AND publication_status='published'", (exercise_id,))
+
+
+@app.get("/api/children/{child_id}/specialists")
+def family_specialists(child_id: int, user: dict = Depends(require_roles("parent"))) -> list[dict]:
+    ensure_child_access(child_id, user)
+    with connect() as db:
+        return [dict(row) for row in db.execute("""SELECT u.id,u.username,u.full_name,sc.assigned_at FROM users u
+            JOIN specialist_children sc ON sc.specialist_id=u.id WHERE sc.child_id=? ORDER BY u.full_name""", (child_id,)).fetchall()]
+
+
+@app.post("/api/children/{child_id}/specialists", status_code=201)
+def grant_family_specialist(child_id: int, payload: SpecialistAccessCreate, user: dict = Depends(require_roles("parent"))) -> dict:
+    ensure_child_access(child_id, user)
+    consent = ensure_privacy_consent(child_id)
+    if not consent["specialist_sharing"]:
+        raise HTTPException(403, "Сначала разрешите доступ специалиста в настройках семьи")
+    with connect() as db:
+        specialist = db.execute("SELECT id,username,full_name FROM users WHERE lower(username)=? AND role='specialist' AND is_active=1", (payload.username.lower(),)).fetchone()
+        if not specialist:
+            raise HTTPException(404, "Активный аккаунт специалиста с таким логином не найден")
+        db.execute("INSERT INTO specialist_children(specialist_id,child_id,assigned_at) VALUES(?,?,?) ON CONFLICT(specialist_id,child_id) DO NOTHING", (specialist["id"], child_id, now_iso()))
+    audit(user, "specialist.grant", "child", child_id, {"specialist_id": specialist["id"]})
+    return dict(specialist)
+
+
+@app.delete("/api/children/{child_id}/specialists/{specialist_id}", status_code=204)
+def revoke_family_specialist(child_id: int, specialist_id: int, user: dict = Depends(require_roles("parent"))):
+    ensure_child_access(child_id, user)
+    with connect() as db:
+        db.execute("DELETE FROM specialist_children WHERE child_id=? AND specialist_id=?", (child_id, specialist_id))
+    audit(user, "specialist.revoke", "child", child_id, {"specialist_id": specialist_id})
+
+
+@app.post("/api/specialist/children/{child_id}/observations", status_code=201)
+def specialist_observation(child_id: int, payload: SpecialistObservationCreate, user: dict = Depends(require_roles("specialist"))) -> dict:
+    ensure_child_access(child_id, user)
+    with connect() as db:
+        if payload.goal_id and not db.execute("SELECT id FROM parent_practice_goals WHERE id=? AND child_id=?", (payload.goal_id, child_id)).fetchone():
+            raise HTTPException(422, "Цель не относится к этому ребёнку")
+        cursor = db.execute("""INSERT INTO specialist_observations(child_id,specialist_id,goal_id,result_type,prompt_level,context,note,created_at)
+            VALUES(?,?,?,?,?,?,?,?) RETURNING id""", (child_id, user["id"], payload.goal_id, payload.result_type, payload.prompt_level, payload.context, payload.note, now_iso()))
+        result = dict(db.execute("SELECT * FROM specialist_observations WHERE id=?", (cursor.fetchone()["id"],)).fetchone())
+    audit(user, "specialist.observation", "child", child_id, {"observation_id": result["id"]})
+    return result
+
+
+@app.get("/api/privacy")
+def public_privacy_profile() -> dict:
+    return privacy_profile()
+
+
+@app.delete("/api/auth/account", status_code=204)
+def delete_parent_account(payload: ChildDeleteRequest, response: Response, user: dict = Depends(require_roles("parent"))):
+    with connect() as db:
+        account = db.execute("SELECT password_hash FROM users WHERE id=?", (user["id"],)).fetchone()
+        if not account or not verify_password(payload.password, account["password_hash"]):
+            raise HTTPException(403, "Пароль не подтверждён")
+        delete_parent_records(db, user["id"])
+    clear_auth_cookies(response)
+
+
+@app.get("/api/children/{child_id}/specialist-observations")
+def family_specialist_observations(child_id: int, user: dict = Depends(require_roles("parent"))) -> list[dict]:
+    ensure_child_access(child_id, user)
+    with connect() as db:
+        return [dict(row) for row in db.execute("""SELECT o.*,u.full_name specialist_name FROM specialist_observations o
+            JOIN users u ON u.id=o.specialist_id WHERE o.child_id=? ORDER BY o.id DESC LIMIT 50""", (child_id,)).fetchall()]
+
+
+@app.get("/api/children/{child_id}/specialist-recommendations")
+def family_specialist_recommendations(child_id: int, user: dict = Depends(require_roles("parent"))) -> list[dict]:
+    ensure_child_access(child_id, user)
+    with connect() as db:
+        available = {item["id"] for item in child_exercise_rows(db, child_id)}
+        rows = db.execute("""SELECT r.*,u.full_name specialist_name,e.title exercise_title,
+            CASE WHEN r.status='approved' AND u.role='specialist' AND u.is_active=1
+                AND sc.specialist_id IS NOT NULL AND c.privacy_accepted=1 AND c.specialist_sharing=1
+                THEN 1 ELSE 0 END is_current
+            FROM specialist_recommendations r JOIN users u ON u.id=r.specialist_id
+            LEFT JOIN exercises e ON e.id=r.exercise_id
+            LEFT JOIN specialist_children sc ON sc.specialist_id=r.specialist_id AND sc.child_id=r.child_id
+            LEFT JOIN child_consents c ON c.child_id=r.child_id
+            WHERE r.child_id=? ORDER BY r.id DESC LIMIT 50""", (child_id,)).fetchall()
+        return [{**dict(row), "is_current": bool(row["is_current"]), "exercise_available": row["exercise_id"] in available} for row in rows]
+
+
+from .specialist_invitations import router as invitation_router
+app.include_router(invitation_router)

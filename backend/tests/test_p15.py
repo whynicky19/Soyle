@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from app.database import connect
+from app.database import connect, now_iso
 from app import exercise_engine
 
 
@@ -138,8 +138,8 @@ def test_review_stages_require_independent_permissions_and_keep_history(client, 
             db.execute(
                 """INSERT INTO content_reviewer_permissions(
                        user_id,can_methodology_review,can_accessibility_review,can_release_approve,granted_by,granted_at)
-                   VALUES(?,1,1,1,?,datetime('now'))""",
-                (admin_id, admin_id),
+                   VALUES(?,1,1,1,?,?)""",
+                (admin_id, admin_id, now_iso()),
             )
         methodology = client.post(
             f"/api/admin/exercise-drafts/{version_id}/reviews",
@@ -174,7 +174,7 @@ def test_review_stages_require_independent_permissions_and_keep_history(client, 
             )
 
 
-def test_legacy_publications_remain_available_and_marked_unreviewed_when_demo_mode_is_disabled(client):
+def test_legacy_publications_are_blocked_when_demo_mode_is_disabled(client):
     with connect() as db:
         demo_rows = exercise_engine.published_exercise_rows(db)
     assert demo_rows
@@ -184,8 +184,7 @@ def test_legacy_publications_remain_available_and_marked_unreviewed_when_demo_mo
         exercise_engine.ALLOW_UNREVIEWED_DEMO_CONTENT = False
         with connect() as db:
             rows = exercise_engine.published_exercise_rows(db)
-        assert {row["id"] for row in rows} == {row["id"] for row in demo_rows}
-        assert all(row["engine"]["review_gate"]["demo_only"] for row in rows)
+        assert rows == []
     finally:
         exercise_engine.ALLOW_UNREVIEWED_DEMO_CONTENT = original
 

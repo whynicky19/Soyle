@@ -1,0 +1,247 @@
+{
+  "version": 1,
+  "images": {
+    "/learning-core/picnic/01.webp": {
+      "width": 1080,
+      "height": 810,
+      "source": "built-in imagegen; synthetic characters, no family photos",
+      "scene_or_object": "01",
+      "purpose": "comic scene or visible consequence",
+      "sha256": "0938ef7c19b27875858def65f4d28803a0e48da8e1511222289da9234a498c95",
+      "bytes": 186560,
+      "review": "AI visual inspection; no professional approval",
+      "source_generation": "exec-c1933e96-4867-4375-beae-ef27e17c4874.png"
+    },
+    "/learning-core/picnic/02.webp": {
+      "width": 1080,
+      "height": 810,
+      "source": "built-in imagegen; synthetic characters, no family photos",
+      "scene_or_object": "02",
+      "purpose": "comic scene or visible consequence",
+      "sha256": "a0889eb33b80e94330d15d3df3b71218ec094673f8a10aaf082b830f3c2d7961",
+      "bytes": 199776,
+      "review": "AI visual inspection; no professional approval",
+      "source_generation": "exec-a4decf66-d8ee-476b-86ec-ee6406dba10b.png"
+    },
+    "/learning-core/picnic/03.webp": {
+      "width": 1080,
+      "height": 810,
+      "source": "built-in imagegen; synthetic characters, no family photos",
+      "scene_or_object": "03",
+      "purpose": "comic scene or visible consequence",
+      "sha256": "7699c29d1cc9e06f639eb34f1e8091e77997433ff74b8811580e1effca015193",
+      "bytes": 191280,
+      "review": "AI visual inspection; no professional approval",
+      "source_generation": "exec-9bbc52d4-2c37-4a2c-ad53-fbc2342b962e.png"
+    },
+    "/learning-core/picnic/04.webp": {
+      "width": 1080,
+      "height": 810,
+      "source": "built-in imagegen; synthetic characters, no family photos",
+      "scene_or_object": "04",
+      "purpose": "comic scene or visible consequence",
+      "sha256": "93c894618316909b6a874075bdb5a712eeb3e9f23547deec8ce026d180ff6c30",
+      "bytes": 187816,
+      "review": "AI visual inspection; no professional approval",
+      "source_generation": "exec-2c25f6f7-c03f-4bc2-959b-7809ce678778.png"
+    },
+    "/learning-core/picnic/05.webp": {
+      "width": 1080,
+      "height": 810,
+      "source": "built-in imagegen; synthetic characters, no family photos",
+      "scene_or_object": "05",
+      "purpose": "comic scene or visible consequence",
+      "sha256": "6caaf5d6d102b219ac06f57c2240b9ae52a9db0c12cb234540c73d926604a9e6",
+      "bytes": 190204,
+      "review": "AI visual inspection; no professional approval",
+      "source_generation": "exec-4aeac4b3-ca0a-4460-b061-c7440a4d5589.png"
+    },
+    "/learning-core/picnic/06.webp": {
+      "width": 1080,
+      "height": 810,
+      "source": "built-in imagegen; synthetic characters, no family photos",
+      "scene_or_object": "06",
+      "purpose": "comic scene or visible consequence",
+      "sha256": "9001ad0b2ca3d4da002b5e097ee0eaa88953273f1bb74e60aa77552500f6a41a",
+      "bytes": 244778,
+      "review": "AI visual inspection; no professional approval",
+      "source_generation": "exec-8d37e5cb-7526-484d-b6ea-d872a59338b1.png"
+    },
+    "/learning-core/picnic/07-ball.webp": {
+      "width": 1080,
+      "height": 810,
+      "source": "built-in imagegen; synthetic characters, no family photos",
+      "scene_or_object": "07-ball",
+      "purpose": "comic scene or visible consequence",
+      "sha256": "ddcb28aa7c707f502313d93a685fc57daffe0f2222da3cfbd350073df524aa1b",
+      "bytes": 237068,
+      "review": "AI visual inspection; no professional approval",
+      "source_generation": "exec-4e99f92d-e4d0-420c-ae83-9b3dc9c16d27.png"
+    },
+    "/learning-core/picnic/07-book.webp": {
+      "width": 1080,
+      "height": 810,
+      "source": "built-in imagegen; synthetic characters, no family photos",
+      "scene_or_object": "07-book",
+      "purpose": "comic scene or visible consequence",
+      "sha256": "4b0a71cce62740eb289e99e98fb8382b5713371c2a9d41001254a20558067dcb",
+      "bytes": 220724,
+      "review": "AI visual inspection; no professional approval",
+      "source_generation": "exec-cda666f6-7d0d-43a9-aa95-cad41f574794.png"
+    },
+    "/learning-core/picnic/08.webp": {
+      "width": 1080,
+      "height": 810,
+      "source": "built-in imagegen; synthetic characters, no family photos",
+      "scene_or_object": "08",
+      "purpose": "comic scene or visible consequence",
+      "sha256": "34100e3acc031986a4d525b06404d884560dbd197dcc414b1181acc0a0570050",
+      "bytes": 243220,
+      "review": "AI visual inspection; no professional approval",
+      "source_generation": "exec-572491e0-d4e4-4dd5-bf64-c6b80f88b415.png"
+    },
+    "/learning-core/picnic/08-apple.webp": {
+      "width": 1080,
+      "height": 810,
+      "source": "built-in imagegen; synthetic characters, no family photos",
+      "scene_or_object": "08-apple",
+      "purpose": "comic scene or visible consequence",
+      "sha256": "a9aaba14ba2092dedb416d35fd4195f979e313dfd21fcd5236efbc5d2473469c",
+      "bytes": 238572,
+      "review": "AI visual inspection; no professional approval",
+      "source_generation": "exec-501dd65d-8e85-4dff-84dd-33a2a37640fd.png"
+    },
+    "/learning-core/picnic/08-banana.webp": {
+      "width": 1080,
+      "height": 810,
+      "source": "built-in imagegen; synthetic characters, no family photos",
+      "scene_or_object": "08-banana",
+      "purpose": "comic scene or visible consequence",
+      "sha256": "93919e732380af8b27b4d4b1810e8f70a17f8fefbe2ce7b68078e1cbf056ac7b",
+      "bytes": 236786,
+      "review": "AI visual inspection; no professional approval",
+      "source_generation": "exec-c979e595-02e2-44c0-b4cf-0c74ea7b0396.png"
+    },
+    "/learning-core/picnic/09.webp": {
+      "width": 1080,
+      "height": 810,
+      "source": "built-in imagegen; synthetic characters, no family photos",
+      "scene_or_object": "09",
+      "purpose": "comic scene or visible consequence",
+      "sha256": "56cc86e3fc8e51720109a805e73482f62158d965abae50f942505a651332d7fa",
+      "bytes": 228270,
+      "review": "AI visual inspection; no professional approval",
+      "source_generation": "exec-54b2c5bb-33f6-4d91-bae0-02d36eeb3c1e.png"
+    },
+    "/learning-core/picnic/10.webp": {
+      "width": 1080,
+      "height": 810,
+      "source": "built-in imagegen; synthetic characters, no family photos",
+      "scene_or_object": "10",
+      "purpose": "comic scene or visible consequence",
+      "sha256": "be109483a1bdc2b23fb5fe5b8035e265adbf10a9fc036ea163d08c6f1af739c5",
+      "bytes": 223224,
+      "review": "AI visual inspection; no professional approval",
+      "source_generation": "exec-adbb3dfe-0e15-46e1-ac1b-2ddd43bb3c08.png"
+    },
+    "/learning-core/picnic/10-packed.webp": {
+      "width": 1080,
+      "height": 810,
+      "source": "built-in imagegen; synthetic characters, no family photos",
+      "scene_or_object": "10-packed",
+      "purpose": "comic scene or visible consequence",
+      "sha256": "b97548ee028524472b349a1fe0ed70d269c5e9e9430ffabb0560be1cff54c6d9",
+      "bytes": 257072,
+      "review": "AI visual inspection; no professional approval",
+      "source_generation": "exec-7288d456-5b97-4a84-beb8-272c0e41cf64.png"
+    },
+    "/learning-core/picnic/11.webp": {
+      "width": 1080,
+      "height": 810,
+      "source": "built-in imagegen; synthetic characters, no family photos",
+      "scene_or_object": "11",
+      "purpose": "comic scene or visible consequence",
+      "sha256": "ba73d646ba0e6690f9304e73c96e52cb26138a552afd67bbc2263a612660a591",
+      "bytes": 207116,
+      "review": "AI visual inspection; no professional approval",
+      "source_generation": "exec-601d56ea-e0a7-4e18-9af7-0a686543a3bc.png"
+    },
+    "/learning-core/picnic/12.webp": {
+      "width": 1080,
+      "height": 810,
+      "source": "built-in imagegen; synthetic characters, no family photos",
+      "scene_or_object": "12",
+      "purpose": "comic scene or visible consequence",
+      "sha256": "7ec61959543f0fdee75346c23f6e0a2e138fd0af93d71ea3def3e0732480a6e3",
+      "bytes": 178550,
+      "review": "AI visual inspection; no professional approval",
+      "source_generation": "exec-05937fad-30fa-4a6d-bd80-4a619ff6f96e.png"
+    },
+    "/learning-core/picnic/objects/book.webp": {
+      "width": 640,
+      "height": 640,
+      "source": "built-in imagegen; synthetic characters, no family photos",
+      "scene_or_object": "objects/book",
+      "purpose": "choice object",
+      "sha256": "25d6fc3b2b390bc0901cde92c74913f59cb7fba1a9b82bf9c27690507ba5d74f",
+      "bytes": 38628,
+      "review": "AI visual inspection; no professional approval",
+      "source_generation": "exec-0d1413b6-1a95-493a-a7fa-da29ec2c9084.png"
+    },
+    "/learning-core/picnic/objects/cup.webp": {
+      "width": 640,
+      "height": 640,
+      "source": "built-in imagegen; synthetic characters, no family photos",
+      "scene_or_object": "objects/cup",
+      "purpose": "choice object",
+      "sha256": "a0623d77e721c5803e34822a21c3d7104859b45eb6d3377b0c12c5d410f7f3ab",
+      "bytes": 19798,
+      "review": "AI visual inspection; no professional approval",
+      "source_generation": "exec-36e68f02-e0bf-4aea-ab9c-3cc5c1bc465d.png"
+    },
+    "/learning-core/picnic/objects/bag.webp": {
+      "width": 640,
+      "height": 640,
+      "source": "built-in imagegen; synthetic characters, no family photos",
+      "scene_or_object": "objects/bag",
+      "purpose": "choice object",
+      "sha256": "a25ecc8aaa26fd02927144e91a7d9b2e76389ec2047d61d03c2e433d1d89c49c",
+      "bytes": 48018,
+      "review": "AI visual inspection; no professional approval",
+      "source_generation": "exec-a59302db-d96d-4d56-860c-a8398e5d1932.png"
+    },
+    "/learning-core/picnic/objects/apple.webp": {
+      "width": 640,
+      "height": 640,
+      "source": "built-in imagegen; synthetic characters, no family photos",
+      "scene_or_object": "objects/apple",
+      "purpose": "choice object",
+      "sha256": "0a8c86db11cc52ff08939c3edade8f9ca4dc11dc3a65f7466b7fe5248ddc9176",
+      "bytes": 41534,
+      "review": "AI visual inspection; no professional approval",
+      "source_generation": "exec-a1f8273d-8778-48cf-b8fb-bd85166277fa.png"
+    },
+    "/learning-core/picnic/objects/banana.webp": {
+      "width": 640,
+      "height": 640,
+      "source": "built-in imagegen; synthetic characters, no family photos",
+      "scene_or_object": "objects/banana",
+      "purpose": "choice object",
+      "sha256": "420cbee2f11885159ecce4371e8d534a8b102f5af7d31674422f7905e6ea6b46",
+      "bytes": 28526,
+      "review": "AI visual inspection; no professional approval",
+      "source_generation": "exec-98c29e5d-a018-4dad-87d1-db5f0528656e.png"
+    },
+    "/learning-core/picnic/10-before.webp": {
+      "width": 1080,
+      "height": 810,
+      "source": "built-in imagegen, synthetic reference",
+      "scene_or_object": "10-before",
+      "purpose": "initial state before taking cup; then 10.webp; then 10-packed.webp",
+      "sha256": "cbfff6b91b2e290c853de215493ee02b086203599170eff6bc9d758e28bff88a",
+      "bytes": 230442,
+      "review": "AI visual inspection; no professional approval",
+      "source_generation": "exec-e7990e90-6d8c-413f-90f4-95fccd6b686d.png"
+    }
+  }
+}

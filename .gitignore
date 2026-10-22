@@ -40,3 +40,6 @@ backend/skills-lock.json
 # Framework-generated local instructions.
 /frontend/AGENTS.md
 /frontend/CLAUDE.md
+
+# Isolated browser-test build cache
+frontend/.next-e2e/

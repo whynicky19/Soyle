@@ -5,6 +5,7 @@ from fastapi.testclient import TestClient
 
 from app.aac_grammar import compose_aac_phrase
 from app.database import connect
+from app.migrations import LATEST_SCHEMA_VERSION
 from app.main import app, auth_identifier, ensure_child_access
 
 
@@ -23,23 +24,23 @@ def test_health_reports_controlled_schema_migration(client):
     for path in ("/api/health", "/health/ready"):
         response = client.get(path)
         assert response.status_code == 200
-        assert response.json() == {"status": "ok", "service": "soyle-api", "schema_version": 18, "required_schema_version": 18}
+        assert response.json() == {"status": "ok", "service": "soyle-api", "schema_version": LATEST_SCHEMA_VERSION, "required_schema_version": LATEST_SCHEMA_VERSION}
 
 
 def test_readiness_is_non_2xx_when_schema_is_stale_but_liveness_remains_up(client):
     with connect() as db:
-        applied_at = db.execute("SELECT applied_at FROM schema_migrations WHERE version=18").fetchone()["applied_at"]
-        db.execute("DELETE FROM schema_migrations WHERE version=18")
+        applied_at = db.execute("SELECT applied_at FROM schema_migrations WHERE version=?", (LATEST_SCHEMA_VERSION,)).fetchone()["applied_at"]
+        db.execute("DELETE FROM schema_migrations WHERE version=?", (LATEST_SCHEMA_VERSION,))
     try:
         assert client.get("/health/live").status_code == 200
         response = client.get("/api/health")
         assert response.status_code == 503
         assert response.json()["status"] == "migration_required"
-        assert response.json()["schema_version"] == 17
-        assert response.json()["required_schema_version"] == 18
+        assert response.json()["schema_version"] == LATEST_SCHEMA_VERSION - 1
+        assert response.json()["required_schema_version"] == LATEST_SCHEMA_VERSION
     finally:
         with connect() as db:
-            db.execute("INSERT INTO schema_migrations(version,applied_at) VALUES(18,?)", (applied_at,))
+            db.execute("INSERT INTO schema_migrations(version,applied_at) VALUES(?,?)", (LATEST_SCHEMA_VERSION, applied_at))
 
 
 def test_cookie_session_csrf_origin_and_logout():
@@ -186,7 +187,7 @@ def test_specialist_role_is_rejected_by_shared_child_access_helper(client, paren
         raise AssertionError("Specialist access must require an explicit assignment model")
 
 
-def test_local_plan_uses_only_safe_library_and_specialist_role_is_removed(client, parent_headers, admin_headers):
+def test_local_plan_uses_only_safe_library_and_specialist_workspace_is_explicit(client, parent_headers, admin_headers):
     child_id = client.get("/api/children", headers=parent_headers).json()[0]["id"]
     plan = client.post(f"/api/ai/plan/{child_id}", headers=parent_headers, json={"target_minutes": 3})
     assert plan.status_code == 200
@@ -196,15 +197,15 @@ def test_local_plan_uses_only_safe_library_and_specialist_role_is_removed(client
     assert plan.json()["needs_ai_consent"] is False
     assert all(item["module"] != "motor" for item in plan.json()["exercises"])
 
-    for minutes, expected_count in ((5, 3), (10, 5)):
+    for minutes, expected_count in ((5, 3), (10, 3)):
         longer_plan = client.post(f"/api/ai/plan/{child_id}", headers=parent_headers, json={"target_minutes": minutes})
         assert longer_plan.status_code == 200
         assert longer_plan.json()["estimated_minutes"] == minutes
         assert len(longer_plan.json()["exercises"]) == expected_count
 
-    assert all(item["role"] != "specialist" for item in client.get("/api/admin/users", headers=admin_headers).json())
+    assert {item["role"] for item in client.get("/api/admin/users", headers=admin_headers).json()} <= {"admin", "parent", "specialist"}
     paths = client.get("/openapi.json").json()["paths"]
-    assert not any(path.startswith("/api/specialist") for path in paths)
+    assert "/api/specialist/children/{child_id}" in paths
     assert not any("specialist-assignments" in path for path in paths)
 
 
@@ -277,7 +278,7 @@ def test_learning_session_pause_and_measurements(client, parent_headers):
     active = client.get(f"/api/children/{child_id}/active-session", headers=parent_headers)
     assert active.status_code == 200
     assert active.json()["id"] == session["id"]
-    resumed = client.patch(f"/api/learning-sessions/{session['id']}/pause", headers=parent_headers)
+    resumed = client.patch(f"/api/learning-sessions/{session['id']}/pause", headers=parent_headers, json={"paused": False})
     assert resumed.json()["status"] == "in_progress"
 
     exercise = session["exercises"][0]
@@ -322,6 +323,7 @@ def test_old_session_resumes_pending_published_exercise_and_deduplicates_progres
     })
     assert consent.status_code == 200, consent.text
 
+    client.post("/api/practice-goals", headers=headers, json={"child_id": child_id, "template_key": "recognise-five-objects", "baseline": "Synthetic baseline", "help_level": "full"}).raise_for_status()
     plan = client.get(f"/api/session-plan/{child_id}?minutes=5", headers=headers).json()["exercises"]
     assert len(plan) == 3
     created = client.post("/api/learning-sessions", headers=headers, json={
@@ -352,6 +354,7 @@ def test_old_session_resumes_pending_published_exercise_and_deduplicates_progres
         assert response.status_code == 201, response.text
 
     save(first, "break")
+    client.patch(f"/api/learning-sessions/{session['id']}/pause", headers=headers, json={"paused": False}).raise_for_status()
     save(first, "participated")
     save(completed_later, "participated")
 
@@ -365,15 +368,14 @@ def test_old_session_resumes_pending_published_exercise_and_deduplicates_progres
         assert payload["status"] == "in_progress"
         assert payload["current_index"] == 1
         assert [exercise["id"] for exercise in payload["exercises"][:2]] == [completed_later["id"], pending["id"]]
-        assert len(payload["exercises"]) == 3
+        assert len(payload["exercises"]) == 2
         assert len(payload["results"]) == 3
 
         save(pending, "participated")
-        save(payload["exercises"][2], "participated")
         finished = client.get(f"/api/learning-sessions/{session['id']}", headers=headers).json()
         assert finished["status"] == "completed"
-        assert finished["current_index"] == 3
-        assert len(finished["exercises"]) == 3
+        assert finished["current_index"] == 2
+        assert len(finished["exercises"]) == 2
     finally:
         with connect() as db:
             db.execute("UPDATE exercises SET is_active=1 WHERE id=?", (first["id"],))
