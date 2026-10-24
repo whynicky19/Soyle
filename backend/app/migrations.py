@@ -790,6 +790,135 @@ def _migration_24_specialist_invitations(db) -> None:
     db.execute("CREATE INDEX IF NOT EXISTS specialist_invitation_child ON specialist_invitations(child_id,status)")
 
 
+def _migration_25_connected_practice(db) -> None:
+    from .practice_goals import decode_goal, goal_snapshot
+
+    additions = {
+        "goal_id": "BIGINT REFERENCES parent_practice_goals(id) ON DELETE SET NULL",
+        "exercise_version_id": "BIGINT REFERENCES exercise_versions(id) ON DELETE SET NULL",
+        "family_decision": "TEXT NOT NULL DEFAULT 'pending'",
+        "family_note": "TEXT NOT NULL DEFAULT ''",
+        "family_reviewed_at": "TEXT",
+    }
+    for column, definition in additions.items():
+        if column not in _columns(db, "specialist_recommendations"):
+            db.execute(f"ALTER TABLE specialist_recommendations ADD COLUMN {column} {definition}")
+    for table in ("adaptive_practice_plan_items", "sessions", "assigned_exercises"):
+        if "recommendation_id" not in _columns(db, table):
+            db.execute(f"ALTER TABLE {table} ADD COLUMN recommendation_id BIGINT REFERENCES specialist_recommendations(id) ON DELETE SET NULL")
+    db.execute("CREATE INDEX IF NOT EXISTS idx_sessions_recommendation ON sessions(recommendation_id,id)")
+    db.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_assigned_recommendation ON assigned_exercises(recommendation_id)")
+
+    # Correct existing goals as a new version; prepared plans must be rebuilt.
+    # Historical snapshots, results and publication permissions remain intact.
+    for template in PRACTICE_GOAL_TEMPLATES:
+        targets = json.dumps(template["matching_targets"], ensure_ascii=False)
+        mechanics = json.dumps(template["matching_mechanics"], ensure_ascii=False)
+        row = db.execute("SELECT * FROM practice_goal_templates WHERE template_key=?", (template["key"],)).fetchone()
+        if row and (json.loads(row["matching_targets_json"]) != template["matching_targets"]
+                    or json.loads(row["matching_mechanics_json"]) != template["matching_mechanics"]):
+            db.execute("UPDATE practice_goal_templates SET matching_targets_json=?,matching_mechanics_json=?,version=version+1 WHERE id=?", (targets, mechanics, row["id"]))
+        for old in db.execute("SELECT * FROM parent_practice_goals WHERE template_key=?", (template["key"],)).fetchall():
+            if (json.loads(old["matching_targets_json"]) == template["matching_targets"]
+                    and json.loads(old["matching_mechanics_json"]) == template["matching_mechanics"]):
+                continue
+            stamp = now_iso()
+            db.execute("UPDATE parent_practice_goals SET matching_targets_json=?,matching_mechanics_json=?,version=version+1,updated_at=? WHERE id=?", (targets, mechanics, stamp, old["id"]))
+            goal = decode_goal(db.execute("SELECT * FROM parent_practice_goals WHERE id=?", (old["id"],)).fetchone())
+            db.execute("""INSERT INTO practice_goal_history(goal_id,child_id,goal_version,event_type,snapshot_json,changed_by,source,created_at)
+                VALUES(?,?,?,'mapping_corrected',?,?,'system_mapping_correction',?)""", (goal["id"], goal["child_id"], goal["version"], json.dumps(goal_snapshot(goal), ensure_ascii=False), goal["created_by"], stamp))
+
+
+def _migration_26_practice_material(db) -> None:
+    from .practice_content import PRACTICE_EXERCISES
+
+    for fixture in PRACTICE_EXERCISES:
+        _insert_p15_draft(db, fixture)
+        for asset in fixture["content"]["asset_registry"]:
+            db.execute("""INSERT INTO content_assets(media_ref,origin,license,license_status,created_at)
+                VALUES(?,?,?,?,?) ON CONFLICT(media_ref) DO NOTHING""",
+                (asset["media_ref"], asset["origin"], asset["license"], asset["license_status"], now_iso()))
+
+
+def _migration_27_admin_publication(db) -> None:
+    if 'admin_review_status' not in _columns(db, 'exercise_versions'):
+        db.execute("ALTER TABLE exercise_versions ADD COLUMN admin_review_status TEXT NOT NULL DEFAULT 'pending'")
+
+
+def _migration_28_card_illustrations(db) -> None:
+    from .card_illustrations import CARD_MEDIA, illustrated_content
+
+    rows = db.execute("SELECT * FROM exercise_versions WHERE publication_status='draft' ORDER BY id").fetchall()
+    for row in rows:
+        previous = dict(row)
+        content = json.loads(previous['content_json'])
+        updated = illustrated_content(content)
+        if updated == content:
+            continue
+        next_version = db.execute('SELECT MAX(version)+1 n FROM exercise_versions WHERE exercise_id=?', (previous['exercise_id'],)).fetchone()['n']
+        previous.pop('id')
+        previous.update(version=next_version, content_json=json.dumps(updated, ensure_ascii=False),
+            review_status='pending', technical_status='automated_passed', methodology_status='pending',
+            accessibility_status='pending', release_status='pending', admin_review_status='pending',
+            published_at=None, created_at=now_iso())
+        fields = list(previous)
+        cursor = db.execute(f"INSERT INTO exercise_versions({','.join(fields)}) VALUES({','.join('?' for _ in fields)}) RETURNING id", tuple(previous[field] for field in fields))
+        new_id = cursor.fetchone()['id']
+        for position, stimulus in enumerate(updated.get('stimuli', [])):
+            db.execute('''INSERT INTO exercise_stimuli(version_id,stimulus_key,kind,label,speech,media_ref,position,metadata_json)
+                VALUES(?,?,?,?,?,?,?,?)''', (new_id, stimulus['key'], 'image', stimulus['label'], stimulus['speech'], stimulus.get('media_ref'), position, json.dumps({'hint': stimulus.get('hint', ''), 'alt': stimulus.get('alt', '')}, ensure_ascii=False)))
+        for asset in updated.get('asset_registry', []):
+            db.execute('''INSERT INTO content_assets(media_ref,origin,license,license_status,created_at)
+                VALUES(?,?,?,?,?) ON CONFLICT(media_ref) DO NOTHING''', (asset['media_ref'], asset['origin'], asset['license'], asset['license_status'], now_iso()))
+        db.execute("UPDATE exercise_versions SET publication_status='archived' WHERE id=?", (row['id'],))
+    for old, new in CARD_MEDIA.items():
+        db.execute('UPDATE exercises SET icon=? WHERE icon=?', (new, old))
+
+
+def _migration_29_expanded_practice(db) -> None:
+    from .expanded_content import REVISION, TARGET_BANK, INSTRUCTION_TARGETS, build_expanded_payload
+    from .exercise_engine import get_version
+
+    for exercise in db.execute('SELECT id,target FROM exercises ORDER BY id').fetchall():
+        if exercise['target'] not in TARGET_BANK and exercise['target'] not in INSTRUCTION_TARGETS:
+            continue
+        versions = db.execute("SELECT * FROM exercise_versions WHERE exercise_id=? AND publication_status IN ('draft','published') ORDER BY version DESC,id DESC", (exercise['id'],)).fetchall()
+        if not versions or json.loads(versions[0]['content_json']).get('revision') == REVISION:
+            continue
+        source = next((row for row in versions if str(json.loads(row['content_json']).get('revision', '')).startswith('practice-')), versions[0])
+        latest = dict(source)
+        published = next((dict(row) for row in versions if row['publication_status'] == 'published'), None)
+        payload = build_expanded_payload(get_version(db, latest['id']))
+        errors = validate_version(payload)
+        if errors:
+            raise RuntimeError(f"Invalid expanded bank {exercise['target']}: {'; '.join(errors)}")
+        current = dict(latest)
+        current.pop('id')
+        current.update(version=db.execute('SELECT MAX(version)+1 n FROM exercise_versions WHERE exercise_id=?', (exercise['id'],)).fetchone()['n'],
+            content_json=json.dumps(payload['content'], ensure_ascii=False),
+            completion_rule_json=json.dumps(payload['completion_rule'], ensure_ascii=False),
+            method_card_json=json.dumps(payload['method_card'], ensure_ascii=False),
+            created_by=None, created_at=now_iso(), published_at=now_iso() if published else None)
+        # Requested content revisions keep their existing visibility. No new exercise is released.
+        for field in ('review_status', 'technical_status', 'methodology_status', 'accessibility_status', 'release_status', 'admin_review_status'):
+            current[field] = published[field] if published else ('automated_passed' if field == 'technical_status' else 'pending')
+        current['publication_status'] = 'published' if published else 'draft'
+        if published:
+            current['title'] = published['title']
+        fields = list(current)
+        new_id = db.execute(f"INSERT INTO exercise_versions({','.join(fields)}) VALUES({','.join('?' for _ in fields)}) RETURNING id", tuple(current[field] for field in fields)).fetchone()['id']
+        for position, stimulus in enumerate(payload['content'].get('stimuli', [])):
+            db.execute('''INSERT INTO exercise_stimuli(version_id,stimulus_key,kind,label,speech,media_ref,position,metadata_json)
+                VALUES(?,?,?,?,?,?,?,?)''', (new_id, stimulus['key'], 'image', stimulus['label'], stimulus['speech'], stimulus['media_ref'], position, json.dumps({'hint': stimulus['hint'], 'alt': stimulus.get('alt', stimulus['label'])}, ensure_ascii=False)))
+        for asset in payload['content']['asset_registry']:
+            db.execute('''INSERT INTO content_assets(media_ref,origin,license,license_status,created_at)
+                VALUES(?,?,?,?,?) ON CONFLICT(media_ref) DO NOTHING''', (asset['media_ref'], asset['origin'], asset['license'], asset['license_status'], now_iso()))
+        db.execute("UPDATE exercise_versions SET publication_status='archived' WHERE exercise_id=? AND id<>? AND publication_status IN ('draft','published')", (exercise['id'], new_id))
+        db.execute("INSERT INTO content_reviews(version_id,stage,decision,comment,reviewer_id,created_at) VALUES(?,'revision','updated',?,NULL,?)", (new_id, 'Набор расширен по запросу владельца. Статус публикации сохранён, прежние версии и результаты не переписаны.', now_iso()))
+        if published:
+            db.execute('UPDATE exercises SET title=? WHERE id=?', (current['title'], exercise['id']))
+
+
 MIGRATIONS = (
     (9, _migration_9_exercise_engine),
     (10, _migration_10_content_contracts),
@@ -807,6 +936,11 @@ MIGRATIONS = (
     (22, _migration_22_core_review_material),
     (23, _migration_23_core_passport_alignment),
     (24, _migration_24_specialist_invitations),
+    (25, _migration_25_connected_practice),
+    (26, _migration_26_practice_material),
+    (27, _migration_27_admin_publication),
+    (28, _migration_28_card_illustrations),
+    (29, _migration_29_expanded_practice),
 )
 LATEST_SCHEMA_VERSION = MIGRATIONS[-1][0]
 

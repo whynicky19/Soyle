@@ -694,21 +694,21 @@ def test_only_supported_aac_learning_scenarios_are_active(client, parent_headers
     assert set(past_event["labels"]) == {"Я", "Играл", "Гулял"}
 
 
-def test_only_sensory_sets_with_eight_stimuli_are_active(client, parent_headers):
+def test_expanded_sensory_sets_have_twelve_unique_local_illustrations(client, parent_headers):
     sensory = client.get("/api/exercises?module=sensory", headers=parent_headers).json()
     assert {item["target"] for item in sensory} == {"animals", "food", "toys"}
     assert len(sensory) == 3
     public_assets = Path(__file__).resolve().parents[2] / "frontend" / "public"
     for exercise in sensory:
         references = [item["media_ref"] for item in exercise["engine"]["content"]["stimuli"]]
-        assert len(references) == len(set(references)) == 8
-        assert all(reference.startswith("/app-illustrations/exercise-stimulus-") for reference in references)
+        assert len(references) == len(set(references)) == 12
+        assert all(reference.startswith(("/app-illustrations/exercise-stimulus-", "/learning-expanded/")) for reference in references)
         assert all((public_assets / reference.lstrip("/")).is_file() for reference in references)
     animal_media = {
         item["label"]: item.get("media_ref")
         for item in next(exercise for exercise in sensory if exercise["target"] == "animals")["engine"]["content"]["stimuli"]
     }
-    assert animal_media == {label: f"/app-illustrations/exercise-stimulus-{key}.webp" for label, key in {
+    assert {label: animal_media[label] for label in ("Кот", "Собака", "Рыба", "Птица", "Кролик", "Черепаха", "Улитка", "Жук")} == {label: f"/app-illustrations/exercise-stimulus-{key}.webp" for label, key in {
         "Кот": "cat", "Кролик": "rabbit", "Рыба": "fish", "Птица": "bird",
         "Собака": "dog", "Черепаха": "turtle", "Улитка": "snail", "Жук": "bug",
     }.items()}
@@ -731,7 +731,7 @@ def test_published_exercises_are_versioned_and_motor_is_not_public(client, paren
     assert all(item["engine"]["review_status"] == "approved" for item in exercises)
     sensory = next(item for item in exercises if item["module"] == "sensory")
     assert sensory["engine"]["mechanic"] == "auditory_choice"
-    assert len(sensory["engine"]["content"]["stimuli"]) == 8
+    assert len(sensory["engine"]["content"]["stimuli"]) == 12
     assert sensory["engine"]["completion_rule"]["success"] == "matching_stimulus_key"
     routine = next(item for item in exercises if item["target"] == "routine")
     assert routine["engine"]["version"] == 2
@@ -788,7 +788,7 @@ def test_admin_constructor_creates_safe_draft_and_blocks_unreviewed_publish(clie
     preview = created.json()
     assert preview["valid"] is False
     assert preview["can_publish"] is False
-    assert preview["blocker"] is None
+    assert preview["blocker"] == "Исправьте замечания перед публикацией"
     assert any("единый проверенный набор иллюстраций" in error for error in preview["errors"])
     version_id = preview["version"]["id"]
     exercise_id = preview["version"]["exercise_id"]

@@ -1,0 +1,45 @@
+{
+  "generator": "built-in image_gen",
+  "assets": [
+    {
+      "key": "ball-bear",
+      "source": "/Users/whynicky/.codex/generated_images/01a16da7-f2a5-75c0-aa96-694d90393d68/exec-8a848dce-5661-4cc4-9ff5-3365647a84ab.png",
+      "prompt": "Use case: scientific-educational. Generate ONE complete square hand-painted gouache learning illustration. Image 1 is the object identity reference; image 2 is the container/recipient identity and style reference. Preserve their identity, colors and recognizable appearance. Combine into ONE coherent final state after a simple instruction: The tan teddy bear is holding the red rubber ball securely in its two paws, the object is now WITH the bear. Soft realistic volume, cream-white uncluttered background, subtle shadow. Whole scene centered with 15% margins, no cropped object, no other props or people, no text, no arrows, no vector outlines, no grid."
+    },
+    {
+      "key": "ball-box",
+      "source": "/Users/whynicky/.codex/generated_images/01a16da7-f2a5-75c0-aa96-694d90393d68/exec-3da0818b-e75f-403a-a25a-2ca0fcedcae8.png",
+      "prompt": "Use case: scientific-educational. Generate ONE complete square hand-painted gouache learning illustration. Image 1 is the object identity reference; image 2 is the container/recipient identity and style reference. Preserve their identity, colors and recognizable appearance. Combine into ONE coherent final state after a simple instruction: The red rubber ball is INSIDE the cardboard box. Show it visibly resting below the rim inside the open box; front wall occludes its lower edge. It must not be outside or on a flap. Soft realistic volume, cream-white uncluttered background, subtle shadow. Whole scene centered with 15% margins, no cropped object, no other props or people, no text, no arrows, no vector outlines, no grid."
+    },
+    {
+      "key": "ball-table",
+      "source": "/Users/whynicky/.codex/generated_images/01a16da7-f2a5-75c0-aa96-694d90393d68/exec-31c580b4-b9e9-4288-b601-480af65e0d1f.png",
+      "prompt": "Use case: scientific-educational. Generate ONE complete square hand-painted gouache learning illustration. Image 1 is the object identity reference; image 2 is the container/recipient identity and style reference. Preserve their identity, colors and recognizable appearance. Combine into ONE coherent final state after a simple instruction: The red rubber ball is resting ON TOP OF the wooden table, touching its horizontal tabletop surface clearly. Soft realistic volume, cream-white uncluttered background, subtle shadow. Whole scene centered with 15% margins, no cropped object, no other props or people, no text, no arrows, no vector outlines, no grid."
+    },
+    {
+      "key": "ball-adult",
+      "source": "/Users/whynicky/.codex/generated_images/01a16da7-f2a5-75c0-aa96-694d90393d68/exec-58b5b952-e02c-4f39-aded-9e3279ea6343.png",
+      "prompt": "Use case: scientific-educational. Generate ONE complete square hand-painted gouache learning illustration. Image 1 is the object identity reference; image 2 is the container/recipient identity and style reference. Preserve their identity, colors and recognizable appearance. Combine into ONE coherent final state after a simple instruction: The same adult woman is holding the red rubber ball in both hands at waist height, the object is now WITH the adult. Soft realistic volume, cream-white uncluttered background, subtle shadow. Whole scene centered with 15% margins, no cropped object, no other props or people, no text, no arrows, no vector outlines, no grid."
+    },
+    {
+      "key": "book-box",
+      "source": "/Users/whynicky/.codex/generated_images/01a16da7-f2a5-75c0-aa96-694d90393d68/exec-4d849234-07f0-4182-b16e-bd625ce85d80.png",
+      "prompt": "Use case: scientific-educational. Generate ONE complete square hand-painted gouache learning illustration. Image 1 is the object identity reference; image 2 is the container/recipient identity and style reference. Preserve their identity, colors and recognizable appearance. Combine into ONE coherent final state after a simple instruction: The closed red hardback book is INSIDE the cardboard box. Show it visibly resting below the rim inside the open box; front wall occludes its lower edge. It must not be outside or on a flap. Soft realistic volume, cream-white uncluttered background, subtle shadow. Whole scene centered with 15% margins, no cropped object, no other props or people, no text, no arrows, no vector outlines, no grid."
+    },
+    {
+      "key": "book-table",
+      "source": "/Users/whynicky/.codex/generated_images/01a16da7-f2a5-75c0-aa96-694d90393d68/exec-a0a836e9-42eb-424a-b24a-310985ce5e7e.png",
+      "prompt": "Use case: scientific-educational. Generate ONE complete square hand-painted gouache learning illustration. Image 1 is the object identity reference; image 2 is the container/recipient identity and style reference. Preserve their identity, colors and recognizable appearance. Combine into ONE coherent final state after a simple instruction: The closed red hardback book is resting ON TOP OF the wooden table, touching its horizontal tabletop surface clearly. Soft realistic volume, cream-white uncluttered background, subtle shadow. Whole scene centered with 15% margins, no cropped object, no other props or people, no text, no arrows, no vector outlines, no grid."
+    },
+    {
+      "key": "book-bear",
+      "source": "/Users/whynicky/.codex/generated_images/01a16da7-f2a5-75c0-aa96-694d90393d68/exec-785fe5f0-4563-4263-a739-b9ff300cddb7.png",
+      "prompt": "Use case: scientific-educational. Generate ONE complete square hand-painted gouache learning illustration. Image 1 is the object identity reference; image 2 is the container/recipient identity and style reference. Preserve their identity, colors and recognizable appearance. Combine into ONE coherent final state after a simple instruction: The tan teddy bear is holding the closed red hardback book securely in its two paws, the object is now WITH the bear. Soft realistic volume, cream-white uncluttered background, subtle shadow. Whole scene centered with 15% margins, no cropped object, no other props or people, no text, no arrows, no vector outlines, no grid."
+    },
+    {
+      "key": "book-adult",
+      "source": "/Users/whynicky/.codex/generated_images/01a16da7-f2a5-75c0-aa96-694d90393d68/exec-a093f4b9-4ab5-4f28-962b-e56708d43925.png",
+      "prompt": "Use case: scientific-educational. Generate ONE complete square hand-painted gouache learning illustration. Image 1 is the object identity reference; image 2 is the container/recipient identity and style reference. Preserve their identity, colors and recognizable appearance. Combine into ONE coherent final state after a simple instruction: The same adult woman is holding the closed red hardback book in both hands at waist height, the object is now WITH the adult. Soft realistic volume, cream-white uncluttered background, subtle shadow. Whole scene centered with 15% margins, no cropped object, no other props or people, no text, no arrows, no vector outlines, no grid."
+    }
+  ]
+}

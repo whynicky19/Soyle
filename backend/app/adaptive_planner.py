@@ -12,13 +12,15 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
+from fastapi import HTTPException
 
 from .database import now_iso
 from .exercise_engine import published_exercise_rows
-from .practice_goals import decode_goal, get_preferences
+from .practice_goals import decode_goal, exercise_matches_goal, get_preferences
+from .recommendations import recommendations
 
 
-RULES_VERSION = "p2.4-comparable-evidence-1"
+RULES_VERSION = "p2.5-connected-practice-1"
 
 
 @dataclass(frozen=True)
@@ -96,7 +98,7 @@ def _evidence(db, child_id: int, exercise: dict, thresholds: PlannerThresholds) 
     configured_levels = exercise["engine"]["content"].get("difficulty_levels")
     if not configured_levels and exercise["engine"]["mechanic"] in {"auditory_choice", "action_choice"}:
         # Older published versions use the same explicit fallback as the runner.
-        configured_levels = [{"level": level, "option_count": level + 1, "rounds": 4 if level == 1 else 5} for level in (1, 2, 3)]
+        configured_levels = [{"level": level, "option_count": level + 1, "rounds": 12} for level in (1, 2, 3)]
     levels = {item["level"]: item for item in configured_levels or []}
     comparable = []
     for row in rows:
@@ -108,18 +110,22 @@ def _evidence(db, child_id: int, exercise: dict, thresholds: PlannerThresholds) 
             continue
         configured = levels[level]
         if (details.get("option_count") != configured["option_count"]
-                or row["attempts_count"] != configured["rounds"]):
+                or row["attempts_count"] != details.get("round_count", configured["rounds"])
+                or (row["attempts_count"] != configured["rounds"] and not (
+                    exercise["engine"]["content"].get("max_rounds")
+                    and configured["rounds"] <= row["attempts_count"] <= exercise["engine"]["content"]["max_rounds"]
+                    and row["attempts_count"] % 6 == 0))):
             continue
         row["difficulty_level"] = level
         comparable.append(row)
         if len(comparable) >= thresholds.recent_window:
             break
     statuses = [row["attempt_status"] for row in db.execute(
-        """SELECT attempt_status FROM sessions WHERE child_id=? AND created_at>=?
+        """SELECT attempt_status FROM sessions WHERE child_id=? AND exercise_id=? AND created_at>=?
            AND measurement_version>=1 AND response_owner='child'
            AND support_context IN ('independent','caregiver_supported','caregiver_modelled')
            ORDER BY id DESC LIMIT ?""",
-        (child_id, cutoff, thresholds.recent_window),
+        (child_id, exercise["id"], cutoff, thresholds.recent_window),
     ).fetchall()]
     return {
         **_aggregate_results(comparable, thresholds),
@@ -209,8 +215,7 @@ def _difficulty(
         + parent_observations["refusals"] + parent_observations["breaks"]
     ) > 0
     if recent_pause:
-        level = 1
-        reason = ["Недавний перерыв или отказ не считается ошибкой; возвращаемся к начальному уровню нагрузки."]
+        reason.append("Перерыв и отказ не снижают сложность и не считаются ошибкой. Нагрузку занятия можно уменьшить отдельно.")
     mechanic = exercise["engine"]["mechanic"]
     if mechanic not in {"auditory_choice", "action_choice"}:
         level = 1
@@ -222,10 +227,10 @@ def _difficulty(
         level = int(configured.get("level", 1))
     if mechanic in {"auditory_choice", "action_choice"}:
         option_count = configured["option_count"] if configured else level + 1
-        rounds = configured["rounds"] if configured else (4 if level == 1 else 5)
+        rounds = configured["rounds"] if configured else 12
     else:
         option_count = None
-        rounds = len(exercise["engine"]["content"].get("scenarios", [])) or 1
+        rounds = exercise["engine"]["content"].get("default_rounds") or len(exercise["engine"]["content"].get("scenarios", [])) or 1
     params = {
         "difficulty_level": level,
         "option_count": option_count,
@@ -311,7 +316,7 @@ def _decode_plan(db, plan_id: int) -> dict:
     return plan
 
 
-def create_plan(db, child_id: int, target_minutes: int, user_id: int, thresholds: PlannerThresholds = DEFAULT_THRESHOLDS, *, persist: bool = True) -> dict:
+def create_plan(db, child_id: int, target_minutes: int, user_id: int, thresholds: PlannerThresholds = DEFAULT_THRESHOLDS, *, persist: bool = True, recommendation_id: int | None = None) -> dict:
     target_count = {3: 2, 5: 3, 10: 5}[target_minutes]
     goals = [decode_goal(row) for row in db.execute(
         "SELECT * FROM parent_practice_goals WHERE child_id=? AND status='active' ORDER BY updated_at DESC,id",
@@ -322,22 +327,38 @@ def create_plan(db, child_id: int, target_minutes: int, user_id: int, thresholds
     preferred = set(preferences["preferred_exercise_ids"])
     avoided = set(preferences["avoided_exercise_ids"])
     assignment_history = _assignment_history(db, child_id)
+    accepted = [item for item in recommendations(db, child_id) if item["ready_for_plan"]]
+    if recommendation_id is not None:
+        accepted = [item for item in accepted if item["id"] == recommendation_id]
+        if not accepted:
+            raise HTTPException(409, "Сначала примите доступную рекомендацию и свяжите её с активной целью")
+    recommended = {}
+    for item in accepted:
+        recommended.setdefault((item["goal_id"], item["exercise_id"]), item)
 
     candidates = []
     notices = []
+    latest = db.execute("""SELECT attempt_status FROM sessions WHERE child_id=? AND response_owner='child'
+        AND support_context<>'unknown' AND created_at>=? ORDER BY id DESC LIMIT 1""",
+        (child_id, (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat())).fetchone()
+    if latest and latest["attempt_status"] in {"break", "refused"}:
+        target_count = min(target_count, 2)
+        notices.append({"goal_id": None, "goal_title": None, "message": "После недавнего перерыва или отказа предлагаем не больше двух заданий. Уровень сложности сохранён по игровым ответам; можно снова остановиться в любой момент."})
     for goal in goals:
-        targets = set(goal["matching_targets"])
-        mechanics = set(goal["matching_mechanics"])
+        if recommendation_id is not None and goal["id"] != accepted[0]["goal_id"]:
+            continue
         parent_observations = _parent_observation_evidence(db, goal["id"])
-        linked = [item for item in catalogue if item["target"] in targets and item["engine"]["mechanic"] in mechanics and item["id"] not in avoided]
+        linked = [item for item in catalogue if exercise_matches_goal(item, goal) and item["id"] not in avoided
+                  and (recommendation_id is None or (goal["id"], item["id"]) in recommended)]
         if not linked:
             notices.append({
                 "goal_id": goal["id"],
                 "goal_title": goal["title"],
-                "message": "Для этой цели пока нет опубликованного и методически разрешённого упражнения. Случайная замена не назначена.",
+                "message": "Для этой цели пока нет опубликованного упражнения. Случайная замена не назначена.",
             })
             continue
         for exercise in linked:
+            recommendation = recommended.get((goal["id"], exercise["id"]))
             evidence = _evidence(db, child_id, exercise, thresholds)
             params, difficulty_reason = _difficulty(
                 exercise, evidence, parent_observations, goal["help_level"], thresholds,
@@ -348,33 +369,42 @@ def create_plan(db, child_id: int, target_minutes: int, user_id: int, thresholds
                 "last_assigned_rank": 10**9,
             })
             sort_key = (
+                0 if recommendation else 1,
                 0 if use["assignment_count"] == 0 else 1,
                 use["assignment_count"],
                 0 if exercise["id"] in preferred else 1,
                 -use["last_assigned_rank"],
                 exercise["id"],
             )
-            candidates.append((sort_key, goal, exercise, params, _exercise_reason(
+            reason = _exercise_reason(
                 goal, exercise, evidence, parent_observations, difficulty_reason,
                 exercise["id"] in preferred, use,
-            )))
+            )
+            if recommendation:
+                reason["recommendation_id"] = recommendation["id"]
+                reason["codes"].append("family_accepted_recommendation")
+                reason["messages"].insert(0, f"Родитель включил рекомендацию специалиста {recommendation['specialist_name']} в практику по этой цели.")
+            candidates.append((sort_key, goal, exercise, params, reason))
 
     candidates.sort(key=lambda item: item[0])
     selected = []
     used_exercises: set[int] = set()
     covered_goals: set[int] = set()
+    used_banks: set[str] = set()
     # First pass gives each goal one related item; second pass fills the time box.
     for only_new_goal in (True, False):
         for candidate in candidates:
             _, goal, exercise, params, reason = candidate
             if len(selected) >= target_count:
                 break
-            if exercise["id"] in used_exercises:
+            bank_key = exercise["engine"]["content"].get("bank_key") or f"exercise-{exercise['id']}"
+            if exercise["id"] in used_exercises or bank_key in used_banks:
                 continue
             if only_new_goal and goal["id"] in covered_goals:
                 continue
             selected.append((goal, exercise, params, reason))
             used_exercises.add(exercise["id"])
+            used_banks.add(bank_key)
             covered_goals.add(goal["id"])
 
     summary = (
@@ -401,11 +431,11 @@ def create_plan(db, child_id: int, target_minutes: int, user_id: int, thresholds
         db.execute(
             """INSERT INTO adaptive_practice_plan_items(
                    plan_id,goal_id,goal_version,exercise_id,exercise_version_id,position,
-                   difficulty_params_json,assignment_reason_json,created_at)
-               VALUES(?,?,?,?,?,?,?,?,?)""",
+                   difficulty_params_json,assignment_reason_json,created_at,recommendation_id)
+               VALUES(?,?,?,?,?,?,?,?,?,?)""",
             (
                 plan_id, goal["id"], goal["version"], exercise["id"], exercise["engine"]["version_id"],
-                position, json.dumps(params, ensure_ascii=False), json.dumps(reason, ensure_ascii=False), stamp,
+                position, json.dumps(params, ensure_ascii=False), json.dumps(reason, ensure_ascii=False), stamp, reason.get("recommendation_id"),
             ),
         )
     return _decode_plan(db, plan_id)

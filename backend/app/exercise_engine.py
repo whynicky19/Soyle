@@ -267,10 +267,15 @@ def validate_version(version: dict, *, enforce_visual_consistency: bool = True) 
                     errors.append(f"Методическая карточка: не заполнено поле {field}")
 
     content = version.get("content") if isinstance(version.get("content"), dict) else {}
+    choices = content.get("round_choices")
+    if choices is not None and (not isinstance(choices, list) or any(type(value) is not int or not 1 <= value <= 60 for value in choices)):
+        errors.append("Длина серии должна быть числом от 1 до 60")
+    if content.get("default_rounds") is not None and choices and content["default_rounds"] not in choices:
+        errors.append("Длина серии по умолчанию должна входить в доступные варианты")
     if mechanic in {"auditory_choice", "action_choice"}:
         stimuli = content.get("stimuli") if isinstance(content, dict) else None
-        if not isinstance(stimuli, list) or not 4 <= len(stimuli) <= 12:
-            errors.append("Для выбора на слух нужны от 4 до 12 стимулов, чтобы поддержать четыре варианта")
+        if not isinstance(stimuli, list) or not 4 <= len(stimuli) <= 64:
+            errors.append("Для выбора на слух нужны от 4 до 64 стимулов, чтобы поддержать четыре варианта")
         else:
             keys: list[str] = []
             labels: list[str] = []
@@ -315,6 +320,10 @@ def validate_version(version: dict, *, enforce_visual_consistency: bool = True) 
                 errors.append("Стимулы одного задания нельзя смешивать: используйте единый проверенный набор иллюстраций")
         if version.get("response_mode") != "single_tap":
             errors.append("Механика выбора на слух требует response_mode=single_tap")
+        if content.get("exemplar_policy") == "matched_set" and isinstance(stimuli, list):
+            counts = {len(item.get("exemplars", [])) for item in stimuli if isinstance(item, dict) and isinstance(item.get("exemplars", []), list)}
+            if len(counts) != 1 or not counts or min(counts) < 1:
+                errors.append("Для согласованных серий у каждого стимула должно быть одинаковое непустое число примеров")
         if version.get("completion_rule", {}).get("success") != "matching_stimulus_key":
             errors.append("Правильный ответ должен определяться ключом стимула, а не позицией картинки")
         levels = content.get("difficulty_levels")
@@ -365,6 +374,15 @@ def validate_version(version: dict, *, enforce_visual_consistency: bool = True) 
                         break
                 if len(object_keys) != len(objects):
                     errors.append(f"Сценарий {index}: ключи объектов должны быть уникальны")
+                result = scenario.get("result")
+                if result is not None and (not isinstance(result, dict)
+                    or result.get("relation") not in {"give", "in", "on"}
+                    or not str(result.get("speech") or "").strip()):
+                    errors.append(f"Сценарий {index}: результат требует действие give/in/on и текст озвучивания")
+                if isinstance(result, dict) and isinstance(success, dict):
+                    expected_target = {"in": "box", "on": "table"}.get(result.get("relation"))
+                    if expected_target and not result.get("media_ref") and success.get("target_key") != expected_target:
+                        errors.append(f"Сценарий {index}: визуальный результат не соответствует цели действия")
                 scenario_keys.append(key)
             if len(scenario_keys) != len(set(scenario_keys)):
                 errors.append("Ключи сценариев не должны повторяться")
@@ -414,12 +432,12 @@ def published_exercise_rows(db) -> list[dict]:
         """SELECT e.*,v.id exercise_version_id,v.version content_version,v.mechanic,v.language,
                   v.objective,v.response_mode,v.prompt_policy_json,v.completion_rule_json,v.content_json,
                   v.review_status,v.publication_status,v.technical_status,v.methodology_status,
-                  v.accessibility_status,v.release_status
+                  v.accessibility_status,v.release_status,v.admin_review_status
            FROM exercises e
            JOIN exercise_versions v ON v.exercise_id=e.id
            WHERE e.is_active=1 AND v.review_status='approved' AND v.publication_status='published'
              AND v.mechanic<>'local_face_mirror'
-             AND ((v.technical_status='passed' AND v.methodology_status='approved'
+             AND (v.admin_review_status='approved' OR (v.technical_status='passed' AND v.methodology_status='approved'
                    AND v.accessibility_status='approved' AND v.release_status='approved')
                   OR ?=1)
              AND v.version=(SELECT MAX(v2.version) FROM exercise_versions v2
@@ -446,18 +464,19 @@ def published_exercise_rows(db) -> list[dict]:
             "review_status": item.pop("review_status"),
             "publication_status": item.pop("publication_status"),
             "review_gate": {
-                "approved": all((
+                "approved": item.get("admin_review_status") == "approved" or all((
                     item.get("technical_status") == "passed",
                     item.get("methodology_status") == "approved",
                     item.get("accessibility_status") == "approved",
                     item.get("release_status") == "approved",
                 )),
-                "demo_only": not all((
+                "demo_only": item.get("admin_review_status") != "approved" and not all((
                     item.get("technical_status") == "passed",
                     item.get("methodology_status") == "approved",
                     item.get("accessibility_status") == "approved",
                     item.get("release_status") == "approved",
                 )),
+                "admin_review_status": item.pop("admin_review_status"),
                 "technical_status": item.pop("technical_status"),
                 "methodology_status": item.pop("methodology_status"),
                 "accessibility_status": item.pop("accessibility_status"),
@@ -525,64 +544,40 @@ def get_version(db, version_id: int) -> dict:
 def preview_version(db, version_id: int) -> dict:
     version = get_version(db, version_id)
     errors = validate_version(version)
-    stages_ready = (
-        version.get("technical_status") == "passed"
-        and version.get("methodology_status") == "approved"
-        and version.get("accessibility_status") == "approved"
-        and version.get("release_status") == "approved"
-    )
-    blocker = None
-    if not errors and not stages_ready:
-        if version.get("technical_status") != "passed":
-            blocker = "Нужна ручная техническая проверка"
-        elif version.get("methodology_status") != "approved":
-            blocker = "Нужно методическое утверждение уполномоченного специалиста"
-        elif version.get("accessibility_status") != "approved":
-            blocker = "Нужна отдельная проверка доступности механики"
-        elif version.get("release_status") != "approved":
-            blocker = "Нужно отдельное окончательное разрешение публикации"
     return {
         "version": version,
         "valid": not errors,
         "errors": errors,
-        "can_publish": not errors and stages_ready and version["review_status"] == "approved",
-        "blocker": blocker,
+        "can_publish": not errors and version["publication_status"] == "draft",
+        "blocker": "Исправьте замечания перед публикацией" if errors else None,
     }
 
 
-def publish_version(db, version_id: int) -> dict:
+def publish_version(db, version_id: int, reviewer_id: int | None = None, comment: str = "") -> dict:
     preview = preview_version(db, version_id)
-    if preview["errors"]:
-        raise HTTPException(422, {"message": "Версия не прошла техническую проверку", "errors": preview["errors"]})
     version = preview["version"]
-    if version["review_status"] != "approved" or version.get("methodology_status") != "approved":
-        raise HTTPException(409, "Публикация заблокирована до методического утверждения")
-    if version.get("technical_status") != "passed":
-        raise HTTPException(409, "Публикация заблокирована до ручной технической проверки")
-    if version.get("accessibility_status") != "approved":
-        raise HTTPException(409, "Публикация заблокирована до отдельной проверки доступности")
-    if version.get("release_status") != "approved":
-        raise HTTPException(409, "Публикация заблокирована до отдельного окончательного разрешения")
+    if version["publication_status"] not in {"draft", "archived"}:
+        raise HTTPException(409, "Эта версия уже опубликована")
+    if preview["errors"]:
+        raise HTTPException(422, {"message": "Исправьте ошибки задания", "errors": preview["errors"]})
+    if reviewer_id is not None:
+        # One explicit administrator decision, without fabricating expert approvals.
+        actor = db.execute("SELECT role,is_active FROM users WHERE id=?", (reviewer_id,)).fetchone()
+        if not actor or actor["role"] != "admin" or not actor["is_active"]:
+            raise HTTPException(403, "Публиковать задания может только администратор")
+        db.execute("UPDATE exercise_versions SET admin_review_status='approved',review_status='approved' WHERE id=?", (version_id,))
+        db.execute("""INSERT INTO content_reviews(version_id,stage,decision,comment,reviewer_id,created_at)
+            VALUES(?,'admin','approved',?,?,?)""", (version_id, comment.strip() or "Администратор проверил задание и опубликовал", reviewer_id, now_iso()))
+    elif version["review_status"] != "approved":
+        raise HTTPException(409, "Нужно решение администратора")
     db.execute("UPDATE exercise_versions SET publication_status='archived' WHERE exercise_id=? AND publication_status='published'", (version["exercise_id"],))
     db.execute("UPDATE exercise_versions SET publication_status='published',published_at=? WHERE id=?", (now_iso(), version_id))
-    db.execute(
-        "UPDATE exercises SET title=?,instruction=?,is_active=1 WHERE id=?",
-        (version["title"], version["instruction"], version["exercise_id"]),
-    )
+    db.execute("UPDATE exercises SET title=?,instruction=?,is_active=1 WHERE id=?", (version["title"], version["instruction"], version["exercise_id"]))
     return get_version(db, version_id)
 
 
 def review_capabilities(db, user_id: int) -> dict[str, bool]:
-    permission = db.execute(
-        "SELECT * FROM content_reviewer_permissions WHERE user_id=?",
-        (user_id,),
-    ).fetchone()
-    return {
-        "technical_review": True,
-        "methodology_review": bool(permission and permission["can_methodology_review"]),
-        "accessibility_review": bool(permission and permission["can_accessibility_review"]),
-        "release_approval": bool(permission and permission["can_release_approve"]),
-    }
+    return {"admin_review": True}
 
 
 def review_workspace(db, version_id: int, user_id: int) -> dict:
@@ -630,62 +625,9 @@ def submit_content_review(
     version = preview["version"]
     if version["publication_status"] != "draft":
         raise HTTPException(409, "Проверять можно только черновую версию")
-    capabilities = review_capabilities(db, reviewer_id)
-    allowed = {
-        "technical": {"passed", "changes_requested"},
-        "methodology": {"approved", "changes_requested"},
-        "accessibility": {"approved", "changes_requested"},
-        "publication": {"approved", "changes_requested"},
-    }
-    if stage not in allowed or decision not in allowed[stage]:
-        raise HTTPException(422, "Недопустимое решение для выбранного этапа")
-    if stage == "methodology" and not capabilities["methodology_review"]:
-        raise HTTPException(403, "Роль администратора не подтверждает квалификацию методического эксперта")
-    if stage == "accessibility" and not capabilities["accessibility_review"]:
-        raise HTTPException(403, "Нет отдельного полномочия на проверку доступности")
-    if stage == "publication" and not capabilities["release_approval"]:
-        raise HTTPException(403, "Нет отдельного полномочия на окончательное разрешение публикации")
-    if stage == "technical" and decision == "passed" and preview["errors"]:
-        raise HTTPException(409, {"message": "Сначала исправьте ошибки структуры", "errors": preview["errors"]})
-    if stage == "methodology" and version.get("technical_status") != "passed":
-        raise HTTPException(409, "Методическая проверка доступна после ручной технической проверки")
-    if stage == "accessibility" and (
-        version.get("technical_status") != "passed" or version.get("methodology_status") != "approved"
-    ):
-        raise HTTPException(409, "Проверка доступности доступна после технической и методической проверки")
-    if stage == "publication" and (
-        version.get("technical_status") != "passed" or version.get("methodology_status") != "approved"
-        or version.get("accessibility_status") != "approved"
-    ):
-        raise HTTPException(409, "Окончательное разрешение доступно после технической, методической и accessibility-проверки")
-
-    if stage == "technical":
-        db.execute(
-            """UPDATE exercise_versions
-               SET technical_status=?,methodology_status=CASE WHEN ?='changes_requested' THEN 'pending' ELSE methodology_status END,
-                   accessibility_status=CASE WHEN ?='changes_requested' THEN 'pending' ELSE accessibility_status END,
-                   release_status=CASE WHEN ?='changes_requested' THEN 'pending' ELSE release_status END,
-                   review_status=CASE WHEN ?='changes_requested' THEN 'changes_requested' ELSE review_status END
-               WHERE id=?""",
-            (decision, decision, decision, decision, decision, version_id),
-        )
-    elif stage == "methodology":
-        db.execute(
-            """UPDATE exercise_versions
-               SET methodology_status=?,review_status=?,accessibility_status='pending',release_status='pending'
-               WHERE id=?""",
-            (decision, "approved" if decision == "approved" else "changes_requested", version_id),
-        )
-    elif stage == "accessibility":
-        db.execute(
-            "UPDATE exercise_versions SET accessibility_status=?,release_status='pending' WHERE id=?",
-            (decision, version_id),
-        )
-    else:
-        db.execute("UPDATE exercise_versions SET release_status=? WHERE id=?", (decision, version_id))
-    db.execute(
-        """INSERT INTO content_reviews(version_id,stage,decision,comment,reviewer_id,created_at)
-           VALUES(?,?,?,?,?,?)""",
-        (version_id, stage, decision, comment.strip(), reviewer_id, now_iso()),
-    )
+    if stage != "admin" or decision != "changes_requested":
+        raise HTTPException(422, "Используйте единое решение администратора: опубликовать или вернуть на доработку")
+    db.execute("UPDATE exercise_versions SET admin_review_status='changes_requested',review_status='changes_requested' WHERE id=?", (version_id,))
+    db.execute("""INSERT INTO content_reviews(version_id,stage,decision,comment,reviewer_id,created_at)
+        VALUES(?,?,?,?,?,?)""", (version_id, stage, decision, comment.strip(), reviewer_id, now_iso()))
     return review_workspace(db, version_id, reviewer_id)

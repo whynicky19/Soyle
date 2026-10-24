@@ -45,8 +45,8 @@ class SessionCreate(BaseModel):
     communication_initiatives: int = Field(default=0, ge=0, le=100)
     attempts_count: int | None = Field(default=None, ge=0, le=100)
     correct_answers: int | None = Field(default=None, ge=0, le=100)
-    prompts_used: int = Field(default=0, ge=0, le=100)
-    gameplay_choices: int = Field(default=0, ge=0, le=200)
+    prompts_used: int = Field(default=0, ge=0, le=1000)
+    gameplay_choices: int = Field(default=0, ge=0, le=2000)
     independent_completions: int = Field(default=0, ge=0, le=100)
     prompted_completions: int = Field(default=0, ge=0, le=100)
     attempt_status: Literal["completed", "participated", "refused", "break", "technical_error"] = "completed"
@@ -81,11 +81,12 @@ class ExerciseStimulusCreate(BaseModel):
     hint: str = Field(default="", max_length=200)
     media_ref: str | None = Field(default=None, max_length=240)
     visual_token: str | None = Field(default=None, max_length=50)
+    exemplars: list[str] | None = Field(default=None, min_length=1, max_length=5)
 
 class ExerciseDifficultyLevel(BaseModel):
     level: Literal[1, 2, 3]
     option_count: Literal[2, 3, 4]
-    rounds: int = Field(ge=1, le=10)
+    rounds: int = Field(ge=1, le=60)
     max_attempts: int = Field(ge=1, le=4)
 
 class InstructionObjectCreate(BaseModel):
@@ -98,17 +99,36 @@ class InstructionSuccessCreate(BaseModel):
     object_key: str = Field(min_length=2, max_length=50)
     target_key: str = Field(min_length=2, max_length=50)
 
+class InstructionResultCreate(BaseModel):
+    media_ref: str | None = Field(default=None, max_length=500)
+    relation: Literal["give", "in", "on"]
+    speech: str = Field(min_length=2, max_length=160)
+
 class InstructionScenarioCreate(BaseModel):
     key: str = Field(min_length=2, max_length=50, pattern=r"^[a-z0-9][a-z0-9-]+$")
     instruction: str = Field(min_length=2, max_length=160)
     speech: str = Field(min_length=2, max_length=160)
     objects: list[InstructionObjectCreate] = Field(min_length=2, max_length=6)
     success: InstructionSuccessCreate
+    result: InstructionResultCreate | None = None
+
+class ExerciseAssetCreate(BaseModel):
+    media_ref: str = Field(min_length=2, max_length=240, pattern=r"^/")
+    origin: str = Field(min_length=2, max_length=500)
+    license: str = Field(min_length=2, max_length=500)
+    license_status: Literal["documented", "pending"]
 
 class ExerciseDraftContent(BaseModel):
-    stimuli: list[ExerciseStimulusCreate] = Field(default_factory=list, max_length=12)
+    stimuli: list[ExerciseStimulusCreate] = Field(default_factory=list, max_length=64)
     difficulty_levels: list[ExerciseDifficultyLevel] = Field(default_factory=list, max_length=3)
-    scenarios: list[InstructionScenarioCreate] = Field(default_factory=list, max_length=10)
+    scenarios: list[InstructionScenarioCreate] = Field(default_factory=list, max_length=100)
+    bank_key: str | None = Field(default=None, max_length=80)
+    round_choices: list[int] = Field(default_factory=list, max_length=6)
+    default_rounds: int | None = Field(default=None, ge=1, le=60)
+    max_rounds: int | None = Field(default=None, ge=1, le=60)
+    exemplar_policy: Literal["matched_set"] | None = None
+    revision: str | None = Field(default=None, max_length=100)
+    asset_registry: list[ExerciseAssetCreate] = Field(default_factory=list, max_length=256)
 
 class ExerciseMethodCard(BaseModel):
     target_skill: str = Field(min_length=5, max_length=300)
@@ -145,8 +165,12 @@ class ExerciseDraftCreate(BaseModel):
     content: ExerciseDraftContent
     method_card: ExerciseMethodCard
 
+class ContentPublishCreate(BaseModel):
+    comment: str = Field(default="", max_length=2000)
+
+
 class ContentReviewCreate(BaseModel):
-    stage: Literal["technical", "methodology", "accessibility", "publication"]
+    stage: Literal["admin"]
     decision: Literal["passed", "approved", "changes_requested"]
     comment: str = Field(min_length=5, max_length=2000)
 
@@ -161,9 +185,15 @@ class AssignedExerciseCreate(BaseModel):
 
 class SpecialistRecommendationCreate(BaseModel):
     child_id: int
+    goal_id: int | None = None
     suggested_skill: SkillName
     exercise_id: int | None = None
     comment: str = Field(default="", max_length=1000)
+
+class FamilyRecommendationDecision(BaseModel):
+    decision: Literal["accepted", "declined", "needs_help"]
+    goal_id: int | None = None
+    note: str = Field(default="", max_length=1000)
 
 class RecommendationReview(BaseModel):
     status: Literal["approved", "rejected", "edited"]

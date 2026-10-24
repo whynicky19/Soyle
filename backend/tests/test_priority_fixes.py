@@ -27,8 +27,8 @@ def child_with_goal(client, headers):
 
 def attempt(child_id):
     return {"child_id": child_id, "exercise_id": 7, "module": "sensory",
-            "score": 100, "duration_seconds": 10, "attempts_count": 4,
-            "correct_answers": 4, "independent_completions": 4,
+            "score": 100, "duration_seconds": 10, "attempts_count": 12,
+            "correct_answers": 12, "independent_completions": 12,
             "actor_role": "parent", "response_owner": "child",
             "support_context": "independent", "event_id": str(uuid4()),
             "details": {"difficulty_level": 1, "option_count": 2}}
@@ -123,16 +123,16 @@ def test_retry_records_one_attempt_and_does_not_award_twice(client, parent_heade
     assert client.post("/api/sessions", headers=parent_headers, json=payload).status_code == 409
 
 
-def test_refusal_caps_load_and_legacy_choice_plan_matches_runner():
+def test_refusal_preserves_difficulty_and_legacy_choice_plan_matches_runner():
     evidence = {"recorded_sessions": 6, "weighted_accuracy": 1,
                 "weighted_independence_rate": 1, "independent_completions": 24,
                 "refusals": 1, "breaks": 0}
     observation = {"latest_result": None, "refusals": 0, "breaks": 0}
     exercise = {"engine": {"mechanic": "auditory_choice", "content": {}}}
     params, _ = _difficulty(exercise, evidence, observation, "full", DEFAULT_THRESHOLDS)
-    assert params["difficulty_level"] == 1
-    assert params["option_count"] == 2
-    assert params["round_count"] == 4
+    assert params["difficulty_level"] == 2
+    assert params["option_count"] == 3
+    assert params["round_count"] == 12
     assert "prompt_mode" not in params
 
 
@@ -146,7 +146,7 @@ def test_prompted_answers_do_not_raise_first_response_accuracy(client, parent_he
     child_id = child_with_goal(client, parent_headers)
     for _ in range(6):
         payload = {**attempt(child_id), "independent_completions": 0,
-                   "prompted_completions": 4, "prompts_used": 4,
+                   "prompted_completions": 12, "prompts_used": 12,
                    "support_context": "caregiver_supported", "prompt_level": "minimal"}
         client.post("/api/sessions", headers=parent_headers, json=payload).raise_for_status()
     plan = client.post(f"/api/adaptive-plans/{child_id}", headers=parent_headers, json={"target_minutes": 5}).json()

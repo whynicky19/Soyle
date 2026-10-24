@@ -117,7 +117,7 @@ test("child choice runner handles audio, wrong answer, hint, repeat and saved co
   await options.nth(0).click();
   await expect(page.getByText("Получилось", { exact: true })).toBeVisible();
 
-  for (const correctIndex of [0, 0, 0]) {
+  for (const correctIndex of Array(11).fill(0)) {
     await page.getByRole("button", { name: /Дальше|Завершить/ }).click();
     await expect(page.locator(".picture-options button")).toHaveCount(2);
     await page.locator(".picture-options button").nth(correctIndex).click();
@@ -146,7 +146,7 @@ test("animal choices use one consistent illustrated pictogram set", async ({ pag
     return parsed.searchParams.get("url") || parsed.pathname;
   }));
   for (const source of pictureSources) {
-    expect(source).toMatch(/^\/app-illustrations\/exercise-stimulus-(cat|dog|fish|bird|rabbit|turtle|snail|bug)\.webp$/);
+    expect(source).toMatch(/^(\/app-illustrations\/exercise-stimulus-(cat|dog|fish|bird|rabbit|turtle|snail|bug)|\/learning-expanded\/animals\/(horse|cow|duck|goat))\.webp$/);
   }
 });
 
@@ -315,29 +315,37 @@ test("parent sees saved result and an active session survives reload", async ({ 
   }
 });
 
-test("admin can preview DRAFT but cannot methodically approve or publish it", async ({ page }) => {
+test("admin can preview and publish with one decision", async ({ page }, info) => {
   await login(page, "admin", "Admin123!");
-  await page.getByRole("tab", { name: "Задания" }).click();
-  const card = page.locator(".draft-list article").filter({ hasText: "Понимание слов: игрушки" });
-  await expect(card).toBeVisible();
-  await card.getByRole("button", { name: "Открыть проверку" }).click();
-  await expect(page.getByRole("heading", { name: "Понимание слов: игрушки" })).toBeVisible();
-  await expect(page.getByText("Материал недоступен детям")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Preview механики" })).toBeVisible();
-  await expect(page.getByRole("option", { name: "Методическая экспертиза" })).toHaveAttribute("disabled", "");
-  await expect(page.getByRole("option", { name: "Окончательное разрешение" })).toHaveAttribute("disabled", "");
   const drafts = await page.request.get(`${API_URL}/api/admin/exercise-drafts`);
-  const version = (await drafts.json()).find((item: { version: { target: string } }) => item.version.target === "p15-nouns-toys");
-  const publishStatus = await page.evaluate(async ({ browserApiUrl, versionId }) => {
-    const csrf = decodeURIComponent(document.cookie.split("; ").find((item) => item.startsWith("soyle_csrf="))?.split("=", 2)[1] || "");
-    const response = await fetch(`${browserApiUrl}/api/admin/exercise-drafts/${versionId}/publish`, {
-      method: "POST",
-      credentials: "include",
-      headers: { "X-CSRF-Token": csrf },
-    });
-    return response.status;
-  }, { browserApiUrl: BROWSER_API_URL, versionId: version.version.id });
-  expect(publishStatus).toBe(409);
+  const source = (await drafts.json()).find((item: {version: {title: string}}) => item.version.title === "Понимание слов: игрушки").version;
+  const csrf = await page.evaluate(() => decodeURIComponent(document.cookie.split("; ").find(item => item.startsWith("soyle_csrf="))?.split("=", 2)[1] || ""));
+  const title = `Проверка публикации · ${info.project.name}`;
+  const created = await page.request.post(`${API_URL}/api/admin/exercise-drafts`, {headers: {"X-CSRF-Token": csrf}, data: {...source, title}});
+  expect(created.status()).toBe(201);
+  const own = (await created.json()).version;
+  try {
+    await page.reload();
+    await page.getByRole("tab", { name: "Задания" }).click();
+    await page.locator(".draft-list article").filter({hasText: title}).getByRole("button", {name: "Открыть проверку"}).click();
+    await expect(page.getByText("Материал недоступен детям")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Preview механики" })).toBeVisible();
+    await expect(page.locator(".review-stage-grid")).toHaveCount(0);
+    const publish = page.getByRole("button", { name: "Проверено — опубликовать", exact: true });
+    await expect(publish).toBeEnabled();
+    await page.getByLabel("Комментарий", {exact: true}).fill("Картинки, звук и ответы проверены");
+    const response = page.waitForResponse(r => r.url().includes("/publish") && r.request().method() === "POST");
+    await publish.click();
+    expect((await response).status()).toBe(200);
+    await expect(page.getByRole("heading", {name: "Админ-панель", exact: true})).toBeVisible();
+    await expect(page.locator(".draft-list article").filter({hasText: title})).toHaveCount(0);
+    await page.getByRole("button", {name: /Доступная библиотека/}).click();
+    await expect(page.locator(".admin-published-grid article").filter({hasText: title})).toBeVisible();
+    await page.screenshot({path: info.outputPath("published-by-admin.png"), fullPage: true});
+  } finally {
+    const archived = await page.request.delete(`${API_URL}/api/admin/exercises/${own.exercise_id}`, {headers: {"X-CSRF-Token": csrf}});
+    expect(archived.status()).toBe(204);
+  }
 });
 
 test("core screens have no serious axe violations and do not overflow", async ({ page }) => {

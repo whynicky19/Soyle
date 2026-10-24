@@ -140,6 +140,8 @@ def descriptive_results(db, child_id: int) -> dict:
     ).fetchall()]
     real_life_skill = db.execute("SELECT COUNT(*) count FROM skill_observations WHERE child_id=?", (child_id,)).fetchone()["count"]
     real_life_home = db.execute("SELECT COUNT(*) count FROM home_activity_observations WHERE child_id=?", (child_id,)).fetchone()["count"]
+    real_life_goals = db.execute("SELECT COUNT(*) count FROM practice_goal_observations WHERE child_id=?", (child_id,)).fetchone()["count"]
+    real_life_specialist = db.execute("SELECT COUNT(*) count FROM specialist_observations WHERE child_id=?", (child_id,)).fetchone()["count"]
     return {
         "gameplay_choices": sum(row.get("gameplay_choices") or 0 for row in sessions),
         "gameplay_rounds": sum(row.get("attempts_count") or 0 for row in sessions if row["attempt_status"] == "completed"),
@@ -151,6 +153,6 @@ def descriptive_results(db, child_id: int) -> dict:
         "breaks": sum(1 for row in sessions if row["attempt_status"] == "break"),
         "technical_errors": sum(1 for row in sessions if row["attempt_status"] == "technical_error"),
         "modelled_responses": sum(1 for row in sessions if row["support_context"] == "caregiver_modelled"),
-        "real_life_observations": real_life_skill + real_life_home,
+        "real_life_observations": real_life_skill + real_life_home + real_life_goals + real_life_specialist,
         "disclaimer": "Показатели описывают отдельные игровые попытки и бытовые наблюдения; они не объединяются в оценку развития речи.",
     }

@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from app.database import connect, now_iso
+from app.database import connect
 from app import exercise_engine
 
 
@@ -53,7 +53,7 @@ def test_p15_library_is_complete_structured_and_stays_draft(client, parent_heade
 
     drafts = _p15_drafts(client, admin_headers)
     assert set(drafts) == P15_TARGETS
-    assert all(item["valid"] is True and item["can_publish"] is False for item in drafts.values())
+    assert all(item["valid"] is True and item["can_publish"] is True for item in drafts.values())
     assert all(item["version"]["publication_status"] == "draft" for item in drafts.values())
     assert all(item["version"]["methodology_status"] == "pending" for item in drafts.values())
     assert all(METHOD_FIELDS <= set(item["version"]["method_card"]) for item in drafts.values())
@@ -61,32 +61,32 @@ def test_p15_library_is_complete_structured_and_stays_draft(client, parent_heade
 
     noun_drafts = [drafts[target] for target in P15_TARGETS if target.startswith("p15-nouns-")]
     assert len(noun_drafts) == 6
-    assert sum(len(item["version"]["content"]["stimuli"]) for item in noun_drafts) == 36
+    assert sum(len(item["version"]["content"]["stimuli"]) for item in noun_drafts) == 72
     for item in noun_drafts:
         content = item["version"]["content"]
-        assert len(content["stimuli"]) == 6
+        assert len(content["stimuli"]) == 12
         assert {level["option_count"] for level in content["difficulty_levels"]} == {2, 3, 4}
-        assert all(stimulus["hint"] and stimulus["alt"] and stimulus["media_ref"].endswith((".svg", ".png")) for stimulus in content["stimuli"])
+        assert all(stimulus["hint"] and stimulus["alt"] and stimulus["media_ref"].endswith((".webp", ".png")) for stimulus in content["stimuli"])
 
     animal_media = {
         item["label"]: item["media_ref"]
         for item in drafts["p15-nouns-animals"]["version"]["content"]["stimuli"]
     }
-    assert animal_media["Кролик"] == "/aac-pictograms/rabbit.png"
-    assert animal_media["Рыба"] == "/aac-pictograms/fish.png"
-    assert animal_media["Птица"] == "/aac-pictograms/bird.png"
-    assert animal_media["Кот"] == "/aac-pictograms/cat.png"
-    assert animal_media["Собака"] == "/aac-pictograms/dog.png"
-    assert animal_media["Черепаха"] == "/aac-pictograms/turtle.png"
+    assert animal_media["Кролик"] == "/app-illustrations/exercise-stimulus-rabbit.webp"
+    assert animal_media["Рыба"] == "/app-illustrations/exercise-stimulus-fish.webp"
+    assert animal_media["Птица"] == "/app-illustrations/exercise-stimulus-bird.webp"
+    assert animal_media["Кот"] == "/app-illustrations/exercise-stimulus-cat.webp"
+    assert animal_media["Собака"] == "/app-illustrations/exercise-stimulus-dog.webp"
+    assert animal_media["Черепаха"] == "/app-illustrations/exercise-stimulus-turtle.webp"
 
     actions = drafts["p15-actions-core"]["version"]["content"]["stimuli"]
-    assert len(actions) == 10
-    assert {item["label"] for item in actions} == {"Ест", "Пьёт", "Спит", "Идёт", "Бежит", "Сидит", "Стоит", "Моет", "Играет", "Читает"}
-    assert all(item["media_ref"].endswith(".svg") and item["alt"] for item in actions)
+    assert len(actions) == 12
+    assert {item["label"] for item in actions} == {"Ест", "Пьёт", "Спит", "Идёт", "Бежит", "Сидит", "Стоит", "Моет руки", "Играет с мячом", "Смотрит книгу", "Рисует", "Хлопает в ладоши"}
+    assert all(item["media_ref"].endswith((".webp", ".png")) and item["alt"] for item in actions)
 
     scenarios = drafts["p15-instructions-one-step"]["version"]["content"]["scenarios"]
-    assert len(scenarios) == 10
-    assert {item["category"] for item in scenarios} == {"take", "give", "in", "on", "next_to"}
+    assert len(scenarios) == 24
+    assert {item["result"]["relation"] for item in scenarios} == {"in", "on"}
     assert all(len(item["objects"]) == 4 for item in scenarios)
     assert all(item["success"]["object_key"] != item["success"]["target_key"] for item in scenarios)
 
@@ -110,68 +110,35 @@ def test_p15_assets_are_local_present_and_have_provenance(client, admin_headers)
     assert media_refs <= registered
 
 
-def test_review_stages_require_independent_permissions_and_keep_history(client, admin_headers):
+def test_admin_review_needs_no_separate_expert_permissions(client, admin_headers, parent_headers, monkeypatch, tmp_path):
+    from app import database
+    import sqlite3
+    if database.DATABASE_URL:
+        import pytest
+        pytest.skip("Disposable SQLite publication fixture")
+    copied = tmp_path / "admin-review.db"
+    with sqlite3.connect(database.DB_PATH) as source, sqlite3.connect(copied) as destination:
+        source.backup(destination)
+    monkeypatch.setattr(database, "DB_PATH", copied)
+    monkeypatch.setattr(exercise_engine, "ALLOW_UNREVIEWED_DEMO_CONTENT", False)
     draft = _p15_drafts(client, admin_headers)["p15-nouns-toys"]
     version_id = draft["version"]["id"]
-    capabilities = client.get("/api/admin/content-review/capabilities", headers=admin_headers)
-    assert capabilities.status_code == 200
-    assert capabilities.json() == {"technical_review": True, "methodology_review": False, "accessibility_review": False, "release_approval": False}
-
-    too_early = client.post(
-        f"/api/admin/exercise-drafts/{version_id}/reviews",
-        headers=admin_headers,
-        json={"stage": "methodology", "decision": "approved", "comment": "Методика проверена вручную"},
-    )
-    assert too_early.status_code == 403
-
-    technical = client.post(
-        f"/api/admin/exercise-drafts/{version_id}/reviews",
-        headers=admin_headers,
-        json={"stage": "technical", "decision": "passed", "comment": "Изображения, звук и runner проверены вручную"},
-    )
-    assert technical.status_code == 200, technical.text
-    assert technical.json()["version"]["technical_status"] == "passed"
-
-    admin_id = client.get("/api/auth/me", headers=admin_headers).json()["id"]
-    try:
-        with connect() as db:
-            db.execute(
-                """INSERT INTO content_reviewer_permissions(
-                       user_id,can_methodology_review,can_accessibility_review,can_release_approve,granted_by,granted_at)
-                   VALUES(?,1,1,1,?,?)""",
-                (admin_id, admin_id, now_iso()),
-            )
-        methodology = client.post(
-            f"/api/admin/exercise-drafts/{version_id}/reviews",
-            headers=admin_headers,
-            json={"stage": "methodology", "decision": "approved", "comment": "Формулировки и иерархия подсказок проверены"},
-        )
-        assert methodology.status_code == 200, methodology.text
-        accessibility = client.post(
-            f"/api/admin/exercise-drafts/{version_id}/reviews",
-            headers=admin_headers,
-            json={"stage": "accessibility", "decision": "approved", "comment": "Клавиатура, screen reader и масштаб текста проверены"},
-        )
-        assert accessibility.status_code == 200, accessibility.text
-        release = client.post(
-            f"/api/admin/exercise-drafts/{version_id}/reviews",
-            headers=admin_headers,
-            json={"stage": "publication", "decision": "approved", "comment": "Версия разрешена к отдельной ручной публикации"},
-        )
-        assert release.status_code == 200, release.text
-        assert release.json()["can_publish"] is True
-        assert [item["stage"] for item in release.json()["reviews"]][-4:] == ["technical", "methodology", "accessibility", "publication"]
-        assert all(item["comment"] for item in release.json()["reviews"][-4:])
-    finally:
-        with connect() as db:
-            db.execute("DELETE FROM content_reviews WHERE version_id=? AND reviewer_id=?", (version_id, admin_id))
-            db.execute("DELETE FROM content_reviewer_permissions WHERE user_id=?", (admin_id,))
-            db.execute(
-                """UPDATE exercise_versions SET technical_status='automated_passed',
-                       methodology_status='pending',accessibility_status='pending',release_status='pending',review_status='pending'
-                   WHERE id=?""",
-                (version_id,),
-            )
+    assert client.get("/api/admin/content-review/capabilities", headers=admin_headers).json() == {"admin_review": True}
+    assert client.post(f"/api/admin/exercise-drafts/{version_id}/publish", headers=parent_headers).status_code == 403
+    returned = client.post(f"/api/admin/exercise-drafts/{version_id}/reviews", headers=admin_headers,
+        json={"stage": "admin", "decision": "changes_requested", "comment": "Проверить озвучку до выпуска"})
+    assert returned.status_code == 200
+    assert returned.json()["version"]["admin_review_status"] == "changes_requested"
+    published = client.post(f"/api/admin/exercise-drafts/{version_id}/publish", headers=admin_headers,
+        json={"comment": "Картинки, инструкция, звук и ответы проверены"})
+    assert published.status_code == 200, published.text
+    assert published.json()["admin_review_status"] == "approved"
+    assert published.json()["methodology_status"] == "pending"
+    history = client.get(f"/api/admin/exercise-drafts/{version_id}/preview", headers=admin_headers).json()["reviews"]
+    assert [item["stage"] for item in history[-2:]] == ["admin", "admin"]
+    assert history[-1]["reviewer_name"] and history[-1]["comment"]
+    assert version_id in {item["engine"]["version_id"] for item in client.get("/api/exercises", headers=parent_headers).json()}
+    assert client.post(f"/api/admin/exercise-drafts/{version_id}/publish", headers=admin_headers).status_code == 409
 
 
 def test_legacy_publications_are_blocked_when_demo_mode_is_disabled(client):

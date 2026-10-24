@@ -8,6 +8,8 @@ from .exercise_engine import AAC_SCENARIOS, SENSORY_CONTENT
 from .p1_content import ACTION_RUNNER_DRAFT, INSTRUCTION_RUNNER_DRAFT, WORD_RUNNER_DRAFT
 from .p15_content import P15_EXERCISE_DRAFTS
 from .core_content import CORE_EXERCISES
+from .practice_content import PRACTICE_EXERCISES
+from .expanded_content import EXPANDED_SPEECH
 
 
 BUNDLED_TTS_DIR = Path(__file__).with_name("tts_audio")
@@ -53,11 +55,12 @@ def _exercise_speech(exercise: dict) -> set[str]:
         for item in content.get("scenarios", [])
         if item.get("speech")
     )
+    texts.update(str(item["result"]["speech"]) for item in content.get("scenarios", []) if (item.get("result") or {}).get("speech"))
     return texts
 
 
 def known_russian_tts_texts() -> tuple[str, ...]:
-    texts = {"Получилось."}
+    texts = {"Получилось.", *EXPANDED_SPEECH}
     for scene in FAVORITE_TOY["scenes"]:
         texts.update([scene["narration"], scene["hint"], scene["assisted_reaction"]])
         for action in scene["actions"]:
@@ -81,7 +84,7 @@ def known_russian_tts_texts() -> tuple[str, ...]:
                 texts.add(speech)
                 texts.add(f"Это {speech.lower()}.")
 
-    for exercise in (WORD_RUNNER_DRAFT, ACTION_RUNNER_DRAFT, INSTRUCTION_RUNNER_DRAFT, *P15_EXERCISE_DRAFTS, *CORE_EXERCISES):
+    for exercise in (WORD_RUNNER_DRAFT, ACTION_RUNNER_DRAFT, INSTRUCTION_RUNNER_DRAFT, *P15_EXERCISE_DRAFTS, *CORE_EXERCISES, *PRACTICE_EXERCISES):
         texts.update(_exercise_speech(exercise))
     for exercise in CORE_EXERCISES:
         for stimulus in exercise["content"].get("stimuli", []):

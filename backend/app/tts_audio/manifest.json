@@ -11,6 +11,26 @@
       "file": "202ccb57df8956f6748fdf75e22ac87046be0b983d33fff68ea4ab01763f1c83.wav"
     },
     {
+      "text": "Банан в корзине.",
+      "file": "5078bb4b8c21263591cdc60cff98161456c52700a67467ae77bb841cedc139f7.wav"
+    },
+    {
+      "text": "Банан в коробке.",
+      "file": "409b7abebbdcb7b1455027c60784537d08b48d34b6576a1729f1739f6f343946.wav"
+    },
+    {
+      "text": "Банан на столе.",
+      "file": "f376166bf4c441c8fcf921064fa703a98a83abc6718e836071e0e53474b7dbba.wav"
+    },
+    {
+      "text": "Банан у взрослого.",
+      "file": "9a6a7465a05c43183955fc99e583fe8f33fa56e5596b15dda4c7dfd2228065d5.wav"
+    },
+    {
+      "text": "Банан у мишки.",
+      "file": "08ff29bbe8c9c1727978538cb0925d166cae388d11bff9169d181455ffcf0d19.wav"
+    },
+    {
       "text": "Барабан",
       "file": "ba08a7ff634fb75cc0b8dc4b9ec06e6963b79443734f38baac53d9dee93d2a52.wav"
     },
@@ -25,6 +45,10 @@
     {
       "text": "Брюки",
       "file": "44749641180126a1a62558a738e09a17e6c56399df85a4a6d065d6545d6e84c6.wav"
+    },
+    {
+      "text": "Варежки",
+      "file": "253615b9ec69baecb030ea371e1b6c548563ca1739de494b8c06b64a3e81805d.wav"
     },
     {
       "text": "Взрослый помог выразить просьбу. Мама идёт к полке.",
@@ -45,6 +69,10 @@
     {
       "text": "Вода",
       "file": "cb591d31e1ef0b53e97b50039ec7a7abccad135d633939aec57d382323235e4c.wav"
+    },
+    {
+      "text": "Воздушный змей",
+      "file": "20533530b9f4817c4f9b350e4a464ff67f822dcef0d2207667ddf9db0298a34b.wav"
     },
     {
       "text": "Возьми мяч",
@@ -71,12 +99,72 @@
       "file": "f9580f82106b52b29325110979532c6e464c6aa05b0b278b29380c1730896da5.wav"
     },
     {
+      "text": "Голова",
+      "file": "89e7aabc1a41a84c1969beb3d78b237cf0850893e1de592f5c615b0f26e89edc.wav"
+    },
+    {
       "text": "Да",
       "file": "2e4507d2a16f5e6dca109dcc6058ebfb20f32b0b65e9ce21e9eb699dc39d1ed0.wav"
     },
     {
+      "text": "Дай взрослому банан",
+      "file": "b27fd388ea44be521709be24f07f6855faf92d3d08f898c32fa6d0c5237ba546.wav"
+    },
+    {
+      "text": "Дай взрослому книгу",
+      "file": "3d7f8ff6b1230b7770ff2342b194f56de621776dc3226483cf190f9a6b80a902.wav"
+    },
+    {
+      "text": "Дай взрослому кубики",
+      "file": "43c9dc5661d4de13b58e72412772ab232c4883b4651deec07d616c353dcc9f46.wav"
+    },
+    {
+      "text": "Дай взрослому ложку",
+      "file": "175aa37d9a448aad663003b788cf94ccf321265e8abc2ff241fd624e5d886855.wav"
+    },
+    {
+      "text": "Дай взрослому машинку",
+      "file": "9d0a778d92c328a25a72cf3bbaea0aa7ab1e0eeb8a848a3d518937ce121607f7.wav"
+    },
+    {
+      "text": "Дай взрослому мяч",
+      "file": "1c885060f5726bdb130db5035e56e7839baec9f95a2423f2588a432214bb82d2.wav"
+    },
+    {
       "text": "Дай взрослому чашку",
       "file": "b969029ace1010cf4cd609ab9f3cbc086e989ef6364d357b0a5160f9e0bc03b1.wav"
+    },
+    {
+      "text": "Дай взрослому яблоко",
+      "file": "4fccc25fbd0246944a920cc99e2dee7cd560f23d36871db2d6b4b2b18a00c3c0.wav"
+    },
+    {
+      "text": "Дай мишке банан",
+      "file": "90bf0bb8c4d21a29e41fbf4e9234a7630b68ba8bc45e4c51cd14dcbfed125455.wav"
+    },
+    {
+      "text": "Дай мишке книгу",
+      "file": "c767005974f5aeb6826c055ef2196e4457421acd30df7aad8a20723c9c3173b1.wav"
+    },
+    {
+      "text": "Дай мишке кубики",
+      "file": "925be394aca0aab368285670d9a303aa9032bdbb91617f4acdc580562b89261b.wav"
+    },
+    {
+      "text": "Дай мишке ложку",
+      "file": "cde020894811cf72dd19161bae4c5d7a4c8862fcd9beb2f1b388f53ebb8c9cef.wav"
+    },
+    {
+      "text": "Дай мишке машинку",
+      "file": "3020702a8c9452e5854d351862f859b51b871add5f6a782a27de3e6d84682429.wav"
+    },
+    {
+      "text": "Дай мишке мяч",
+      "file": "42b8ab688c24daadc1c9b5592604f758f8d52bdf07faf341785e6540820989ee.wav"
+    },
+    {
+      "text": "Дай мишке чашку",
+      "file": "f64aeb6cbb1fb75023f0c5b9b7da7e8b8ed85bd520a8a98ebcec38de0f7c22ea.wav"
     },
     {
       "text": "Дай мишке яблоко",
@@ -91,12 +179,20 @@
       "file": "ec5e408258f821f8296f00e9bb981a05f9cc9b9d7451bdb7ff9e1da64ce4cf5f.wav"
     },
     {
+      "text": "Живот",
+      "file": "96cd62b3ca2e6983ceb533808a020f09cf94e611ba45ee8d24f6b1951f991277.wav"
+    },
+    {
       "text": "Жук",
       "file": "e548a64e0cca0ff55accec737d0001b8f27a2a16715bd6c33d55b51a045f86ea.wav"
     },
     {
       "text": "Здесь ничего не нужно угадывать. Можно послушать ещё раз или закончить.",
       "file": "6b5d507f8b4a13fc7ff1ee43f2dec0c734b2ce7df47246b7e41af4e967df074b.wav"
+    },
+    {
+      "text": "Зубная щётка",
+      "file": "48e881ede6e16dd133ae117e1014a3a699c5f9946ee02db21a4b6f157dddb331.wav"
     },
     {
       "text": "Игрушка едет по ковру. Мишка смотрит рядом.",
@@ -113,6 +209,46 @@
     {
       "text": "Книга",
       "file": "fc663b04059fbdd1762acda0da111796d1c1eb926dd61bf56c3b6414642c02c5.wav"
+    },
+    {
+      "text": "Книга в корзине.",
+      "file": "727a116a5638cebc8eea3c695364138038c688104fbfae09479653f9deb77bfc.wav"
+    },
+    {
+      "text": "Книга в коробке.",
+      "file": "f3988ae7cb4050b106a1ee0293bb646c9d586e19fbad110784b6571c80a57084.wav"
+    },
+    {
+      "text": "Книга на столе.",
+      "file": "431c2a430e6d8a76fd631348e0dd68edf9e013bafd7c4d5adb2246b790c2c669.wav"
+    },
+    {
+      "text": "Книга у взрослого.",
+      "file": "67f7aaa760a9d95288f939b1c8572b2eebcb82f272b53ef0e79d77763f944ee3.wav"
+    },
+    {
+      "text": "Книга у мишки.",
+      "file": "8ee6e46bac903631d12eb893f0141433590b005eb5d601fd55964ae48509a88f.wav"
+    },
+    {
+      "text": "Коза",
+      "file": "99a818469a5916e2b02615dadd9e876ecb3c887d71af3123f83e9356718e81b4.wav"
+    },
+    {
+      "text": "Колено",
+      "file": "384c38d12ab37c7d838a596c332a2c0449f545caab9ed3ec058033409c532533.wav"
+    },
+    {
+      "text": "Корзина",
+      "file": "7a692d382b4ba9b134773f8e3e6cafe92053a73642768444625ceb8a9bbea746.wav"
+    },
+    {
+      "text": "Коробка",
+      "file": "ef37d148f4bcdfa43fd191b6e83187437199961916e68ca4d05f685ccc6d68f6.wav"
+    },
+    {
+      "text": "Корова",
+      "file": "4eaea5d8f8ee407151ef09253b28de6b6d17d8a6ee5c495349fdb11d7a90252e.wav"
     },
     {
       "text": "Кот",
@@ -139,6 +275,10 @@
       "file": "19289ec7c11bfade05d081654678f3db1c4105fa5a82ae6fca3502bc36837772.wav"
     },
     {
+      "text": "Кто играет с мячом?",
+      "file": "dc8c8525c418d328b34bf2b377b119480c9806390bbbb35472291f8066177bb0.wav"
+    },
+    {
       "text": "Кто играет?",
       "file": "af3d21f5dbd5013aa3dbdd247eada587720b2a3b577d63ed1fe145a177b525bf.wav"
     },
@@ -155,8 +295,16 @@
       "file": "a8c649f0b89d4e54d3b140c924c64a77f379ad40b47710e30699a8dc1374a7ba.wav"
     },
     {
+      "text": "Кто рисует?",
+      "file": "e9e6a6b865dabbfbf9c89daa16e3ba95ff54525f0f7f6ca59df1b74664be2230.wav"
+    },
+    {
       "text": "Кто сидит?",
       "file": "ed8e626a13f3cabe6fababfa5f91b88a82bb179f7dafc82f19514cbc39512941.wav"
+    },
+    {
+      "text": "Кто смотрит книгу?",
+      "file": "b98fddafce54a1419efba7f65a676559b3804f248d3454e4624d5e7423354f39.wav"
     },
     {
       "text": "Кто спит?",
@@ -167,12 +315,36 @@
       "file": "b947e5cb399c484c4d61019d2f0f6f2ff6d6e6797fadbc838eb1ad176033ce12.wav"
     },
     {
+      "text": "Кто хлопает в ладоши?",
+      "file": "8a1a2f67548c5ca84d998ec0402fb1d26d40032e678d36545b14ad876aeea941.wav"
+    },
+    {
       "text": "Кто читает?",
       "file": "63e138075ac13b23b518124664a77faf4dc4aa4c6c59c29c55fa0b6e4faeba45.wav"
     },
     {
       "text": "Кубики",
       "file": "03c9c8ab65a83cec19468222bc92120a00ae971e75fa619c44b888fa48613baf.wav"
+    },
+    {
+      "text": "Кубики в корзине.",
+      "file": "38c03302a9d880a7bdfdb124c77dcdc3b158c41038e12cff40eb3e9501b15d5f.wav"
+    },
+    {
+      "text": "Кубики в коробке.",
+      "file": "e0c52a45dc7e693c4f04019aab09e704d7788aaaeedae07cf2c002406b825834.wav"
+    },
+    {
+      "text": "Кубики на столе.",
+      "file": "76cd3371b5c832e98e9e0ecb6aeb8cc8cb464c2d71ea4508c837873ff160e568.wav"
+    },
+    {
+      "text": "Кубики у взрослого.",
+      "file": "331fc9f073921ea3c21ed4bbd1417189e293b71156948b1cfeb18458492117e1.wav"
+    },
+    {
+      "text": "Кубики у мишки.",
+      "file": "97c51ad260b81cb90c0cbc254dce115ef4f8f14eb866f9cb26707050b98c902f.wav"
     },
     {
       "text": "Кукла",
@@ -189,6 +361,34 @@
     {
       "text": "Ложка",
       "file": "6ed4a41b86fbbff2b228ece8f64f98495ee368f7e939beed0815f7a892e0c7e9.wav"
+    },
+    {
+      "text": "Ложка в корзине.",
+      "file": "abab82ce1abb7cc08b276a130830414ece5d1347641f206cbaa227e27e422826.wav"
+    },
+    {
+      "text": "Ложка в коробке.",
+      "file": "2c06a57f80948669230e435bf0b2a6795cfa70db215a149b4660ccbc536ff87a.wav"
+    },
+    {
+      "text": "Ложка на столе.",
+      "file": "c951f70ffc26f86e3f0283d198ad20a8035a229f31c44c51544d3b90c8682b2c.wav"
+    },
+    {
+      "text": "Ложка у взрослого.",
+      "file": "5c4fe98aecc33dd37b2e20b35dff7133854a97e90d672e2492ef0d1745659aa9.wav"
+    },
+    {
+      "text": "Ложка у мишки.",
+      "file": "5793b331ea267e94b692b0395bf6a52de73cebf76e1ead14126dacd2f391eaa5.wav"
+    },
+    {
+      "text": "Локоть",
+      "file": "b9c0784352f7c42ea251a43ee18a71d14ab120350d76743492d05ccc343be8fb.wav"
+    },
+    {
+      "text": "Лошадь",
+      "file": "95cc4bdbb1b0afe116bbfdde277951269d9ee13fda6da9a1454d6f566f6c9802.wav"
     },
     {
       "text": "Мама",
@@ -213,6 +413,26 @@
     {
       "text": "Машинка",
       "file": "b0199bc1d6aef683e61e2117bdb62cb65e6025e448ff684d114ff0beac09c715.wav"
+    },
+    {
+      "text": "Машинка в корзине.",
+      "file": "9e5f2078d470143fce0ae1e8588287db92601801196fbb5a0fde3cef6b287d65.wav"
+    },
+    {
+      "text": "Машинка в коробке.",
+      "file": "7ccd0b3c6fb3b5b90c9e861f7fe86b7e2d01e95b3fe5338217db782512a5900c.wav"
+    },
+    {
+      "text": "Машинка на столе.",
+      "file": "ac2fae399f3efb7cf272aaabf52ed01837b63803ed16ab42e2466d63ce69c0b7.wav"
+    },
+    {
+      "text": "Машинка у взрослого.",
+      "file": "bf9e3e5bc96f7c0cdd18f2492835a81c8873abe44a00631e19516b252686887c.wav"
+    },
+    {
+      "text": "Машинка у мишки.",
+      "file": "78e371129c29c39bf4dd330141667f23659ad1afb8bea54bfd121d65de1cb586.wav"
     },
     {
       "text": "Миша и мишка снова вместе. Можно обнять мишку или покатать игрушку рядом с ним.",
@@ -315,6 +535,10 @@
       "file": "4d83e4e0d742af89f7c4cc8a7bdc80030eeaf4240a515f090210e587c430cc13.wav"
     },
     {
+      "text": "Морковь",
+      "file": "39100df27d126590d17e549883a139e6c9f13481984b8a83ee3b5aaae478ee6d.wav"
+    },
+    {
       "text": "Мы нашли мишку вместе. Он на правой полке.",
       "file": "c2167a9dc4df5a80250df6c7ff1c3647b47026d2f168aa94f983a7a6ce84ace6.wav"
     },
@@ -335,6 +559,26 @@
       "file": "860bed915a9e1954bb3972e192f5231bab3b6fa6265a4e240a1c9c7b3e3b9ae4.wav"
     },
     {
+      "text": "Мяч в корзине.",
+      "file": "39bfa44b0a86eaafc6ddd5d66fe7f6a3ad399e953006ea768fc1241aa87dadc5.wav"
+    },
+    {
+      "text": "Мяч в коробке.",
+      "file": "a89ecbcf259c3e4b54a479edf18f01b5ed688bed595f88dcce89a17d64eabb16.wav"
+    },
+    {
+      "text": "Мяч на столе.",
+      "file": "d85990d43c5779bbc945f52d26ab9e2f871ad70ac240ede14675bdb07306746b.wav"
+    },
+    {
+      "text": "Мяч у взрослого.",
+      "file": "f8f5152c559b4aa20dc0a82936319a27e4197435921fbe505e0085c934efe965.wav"
+    },
+    {
+      "text": "Мяч у мишки.",
+      "file": "8a205966b11fdd987a24570b7a523f688ffaf2ecce08a92991eeac72fc8f0420.wav"
+    },
+    {
       "text": "Мяч! Миша любит катать мяч.",
       "file": "6219923a92f583995b36560d2e2a3e6e07eab64e716b194b8a2212788254bfc5.wav"
     },
@@ -351,6 +595,14 @@
       "file": "50ea610ecf177593f6869c5314c1cff4223b7cfd6f890f6edec0fe1d2ac1b390.wav"
     },
     {
+      "text": "Носки",
+      "file": "edf28f96c640e6eaf19b08359abe0717ddc067a7eb4e95730d427b0f3f80f913.wav"
+    },
+    {
+      "text": "Огурец",
+      "file": "afb13b752f98a152704beabc5aa778d30d77a8d8a59f9be3b06b89de34dd1069.wav"
+    },
+    {
       "text": "Пазл",
       "file": "c2ff6d432130bbd39e6b452a674072ae856cf1065d222f3211af60b412eb8946.wav"
     },
@@ -359,12 +611,40 @@
       "file": "400afa71e6b1fb06ad65e0f560a4c22452f920c24468471171aef2ac956379e6.wav"
     },
     {
+      "text": "Пирамидка",
+      "file": "5c26aaa06ef779c9d428a86a70675e2baa4f11362786ebdfbb0358453eb8b46b.wav"
+    },
+    {
       "text": "Платье",
       "file": "b8cf8c4792124bf01a9781eb159d053883bd92480edd6e85c762bb488ac5b050.wav"
     },
     {
+      "text": "Плечо",
+      "file": "6f82aafcf862395144dc0ce8443f4074a6b2e8ef0e516514f294090f06ce7ae5.wav"
+    },
+    {
+      "text": "Поезд",
+      "file": "17030e2a683cc021dfe702e4bd3743189c2f1368aad6780f9f1c47dc4778538f.wav"
+    },
+    {
       "text": "Поезд! Он может поехать по ковру.",
       "file": "24541869c21b2283419413cc9b489e5e76606a9072cd867d2ab28ce8ac9ac030.wav"
+    },
+    {
+      "text": "Положи банан в корзину",
+      "file": "83d04072c58b3f46899cb8e99aabd034a1668199c70f8dbd34beaf9ba323dc17.wav"
+    },
+    {
+      "text": "Положи банан в коробку",
+      "file": "b02eb71c3737c01c5f92a588cd1e2770dadf0e19e53666c300c325f1026391e0.wav"
+    },
+    {
+      "text": "Положи банан на стол",
+      "file": "3a2c99e79cb55832fa7447ef9772ef95e03b01bafc44212c0e079499d448698b.wav"
+    },
+    {
+      "text": "Положи книгу в корзину",
+      "file": "2c4d494fd6a3af0d4ca84e66f42b721d8c8bd4e941cdb04805970d30de17aa43.wav"
     },
     {
       "text": "Положи книгу в коробку",
@@ -375,20 +655,92 @@
       "file": "6851bfa9d193a18b870a0f0d71c5802e9e254859b6cefad43601c34047949cdc.wav"
     },
     {
+      "text": "Положи кубики в корзину",
+      "file": "eac23eba96da0f4586ad9e72e4f0f0b03179e1247be7de7e2fbc3a08b58f28c9.wav"
+    },
+    {
+      "text": "Положи кубики в коробку",
+      "file": "d0818865a3009a144a84819dbccb6f36364b29644a621da20afbab92d7ac39bc.wav"
+    },
+    {
+      "text": "Положи кубики на стол",
+      "file": "134c9cebe5fcd59615c28f54101e43555fca0d7640299e77199ba7fe9af89b26.wav"
+    },
+    {
       "text": "Положи куклу рядом с мишкой",
       "file": "a707a4cd2923165a888fca15baa8da58f4acd626afd9d919e9393e126b865fc2.wav"
+    },
+    {
+      "text": "Положи ложку в корзину",
+      "file": "9a429e20ea0f98993dc39cdb55767d4eba6be179b361dec68817b49fbbe105d4.wav"
+    },
+    {
+      "text": "Положи ложку в коробку",
+      "file": "92000e95e77d9314cc621a92bf28d744dfce41ac26151a4d7e077fa0afc67222.wav"
+    },
+    {
+      "text": "Положи ложку на стол",
+      "file": "bcc8aa41796d3bf2533fd75997af08b8ef640f325d59828a13ee5cde575f8f72.wav"
+    },
+    {
+      "text": "Положи машинку в корзину",
+      "file": "a774327e15d657fd31b2e1fa2ac44a837026cb53183ec02897f631de4990297c.wav"
+    },
+    {
+      "text": "Положи машинку в коробку",
+      "file": "1835b23016ce9a637409e4fb9d24f741a3e96fd1f9b880ddb1d4323095d9c0fb.wav"
+    },
+    {
+      "text": "Положи машинку на стол",
+      "file": "b06e6a4fad7878c9743be1f23ad917fcd8a4d44079eee6c57e4ff3c6768bb1f6.wav"
+    },
+    {
+      "text": "Положи мяч в корзину",
+      "file": "c68844797e5b440f07dfda3447c207033700045bef22d27a49c65bd19ebd4443.wav"
     },
     {
       "text": "Положи мяч в коробку",
       "file": "7562268502faa9c69f0870047dd3b4a33ebf6fb0df1bb5a6343355c8257c8976.wav"
     },
     {
+      "text": "Положи мяч на стол",
+      "file": "f6a0ad29d2f7aab7609c8b1b8ecb10dced89fcd0d2e2e0ddfc93ed3c657065ff.wav"
+    },
+    {
       "text": "Положи мяч рядом со стулом",
       "file": "ee8e79622e9c7679c2dfdf1ea92689ff8d65d2d2012f922ae711bf0aea1d4a50.wav"
     },
     {
+      "text": "Положи чашку в корзину",
+      "file": "5cf2b8f4e99472718b4e591a99fa69845b6d270f7d0a9d8c1982ce5a37e5b01d.wav"
+    },
+    {
+      "text": "Положи чашку в коробку",
+      "file": "5194694d6d263d1ccfe97737b6f3fbbe1b2fff04e6af6906b5610c8477b6a877.wav"
+    },
+    {
+      "text": "Положи чашку на стол",
+      "file": "c37798cc42d4b9095488d23b49df3a2629678283e2dd667aa4a143768d761b96.wav"
+    },
+    {
+      "text": "Положи яблоко в корзину",
+      "file": "d189fd17bb1bdeb2d3fe9006b1d9031562c333a98470c966a09023bdd3333e26.wav"
+    },
+    {
+      "text": "Положи яблоко в коробку",
+      "file": "c507918723bf2048e86cf2ff4f455ec9d05df20f98e7aed3547af8160d56a881.wav"
+    },
+    {
+      "text": "Положи яблоко на стол",
+      "file": "a2893e2fe109ed5c65f774060256804194360866ae76b15e4190e7bd8bbe064b.wav"
+    },
+    {
       "text": "Положим игрушку рядом. Можно отдохнуть.",
       "file": "47574aba53eeeb7630c5b92ce217e6afb7926c8bc0ea0b19fcbad85ece1d0088.wav"
+    },
+    {
+      "text": "Полотенце",
+      "file": "1d2e1cb032004cd2816c4ddc29d64cc6b287173a3583c9ae3d8d4d9a91cbdbe4.wav"
     },
     {
       "text": "Получилось.",
@@ -415,6 +767,26 @@
       "file": "1037c4afdcc2cdc5088a6011ecc0704b4928cf375180a633a854220197737583.wav"
     },
     {
+      "text": "Ребёнок ест.",
+      "file": "4150051034584327bac11ab0f676aae11267382665e433ecfecf0271216c60c2.wav"
+    },
+    {
+      "text": "Ребёнок играет с мячом.",
+      "file": "ded0e942f8b5ac2368e06b1903cb81e55897cab23fb8be2d42c6d1f28b5c226f.wav"
+    },
+    {
+      "text": "Ребёнок пьёт.",
+      "file": "ae5742cba563996aa43406cff0435e372d58c7607d4c18eeef2882432845758d.wav"
+    },
+    {
+      "text": "Ребёнок смотрит книгу.",
+      "file": "11e1cbf263d464edfd94233b2893e7260653f5c6f817f5d179cdaec89aed2403.wav"
+    },
+    {
+      "text": "Робот",
+      "file": "59585c101cd16b8aa129114ef2848dc78077dba07ab7cc19fd97705fb0d4890a.wav"
+    },
+    {
       "text": "Рот",
       "file": "9dd3d2c6706020014793885d34a320690a70fce12394da5b0bf4b235f8ce9f8f.wav"
     },
@@ -425,6 +797,10 @@
     {
       "text": "Рыба",
       "file": "a4b7e2f0aa66e1890d6f7f3eebcf980877036cb7292422a05f3e39ce5fbb88a5.wav"
+    },
+    {
+      "text": "Сапоги",
+      "file": "b5ef9dbce92dde07745a858527fdd0b0fe04ad2c05fcaf7699e6403cc72e27c3.wav"
     },
     {
       "text": "Сестра",
@@ -443,6 +819,10 @@
       "file": "f47f0e00644512e21ed49c7f5f6f11798d432beffb7f9b119f1c85571f45af42.wav"
     },
     {
+      "text": "Стол",
+      "file": "33928c74d858378fac2731172356da579751c4cf07610c18fe5bbd2daf8a3130.wav"
+    },
+    {
       "text": "Стоп",
       "file": "108cf050e1002465a60299e09dfac5c22500176133a1053c04f7f4c89823e273.wav"
     },
@@ -455,8 +835,20 @@
       "file": "f56da53c731fc911d0e4764e63169a07535a2bc36d5cf7cbfd8cd5d997a03a10.wav"
     },
     {
+      "text": "Сыр",
+      "file": "6b251b808dd9e3db5539279204cb209802c5052d15a70bbc30d65b5a0283a206.wav"
+    },
+    {
+      "text": "Тарелка",
+      "file": "cb99972a864cb4725f01a2b0deabd6a9e7bb5653f23a728c80b60670e3d030a7.wav"
+    },
+    {
       "text": "Улитка",
       "file": "21f6976a940eac3ab1e5586fdb4132d3279768cca03e5d45e56fc7a91b85e13f.wav"
+    },
+    {
+      "text": "Утка",
+      "file": "3883449713f27c8a1072512c2e6e8d6ace7a22c77951ca47f6b8f5bfd712bd0b.wav"
     },
     {
       "text": "Ухо",
@@ -491,6 +883,26 @@
       "file": "e826f7a48360fc4742d33889445865c051919b639b21863cbc0c3749da225bcf.wav"
     },
     {
+      "text": "Чашка в корзине.",
+      "file": "6c5ec2c9d8e349f9ffc5cf78284ab5dcbac0e770b45d45fa32b3547c8943ecda.wav"
+    },
+    {
+      "text": "Чашка в коробке.",
+      "file": "0d57e20dbbc43d54338c0b1b59ccf19af2d2618f6701e3a4fb555f286f55b2a5.wav"
+    },
+    {
+      "text": "Чашка на столе.",
+      "file": "066a96eb87cc3aca6422987fac7768f31912af445ad668515883f99514f4ffdf.wav"
+    },
+    {
+      "text": "Чашка у взрослого.",
+      "file": "3ca06b26a75dc1343c34e3f9aef4e2445cc65a8e12029ba79f0add34b13bc354.wav"
+    },
+    {
+      "text": "Чашка у мишки.",
+      "file": "16d2bf1c365821606d2afdb8cd88406e96a996e2bdfdd587918cc92ec38bc29c.wav"
+    },
+    {
       "text": "Черепаха",
       "file": "6d2e7c755fce2712aaabb3e46e11bc9a62d46d4db9e5796389ca5032ac977ea7.wav"
     },
@@ -501,6 +913,18 @@
     {
       "text": "Шапка",
       "file": "e3ec9584d36e6588e7e1fc0561721d51706ed6dac0a1df912f94cc5591ff0610.wav"
+    },
+    {
+      "text": "Шарф",
+      "file": "4bf3226cf5c8eb6e59245783db41a702d9df66ac1c1b55c8d77bdf1639a02200.wav"
+    },
+    {
+      "text": "Шея",
+      "file": "f84f3f0dd4f021240adc00799c21458223f0c7e372cd4fd23d7706d5b699ab87.wav"
+    },
+    {
+      "text": "Шорты",
+      "file": "08077e65d96a4ed62fc40804398e1f163546e244208f85005a2addae8ff05f5f.wav"
     },
     {
       "text": "Это Миша. Он хочет поиграть. С какой игрушки начнём?",
@@ -549,6 +973,10 @@
     {
       "text": "Это кукла.",
       "file": "9dc14af4b0c7db014de04403a1be6a0e87866e60db32db227069be0483c15f3d.wav"
+    },
+    {
+      "text": "Это ложка.",
+      "file": "172e30d7f497d1cae4a190d8c671497e3a530eec7e7eca150b8a6de439835ee3.wav"
     },
     {
       "text": "Это машинка.",
@@ -603,12 +1031,20 @@
       "file": "92f7e620e7193b30bd303ae8a804ecb6fc882d94c8082943b7d431fa14aa7240.wav"
     },
     {
+      "text": "Это чашка.",
+      "file": "fc15a9e1f4f95c2ba37107adc67ac0124f6146baf3524608d69e49bc5f1cc996.wav"
+    },
+    {
       "text": "Это черепаха.",
       "file": "ae5741769252fc24c15618d6f8d328de5b1cebc5270b4671f8d5d902cf889847.wav"
     },
     {
       "text": "Это яблоко.",
       "file": "ad660f3ca2aefa715936e3b56699a6ef0dc34d6dee832bedce6f62b8565d9f78.wav"
+    },
+    {
+      "text": "Юбка",
+      "file": "b8eec9bbc0b9f77acef60d2f2fee279c1f04bf1fda17d08bfdce14acbb994e65.wav"
     },
     {
       "text": "Я",
@@ -685,6 +1121,30 @@
     {
       "text": "Яблоко",
       "file": "f88e774463f9c777fc48076ad7be871f549cb324dbb70c881aa84f0c27eeb49a.wav"
+    },
+    {
+      "text": "Яблоко в корзине.",
+      "file": "16e03f652101055c0eb61e2a5a65592d3628eca8927d53e5169ea6e144e511a3.wav"
+    },
+    {
+      "text": "Яблоко в коробке.",
+      "file": "233477ec280a8064839daadc9042017a0b306401f898a365b139198c05cc8fd3.wav"
+    },
+    {
+      "text": "Яблоко на столе.",
+      "file": "09d87530f648d9abfa69457f5171ea38ab4369a2f1df4a754e7146098834c52f.wav"
+    },
+    {
+      "text": "Яблоко у взрослого.",
+      "file": "fb3744dd08f2a7ec4ea2d86aa6bf5dce305d7c7004b7a6e253c91abf2425025a.wav"
+    },
+    {
+      "text": "Яблоко у мишки.",
+      "file": "e90d0f0ae1fdd188a3d8f22842f0423914b4dadfea8b8da0e2b9bef04874299d.wav"
+    },
+    {
+      "text": "Яйцо",
+      "file": "b24538aa93d5dc4926f29e2bd50003bc4a09342a8d94f77daca5c2004e0278ec.wav"
     },
     {
       "text": "банан",

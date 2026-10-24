@@ -25,3 +25,14 @@ test("different examples keep one concept key without repeating its previous pic
   assert.equal(chooseExemplar(stimulus, "/cup-b.webp", () => 0), "/cup-a.webp");
   assert.equal(chooseExemplar({ ...stimulus, exemplars: [] }, "/cup-a.webp"), "/cup-a.webp");
 });
+
+test("matched action sets cannot make the correct answer a different character", async () => {
+  const { chooseRoundMedia } = await import("../lib/exerciseRuntime.ts");
+  const stimuli = ["eat", "drink", "read", "play"].map(key => ({key, label: key, speech: key, media_ref: `/${key}-a.png`, exemplars: [`/${key}-b.png`]}));
+  const previous = {eat: "/eat-a.png"};
+  const first = chooseRoundMedia(stimuli, "eat", previous, true, () => 0.9);
+  assert.deepEqual(first, Object.fromEntries(stimuli.map(item => [item.key, `/${item.key}-b.png`])));
+  const next = chooseRoundMedia(stimuli, "eat", {eat: first.eat}, true, () => 0.9);
+  assert.deepEqual(next, Object.fromEntries(stimuli.map(item => [item.key, `/${item.key}-a.png`])));
+  assert.equal(chooseRoundMedia(stimuli, "read", {}, false, () => 0.9).read, "/read-a.png");
+});

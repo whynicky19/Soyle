@@ -24,7 +24,7 @@ def attempt(cid, exercise, **overrides):
         'child_id': cid, 'exercise_id': exercise['id'], 'module': exercise['module'],
         'actor_role': 'parent', 'response_owner': 'child', 'support_context': 'independent',
         'score': 100, 'duration_seconds': 10, 'attempt_status': 'completed',
-        'attempts_count': 4, 'correct_answers': 4, 'independent_completions': 4,
+        'attempts_count': 12, 'correct_answers': 12, 'independent_completions': 12,
         'details': {'difficulty_level': 1, 'option_count': 2}, 'event_id': str(uuid4()), **overrides,
     }
 

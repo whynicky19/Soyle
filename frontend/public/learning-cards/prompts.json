@@ -1,0 +1,130 @@
+{
+  "generator": "built-in image_gen",
+  "assets": [
+    {
+      "key": "box",
+      "source": "/Users/whynicky/.codex/generated_images/01a16da7-f2a5-75c0-aa96-694d90393d68/exec-ba0fbbaf-1c8e-482d-98f4-101a4c62c6cd.png",
+      "prompt": "Use case: scientific-educational. Create ONE square standalone high-quality hand-painted gouache illustration for a children's Russian language learning card. Soft realistic volume, natural proportions, delicate paper texture and warm daylight, readable recognizable silhouette, cream-white uncluttered background, subtle ground shadow. Center subject with generous 15% empty margins, subject fills 70% of canvas. A complete illustration, not a vector icon or line drawing. No outlines, no letters, no labels, no text, no watermark, no collage or grid. SUBJECT: One empty open cardboard box, clearly visible opening and interior, front three-quarter view, four flaps folded out, no contents."
+    },
+    {
+      "key": "adult",
+      "source": "/Users/whynicky/.codex/generated_images/01a16da7-f2a5-75c0-aa96-694d90393d68/exec-1736cced-20e0-4661-a5f8-b5a47c96bdbb.png",
+      "prompt": "Use case: scientific-educational. Create ONE square standalone high-quality hand-painted gouache illustration for a children's Russian language learning card. Soft realistic volume, natural proportions, delicate paper texture and warm daylight, readable recognizable silhouette, cream-white uncluttered background, subtle ground shadow. Center subject with generous 15% empty margins, subject fills 70% of canvas. A complete illustration, not a vector icon or line drawing. No outlines, no letters, no labels, no text, no watermark, no collage or grid. SUBJECT: One friendly adult woman with short brown hair in plain muted teal sweater and beige trousers, seated on a low plain stool, full body, empty hands held open at waist height ready to receive an object. No child or props."
+    },
+    {
+      "key": "bear",
+      "source": "/Users/whynicky/.codex/generated_images/01a16da7-f2a5-75c0-aa96-694d90393d68/exec-a7eb71e1-8e89-40cf-9799-ad472486e196.png",
+      "prompt": "Use case: scientific-educational. Create ONE square standalone high-quality hand-painted gouache illustration for a children's Russian language learning card. Soft realistic volume, natural proportions, delicate paper texture and warm daylight, readable recognizable silhouette, cream-white uncluttered background, subtle ground shadow. Center subject with generous 15% empty margins, subject fills 70% of canvas. A complete illustration, not a vector icon or line drawing. No outlines, no letters, no labels, no text, no watermark, no collage or grid. SUBJECT: One soft tan teddy bear sitting upright, full body, rounded ears, two arms slightly forward ready to hold an object, empty paws. No other toys."
+    },
+    {
+      "key": "table",
+      "source": "/Users/whynicky/.codex/generated_images/01a16da7-f2a5-75c0-aa96-694d90393d68/exec-e99abc28-40f3-4dbe-aa59-5f85fed285d0.png",
+      "prompt": "Use case: scientific-educational. Create ONE square standalone high-quality hand-painted gouache illustration for a children's Russian language learning card. Soft realistic volume, natural proportions, delicate paper texture and warm daylight, readable recognizable silhouette, cream-white uncluttered background, subtle ground shadow. Center subject with generous 15% empty margins, subject fills 70% of canvas. A complete illustration, not a vector icon or line drawing. No outlines, no letters, no labels, no text, no watermark, no collage or grid. SUBJECT: One low plain wooden table, rectangular top and four stable legs all visible, three-quarter view, completely empty tabletop."
+    },
+    {
+      "key": "chair",
+      "source": "/Users/whynicky/.codex/generated_images/01a16da7-f2a5-75c0-aa96-694d90393d68/exec-653626d1-acae-4c43-bbb8-12842a9a0840.png",
+      "prompt": "Use case: scientific-educational. Create ONE square standalone high-quality hand-painted gouache illustration for a children's Russian language learning card. Soft realistic volume, natural proportions, delicate paper texture and warm daylight, readable recognizable silhouette, cream-white uncluttered background, subtle ground shadow. Center subject with generous 15% empty margins, subject fills 70% of canvas. A complete illustration, not a vector icon or line drawing. No outlines, no letters, no labels, no text, no watermark, no collage or grid. SUBJECT: One plain wooden chair with a backrest and four legs, three-quarter view, empty seat."
+    },
+    {
+      "key": "bed",
+      "source": "/Users/whynicky/.codex/generated_images/01a16da7-f2a5-75c0-aa96-694d90393d68/exec-8eb7ab37-bce2-4db1-8533-09dc5916e8d0.png",
+      "prompt": "Use case: scientific-educational. Create ONE square standalone high-quality hand-painted gouache illustration for a children's Russian language learning card. Soft realistic volume, natural proportions, delicate paper texture and warm daylight, readable recognizable silhouette, cream-white uncluttered background, subtle ground shadow. Center subject with generous 15% empty margins, subject fills 70% of canvas. A complete illustration, not a vector icon or line drawing. No outlines, no letters, no labels, no text, no watermark, no collage or grid. SUBJECT: One small single wooden bed with a cream blanket and plain pale blue pillow, three-quarter view, empty bed, entire frame visible."
+    },
+    {
+      "key": "lamp",
+      "source": "/Users/whynicky/.codex/generated_images/01a16da7-f2a5-75c0-aa96-694d90393d68/exec-b49259dd-b9ee-48ff-a01a-0d8ee64f2c70.png",
+      "prompt": "Use case: scientific-educational. Create ONE square standalone high-quality hand-painted gouache illustration for a children's Russian language learning card. Soft realistic volume, natural proportions, delicate paper texture and warm daylight, readable recognizable silhouette, cream-white uncluttered background, subtle ground shadow. Center subject with generous 15% empty margins, subject fills 70% of canvas. A complete illustration, not a vector icon or line drawing. No outlines, no letters, no labels, no text, no watermark, no collage or grid. SUBJECT: One familiar table lamp with a round base, short stem and warm yellow fabric lampshade, isolated, unlit."
+    },
+    {
+      "key": "shirt",
+      "source": "/Users/whynicky/.codex/generated_images/01a16da7-f2a5-75c0-aa96-694d90393d68/exec-448cb8a7-db8c-4a7a-899f-a26f29192d52.png",
+      "prompt": "Use case: scientific-educational. Create ONE square standalone high-quality hand-painted gouache illustration for a children's Russian language learning card. Soft realistic volume, natural proportions, delicate paper texture and warm daylight, readable recognizable silhouette, cream-white uncluttered background, subtle ground shadow. Center subject with generous 15% empty margins, subject fills 70% of canvas. A complete illustration, not a vector icon or line drawing. No outlines, no letters, no labels, no text, no watermark, no collage or grid. SUBJECT: One plain coral short-sleeve T-shirt, front view, entire garment, no person."
+    },
+    {
+      "key": "hat",
+      "source": "/Users/whynicky/.codex/generated_images/01a16da7-f2a5-75c0-aa96-694d90393d68/exec-80d62b71-5e85-42c4-a456-3ac04f04c9a7.png",
+      "prompt": "Use case: scientific-educational. Create ONE square standalone high-quality hand-painted gouache illustration for a children's Russian language learning card. Soft realistic volume, natural proportions, delicate paper texture and warm daylight, readable recognizable silhouette, cream-white uncluttered background, subtle ground shadow. Center subject with generous 15% empty margins, subject fills 70% of canvas. A complete illustration, not a vector icon or line drawing. No outlines, no letters, no labels, no text, no watermark, no collage or grid. SUBJECT: One soft knitted teal winter hat with folded brim, entire hat, no head."
+    },
+    {
+      "key": "trousers",
+      "source": "/Users/whynicky/.codex/generated_images/01a16da7-f2a5-75c0-aa96-694d90393d68/exec-2b890b2c-9580-46e8-82a5-d80448435c38.png",
+      "prompt": "Use case: scientific-educational. Create ONE square standalone high-quality hand-painted gouache illustration for a children's Russian language learning card. Soft realistic volume, natural proportions, delicate paper texture and warm daylight, readable recognizable silhouette, cream-white uncluttered background, subtle ground shadow. Center subject with generous 15% empty margins, subject fills 70% of canvas. A complete illustration, not a vector icon or line drawing. No outlines, no letters, no labels, no text, no watermark, no collage or grid. SUBJECT: One pair of plain muted blue trousers with two full long legs clearly visible, front view, no person."
+    },
+    {
+      "key": "jacket",
+      "source": "/Users/whynicky/.codex/generated_images/01a16da7-f2a5-75c0-aa96-694d90393d68/exec-a12a46a1-df24-477c-b3a1-b55f51209615.png",
+      "prompt": "Use case: scientific-educational. Create ONE square standalone high-quality hand-painted gouache illustration for a children's Russian language learning card. Soft realistic volume, natural proportions, delicate paper texture and warm daylight, readable recognizable silhouette, cream-white uncluttered background, subtle ground shadow. Center subject with generous 15% empty margins, subject fills 70% of canvas. A complete illustration, not a vector icon or line drawing. No outlines, no letters, no labels, no text, no watermark, no collage or grid. SUBJECT: One plain green zip-up jacket with long sleeves, front view, zipper visible, no person."
+    },
+    {
+      "key": "dress",
+      "source": "/Users/whynicky/.codex/generated_images/01a16da7-f2a5-75c0-aa96-694d90393d68/exec-431b389e-47b0-4b7a-9686-e799c24110ce.png",
+      "prompt": "Use case: scientific-educational. Create ONE square standalone high-quality hand-painted gouache illustration for a children's Russian language learning card. Soft realistic volume, natural proportions, delicate paper texture and warm daylight, readable recognizable silhouette, cream-white uncluttered background, subtle ground shadow. Center subject with generous 15% empty margins, subject fills 70% of canvas. A complete illustration, not a vector icon or line drawing. No outlines, no letters, no labels, no text, no watermark, no collage or grid. SUBJECT: One simple yellow dress with short sleeves and a flared skirt, front view, no person."
+    },
+    {
+      "key": "hand",
+      "source": "/Users/whynicky/.codex/generated_images/01a16da7-f2a5-75c0-aa96-694d90393d68/exec-4f17df16-4e95-4a97-8e87-215f86ef2f5b.png",
+      "prompt": "Use case: scientific-educational. Create ONE square standalone high-quality hand-painted gouache illustration for a children's Russian language learning card. Soft realistic volume, natural proportions, delicate paper texture and warm daylight, readable recognizable silhouette, cream-white uncluttered background, subtle ground shadow. Center subject with generous 15% empty margins, subject fills 70% of canvas. A complete illustration, not a vector icon or line drawing. No outlines, no letters, no labels, no text, no watermark, no collage or grid. SUBJECT: One anatomically correct human hand and wrist with warm neutral skin tone, palm facing the viewer, five natural relaxed separated fingers, whole hand, cropped only below wrist. No gestures, no text."
+    },
+    {
+      "key": "shoes",
+      "source": "/Users/whynicky/.codex/generated_images/01a16da7-f2a5-75c0-aa96-694d90393d68/exec-5f180032-cbb8-43ed-b97a-283c35c35967.png",
+      "prompt": "Use case: scientific-educational. Create ONE square standalone high-quality hand-painted gouache illustration for a children's Russian language learning card. Soft realistic volume, natural proportions, delicate paper texture and warm daylight, readable recognizable silhouette, cream-white uncluttered background, subtle ground shadow. Center subject with generous 15% empty margins, subject fills 70% of canvas. A complete illustration, not a vector icon or line drawing. No outlines, no letters, no labels, no text, no watermark, no collage or grid. SUBJECT: One matched pair of simple brown ankle boots with soles and laces, both whole, no feet."
+    },
+    {
+      "key": "foot",
+      "source": "/Users/whynicky/.codex/generated_images/01a16da7-f2a5-75c0-aa96-694d90393d68/exec-749fdd58-c067-4278-93bf-ff6a62d3df3e.png",
+      "prompt": "Use case: scientific-educational. Create ONE square standalone high-quality hand-painted gouache illustration for a children's Russian language learning card. Soft realistic volume, natural proportions, delicate paper texture and warm daylight, readable recognizable silhouette, cream-white uncluttered background, subtle ground shadow. Center subject with generous 15% empty margins, subject fills 70% of canvas. A complete illustration, not a vector icon or line drawing. No outlines, no letters, no labels, no text, no watermark, no collage or grid. SUBJECT: One anatomically correct bare human foot with ankle, side three-quarter view, five natural toes visible, cropped only above ankle, neutral skin tone."
+    },
+    {
+      "key": "mouth",
+      "source": "/Users/whynicky/.codex/generated_images/01a16da7-f2a5-75c0-aa96-694d90393d68/exec-77db1d2c-98bf-495b-b68c-e207c1f043ca.png",
+      "prompt": "Use case: scientific-educational. Create ONE square standalone high-quality hand-painted gouache illustration for a children's Russian language learning card. Soft realistic volume, natural proportions, delicate paper texture and warm daylight, readable recognizable silhouette, cream-white uncluttered background, subtle ground shadow. Center subject with generous 15% empty margins, subject fills 70% of canvas. A complete illustration, not a vector icon or line drawing. No outlines, no letters, no labels, no text, no watermark, no collage or grid. SUBJECT: Close-up of a calm naturally closed human mouth and lips on a softly faded skin fragment, no nose or eyes, no smile exaggeration."
+    },
+    {
+      "key": "sleep",
+      "source": "/Users/whynicky/.codex/generated_images/01a16da7-f2a5-75c0-aa96-694d90393d68/exec-ba4ce31d-969d-41e3-ae7b-4e1f12de522f.png",
+      "prompt": "Use case: scientific-educational. Create ONE square standalone high-quality hand-painted gouache illustration for a children's Russian language learning card. Soft realistic volume, natural proportions, delicate paper texture and warm daylight, readable recognizable silhouette, cream-white uncluttered background, subtle ground shadow. Center subject with generous 15% empty margins, subject fills 70% of canvas. A complete illustration, not a vector icon or line drawing. No outlines, no letters, no labels, no text, no watermark, no collage or grid. SUBJECT: One fictional young child with short brown hair, muted ochre pyjamas, clearly asleep lying in a small bed, eyes closed and head on pillow, hands relaxed, cream blanket, no other people."
+    },
+    {
+      "key": "nose",
+      "source": "/Users/whynicky/.codex/generated_images/01a16da7-f2a5-75c0-aa96-694d90393d68/exec-19d40e7b-107c-4386-965d-ada6a289aa1a.png",
+      "prompt": "Use case: scientific-educational. Create ONE square standalone high-quality hand-painted gouache illustration for a children's Russian language learning card. Soft realistic volume, natural proportions, delicate paper texture and warm daylight, readable recognizable silhouette, cream-white uncluttered background, subtle ground shadow. Center subject with generous 15% empty margins, subject fills 70% of canvas. A complete illustration, not a vector icon or line drawing. No outlines, no letters, no labels, no text, no watermark, no collage or grid. SUBJECT: Close-up of a human nose on a softly faded neutral face fragment, frontal three-quarter view, nostrils naturally visible. Exclude eyes and mouth so the nose is the only salient feature."
+    },
+    {
+      "key": "run",
+      "source": "/Users/whynicky/.codex/generated_images/01a16da7-f2a5-75c0-aa96-694d90393d68/exec-ce574686-ae33-4cfb-8ba2-6e82c9547c61.png",
+      "prompt": "Use case: scientific-educational. Create ONE square standalone high-quality hand-painted gouache illustration for a children's Russian language learning card. Soft realistic volume, natural proportions, delicate paper texture and warm daylight, readable recognizable silhouette, cream-white uncluttered background, subtle ground shadow. Center subject with generous 15% empty margins, subject fills 70% of canvas. A complete illustration, not a vector icon or line drawing. No outlines, no letters, no labels, no text, no watermark, no collage or grid. SUBJECT: One fictional young child with short brown hair in plain ochre shirt and blue trousers RUNNING, side view, both feet momentarily clear of ground in a running stride, bent elbows, forward lean. Full body, plain pale cream ground, no speed lines or backpack."
+    },
+    {
+      "key": "sit",
+      "source": "/Users/whynicky/.codex/generated_images/01a16da7-f2a5-75c0-aa96-694d90393d68/exec-746939b4-c557-443e-b2c3-043fda0ed00a.png",
+      "prompt": "Use case: scientific-educational. Create ONE square standalone high-quality hand-painted gouache illustration for a children's Russian language learning card. Soft realistic volume, natural proportions, delicate paper texture and warm daylight, readable recognizable silhouette, cream-white uncluttered background, subtle ground shadow. Center subject with generous 15% empty margins, subject fills 70% of canvas. A complete illustration, not a vector icon or line drawing. No outlines, no letters, no labels, no text, no watermark, no collage or grid. SUBJECT: One fictional young child with short brown hair in plain ochre shirt and blue trousers SITTING on a plain wooden chair, back upright, hips supported by seat, feet on ground. Full body, no other action."
+    },
+    {
+      "key": "ear",
+      "source": "/Users/whynicky/.codex/generated_images/01a16da7-f2a5-75c0-aa96-694d90393d68/exec-27dbdfaf-7818-4aed-bacb-bd4199586241.png",
+      "prompt": "Use case: scientific-educational. Create ONE square standalone high-quality hand-painted gouache illustration for a children's Russian language learning card. Soft realistic volume, natural proportions, delicate paper texture and warm daylight, readable recognizable silhouette, cream-white uncluttered background, subtle ground shadow. Center subject with generous 15% empty margins, subject fills 70% of canvas. A complete illustration, not a vector icon or line drawing. No outlines, no letters, no labels, no text, no watermark, no collage or grid. SUBJECT: Close-up of one anatomically correct human outer ear seen from side on a softly faded skin fragment, no face, hair or earrings."
+    },
+    {
+      "key": "stand",
+      "source": "/Users/whynicky/.codex/generated_images/01a16da7-f2a5-75c0-aa96-694d90393d68/exec-a5f371c8-f3f0-439a-9c2c-5324af1bcc9b.png",
+      "prompt": "Use case: scientific-educational. Create ONE square standalone high-quality hand-painted gouache illustration for a children's Russian language learning card. Soft realistic volume, natural proportions, delicate paper texture and warm daylight, readable recognizable silhouette, cream-white uncluttered background, subtle ground shadow. Center subject with generous 15% empty margins, subject fills 70% of canvas. A complete illustration, not a vector icon or line drawing. No outlines, no letters, no labels, no text, no watermark, no collage or grid. SUBJECT: One fictional young child with short brown hair in plain ochre shirt and blue trousers STANDING still upright on both feet together, arms relaxed by sides. Full body, no other action."
+    },
+    {
+      "key": "eyes",
+      "source": "/Users/whynicky/.codex/generated_images/01a16da7-f2a5-75c0-aa96-694d90393d68/exec-788a60b9-fcb0-4b70-bcc1-541e1081af33.png",
+      "prompt": "Use case: scientific-educational. Create ONE square standalone high-quality hand-painted gouache illustration for a children's Russian language learning card. Soft realistic volume, natural proportions, delicate paper texture and warm daylight, readable recognizable silhouette, cream-white uncluttered background, subtle ground shadow. Center subject with generous 15% empty margins, subject fills 70% of canvas. A complete illustration, not a vector icon or line drawing. No outlines, no letters, no labels, no text, no watermark, no collage or grid. SUBJECT: Close-up of a pair of calm open human eyes with eyebrows and natural skin, straight ahead, crop above nose tip and below forehead. Two eyes only, no mouth."
+    },
+    {
+      "key": "walk",
+      "source": "/Users/whynicky/.codex/generated_images/01a16da7-f2a5-75c0-aa96-694d90393d68/exec-e87f2512-085f-4645-b6cb-5467939322e6.png",
+      "prompt": "Use case: scientific-educational. Create ONE square standalone high-quality hand-painted gouache illustration for a children's Russian language learning card. Soft realistic volume, natural proportions, delicate paper texture and warm daylight, readable recognizable silhouette, cream-white uncluttered background, subtle ground shadow. Center subject with generous 15% empty margins, subject fills 70% of canvas. A complete illustration, not a vector icon or line drawing. No outlines, no letters, no labels, no text, no watermark, no collage or grid. SUBJECT: One fictional young child with short brown hair in plain ochre shirt and blue trousers WALKING slowly, side view, one foot firmly on ground and the other taking a small step, upright torso and relaxed arms. Full body, plain pale cream ground, no speed lines or backpack."
+    },
+    {
+      "key": "wash",
+      "source": "/Users/whynicky/.codex/generated_images/01a16da7-f2a5-75c0-aa96-694d90393d68/exec-9adf4d1c-81be-4210-ba19-23f708aeb82a.png",
+      "prompt": "Use case: scientific-educational. Create ONE square standalone high-quality hand-painted gouache illustration for a children's Russian language learning card. Soft realistic volume, natural proportions, delicate paper texture and warm daylight, readable recognizable silhouette, cream-white uncluttered background, subtle ground shadow. Center subject with generous 15% empty margins, subject fills 70% of canvas. A complete illustration, not a vector icon or line drawing. No outlines, no letters, no labels, no text, no watermark, no collage or grid. SUBJECT: One fictional young child with short brown hair in plain ochre shirt washing both hands under a clearly visible small stream of water at a low sink, side view, eyes on hands, natural anatomy. No towel or other activity."
+    }
+  ]
+}

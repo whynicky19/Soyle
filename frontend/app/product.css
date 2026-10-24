@@ -572,9 +572,11 @@
 .soyle-unified .sensory-demo .sensory-visual img { width: 100%; height: 100%; object-fit: cover; }
 .soyle-unified .sensory-demo h2 { max-width: 720px; font-size: clamp(26px,2.7vw,39px); line-height: 1.17; }
 .soyle-unified .sensory-demo p { max-width: 600px; font-size: 15px; }
-.soyle-unified .picture-options button { border-radius: 23px; background: linear-gradient(160deg,#fff,#f8fbfa); box-shadow: 0 9px 22px rgba(56,77,104,.055); }
-.soyle-unified .picture-options .sensory-visual { width: min(85%,148px); height: 148px; background: transparent; }
-.soyle-unified .picture-options .sensory-visual img { width: 100%; height: 100%; object-fit: contain; }
+.soyle-unified .picture-options button { padding: 0; border-radius: 23px; background: linear-gradient(160deg,#fff,#f8fbfa); box-shadow: 0 9px 22px rgba(56,77,104,.055); }
+.soyle-unified .picture-options .sensory-visual { width: 100%; height: auto; max-width: none; aspect-ratio: 1; border-radius: inherit; background: transparent; overflow: hidden; }
+.soyle-unified .picture-options .sensory-visual img { display: block; width: 100%; height: auto; aspect-ratio: inherit; object-fit: cover; }
+.soyle-unified .action-choice .picture-options .sensory-visual { aspect-ratio: 4/3; }
+.soyle-unified .content-review-workspace .kicker { color: #526178; }
 @media (max-width: 1100px) { .soyle-unified .exercise-library .exercise-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } .soyle-unified .game-layout { grid-template-columns: minmax(0,1fr); } }
 @media (max-width: 650px) { .soyle-unified .exercise-catalog-hero { grid-template-columns: minmax(0,1fr); } .soyle-unified .exercise-catalog-hero-copy { padding: 27px 23px 12px; } .soyle-unified .exercise-catalog-hero > img { height: 170px; mask-image: linear-gradient(180deg,transparent,#000 30%); } .soyle-unified .exercise-library .exercise-grid { grid-template-columns: minmax(0,1fr); } .soyle-unified .exercise-catalog-page .child-aac-entry { grid-template-columns: 62px minmax(0,1fr) auto; padding: 12px; } .soyle-unified .exercise-catalog-page .child-aac-entry > img { width: 62px; height: 62px; } .soyle-unified .exercise-catalog-page .child-aac-entry strong { font-size: 17px; } .soyle-unified .camera-panel { min-height: 500px; } .soyle-unified .camera-placeholder { grid-template-rows: 52% 48%; } .soyle-unified .camera-placeholder-content { padding: 16px; } }
 .soyle-unified .aac-page.redesigned .aac-goal { border-radius: 22px; background: linear-gradient(130deg,#eef8ff,#eef9ef); }

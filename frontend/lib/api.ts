@@ -143,6 +143,11 @@ export type Exercise = {
         exemplars?: string[];
         visual_token?: string;
       }>;
+      exemplar_policy?: "matched_set";
+    bank_key?: string;
+    round_choices?: number[];
+    default_rounds?: number;
+    max_rounds?: number;
       difficulty_levels?: Array<{ level: 1 | 2 | 3; option_count: 2 | 3 | 4; rounds: number; max_attempts: number }>;
       scenarios?: Array<{
         key: string;
@@ -150,6 +155,7 @@ export type Exercise = {
         speech: string;
         objects: Array<{ key: string; label: string; role: "movable" | "target"; media_ref: string }>;
         success: { object_key: string; target_key: string };
+        result?: { media_ref?: string; relation: "give" | "in" | "on"; speech: string };
       }>;
       scenario_key?: string;
       title?: string;
@@ -239,6 +245,28 @@ export type AdaptivePlanItem = {
   position: number;
   difficulty_params: AdaptiveDifficultyParams;
   assignment_reason: AdaptiveAssignmentReason;
+  recommendation_id: number | null;
+};
+
+export type SpecialistAdvice = {
+  id: number;
+  specialist_name: string;
+  comment: string;
+  created_at: string;
+  exercise_id: number | null;
+  exercise_title: string | null;
+  goal_id: number | null;
+  goal_title: string | null;
+  is_current: boolean;
+  exercise_available: boolean;
+  goal_available: boolean;
+  ready_for_plan: boolean;
+  suitable_goals: Array<{ id: number; title: string }>;
+  family_decision: "pending" | "accepted" | "declined" | "needs_help";
+  family_note: string;
+  completed_at: string | null;
+  attempt_count: number;
+  latest_attempt: { attempt_status: string; created_at: string; attempts_count: number | null; correct_answers: number | null; prompt_level: string | null } | null;
 };
 
 export type AdaptivePlan = {
@@ -259,6 +287,7 @@ export type PracticeGoalTemplate = {
   id: number;
   template_key: string;
   version: number;
+  available_exercise_count: number;
   title: string;
   skill_category: string;
   observable_behavior: string;

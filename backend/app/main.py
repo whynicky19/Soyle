@@ -21,7 +21,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from .database import connect, init_db, now_iso
 from .data_lifecycle import delete_child_records, delete_parent_records
 from .privacy import privacy_profile
-from .schemas import AACCardCreate, AACComposeRequest, AACFavoriteUpdate, AACPhraseCreate, ActiveUpdate, AdaptivePlanRequest, AIAskRequest, AIPlanRequest, AssignedExerciseCreate, ChildCreate, ChildDeleteRequest, ChildGoalCreate, ConsentUpdate, ContentReviewCreate, ExerciseDraftCreate, GoalStatusUpdate, HomeActivityObservationCreate, HomeworkCreate, HomeworkResultUpdate, LearningSessionCreate, LearningSessionPauseRequest, LoginRequest, PracticeGoalCreate, PracticeGoalObservationCreate, PracticeGoalUpdate, PracticePreferencesUpdate, RecommendationReview, RegisterRequest, RoleUpdate, SessionCreate, SkillObservationUpdate, SpecialistAssignmentCreate, SpecialistRecommendationCreate, SpecialistAccessCreate, SpecialistObservationCreate, StoryAnswer, StudentAccountCreate, StudentLoginRequest, TTSRequest, UserSettingsUpdate, WorldPhotoCreate, WorldPhotoRename, StorybookEvent
+from .schemas import AACCardCreate, AACComposeRequest, AACFavoriteUpdate, AACPhraseCreate, ActiveUpdate, AdaptivePlanRequest, AIAskRequest, AIPlanRequest, AssignedExerciseCreate, ChildCreate, ChildDeleteRequest, ChildGoalCreate, ConsentUpdate, ContentPublishCreate, ContentReviewCreate, ExerciseDraftCreate, GoalStatusUpdate, HomeActivityObservationCreate, HomeworkCreate, HomeworkResultUpdate, LearningSessionCreate, LearningSessionPauseRequest, LoginRequest, PracticeGoalCreate, PracticeGoalObservationCreate, PracticeGoalUpdate, PracticePreferencesUpdate, RecommendationReview, RegisterRequest, RoleUpdate, SessionCreate, SkillObservationUpdate, SpecialistAssignmentCreate, SpecialistRecommendationCreate, SpecialistAccessCreate, SpecialistObservationCreate, StoryAnswer, StudentAccountCreate, StudentLoginRequest, TTSRequest, UserSettingsUpdate, WorldPhotoCreate, WorldPhotoRename, StorybookEvent
 from .tts_library import bundled_tts_path
 from .aac_grammar import compose_aac_phrase
 from .ai_assistant import DISCLAIMER as LOCAL_ASSISTANT_DISCLAIMER, answer_parent
@@ -30,6 +30,9 @@ from .family_practice import descriptive_results, home_library, save_home_observ
 from .adaptive_planner import create_plan as create_adaptive_plan, get_plan as get_adaptive_plan, plan_history as adaptive_plan_history
 from .practice_goals import create_goal as create_practice_goal, get_preferences, list_goals as list_practice_goals, list_templates as list_practice_goal_templates, save_observation as save_practice_goal_observation, save_preferences, update_goal as update_practice_goal
 from .migrations import LATEST_SCHEMA_VERSION
+from .schemas import FamilyRecommendationDecision
+from .practice_goals import decode_goal, exercise_matches_goal
+from .recommendations import recommendations as recommendation_list, validate_recommendation
 from .stories import STORIES, public_story, story_available
 from .picnic_content import PICNIC
 from .schemas import CinematicStorybookEvent
@@ -239,6 +242,15 @@ def learning_session_payload(db, session_row) -> dict:
             (session["adaptive_plan_id"],),
         ).fetchall():
             item = dict(item_row)
+            if item["recommendation_id"]:
+                try:
+                    validate_recommendation(db, session["child_id"], item["recommendation_id"], item["exercise_id"], item["exercise_version_id"], item["goal_id"])
+                except HTTPException:
+                    # Completed steps stay in the summary; only pending work is withdrawn.
+                    completed = db.execute("SELECT id FROM sessions WHERE learning_session_id=? AND exercise_id=? AND attempt_status IN ('completed','participated','refused')", (session["id"], item["exercise_id"])).fetchone()
+                    if not completed:
+                        by_id.pop(item["exercise_id"], None)
+                        continue
             if (item["goal_status"] != "active" or item["goal_version"] != item["current_goal_version"]
                     or item["exercise_id"] not in by_id
                     or by_id[item["exercise_id"]]["engine"]["version_id"] != item["exercise_version_id"]):
@@ -252,6 +264,7 @@ def learning_session_payload(db, session_row) -> dict:
                 "exercise_version_id": item["exercise_version_id"],
                 "difficulty_params": json.loads(item["difficulty_params_json"]),
                 "assignment_reason": json.loads(item["assignment_reason_json"]),
+                "recommendation_id": item["recommendation_id"],
             }
     available_ids = [exercise_id for exercise_id in planned_ids if exercise_id in by_id]
     result_rows = db.execute(
@@ -1237,6 +1250,7 @@ def create_session(payload: SessionCreate, user: dict = Depends(require_roles("a
             raise HTTPException(422, "Для завершённой игровой попытки укажите хотя бы один ответ")
         game_score = calculate_game_score(payload.correct_answers or 0, payload.attempts_count or 0) if attempt_status == "completed" else 0
         adaptive_plan_item_id = None
+        recommendation_id = None
         if payload.learning_session_id:
             learning = db.execute("SELECT * FROM learning_sessions WHERE id=? AND child_id=?", (payload.learning_session_id, payload.child_id)).fetchone()
             if not learning:
@@ -1254,7 +1268,7 @@ def create_session(payload: SessionCreate, user: dict = Depends(require_roles("a
                 raise HTTPException(422, "Это упражнение не входит в текущее занятие")
             if learning["adaptive_plan_id"]:
                 adaptive_item = db.execute(
-                    """SELECT i.id,i.exercise_version_id,i.goal_version,g.version current_goal_version,g.status
+                    """SELECT i.id,i.exercise_version_id,i.goal_id,i.goal_version,i.recommendation_id,g.version current_goal_version,g.status
                        FROM adaptive_practice_plan_items i JOIN parent_practice_goals g ON g.id=i.goal_id
                        WHERE i.plan_id=? AND i.exercise_id=?""",
                     (learning["adaptive_plan_id"], payload.exercise_id),
@@ -1264,19 +1278,23 @@ def create_session(payload: SessionCreate, user: dict = Depends(require_roles("a
                 if adaptive_item["status"] != "active" or adaptive_item["goal_version"] != adaptive_item["current_goal_version"]:
                     raise HTTPException(409, "Цель изменилась. Подготовьте новый план")
                 adaptive_plan_item_id = adaptive_item["id"]
+                recommendation_id = adaptive_item["recommendation_id"]
+                if recommendation_id:
+                    db.execute("UPDATE specialist_recommendations SET family_decision=family_decision WHERE id=?", (recommendation_id,))
+                    validate_recommendation(db, payload.child_id, recommendation_id, payload.exercise_id, exercise["engine"]["version_id"], adaptive_item["goal_id"])
         measurement_source = "local_automated_movement_check" if payload.details.get("source") == "local-face-movement-check" else "caregiver_or_user_observation"
         cursor = db.execute(
             """INSERT INTO sessions(child_id,exercise_id,exercise_version_id,module,score,duration_seconds,details,measurement_version,
                learning_session_id,sequence_index,independence,prompt_level,response_ms,communication_initiatives,
                attempts_count,correct_answers,prompts_used,gameplay_choices,independent_completions,prompted_completions,
-               attempt_status,adaptive_plan_item_id,actor_role,response_owner,support_context,created_at,event_id,request_hash)
-               VALUES(?,?,?,?,?,?,?,3,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(child_id,event_id) DO NOTHING RETURNING id""",
+               attempt_status,adaptive_plan_item_id,actor_role,response_owner,support_context,created_at,event_id,request_hash,recommendation_id)
+               VALUES(?,?,?,?,?,?,?,3,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(child_id,event_id) DO NOTHING RETURNING id""",
             (payload.child_id, payload.exercise_id, exercise["engine"]["version_id"], payload.module, game_score, payload.duration_seconds,
              json.dumps({**payload.details, "measurement_source": measurement_source}, ensure_ascii=False), payload.learning_session_id, payload.sequence_index,
              payload.independence, payload.prompt_level, payload.response_ms, payload.communication_initiatives,
              payload.attempts_count, payload.correct_answers, payload.prompts_used, payload.gameplay_choices,
              payload.independent_completions, payload.prompted_completions, attempt_status, adaptive_plan_item_id,
-             user["role"], payload.response_owner, payload.support_context, now_iso(), payload.event_id, request_hash),
+             user["role"], payload.response_owner, payload.support_context, now_iso(), payload.event_id, request_hash, recommendation_id),
         )
         inserted = cursor.fetchone()
         if not inserted:
@@ -1306,7 +1324,8 @@ def create_session(payload: SessionCreate, user: dict = Depends(require_roles("a
                 next_status = "paused" if attempt_status in {"refused", "break", "technical_error"} else "in_progress"
                 db.execute("UPDATE learning_sessions SET current_index=?,status=?,paused_at=? WHERE id=?", (completed_count, next_status, now_iso() if next_status == "paused" else None, payload.learning_session_id))
         if attempt_status in {"completed", "participated"}:
-            db.execute("UPDATE assigned_exercises SET status='completed',completed_at=? WHERE child_id=? AND exercise_id=? AND status='assigned'", (now_iso(), payload.child_id, payload.exercise_id))
+            if recommendation_id:
+                db.execute("UPDATE assigned_exercises SET status='completed',completed_at=? WHERE child_id=? AND recommendation_id=? AND status='assigned'", (now_iso(), payload.child_id, recommendation_id))
             create_module_notification(db, payload.child_id, payload.exercise_id)
     return saved_attempt_response(row)
 
@@ -1624,7 +1643,7 @@ def create_learning_session(payload: LearningSessionCreate, user: dict = Depends
             if not plan:
                 raise HTTPException(422, "Адаптивный план не найден")
             plan_items = db.execute(
-                """SELECT i.exercise_id,i.exercise_version_id,i.goal_version,g.version current_goal_version,g.status
+                """SELECT i.exercise_id,i.exercise_version_id,i.goal_id,i.goal_version,i.recommendation_id,g.version current_goal_version,g.status
                    FROM adaptive_practice_plan_items i JOIN parent_practice_goals g ON g.id=i.goal_id
                    WHERE i.plan_id=? ORDER BY i.position,i.id""",
                 (payload.adaptive_plan_id,),
@@ -1636,6 +1655,9 @@ def create_learning_session(payload: LearningSessionCreate, user: dict = Depends
                 raise HTTPException(409, "Версия одного из заданий изменилась. Подготовьте новый план")
             if any(item["status"] != "active" or item["goal_version"] != item["current_goal_version"] for item in plan_items):
                 raise HTTPException(409, "Цель изменилась. Подготовьте новый план")
+            for item in plan_items:
+                if item["recommendation_id"]:
+                    validate_recommendation(db, payload.child_id, item["recommendation_id"], item["exercise_id"], item["exercise_version_id"], item["goal_id"])
         cursor = db.execute(
             """INSERT INTO learning_sessions(
                    child_id,status,exercise_ids,current_index,target_minutes,started_at,adaptive_plan_id)
@@ -1739,10 +1761,7 @@ def specialist_child(child_id: int, user: dict = Depends(require_roles("speciali
             """SELECT a.*,e.title,e.module,e.skill FROM assigned_exercises a JOIN exercises e ON e.id=a.exercise_id
                WHERE a.child_id=? AND a.specialist_id=? ORDER BY a.id DESC""", (child_id, user["id"]),
         ).fetchall()
-        reviews = db.execute(
-            """SELECT r.*,e.title exercise_title FROM specialist_recommendations r LEFT JOIN exercises e ON e.id=r.exercise_id
-               WHERE r.child_id=? AND r.specialist_id=? ORDER BY r.id DESC LIMIT 10""", (child_id, user["id"]),
-        ).fetchall()
+        reviews = recommendation_list(db, child_id, user["id"])
         goals = db.execute("SELECT * FROM child_goals WHERE child_id=? ORDER BY position,id", (child_id,)).fetchall()
         homework = db.execute("SELECT * FROM homework_assignments WHERE child_id=? ORDER BY id DESC LIMIT 20", (child_id,)).fetchall()
     goal_items = []
@@ -1774,19 +1793,19 @@ def assign_exercise(payload: AssignedExerciseCreate, user: dict = Depends(requir
 def create_specialist_recommendation(payload: SpecialistRecommendationCreate, user: dict = Depends(require_roles("specialist"))) -> dict:
     ensure_child_access(payload.child_id, user)
     with connect() as db:
-        if payload.exercise_id and not next((item for item in child_exercise_rows(db, payload.child_id) if item["id"] == payload.exercise_id), None):
+        exercise = next((item for item in child_exercise_rows(db, payload.child_id) if item["id"] == payload.exercise_id), None) if payload.exercise_id else None
+        if payload.exercise_id and not exercise:
             raise HTTPException(404, "Упражнение не найдено")
+        if payload.goal_id:
+            goal = db.execute("SELECT * FROM parent_practice_goals WHERE id=? AND child_id=? AND status='active'", (payload.goal_id, payload.child_id)).fetchone()
+            if not goal or (exercise and not exercise_matches_goal(exercise, decode_goal(goal))):
+                raise HTTPException(422, "Упражнение должно соответствовать активной цели этого ребёнка")
         cursor = db.execute(
-            """INSERT INTO specialist_recommendations(child_id,specialist_id,suggested_skill,exercise_id,source,status,comment,created_at)
-               VALUES(?,?,?,?,?,'approved',?,?) RETURNING id""",
-            (payload.child_id, user["id"], payload.suggested_skill, payload.exercise_id, "specialist", payload.comment, now_iso()),
+            """INSERT INTO specialist_recommendations(child_id,specialist_id,suggested_skill,exercise_id,source,status,comment,created_at,goal_id,exercise_version_id)
+               VALUES(?,?,?,?,?,'approved',?,?,?,?) RETURNING id""",
+            (payload.child_id, user["id"], payload.suggested_skill, payload.exercise_id, "specialist", payload.comment, now_iso(), payload.goal_id, exercise["engine"]["version_id"] if exercise else None),
         )
         row = db.execute("SELECT * FROM specialist_recommendations WHERE id=?", (cursor.fetchone()["id"],)).fetchone()
-        if payload.exercise_id:
-            db.execute(
-                "INSERT INTO assigned_exercises(child_id,specialist_id,exercise_id,note,status,created_at) VALUES(?,?,?,?,'assigned',?)",
-                (payload.child_id, user["id"], payload.exercise_id, payload.comment, now_iso()),
-            )
     return dict(row)
 
 
@@ -2072,6 +2091,7 @@ def update_consent(child_id: int, payload: ConsentUpdate, user: dict = Depends(r
             ),
         )
         if not payload.specialist_sharing or not payload.privacy_accepted:
+            db.execute("UPDATE specialist_recommendations SET family_decision='pending' WHERE child_id=? AND family_decision='accepted'", (child_id,))
             db.execute("DELETE FROM specialist_children WHERE child_id=?", (child_id,))
             db.execute("UPDATE specialist_invitations SET status='cancelled' WHERE child_id=? AND status IN ('open','pending')", (child_id,))
     audit(user, "consent.update", "child", child_id, {
@@ -2161,12 +2181,9 @@ def review_recommendation(recommendation_id: int, payload: RecommendationReview,
         row = db.execute("SELECT * FROM specialist_recommendations WHERE id=? AND specialist_id=?", (recommendation_id, user["id"])).fetchone()
         if not row:
             raise HTTPException(404, "Рекомендация не найдена")
-        db.execute("UPDATE specialist_recommendations SET status=?,comment=?,reviewed_at=? WHERE id=?", (payload.status, payload.comment or row["comment"], now_iso(), recommendation_id))
-        if payload.status in {"approved", "edited"} and row["exercise_id"]:
-            db.execute(
-                "INSERT INTO assigned_exercises(child_id,specialist_id,exercise_id,note,status,created_at) VALUES(?,?,?,?,'assigned',?)",
-                (row["child_id"], user["id"], row["exercise_id"], payload.comment or row["comment"], now_iso()),
-            )
+        ensure_child_access(row["child_id"], user)
+        db.execute("UPDATE specialist_recommendations SET status=?,comment=?,reviewed_at=?,family_decision='pending' WHERE id=?", (payload.status, payload.comment or row["comment"], now_iso(), recommendation_id))
+        db.execute("UPDATE assigned_exercises SET status='cancelled' WHERE recommendation_id=? AND status='assigned'", (recommendation_id,))
         updated = db.execute("SELECT * FROM specialist_recommendations WHERE id=?", (recommendation_id,)).fetchone()
     return dict(updated)
 
@@ -2207,6 +2224,7 @@ def create_specialist_assignment(payload: SpecialistAssignmentCreate, admin: dic
 @app.delete("/api/admin/specialist-assignments/{specialist_id}/{child_id}", status_code=204, include_in_schema=False)
 def delete_specialist_assignment(specialist_id: int, child_id: int, admin: dict = Depends(require_roles("admin"))):
     with connect() as db:
+        db.execute("UPDATE specialist_recommendations SET family_decision='pending' WHERE child_id=? AND specialist_id=? AND family_decision='accepted'", (child_id, specialist_id))
         db.execute("DELETE FROM specialist_children WHERE specialist_id=? AND child_id=?", (specialist_id, child_id))
     audit(admin, "specialist.unassign", "child", child_id, {"specialist_id": specialist_id})
 
@@ -2326,6 +2344,8 @@ def update_role(user_id: int, payload: RoleUpdate, admin: dict = Depends(require
             if active_admins <= 1:
                 raise HTTPException(409, "Нельзя изменить роль последнего активного администратора")
         db.execute("DELETE FROM auth_sessions WHERE subject=?", (str(user_id),))
+        if target["role"] == "specialist" and payload.role != "specialist":
+            db.execute("UPDATE specialist_recommendations SET family_decision='pending' WHERE specialist_id=? AND family_decision='accepted'", (user_id,))
         db.execute("UPDATE users SET role=? WHERE id=?", (payload.role, user_id))
         row = db.execute("SELECT * FROM users WHERE id=?", (user_id,)).fetchone()
     audit(admin, "user.role", "user", user_id, {"role": payload.role})
@@ -2345,6 +2365,8 @@ def update_active(user_id: int, payload: ActiveUpdate, admin: dict = Depends(req
             if active_admins <= 1:
                 raise HTTPException(409, "Нельзя отключить последнего активного администратора")
         db.execute("DELETE FROM auth_sessions WHERE subject=?", (str(user_id),))
+        if not payload.is_active:
+            db.execute("UPDATE specialist_recommendations SET family_decision='pending' WHERE specialist_id=? AND family_decision='accepted'", (user_id,))
         db.execute("UPDATE users SET is_active=? WHERE id=?", (int(payload.is_active), user_id))
         row = db.execute("SELECT * FROM users WHERE id=?", (user_id,)).fetchone()
     audit(admin, "user.active", "user", user_id, {"active": payload.is_active})
@@ -2419,10 +2441,26 @@ def list_home_activity_drafts(_: dict = Depends(require_roles("admin"))) -> list
     return result
 
 
-@app.post("/api/admin/exercise-drafts/{version_id}/publish")
-def publish_exercise_draft(version_id: int, admin: dict = Depends(require_roles("admin"))) -> dict:
+@app.post("/api/admin/home-activity-drafts/{activity_id}/publish")
+def publish_home_activity_draft(activity_id: int, admin: dict = Depends(require_roles("admin"))) -> dict:
     with connect() as db:
-        version = publish_version(db, version_id)
+        row = db.execute("SELECT * FROM home_activity_templates WHERE id=?", (activity_id,)).fetchone()
+        if not row:
+            raise HTTPException(404, "Бытовая игра не найдена")
+        if row["publication_status"] != "draft":
+            raise HTTPException(409, "Игра уже опубликована")
+        required = ("materials", "adult_instructions", "accepted_responses", "prompts", "stop_conditions")
+        if not row["title"].strip() or not row["objective"].strip() or any(not json.loads(row[f"{field}_json"] or "[]") for field in required):
+            raise HTTPException(422, "Заполните материалы, инструкции, ответы, подсказки и условия остановки")
+        db.execute("UPDATE home_activity_templates SET review_status='approved',publication_status='published' WHERE id=?", (activity_id,))
+    audit(admin, "home_activity.publish", "home_activity", activity_id, {"decision": "approved", "title": row["title"]})
+    return {"id": activity_id, "publication_status": "published", "review_status": "approved"}
+
+
+@app.post("/api/admin/exercise-drafts/{version_id}/publish")
+def publish_exercise_draft(version_id: int, payload: ContentPublishCreate | None = None, admin: dict = Depends(require_roles("admin"))) -> dict:
+    with connect() as db:
+        version = publish_version(db, version_id, reviewer_id=admin["id"], comment=payload.comment if payload else "")
     audit(admin, "exercise.version.publish", "exercise_version", version_id, {"exercise_id": version["exercise_id"]})
     return version
 
@@ -2461,6 +2499,7 @@ def grant_family_specialist(child_id: int, payload: SpecialistAccessCreate, user
 def revoke_family_specialist(child_id: int, specialist_id: int, user: dict = Depends(require_roles("parent"))):
     ensure_child_access(child_id, user)
     with connect() as db:
+        db.execute("UPDATE specialist_recommendations SET family_decision='pending' WHERE child_id=? AND specialist_id=? AND family_decision='accepted'", (child_id, specialist_id))
         db.execute("DELETE FROM specialist_children WHERE child_id=? AND specialist_id=?", (child_id, specialist_id))
     audit(user, "specialist.revoke", "child", child_id, {"specialist_id": specialist_id})
 
@@ -2505,17 +2544,54 @@ def family_specialist_observations(child_id: int, user: dict = Depends(require_r
 def family_specialist_recommendations(child_id: int, user: dict = Depends(require_roles("parent"))) -> list[dict]:
     ensure_child_access(child_id, user)
     with connect() as db:
-        available = {item["id"] for item in child_exercise_rows(db, child_id)}
-        rows = db.execute("""SELECT r.*,u.full_name specialist_name,e.title exercise_title,
-            CASE WHEN r.status='approved' AND u.role='specialist' AND u.is_active=1
-                AND sc.specialist_id IS NOT NULL AND c.privacy_accepted=1 AND c.specialist_sharing=1
-                THEN 1 ELSE 0 END is_current
-            FROM specialist_recommendations r JOIN users u ON u.id=r.specialist_id
-            LEFT JOIN exercises e ON e.id=r.exercise_id
-            LEFT JOIN specialist_children sc ON sc.specialist_id=r.specialist_id AND sc.child_id=r.child_id
-            LEFT JOIN child_consents c ON c.child_id=r.child_id
-            WHERE r.child_id=? ORDER BY r.id DESC LIMIT 50""", (child_id,)).fetchall()
-        return [{**dict(row), "is_current": bool(row["is_current"]), "exercise_available": row["exercise_id"] in available} for row in rows]
+        return recommendation_list(db, child_id)
+
+
+@app.patch("/api/children/{child_id}/specialist-recommendations/{recommendation_id}/decision")
+def decide_family_recommendation(child_id: int, recommendation_id: int, payload: FamilyRecommendationDecision,
+                                 user: dict = Depends(require_roles("parent"))) -> dict:
+    ensure_child_access(child_id, user)
+    ensure_privacy_consent(child_id)
+    with connect() as db:
+        db.execute("UPDATE specialist_recommendations SET family_decision=family_decision WHERE id=? AND child_id=?", (recommendation_id, child_id))
+        item = next((item for item in recommendation_list(db, child_id) if item["id"] == recommendation_id), None)
+        if not item:
+            raise HTTPException(404, "Рекомендация не найдена")
+        if not item["is_current"]:
+            raise HTTPException(409, "Доступ специалиста отозван или рекомендация больше не действует")
+        goal_id = (payload.goal_id if payload.goal_id is not None else item["goal_id"]) if payload.decision == "accepted" else item["goal_id"]
+        version_id = item["exercise_version_id"]
+        if payload.decision == "accepted" and goal_id is not None:
+            if not db.execute("SELECT id FROM parent_practice_goals WHERE id=? AND child_id=? AND status='active'", (goal_id, child_id)).fetchone():
+                raise HTTPException(422, "Выберите активную цель этого ребёнка")
+        if payload.decision == "accepted" and item["exercise_id"]:
+            if not item["exercise_available"]:
+                raise HTTPException(409, "Задание больше недоступно. Попросите специалиста обновить рекомендацию")
+            if not any(goal["id"] == goal_id for goal in item["suitable_goals"]):
+                raise HTTPException(422, "Выберите подходящую активную цель для этого задания")
+            version_id = published_exercise(db, item["exercise_id"])["engine"]["version_id"]
+        db.execute("""UPDATE specialist_recommendations SET family_decision=?,family_note=?,family_reviewed_at=?,
+            goal_id=?,exercise_version_id=? WHERE id=?""", (payload.decision, payload.note, now_iso(), goal_id, version_id, recommendation_id))
+        if item["exercise_id"]:
+            if payload.decision == "accepted":
+                db.execute("""INSERT INTO assigned_exercises(child_id,specialist_id,exercise_id,note,status,created_at,recommendation_id)
+                    VALUES(?,?,?,?,'assigned',?,?) ON CONFLICT(recommendation_id) DO UPDATE SET
+                    status=CASE WHEN assigned_exercises.status='completed' THEN 'completed' ELSE 'assigned' END,note=excluded.note""",
+                    (child_id, item["specialist_id"], item["exercise_id"], item["comment"], now_iso(), recommendation_id))
+            else:
+                db.execute("UPDATE assigned_exercises SET status='cancelled' WHERE recommendation_id=? AND status='assigned'", (recommendation_id,))
+        result = next(item for item in recommendation_list(db, child_id) if item["id"] == recommendation_id)
+    audit(user, "recommendation.family_decision", "child", child_id, {"recommendation_id": recommendation_id, "decision": payload.decision})
+    return result
+
+
+@app.post("/api/children/{child_id}/specialist-recommendations/{recommendation_id}/plan", status_code=201)
+def prepare_recommendation_plan(child_id: int, recommendation_id: int, user: dict = Depends(require_roles("parent"))) -> dict:
+    ensure_child_access(child_id, user)
+    ensure_privacy_consent(child_id)
+    with connect() as db:
+        return create_adaptive_plan(db, child_id, 3, user["id"], recommendation_id=recommendation_id)
+
 
 
 from .specialist_invitations import router as invitation_router

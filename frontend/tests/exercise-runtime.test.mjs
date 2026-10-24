@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile, stat } from "node:fs/promises";
 import test from "node:test";
 
-import { createChoiceRound, instructionMatches, resolveDifficulty } from "../lib/exerciseRuntime.ts";
+import { createChoiceRound, createInstructionSequence, instructionMatches, resolveDifficulty } from "../lib/exerciseRuntime.ts";
 
 const stimuli = ["ball", "book", "apple", "doll", "car", "puzzle"].map((key) => ({
   key,
@@ -83,7 +83,7 @@ test("difficulty keeps option count, round count and attempt limit separate", ()
   assert.equal(resolveDifficulty(levels, 1).option_count, 2);
   assert.equal(resolveDifficulty(levels, 2).option_count, 3);
   assert.equal(resolveDifficulty(levels, 3).option_count, 4);
-  assert.equal(resolveDifficulty(undefined, 1).rounds, 4);
+  assert.equal(resolveDifficulty(undefined, 1).rounds, 12);
 });
 
 test("one-step instruction requires the selected object and destination pair", () => {
@@ -117,4 +117,27 @@ test("synthetic action scenes are bundled as full local illustrations", async ()
     const file = await stat(new URL(`../public/p1/actions/${name}.svg`, import.meta.url));
     assert.ok(file.size > 500, name);
   }
+});
+
+
+test("a larger instruction bank rotates objects before repeating them and keeps every scenario", () => {
+  const bank = Array.from({length: 8}, (_, i) => ["box", "basket", "table"].map(target => ({
+    key: `object-${i}-${target}`, instruction: "Положи предмет", speech: "Положи предмет", objects: [], success: {object_key: `object-${i}`, target_key: target},
+  }))).flat();
+  const sequence = createInstructionSequence(bank, seededRandom(42));
+  assert.equal(sequence.length, 24);
+  assert.equal(new Set(sequence.map(item => item.key)).size, 24);
+  for (let i = 0; i < 24; i += 8) assert.equal(new Set(sequence.slice(i, i + 8).map(item => item.success.object_key)).size, 8);
+  assert.notDeepEqual(sequence.map(item => item.key), createInstructionSequence(bank, seededRandom(95)).map(item => item.key));
+});
+
+test("all twelve words are asked before a concept repeats", () => {
+  const bank = Array.from({length:12}, (_, i) => ({key: `word-${i}`, label: String(i), speech: String(i)}));
+  const used = [];
+  for (let i = 0; i < 12; i++) {
+    const round = createChoiceRound(bank, 3, used, seededRandom(i + 20));
+    assert.ok(!used.includes(round.targetKey));
+    used.push(round.targetKey);
+  }
+  assert.equal(new Set(used).size, 12);
 });

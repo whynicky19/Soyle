@@ -1,0 +1,12 @@
+{
+  "generator": "built-in image_gen",
+  "reference": "/learning-core/actions/eat.webp",
+  "status": "generated_unreviewed",
+  "base_prompt": "Use case: scientific-educational. Create ONE new standalone 4:3 educational illustration for a Russian child language app, using the provided illustration only as reference for painterly style, composition and props. A different fictional child, a young girl with short straight dark brown bob hair wearing a plain muted terracotta long-sleeve shirt, sits at a pale wooden table in the same calm cream room. Exactly the same FOUR familiar props must appear fully legible in every illustration: a plain blue drinking tumbler, a white bowl with food and metal spoon, a closed/open green picture book, and a red ball. Match scale, viewpoint, framing, background and lighting of the reference, with all four props visible, no unrelated props. The scene must depict the ACTION below unambiguously. Natural hands, no motion lines, no labels, no letters, no arrows, no text, no watermark. Do not include the boy from the reference. Produce a complete single illustration, not a sheet or grid. ACTION: ",
+  "actions": {
+    "eat": "The girl is EATING: the spoon with food is touching her open mouth. Bowl stays on the table in front of her, blue tumbler on left, green closed book and red ball on right. Her gaze is on the spoon.",
+    "drink": "The girl is DRINKING: blue tumbler tilted with rim touching her lips, visibly taking a sip. White bowl and spoon on the table, closed green book and red ball on right. No food or spoon at mouth.",
+    "read": "The girl is LOOKING AT A BOOK: green book open in both hands on the table, her eyes directed down to the pages, no letters on the pages. Blue tumbler, white bowl with spoon, and red ball remain visible nearby. No other action.",
+    "play": "The girl is ROLLING A BALL: both hands at table height, the right palm is clearly gently pushing the red ball across the table toward the open left hand, gaze on the ball. Blue tumbler, white bowl with spoon and closed green book remain visible nearby, not held. Clearly depict ball play rather than holding a ball or pointing."
+  }
+}

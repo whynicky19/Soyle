@@ -128,7 +128,7 @@ def test_planner_uses_only_related_published_non_motor_versions(client, parent_h
     )
     assert response.status_code == 201, response.text
     plan = response.json()
-    assert plan["rules_version"] == "p2.4-comparable-evidence-1"
+    assert plan["rules_version"] == "p2.5-connected-practice-1"
     assert plan["items"]
     assert {item["target"] for item in plan["items"]} <= {"animals", "food", "toys"}
     assert all(item["module"] != "motor" for item in plan["items"])
@@ -194,11 +194,16 @@ def test_difficulty_never_increases_after_one_success_and_ignores_breaks(client,
             "score": 100, "duration_seconds": 20, "details": {"source": "p21-test", "difficulty_level": 1, "option_count": 2}, "attempt_status": status,
         }
         if status == "completed":
-            body.update({"attempts_count": 4, "correct_answers": 4, "gameplay_choices": 4, "independent_completions": 1, "prompts_used": 0, "prompt_level": "independent"})
+            body.update({"attempts_count": 12, "correct_answers": 12, "gameplay_choices": 12, "independent_completions": 1, "prompts_used": 0, "prompt_level": "independent"})
         response = client.post("/api/sessions", headers=parent_headers, json=body)
         assert response.status_code == 201, response.text
 
     save()
+    # Exclude unrelated choices so rotation does not hide the measured exercise
+    # when the plan is shortened after a break.
+    client.put(f"/api/practice-preferences/{child['id']}", headers=parent_headers, json={
+        "preferred_exercise_ids": [], "avoided_exercise_ids": [item["id"] for item in exercises if item["target"] in {"food", "toys"}],
+    }).raise_for_status()
     save("break")
     save("refused")
     first_plan = client.post(f"/api/adaptive-plans/{child['id']}", headers=parent_headers, json={"target_minutes": 5}).json()
@@ -227,8 +232,8 @@ def test_recent_results_are_weighted_without_one_miss_erasing_stable_progress(cl
             **PARENT_CHILD_ATTEMPT,
             "child_id": child["id"], "exercise_id": exercise["id"], "module": "sensory",
             "score": correct * 25, "duration_seconds": 20, "details": {"source": "weighted-test", "difficulty_level": 1, "option_count": 2},
-            "attempt_status": "completed", "attempts_count": 4, "correct_answers": correct,
-            "gameplay_choices": 4, "independent_completions": correct,
+            "attempt_status": "completed", "attempts_count": 12, "correct_answers": correct * 3,
+            "gameplay_choices": 12, "independent_completions": correct * 3,
             "prompted_completions": 0,
             "prompts_used": 0 if correct else 1,
             "prompt_level": "independent" if correct else "minimal",

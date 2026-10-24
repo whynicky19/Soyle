@@ -4,17 +4,19 @@ import { useCallback, useEffect, useState } from "react";
 import { BrandLogo } from "@/components/BrandLogo";
 import { Users, ArrowRight, LogOut, ClipboardList, MessageSquare, Clock, RefreshCw, Link2, Copy, Check } from "lucide-react";
 import { CabinetNavigation, useCabinetSection } from "./CabinetNavigation";
-import { api, type Child, type Exercise, type User } from "@/lib/api";
+import { api, type Child, type Exercise, type User, type SpecialistAdvice } from "@/lib/api";
+
+import { RecommendationDecision, RecommendationOutcome } from "./RecommendationDecision";
 
 type Observation = { id: number; result_type: string; prompt_level: string; context: string; note: string; created_at: string; specialist_name?: string };
 type Workspace = {
-  practice_goals: Array<{ id: number; title: string; baseline: string; help_level: string; status: string }>;
+  practice_goals: Array<{ id: number; title: string; baseline: string; help_level: string; status: string; linked_exercises: Array<{ id: number }> }>;
   available_exercises: Exercise[];
   observations: Observation[];
-  recommendations: Array<{ id: number; comment: string; exercise_title?: string }>;
+  recommendations: SpecialistAdvice[];
   dashboard: { recent: Array<{ id: number; attempt_status: string; title?: string; created_at: string }>; total_sessions: number };
 };
-const outcomes: Record<string, string> = { independent: "Самостоятельно", with_help: "С помощью", not_observed: "Не наблюдалось", refused: "Отказ", break: "Перерыв", technical_error: "Техническая ошибка" };
+const outcomes: Record<string, string> = { completed: "Задание выполнено", participated: "Участие в практике", independent: "Самостоятельно", with_help: "С помощью", not_observed: "Не наблюдалось", refused: "Отказ", break: "Перерыв", technical_error: "Техническая ошибка" };
 
 const specialistSections = [{id: "children", label: "Дети"}, {id: "observations", label: "Наблюдения"}, {id: "recommendations", label: "Рекомендации"}, {id: "history", label: "Цели и история"}] as const;
 
@@ -33,6 +35,7 @@ export function SpecialistWorkspace({ user, onLogout }: { user: User; onLogout: 
   const [note, setNote] = useState("");
   const [goal, setGoal] = useState("");
   const [exercise, setExercise] = useState("");
+  const [recommendationGoal, setRecommendationGoal] = useState("");
   const [recommendation, setRecommendation] = useState("");
   useEffect(() => {
     let active = true;
@@ -65,13 +68,22 @@ export function SpecialistWorkspace({ user, onLogout }: { user: User; onLogout: 
     event.preventDefault(); if (!selected || saving) return;
     setSaving(true); setError(""); setNotice("");
     try {
-      await api("/api/specialist/recommendations", { method: "POST", body: JSON.stringify({ child_id: Number(selected), suggested_skill: "communication", exercise_id: exercise ? Number(exercise) : null, comment: recommendation }) });
+      await api("/api/specialist/recommendations", { method: "POST", body: JSON.stringify({ child_id: Number(selected), suggested_skill: workspace?.available_exercises.find(item => item.id === Number(exercise))?.skill || "communication", goal_id: recommendationGoal ? Number(recommendationGoal) : null, exercise_id: exercise ? Number(exercise) : null, comment: recommendation }) });
       setRecommendation(""); setNotice("Рекомендация сохранена. Семья сама выбирает, когда заниматься."); await reload();
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Не удалось сохранить рекомендацию"); setWorkspace(null); }
     finally { setSaving(false); }
   };
+  const withdrawRecommendation = async (id: number) => {
+    if (saving) return;
+    setSaving(true); setError(""); setNotice("");
+    try {
+      await api(`/api/specialist/recommendations/${id}`, { method: "PATCH", body: JSON.stringify({ status: "rejected" }) });
+      setNotice("Рекомендация отозвана. История попыток сохранена."); await reload();
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "Не удалось отозвать рекомендацию"); }
+    finally { setSaving(false); }
+  };
   const chooseChild = (id: string) => {
-    if (id !== selected) { setWorkspace(null); setGoal(""); setContext(""); setNote(""); setExercise(""); setRecommendation(""); setError(""); setNotice(""); }
+    if (id !== selected) { setWorkspace(null); setGoal(""); setContext(""); setNote(""); setExercise(""); setRecommendationGoal(""); setRecommendation(""); setError(""); setNotice(""); }
     setSelected(id);
     const url = new URL(window.location.href); url.searchParams.set("child", id); window.history.replaceState(null, "", url);
   };
@@ -81,6 +93,7 @@ export function SpecialistWorkspace({ user, onLogout }: { user: User; onLogout: 
     {error && <div className="cabinet-notice error" role="alert">{error}<button className="secondary-button" onClick={reload}>Проверить доступ снова</button></div>}{notice && <p className="cabinet-notice" role="status">{notice}</p>}
     {loading ? <p role="status">Загружаем доступные профили…</p> : !children.length ? <section className="cabinet-empty"><Users size={40}/><h2>Нет доступных профилей</h2><p>Откройте ссылку-приглашение от родителя и отправьте запрос. После подтверждения семьёй профиль появится здесь. Если запрос уже отправлен, дождитесь подтверждения и обновите список.</p><p>Ваш логин: <strong>{user.username}</strong></p><button className="secondary-button" onClick={() => window.location.reload()}><RefreshCw size={18}/> Обновить список детей</button></section> : <>
     {section === "children" ? <><div className="cabinet-intro"><h2>Семьи, с которыми вы работаете</h2><p>Каждый профиль открыт родителем. Выберите ребёнка, чтобы перейти к наблюдениям.</p></div><div className="specialist-children-grid">{children.map(child => <button className="specialist-child" key={child.id} onClick={() => { chooseChild(String(child.id)); navigate("observations"); }}><span className="cabinet-avatar" style={{background:child.avatar_color}}>{child.name[0]}</span><span><strong>{child.name}</strong><small>Открыть наблюдения</small></span><ArrowRight size={22}/></button>)}</div><p className="cabinet-footnote">Игровые результаты и наблюдения вне игры сохраняются отдельно. Они не являются автоматической диагностикой.</p></> : <>
+    <button className="secondary-button" disabled={saving} onClick={() => void reload()}><RefreshCw size={17}/> Обновить профиль</button>
     <label className="cabinet-child-picker">Профиль ребёнка<select value={selected} disabled={saving} onChange={e => { chooseChild(e.target.value); }}>{children.map(child => <option key={child.id} value={child.id}>{child.name}</option>)}</select></label>
     {selected && !workspace && !error && <p role="status">Загружаем профиль…</p>}
     {workspace && <>
@@ -93,10 +106,11 @@ export function SpecialistWorkspace({ user, onLogout }: { user: User; onLogout: 
         <button className="primary-button" disabled={saving}>{saving ? "Сохраняем…" : "Сохранить наблюдение"}</button>
       </form></section><section className="cabinet-panel"><h2>Ваши наблюдения</h2>{workspace.observations.length ? workspace.observations.map(item => <article className="cabinet-entry" key={item.id}><small>{new Date(item.created_at).toLocaleString("ru-RU")}</small><h3>{outcomes[item.result_type]}</h3><p>{item.context}: {item.note}</p><small>Наблюдение специалиста · {item.prompt_level === "independent" ? "без подсказки" : "с помощью"}</small></article>) : <div className="cabinet-empty-inline"><ClipboardList size={28}/><p>Наблюдений пока нет. Первая запись появится после сохранения формы.</p></div>}</section></div>}
       {section === "recommendations" && <div className="specialist-columns"><section className="cabinet-panel"><div className="cabinet-section-title"><MessageSquare size={22}/><div><h2>Рекомендация семье</h2><p>Одно понятное действие, которое можно попробовать дома.</p></div></div><form onSubmit={recommend}>
-        <label>Упражнение<select value={exercise} onChange={e => setExercise(e.target.value)}><option value="">Без назначения упражнения</option>{workspace.available_exercises.map(item => <option key={item.id} value={item.id}>{item.title}</option>)}</select></label>
+        <label>Цель рекомендации<select value={recommendationGoal} onChange={e => { setRecommendationGoal(e.target.value); setExercise(""); }}><option value="">Семья выберет цель при принятии</option>{workspace.practice_goals.filter(item => item.status === "active").map(item => <option key={item.id} value={item.id}>{item.title}</option>)}</select></label>
+        <label>Упражнение<select value={exercise} onChange={e => setExercise(e.target.value)}><option value="">Без назначения упражнения</option>{workspace.available_exercises.filter(item => !recommendationGoal || workspace.practice_goals.find(goal => goal.id === Number(recommendationGoal))?.linked_exercises.some(linked => linked.id === item.id)).map(item => <option key={item.id} value={item.id}>{item.title}</option>)}</select></label>
         <label>Как поддержать ребёнка<textarea value={recommendation} onChange={e => setRecommendation(e.target.value)} required minLength={3} maxLength={1000}/></label>
         <button className="primary-button" disabled={saving}>Сохранить рекомендацию</button>
-      </form></section><section className="cabinet-panel"><h2>Ваши рекомендации</h2>{workspace.recommendations.length ? workspace.recommendations.map(item => <article className="cabinet-entry" key={item.id}><h3>{item.exercise_title || "Поддержка дома"}</h3><p>{item.comment}</p></article>) : <div className="cabinet-empty-inline"><MessageSquare size={28}/><p>Рекомендаций пока нет. Семья увидит сохранённые рекомендации в своём кабинете.</p></div>}</section></div>}
+      </form></section><section className="cabinet-panel"><h2>Ваши рекомендации</h2>{workspace.recommendations.length ? workspace.recommendations.map(item => <article className="cabinet-entry" key={item.id}><h3>{item.exercise_title || "Поддержка дома"}</h3><p>{item.comment}</p><RecommendationOutcome item={item}/>{item.is_current ? <button className="secondary-button" disabled={saving} onClick={() => void withdrawRecommendation(item.id)}>Отозвать рекомендацию</button> : <small>Рекомендация больше не действует</small>}</article>) : <div className="cabinet-empty-inline"><MessageSquare size={28}/><p>Рекомендаций пока нет. Семья увидит сохранённые рекомендации в своём кабинете.</p></div>}</section></div>}
       {section === "history" && <><section className="cabinet-panel"><h2>Цели семьи</h2>{workspace.practice_goals.length ? workspace.practice_goals.map(item => <article className="cabinet-entry" key={item.id}><h3>{item.title}</h3><p>Исходное наблюдение: {item.baseline}</p><small>{item.status === "active" ? "Активная цель" : "Цель приостановлена"}</small></article>) : <p>Семья пока не добавила практические цели.</p>}</section><section className="cabinet-panel"><div className="cabinet-section-title"><Clock size={22}/><div><h2>История игровых попыток</h2><p>{workspace.dashboard.total_sessions} сохранённых попыток. Это история взаимодействий, а не оценка развития речи.</p></div></div>{workspace.dashboard.recent.map(item => <article className="cabinet-entry" key={item.id}><strong>{item.title || "Игровая попытка"}</strong><p>{new Date(item.created_at).toLocaleString("ru-RU")} · {outcomes[item.attempt_status] || "Попытка в игре"}</p></article>)}</section></>}
     </>}
     </>}
@@ -108,7 +122,7 @@ export function SpecialistWorkspace({ user, onLogout }: { user: User; onLogout: 
 export function FamilySpecialistAccess({ childId, enabled, onManagePermissions }: { childId: number; enabled: boolean; onManagePermissions?: () => void }) {
   const [items, setItems] = useState<Array<{ id: number; full_name: string; username: string }>>([]);
   const [observations, setObservations] = useState<Observation[]>([]);
-  const [recommendations, setRecommendations] = useState<Array<{id: number; comment: string; specialist_name: string; exercise_title?: string}>>([]);
+  const [recommendations, setRecommendations] = useState<SpecialistAdvice[]>([]);
   type Invitation = { id: number; status: string; expires_at: string; specialist_name?: string; specialist_username?: string };
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [inviteUrl, setInviteUrl] = useState("");
@@ -164,7 +178,7 @@ export function FamilySpecialistAccess({ childId, enabled, onManagePermissions }
       <details className="known-specialist"><summary>Добавить по известному логину</summary><form onSubmit={grant}><label>Логин специалиста<input value={username} onChange={e => setUsername(e.target.value)} required minLength={3} maxLength={40} disabled={!enabled || busy}/></label><button className="secondary-button" disabled={!enabled || busy}>Открыть доступ</button></form></details>
     </section>
     <section className="cabinet-panel"><h2>Подключённые специалисты</h2>{items.length ? items.map(item => <div className="connected-specialist" key={item.id}><span className="cabinet-avatar">{item.full_name[0]}</span><div><strong>{item.full_name}</strong><small>@{item.username}</small></div><button className="secondary-button" disabled={busy} onClick={() => revoke(item.id)}>Отозвать доступ</button></div>) : <p className="cabinet-empty-copy">Доступ пока никому не предоставлен.</p>}</section>
-    <div className="specialist-columns"><section className="cabinet-panel"><h2>Рекомендации специалиста</h2>{recommendations.length ? recommendations.map(item => <article className="cabinet-entry" key={item.id}><small>{item.specialist_name}</small><h3>{item.exercise_title || "Поддержка дома"}</h3><p>{item.comment}</p></article>) : <p>Здесь появятся рекомендации для домашней практики.</p>}</section><section className="cabinet-panel"><h2>Наблюдения специалиста</h2>{observations.length ? observations.map(item => <article className="cabinet-entry" key={item.id}><small>{item.specialist_name} · {outcomes[item.result_type]}</small><p>{item.context}: {item.note}</p></article>) : <p>Наблюдения вне игры появятся после записи специалистом.</p>}</section></div>
+    <div className="specialist-columns"><section className="cabinet-panel"><h2>Рекомендации специалиста</h2>{recommendations.length ? recommendations.map(item => <article className="cabinet-entry" key={item.id}><small>{item.specialist_name}</small><h3>{item.exercise_title || "Поддержка дома"}</h3><p>{item.comment}</p><RecommendationDecision key={`${item.id}:${item.family_decision}`} childId={childId} item={item} onChanged={() => { void load().catch(cause => setMessage(cause.message)); }}/></article>) : <p>Здесь появятся рекомендации для домашней практики.</p>}</section><section className="cabinet-panel"><h2>Наблюдения специалиста</h2>{observations.length ? observations.map(item => <article className="cabinet-entry" key={item.id}><small>{item.specialist_name} · {outcomes[item.result_type]}</small><p>{item.context}: {item.note}</p></article>) : <p>Наблюдения вне игры появятся после записи специалистом.</p>}</section></div>
   </div>;
 }
 

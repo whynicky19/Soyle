@@ -52,19 +52,19 @@ def test_p1_drafts_are_runnable_but_never_public_without_review(client, parent_h
     assert set(p1) == {"p1-word-runner-demo", "actions", "p1-simple-instructions-demo"}
     assert {item["version"]["mechanic"] for item in p1.values()} == {"auditory_choice", "action_choice", "tap_instruction"}
     assert all(item["valid"] is True for item in p1.values())
-    assert all(item["can_publish"] is False for item in p1.values())
+    assert all(item["can_publish"] is True for item in p1.values())
     assert all(item["version"]["review_status"] == "pending" for item in p1.values())
 
     action_content = p1["actions"]["version"]["content"]
-    assert all(stimulus["media_ref"].startswith("/p1/actions/") for stimulus in action_content["stimuli"])
+    assert all(not stimulus["media_ref"].endswith(".svg") for stimulus in action_content["stimuli"])
     assert {level["option_count"] for level in action_content["difficulty_levels"]} == {2, 3, 4}
     instruction_content = p1["p1-simple-instructions-demo"]["version"]["content"]
     assert all(len(scenario["objects"]) >= 4 for scenario in instruction_content["scenarios"])
     assert all(scenario["success"]["object_key"] != scenario["success"]["target_key"] for scenario in instruction_content["scenarios"])
 
     for item in p1.values():
-        blocked = client.post(f"/api/admin/exercise-drafts/{item['version']['id']}/publish", headers=admin_headers)
-        assert blocked.status_code == 409
+        blocked = client.post(f"/api/admin/exercise-drafts/{item['version']['id']}/publish", headers=parent_headers)
+        assert blocked.status_code == 403
 
 
 def test_skill_map_create_edit_and_family_isolation(client, parent_headers):

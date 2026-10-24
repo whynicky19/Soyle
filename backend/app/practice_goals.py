@@ -26,7 +26,9 @@ PRACTICE_GOAL_TEMPLATES = (
         "target_outcome": "Выбирает 5 знакомых предметов в спокойной игре доступным способом.",
         "accepted_responses": ["нажатие на изображение", "указательный жест", "взгляд с подтверждением взрослого"],
         "default_help_level": "full",
-        "matching_targets": ["animals", "food", "toys"],
+        "matching_targets": ["animals", "food", "toys", "body", "clothes", "household",
+                             "p15-nouns-animals", "p15-nouns-food", "p15-nouns-toys",
+                             "p15-nouns-body", "p15-nouns-clothing", "p15-nouns-home"],
         "matching_mechanics": ["auditory_choice"],
     },
     {
@@ -62,7 +64,7 @@ PRACTICE_GOAL_TEMPLATES = (
         "target_outcome": "Использует сообщение о помощи в игре или бытовой ситуации.",
         "accepted_responses": ["AAC-карточка", "жест", "слово или приближённое слово"],
         "default_help_level": "minimal",
-        "matching_targets": ["help", "request"],
+        "matching_targets": ["help"],
         "matching_mechanics": ["guided_aac"],
     },
     {
@@ -144,17 +146,25 @@ def record_goal_history(db, goal: dict, event_type: str, changed_by: int) -> Non
 
 
 def list_templates(db) -> list[dict]:
-    return [decode_template(row) for row in db.execute(
+    templates = [decode_template(row) for row in db.execute(
         "SELECT * FROM practice_goal_templates WHERE status='available' ORDER BY position,id"
     ).fetchall()]
+    for template in templates:
+        template["available_exercise_count"] = len(_related_exercises(db, template))
+    return templates
+
+
+def exercise_matches_goal(exercise: dict, goal: dict) -> bool:
+    """Shared contract for family goals, specialist recommendations and plans."""
+    return (exercise["module"] != "motor"
+            and exercise["target"] in goal["matching_targets"]
+            and exercise["engine"]["mechanic"] in goal["matching_mechanics"])
 
 
 def _related_exercises(db, goal: dict) -> list[dict]:
     # Local import prevents a migration-time import cycle.
     from .exercise_engine import published_exercise_rows
 
-    targets = set(goal["matching_targets"])
-    mechanics = set(goal["matching_mechanics"])
     return [
         {
             "id": exercise["id"],
@@ -165,9 +175,7 @@ def _related_exercises(db, goal: dict) -> list[dict]:
             "exercise_version": exercise["engine"]["version"],
         }
         for exercise in published_exercise_rows(db)
-        if exercise["module"] != "motor"
-        and exercise["target"] in targets
-        and exercise["engine"]["mechanic"] in mechanics
+        if exercise_matches_goal(exercise, goal)
     ]
 
 

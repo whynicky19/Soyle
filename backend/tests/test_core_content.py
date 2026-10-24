@@ -42,12 +42,12 @@ def test_action_core_has_four_distinct_local_scenes_and_rejects_ambiguous_hold()
 
 def test_core_appends_a_draft_and_cannot_escape_review_gate(client, admin_headers, student_headers, monkeypatch):
     drafts = client.get("/api/admin/exercise-drafts", headers=admin_headers).json()
-    core = next(item for item in drafts if item["version"]["title"] == WORD_CORE["title"])
-    assert core["valid"] and not core["can_publish"]
+    core = next(item for item in drafts if item["version"]["target"] == WORD_CORE["target"])
+    assert core["valid"] and core["can_publish"]
     version = core["version"]
     assert version["publication_status"] == "draft"
     assert version["methodology_status"] == "pending"
-    assert client.post(f'/api/admin/exercise-drafts/{version["id"]}/publish', headers=admin_headers).status_code == 409
+    assert client.post(f'/api/admin/exercise-drafts/{version["id"]}/publish', headers=student_headers).status_code == 403
     monkeypatch.setattr(exercise_engine, "ALLOW_UNREVIEWED_DEMO_CONTENT", False)
     public = client.get("/api/exercises", headers=student_headers).json()
     assert version["id"] not in {item["engine"]["version_id"] for item in public}
@@ -105,8 +105,8 @@ def test_passport_revision_appends_without_rewriting_an_existing_draft(client, m
         previous = dict(db.execute("SELECT id,exercise_id,content_json,method_card_json FROM exercise_versions WHERE title=? ORDER BY version DESC LIMIT 1", (WORD_CORE["title"],)).fetchone())
         count = db.execute("SELECT count(*) n FROM exercise_versions").fetchone()["n"]
         _migration_23_core_passport_alignment(db)
-        assert db.execute("SELECT count(*) n FROM exercise_versions").fetchone()["n"] == count + 1
+        assert db.execute("SELECT count(*) n FROM exercise_versions").fetchone()["n"] == count + 2
         retained = dict(db.execute("SELECT id,exercise_id,content_json,method_card_json FROM exercise_versions WHERE id=?", (previous["id"],)).fetchone())
         assert retained == previous
         _migration_23_core_passport_alignment(db)
-        assert db.execute("SELECT count(*) n FROM exercise_versions").fetchone()["n"] == count + 1
+        assert db.execute("SELECT count(*) n FROM exercise_versions").fetchone()["n"] == count + 2

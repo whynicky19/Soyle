@@ -3,17 +3,17 @@
 import Image from "next/image";
 import { ParentSpecialistAdvice } from "./ParentSpecialistAdvice";
 import { ArrowRight, BookOpen, Check, ChevronRight, Heart, Lightbulb, MessageCircle, Settings, TrendingUp, UserRound } from "lucide-react";
-import type { Child, Dashboard, LearningSession, Exercise } from "@/lib/api";
+import type { Child, Dashboard, LearningSession, Exercise, AdaptivePlan } from "@/lib/api";
 
 type Destination = "parent" | "guides" | "progress" | "goals" | "world" | "aac" | "games" | "settings";
 
-export function ParentOverview({ child, dashboard, activeSession, onStartSession, onResume, onNavigate, exercises, onExercise, onOpenSpecialist }:  { child?: Child; dashboard: Dashboard | null; activeSession: LearningSession | null; onStartSession: () => void; onResume: () => void; onNavigate: (screen: Destination) => void; exercises: Exercise[]; onExercise: (exercise: Exercise) => void; onOpenSpecialist: () => void }) {
+export function ParentOverview({ child, dashboard, activeSession, onStartSession, onResume, onNavigate, exercises, onExercise, onOpenSpecialist, onStartPlan }:  { child?: Child; dashboard: Dashboard | null; activeSession: LearningSession | null; onStartSession: () => void; onResume: () => void; onNavigate: (screen: Destination) => void; exercises: Exercise[]; onExercise: (exercise: Exercise) => void; onOpenSpecialist: () => void; onStartPlan: (plan: AdaptivePlan) => Promise<void> }) {
   return <div className="v2-screen v2-parent-overview page-enter">
     <section className="v2-parent-hero">
       <Image src="/app-illustrations/parent-observation-hero.webp" alt="Мама записывает наблюдение, пока ребёнок показывает карточку" fill priority sizes="(max-width: 760px) 100vw, 80vw"/>
       <div className="v2-parent-hero-copy"><span className="v2-kicker"><Heart/> Кабинет родителя</span><h1>Каждый маленький шаг важен</h1><p>Здесь собрана практика {child?.name || "ребёнка"}, ваши наблюдения и материалы для спокойной поддержки дома.</p><div className="v2-parent-hero-actions"><button onClick={() => onNavigate("parent")}>Открыть кабинет <ArrowRight/></button><button onClick={activeSession && activeSession.status !== "completed" ? onResume : onStartSession}>{activeSession && activeSession.status !== "completed" ? "Продолжить занятие" : "Начать занятие"} <ArrowRight/></button></div></div>
     </section>
-    {child && <ParentSpecialistAdvice key={child.id} childId={child.id} exercises={exercises} onExercise={onExercise} onOpenSpecialist={onOpenSpecialist}/>}
+    {child && <ParentSpecialistAdvice key={child.id} childId={child.id} exercises={exercises} onExercise={onExercise} onOpenSpecialist={onOpenSpecialist} onStartPlan={onStartPlan}/>}
     <div className="v2-parent-stat-row" aria-label="Сохранённая практика">
       <div><span><TrendingUp/></span><strong>{dashboard?.week_sessions ?? 0}</strong><small>занятий за неделю</small></div>
       <div><span><Check/></span><strong>{dashboard?.completed_exercise_ids.length ?? 0}</strong><small>заданий с попытками</small></div>
