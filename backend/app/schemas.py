@@ -138,7 +138,30 @@ class LearningTaskCreate(BaseModel):
     correct_order: list[str] = Field(default_factory=list, max_length=4)
     pairs: list[LearningPairCreate] = Field(default_factory=list, max_length=6)
 
+class ObservationSceneCreate(BaseModel):
+    key: str = Field(min_length=2, max_length=80)
+    theme: str = Field(min_length=2, max_length=80)
+    media_ref: str = Field(min_length=5, max_length=300)
+    parts: list[str] = Field(min_length=3, max_length=3)
+    options: list[list[str]] = Field(min_length=3, max_length=3)
+    detail_question: str = Field(min_length=2, max_length=100)
+
+
 class ExerciseDraftContent(BaseModel):
+    presentation: Literal['picture_description'] | None = None
+    scenes: list[ObservationSceneCreate] = Field(default_factory=list, max_length=60)
+    scenario_key: str | None = Field(default=None, max_length=80)
+    title: str | None = Field(default=None, max_length=100)
+    instruction: str | None = Field(default=None, max_length=500)
+    labels: list[str] = Field(default_factory=list, max_length=64)
+    steps: list[str] = Field(default_factory=list, max_length=10)
+    criterion: str | None = Field(default=None, max_length=500)
+    empty_hint: str | None = Field(default=None, max_length=500)
+    incomplete_hint: str | None = Field(default=None, max_length=500)
+    success_hint: str | None = Field(default=None, max_length=500)
+    action_label: str | None = Field(default=None, max_length=100)
+    completion: dict[str, Any] | None = None
+    accepted_sequences: list[list[str]] | None = Field(default=None, max_length=256)
     categories: list[LearningPictureCreate] = Field(default_factory=list, max_length=4)
     sort_items: list[SortItemCreate] = Field(default_factory=list, max_length=60)
     tasks: list[LearningTaskCreate] = Field(default_factory=list, max_length=60)

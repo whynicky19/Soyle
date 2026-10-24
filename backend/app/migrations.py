@@ -978,6 +978,43 @@ def _migration_31_aac_publication_passports(db) -> None:
 
 
 
+def _migration_32_observation_pictures(db) -> None:
+    from .observation_content import OBSERVATION_CONTENT, OBSERVATION_GOAL, observation_method_card
+    template = OBSERVATION_GOAL
+    db.execute("""INSERT INTO practice_goal_templates(
+        template_key,version,title,skill_category,observable_behavior,baseline_prompt,
+        target_outcome,accepted_responses_json,default_help_level,matching_targets_json,
+        matching_mechanics_json,status,position,created_at)
+        VALUES(?,1,?,?,?,?,?,?,?,?,?,'available',10,?) ON CONFLICT(template_key) DO NOTHING""",
+        (template['key'], template['title'], template['skill_category'], template['observable_behavior'],
+         template['baseline_prompt'], template['target_outcome'], json.dumps(template['accepted_responses'], ensure_ascii=False),
+         template['default_help_level'], json.dumps(template['matching_targets']), json.dumps(template['matching_mechanics']), now_iso()))
+    row = db.execute("""SELECT v.* FROM exercise_versions v JOIN exercises e ON e.id=v.exercise_id
+        WHERE e.target='observation' ORDER BY v.version DESC LIMIT 1""").fetchone()
+    if not row:
+        return
+    if json.loads(row['content_json']).get('bank_key') == OBSERVATION_CONTENT['bank_key']:
+        return
+    revision = dict(row)
+    revision.pop('id')
+    revision.update(version=row['version'] + 1, title='Я вижу: опиши картинку',
+        objective='Составлять короткое описание отдельного рисунка из одного, двух или трёх компонентов',
+        instruction=OBSERVATION_CONTENT['instruction'], content_json=json.dumps(OBSERVATION_CONTENT, ensure_ascii=False),
+        method_card_json=json.dumps(observation_method_card(), ensure_ascii=False),
+        prompt_policy_json=json.dumps({'steps': ['listen_word', 'retry', 'model'], 'time_limit': None}),
+        completion_rule_json=json.dumps({'rounds': 12, 'success': 'picture_description_participation', 'refusal_is_valid': True}),
+        review_status='pending', publication_status='draft', admin_review_status='pending',
+        technical_status='automated_passed', methodology_status='pending', accessibility_status='pending', release_status='pending',
+        created_by=None, created_at=now_iso(), published_at=None)
+    fields = list(revision)
+    version_id = db.execute(f"INSERT INTO exercise_versions({','.join(fields)}) VALUES({','.join('?' for _ in fields)}) RETURNING id", tuple(revision[field] for field in fields)).fetchone()['id']
+    for asset in OBSERVATION_CONTENT['asset_registry']:
+        db.execute('INSERT INTO content_assets(media_ref,origin,license,license_status,created_at) VALUES(?,?,?,?,?) ON CONFLICT(media_ref) DO NOTHING',
+            (asset['media_ref'], asset['origin'], asset['license'], asset['license_status'], now_iso()))
+    db.execute("INSERT INTO content_reviews(version_id,stage,decision,comment,reviewer_id,created_at) VALUES(?,'revision','updated',?,NULL,?)",
+        (version_id, 'Новая версия «Я вижу»: 24 рисунка, чередование тем, пошаговое описание. Требуется проверка администратора.', now_iso()))
+
+
 MIGRATIONS = (
     (9, _migration_9_exercise_engine),
     (10, _migration_10_content_contracts),
@@ -1002,6 +1039,7 @@ MIGRATIONS = (
     (29, _migration_29_expanded_practice),
     (30, _migration_30_varied_mechanics),
     (31, _migration_31_aac_publication_passports),
+    (32, _migration_32_observation_pictures),
 )
 LATEST_SCHEMA_VERSION = MIGRATIONS[-1][0]
 

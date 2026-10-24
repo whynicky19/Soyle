@@ -47,7 +47,7 @@ def test_goal_catalog_parent_flow_history_and_version_conflict(client, parent_he
     child = _new_child(client, parent_headers)
     templates = client.get("/api/practice-goal-templates", headers=parent_headers)
     assert templates.status_code == 200
-    assert len(templates.json()) == 10
+    assert len(templates.json()) == 11
     assert "recognise-familiar-examples" in {item["template_key"] for item in templates.json()}
     assert {item["skill_category"] for item in templates.json()} >= {
         "object_understanding", "action_understanding", "instruction_understanding", "aac_use", "self_advocacy",

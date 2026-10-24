@@ -6,7 +6,7 @@ from test_varied_mechanics import isolated_database
 
 def test_aac_passports_are_valid_pending_and_idempotent(client, isolated_database):
     with connect() as db:
-        rows = db.execute("SELECT v.id FROM exercise_versions v JOIN exercises e ON e.id=v.exercise_id WHERE v.mechanic='guided_aac' AND v.publication_status='draft' AND e.is_active=1").fetchall()
+        rows = db.execute("SELECT v.id FROM exercise_versions v JOIN exercises e ON e.id=v.exercise_id WHERE v.mechanic='guided_aac' AND v.publication_status='draft' AND e.is_active=1 AND NOT EXISTS (SELECT 1 FROM exercise_versions newer WHERE newer.exercise_id=v.exercise_id AND newer.version>v.version)").fetchall()
         assert len(rows) == 10
         for row in rows:
             preview = preview_version(db, row['id'])

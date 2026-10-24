@@ -1,0 +1,146 @@
+[
+  {
+    "key": "girl-draws",
+    "tool": "built-in image_gen",
+    "file": "/learning-observation/girl-draws.webp",
+    "prompt": "Use case: scientific-educational. Asset: one standalone 4:3 landscape illustration for a child's picture description exercise. Scene: A young girl drawing a simple house with a red pencil on a sheet of paper at a small desk. The house drawing is clearly visible. Style: polished warm flat vector-like children's book illustration, clean shapes, gentle shading, clear silhouettes, teal/navy/terracotta palette with natural colors. One main actor, one unmistakable action. Frame the entire meaningful scene large, edge-to-edge pale background, no white card, no border, no text, no letters, no collage, no extra actors or competing actions. Age appropriate, calm, anatomically correct. The picture must unambiguously support the Russian phrase: Девочка рисует дом."
+  },
+  {
+    "key": "dog-runs",
+    "tool": "built-in image_gen",
+    "file": "/learning-observation/dog-runs.webp",
+    "prompt": "Use case: scientific-educational. Asset: one standalone 4:3 landscape illustration for a child's picture description exercise. Scene: A friendly brown dog clearly running on a winding park footpath, paws lifted midstride. Style: polished warm flat vector-like children's book illustration, clean shapes, gentle shading, clear silhouettes, teal/navy/terracotta palette with natural colors. One main actor, one unmistakable action. Frame the entire meaningful scene large, edge-to-edge pale background, no white card, no border, no text, no letters, no collage, no extra actors or competing actions. Age appropriate, calm, anatomically correct. The picture must unambiguously support the Russian phrase: Собака бежит по дорожке."
+  },
+  {
+    "key": "dad-washes",
+    "tool": "built-in image_gen",
+    "file": "/learning-observation/dad-washes.webp",
+    "prompt": "Use case: scientific-educational. Asset: one standalone 4:3 landscape illustration for a child's picture description exercise. Scene: A father washing a plate with a sponge at a kitchen sink, clear soapy water and dishes. Style: polished warm flat vector-like children's book illustration, clean shapes, gentle shading, clear silhouettes, teal/navy/terracotta palette with natural colors. One main actor, one unmistakable action. Frame the entire meaningful scene large, edge-to-edge pale background, no white card, no border, no text, no letters, no collage, no extra actors or competing actions. Age appropriate, calm, anatomically correct. The picture must unambiguously support the Russian phrase: Папа моет посуду."
+  },
+  {
+    "key": "boy-kicks",
+    "tool": "built-in image_gen",
+    "file": "/learning-observation/boy-kicks.webp",
+    "prompt": "Use case: scientific-educational. Asset: one standalone 4:3 landscape illustration for a child's picture description exercise. Scene: A young boy kicking a football on a simple grassy playing field, one foot touching the ball. Style: polished warm flat vector-like children's book illustration, clean shapes, gentle shading, clear silhouettes, teal/navy/terracotta palette with natural colors. One main actor, one unmistakable action. Frame the entire meaningful scene large, edge-to-edge pale background, no white card, no border, no text, no letters, no collage, no extra actors or competing actions. Age appropriate, calm, anatomically correct. The picture must unambiguously support the Russian phrase: Мальчик пинает мяч."
+  },
+  {
+    "key": "bird-builds",
+    "tool": "built-in image_gen",
+    "file": "/learning-observation/bird-builds.webp",
+    "prompt": "Use case: scientific-educational. Asset: one standalone 4:3 landscape illustration for a child's picture description exercise. Scene: A small bird placing a twig into a partly built nest on a low branch. Building action obvious. Style: polished warm flat vector-like children's book illustration, clean shapes, gentle shading, clear silhouettes, teal/navy/terracotta palette with natural colors. One main actor, one unmistakable action. Frame the entire meaningful scene large, edge-to-edge pale background, no white card, no border, no text, no letters, no collage, no extra actors or competing actions. Age appropriate, calm, anatomically correct. The picture must unambiguously support the Russian phrase: Птица строит гнездо."
+  },
+  {
+    "key": "grandma-reads",
+    "tool": "built-in image_gen",
+    "file": "/learning-observation/grandma-reads.webp",
+    "prompt": "Use case: scientific-educational. Asset: one standalone 4:3 landscape illustration for a child's picture description exercise. Scene: A grandmother sitting in an armchair reading an open illustrated book, simple warm interior. Style: polished warm flat vector-like children's book illustration, clean shapes, gentle shading, clear silhouettes, teal/navy/terracotta palette with natural colors. One main actor, one unmistakable action. Frame the entire meaningful scene large, edge-to-edge pale background, no white card, no border, no text, no letters, no collage, no extra actors or competing actions. Age appropriate, calm, anatomically correct. The picture must unambiguously support the Russian phrase: Бабушка читает книгу."
+  },
+  {
+    "key": "cat-sleeps",
+    "tool": "built-in image_gen",
+    "file": "/learning-observation/cat-sleeps.webp",
+    "prompt": "Use case: scientific-educational. One standalone 4:3 landscape illustration for a child's picture description exercise. Scene: An orange cat curled up asleep with eyes closed on a soft teal rug, no sofa or bed. Polished warm flat vector-like children's book illustration, clean shapes, gentle shading, clear silhouettes, teal/navy/terracotta palette with natural colors. Single main actor, one unmistakable action. Entire meaningful scene large edge-to-edge pale background, no frame, no white card, no text, no letters, no collage, no other actors or competing actions. Calm, anatomically correct. Must clearly support: Кот спит на коврике."
+  },
+  {
+    "key": "mom-waters",
+    "tool": "built-in image_gen",
+    "file": "/learning-observation/mom-waters.webp",
+    "prompt": "Use case: scientific-educational. One standalone 4:3 landscape illustration for a child's picture description exercise. Scene: A mother watering flowers in a garden with a clearly visible watering can and water droplets. Polished warm flat vector-like children's book illustration, clean shapes, gentle shading, clear silhouettes, teal/navy/terracotta palette with natural colors. Single main actor, one unmistakable action. Entire meaningful scene large edge-to-edge pale background, no frame, no white card, no text, no letters, no collage, no other actors or competing actions. Calm, anatomically correct. Must clearly support: Мама поливает цветы."
+  },
+  {
+    "key": "girl-jumps",
+    "tool": "built-in image_gen",
+    "file": "/learning-observation/girl-jumps.webp",
+    "prompt": "Use case: scientific-educational. One standalone 4:3 landscape illustration for a child's picture description exercise. Scene: A girl jumping over a skipping rope outdoors, rope passing clearly under both raised feet. Polished warm flat vector-like children's book illustration, clean shapes, gentle shading, clear silhouettes, teal/navy/terracotta palette with natural colors. Single main actor, one unmistakable action. Entire meaningful scene large edge-to-edge pale background, no frame, no white card, no text, no letters, no collage, no other actors or competing actions. Calm, anatomically correct. Must clearly support: Девочка прыгает через скакалку."
+  },
+  {
+    "key": "grandpa-fixes",
+    "tool": "built-in image_gen",
+    "file": "/learning-observation/grandpa-fixes.webp",
+    "prompt": "Use case: scientific-educational. One standalone 4:3 landscape illustration for a child's picture description exercise. Scene: A grandfather carefully tightening a screw in a wooden chair with a screwdriver. Clear chair, no other furniture. Polished warm flat vector-like children's book illustration, clean shapes, gentle shading, clear silhouettes, teal/navy/terracotta palette with natural colors. Single main actor, one unmistakable action. Entire meaningful scene large edge-to-edge pale background, no frame, no white card, no text, no letters, no collage, no other actors or competing actions. Calm, anatomically correct. Must clearly support: Дедушка чинит стул."
+  },
+  {
+    "key": "boy-builds",
+    "tool": "built-in image_gen",
+    "file": "/learning-observation/boy-builds.webp",
+    "prompt": "Use case: scientific-educational. One standalone 4:3 landscape illustration for a child's picture description exercise. Scene: A boy stacking colorful wooden blocks into a tall tower on the floor, placing the top block. Polished warm flat vector-like children's book illustration, clean shapes, gentle shading, clear silhouettes, teal/navy/terracotta palette with natural colors. Single main actor, one unmistakable action. Entire meaningful scene large edge-to-edge pale background, no frame, no white card, no text, no letters, no collage, no other actors or competing actions. Calm, anatomically correct. Must clearly support: Мальчик строит башню."
+  },
+  {
+    "key": "girl-feeds",
+    "tool": "built-in image_gen",
+    "file": "/learning-observation/girl-feeds.webp",
+    "prompt": "Use case: scientific-educational. One standalone 4:3 landscape illustration for a child's picture description exercise. Scene: A girl dropping fish food into a clear fish tank with three small fish. Simple home scene. Polished warm flat vector-like children's book illustration, clean shapes, gentle shading, clear silhouettes, teal/navy/terracotta palette with natural colors. Single main actor, one unmistakable action. Entire meaningful scene large edge-to-edge pale background, no frame, no white card, no text, no letters, no collage, no other actors or competing actions. Calm, anatomically correct. Must clearly support: Девочка кормит рыбок."
+  },
+  {
+    "key": "rabbit-eats",
+    "tool": "built-in image_gen",
+    "file": "/learning-observation/rabbit-eats.webp",
+    "prompt": "Use case: scientific-educational. One standalone 4:3 landscape illustration for a child's picture description exercise. Scene: A white rabbit nibbling a bright orange carrot held in its paws, minimal garden setting. Polished warm flat vector-like children's book illustration, clean shapes, gentle shading, clear silhouettes, teal/navy/terracotta palette with natural colors. Single main actor, one unmistakable action. Entire meaningful scene large edge-to-edge pale background, no frame, no white card, no text, no letters, no collage, no other actors or competing actions. Calm, anatomically correct. Must clearly support: Кролик ест морковь."
+  },
+  {
+    "key": "boy-plants",
+    "tool": "built-in image_gen",
+    "file": "/learning-observation/boy-plants.webp",
+    "prompt": "Use case: scientific-educational. One standalone 4:3 landscape illustration for a child's picture description exercise. Scene: A boy placing a small tree sapling into a hole in soil, shovel resting nearby. Planting is obvious. Polished warm flat vector-like children's book illustration, clean shapes, gentle shading, clear silhouettes, teal/navy/terracotta palette with natural colors. Single main actor, one unmistakable action. Entire meaningful scene large edge-to-edge pale background, no frame, no white card, no text, no letters, no collage, no other actors or competing actions. Calm, anatomically correct. Must clearly support: Мальчик сажает дерево."
+  },
+  {
+    "key": "dad-cycles",
+    "tool": "built-in image_gen",
+    "file": "/learning-observation/dad-cycles.webp",
+    "prompt": "Use case: scientific-educational. One standalone 4:3 landscape illustration for a child's picture description exercise. Scene: A father wearing a helmet riding a bicycle along a simple path, both hands on handlebars. Polished warm flat vector-like children's book illustration, clean shapes, gentle shading, clear silhouettes, teal/navy/terracotta palette with natural colors. Single main actor, one unmistakable action. Entire meaningful scene large edge-to-edge pale background, no frame, no white card, no text, no letters, no collage, no other actors or competing actions. Calm, anatomically correct. Must clearly support: Папа едет на велосипеде."
+  },
+  {
+    "key": "mom-cooks",
+    "tool": "built-in image_gen",
+    "file": "/learning-observation/mom-cooks.webp",
+    "prompt": "Use case: scientific-educational. One standalone 4:3 landscape illustration for a child's picture description exercise. Scene: A mother stirring soup in a saucepan on a stove, visible carrot pieces and spoon. Calm kitchen. Polished warm flat vector-like children's book illustration, clean shapes, gentle shading, clear silhouettes, teal/navy/terracotta palette with natural colors. Single main actor, one unmistakable action. Entire meaningful scene large edge-to-edge pale background, no frame, no white card, no text, no letters, no collage, no other actors or competing actions. Calm, anatomically correct. Must clearly support: Мама готовит суп."
+  },
+  {
+    "key": "girl-rolls",
+    "tool": "built-in image_gen",
+    "file": "/learning-observation/girl-rolls.webp",
+    "prompt": "Use case: scientific-educational. One standalone 4:3 landscape illustration for a child's picture description exercise. Scene: A girl pushing a small red toy car with her hand along a simple toy road on the floor. Polished warm flat vector-like children's book illustration, clean shapes, gentle shading, clear silhouettes, teal/navy/terracotta palette with natural colors. Single main actor, one unmistakable action. Entire meaningful scene large edge-to-edge pale background, no frame, no white card, no text, no letters, no collage, no other actors or competing actions. Calm, anatomically correct. Must clearly support: Девочка катает машинку."
+  },
+  {
+    "key": "grandpa-plays",
+    "tool": "built-in image_gen",
+    "file": "/learning-observation/grandpa-plays.webp",
+    "prompt": "Use case: scientific-educational. One standalone 4:3 landscape illustration for a child's picture description exercise. Scene: A grandfather seated on a stool strumming an acoustic guitar, clear hand positions, simple background. Polished warm flat vector-like children's book illustration, clean shapes, gentle shading, clear silhouettes, teal/navy/terracotta palette with natural colors. Single main actor, one unmistakable action. Entire meaningful scene large edge-to-edge pale background, no frame, no white card, no text, no letters, no collage, no other actors or competing actions. Calm, anatomically correct. Must clearly support: Дедушка играет на гитаре."
+  },
+  {
+    "key": "horse-drinks",
+    "tool": "built-in image_gen",
+    "file": "/learning-observation/horse-drinks.webp",
+    "prompt": "Use case: scientific-educational. One standalone 4:3 landscape illustration for a child's picture description exercise. Scene: A calm horse lowering its muzzle to drink from a shallow water trough, clear visible water. Polished warm flat vector-like children's book illustration, clean shapes, gentle shading, clear silhouettes, teal/navy/terracotta palette with natural colors. Single main actor, one unmistakable action. Entire meaningful scene large edge-to-edge pale background, no frame, no white card, no text, no letters, no collage, no other actors or competing actions. Calm, anatomically correct. Must clearly support: Лошадь пьёт воду."
+  },
+  {
+    "key": "girl-collects",
+    "tool": "built-in image_gen",
+    "file": "/learning-observation/girl-collects.webp",
+    "prompt": "Use case: scientific-educational. One standalone 4:3 landscape illustration for a child's picture description exercise. Scene: A girl collecting colorful fallen autumn leaves into a small basket in a park. Polished warm flat vector-like children's book illustration, clean shapes, gentle shading, clear silhouettes, teal/navy/terracotta palette with natural colors. Single main actor, one unmistakable action. Entire meaningful scene large edge-to-edge pale background, no frame, no white card, no text, no letters, no collage, no other actors or competing actions. Calm, anatomically correct. Must clearly support: Девочка собирает листья."
+  },
+  {
+    "key": "boy-swims",
+    "tool": "built-in image_gen",
+    "file": "/learning-observation/boy-swims.webp",
+    "prompt": "Use case: scientific-educational. One standalone 4:3 landscape illustration for a child's picture description exercise. Scene: A boy swimming with a kickboard in a shallow blue swimming pool, edge tiles clearly visible, calm supervision implied offscreen. Polished warm flat vector-like children's book illustration, clean shapes, gentle shading, clear silhouettes, teal/navy/terracotta palette with natural colors. Single main actor, one unmistakable action. Entire meaningful scene large edge-to-edge pale background, no frame, no white card, no text, no letters, no collage, no other actors or competing actions. Calm, anatomically correct. Must clearly support: Мальчик плывёт в бассейне."
+  },
+  {
+    "key": "boy-folds",
+    "tool": "built-in image_gen",
+    "file": "/learning-observation/boy-folds.webp",
+    "prompt": "Use case: scientific-educational. One standalone 4:3 landscape illustration for a child's picture description exercise. Scene: A boy carefully folding a blue T-shirt on a low table, neat pile of folded clothes beside it. Polished warm flat vector-like children's book illustration, clean shapes, gentle shading, clear silhouettes, teal/navy/terracotta palette with natural colors. Single main actor, one unmistakable action. Entire meaningful scene large edge-to-edge pale background, no frame, no white card, no text, no letters, no collage, no other actors or competing actions. Calm, anatomically correct. Must clearly support: Мальчик складывает одежду."
+  },
+  {
+    "key": "dad-flies",
+    "tool": "built-in image_gen",
+    "file": "/learning-observation/dad-flies.webp",
+    "prompt": "Use case: scientific-educational. One standalone 4:3 landscape illustration for a child's picture description exercise. Scene: A father holding the spool and string of a colorful kite flying high on a simple windy meadow, kite clearly connected by string. Polished warm flat vector-like children's book illustration, clean shapes, gentle shading, clear silhouettes, teal/navy/terracotta palette with natural colors. Single main actor, one unmistakable action. Entire meaningful scene large edge-to-edge pale background, no frame, no white card, no text, no letters, no collage, no other actors or competing actions. Calm, anatomically correct. Must clearly support: Папа запускает воздушного змея."
+  },
+  {
+    "key": "mom-photos",
+    "tool": "built-in image_gen",
+    "file": "/learning-observation/mom-photos.webp",
+    "prompt": "Use case: scientific-educational. One standalone 4:3 landscape illustration for a child's picture description exercise. Scene: A mother aiming a camera at a single butterfly resting on a flower, both camera and butterfly clearly shown. Polished warm flat vector-like children's book illustration, clean shapes, gentle shading, clear silhouettes, teal/navy/terracotta palette with natural colors. Single main actor, one unmistakable action. Entire meaningful scene large edge-to-edge pale background, no frame, no white card, no text, no letters, no collage, no other actors or competing actions. Calm, anatomically correct. Must clearly support: Мама фотографирует бабочку."
+  }
+]

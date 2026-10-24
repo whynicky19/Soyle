@@ -1,5 +1,7 @@
 "use client";
 
+import { ObservationExercise } from "./ObservationExercise";
+import type { ObservationContent } from "@/lib/observationRuntime";
 import { VariedExerciseRunner } from "./VariedExerciseRunner";
 import { variedMechanics, type VariedContent, type VariedMechanic } from "@/lib/variedRuntime";
 import { PracticeLength } from "@/components/PracticeLength";
@@ -37,7 +39,7 @@ export type DraftExerciseVersion = {
   accessibility_status?: string;
   release_status?: string;
   method_card?: ExerciseMethodCard;
-  content: VariedContent & {
+  content: VariedContent & ObservationContent & {
     exemplar_policy?: "matched_set";
     bank_key?: string;
     round_choices?: number[];
@@ -89,7 +91,9 @@ export function DraftExercisePreview({ version, onClose, onSpeak }: { version: D
   return <section className="draft-runner-shell" aria-label={`Предпросмотр: ${version.title}`}>
     <header><div><span className="kicker">DRAFT · ТОЛЬКО ПРЕДПРОСМОТР</span><h2>{version.title}</h2><p>{version.objective}</p></div><button type="button" className="small-button" onClick={onClose}><CircleX size={17}/> Закрыть</button></header>
     <div className="draft-safety-note"><ShieldCheck size={19}/><span>Результат не сохраняется. Задание станет доступно ребёнку после проверки и публикации администратором.</span></div>
-    {variedMechanics.includes(version.mechanic)
+    {version.content.presentation === "picture_description"
+      ? <ObservationExercise content={version.content} soundEnabled onSpeak={onSpeak} onBack={onClose} onComplete={async () => ({preview: true})}/>
+      : variedMechanics.includes(version.mechanic)
       ? <VariedExerciseRunner mechanic={version.mechanic as VariedMechanic} content={version.content} soundEnabled onSpeak={onSpeak} onBack={onClose} onComplete={async () => ({preview: true})}/>
       : version.mechanic === "tap_instruction"
       ? <TapInstructionPreview version={version} onSpeak={onSpeak}/>

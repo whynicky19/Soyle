@@ -3,8 +3,20 @@
   "base_rate_wpm": 148,
   "clips": [
     {
+      "text": "Бабочка",
+      "file": "bb88cfd905117a90fe84b4e72e5907eefe834e2aa9839a881d29e8c6db20ca52.wav"
+    },
+    {
       "text": "Бабушка",
       "file": "4885e03aad23ec0743b2831ca54ec06686066d7d96f6404e1d91aff674417661.wav"
+    },
+    {
+      "text": "Бабушка читает",
+      "file": "89d832e575049ecdf7efc9f783a478370ceb49de329945b9fa65620d277738c3.wav"
+    },
+    {
+      "text": "Бабушка читает книгу",
+      "file": "7b2cfb5d7aac4974f601ad045c8eb4e4529597c06da9e1f932cc95a0f7ea034e.wav"
     },
     {
       "text": "Банан",
@@ -33,6 +45,10 @@
     {
       "text": "Барабан",
       "file": "ba08a7ff634fb75cc0b8dc4b9ec06e6963b79443734f38baac53d9dee93d2a52.wav"
+    },
+    {
+      "text": "Белка",
+      "file": "5b94fc248c2c44f081dc85f85c6984696570c2cb72d458c123bdc5a52d5407d7.wav"
     },
     {
       "text": "Ботинки",
@@ -93,6 +109,18 @@
     {
       "text": "Выбери предмет, затем действие, для которого он нужен.",
       "file": "f54b89ba5cb62f5d9c44f63c4a5bc1794434de517d3f8a24978324dc5214d75b.wav"
+    },
+    {
+      "text": "Где бежит?",
+      "file": "01c8fd11a03874544b6314af222cc3ccedc1a3733a79b26c6074466041a36f5d.wav"
+    },
+    {
+      "text": "Где плывёт?",
+      "file": "a138562aaf5e33050c4c8c5b20615f7897306dcd06e4088b1e83ce56668502c2.wav"
+    },
+    {
+      "text": "Где спит?",
+      "file": "c622a92a59464958b4970e3bddff075b00e9dcd329ff06105e8c1c7d4d3eb1e3.wav"
     },
     {
       "text": "Где?",
@@ -179,8 +207,68 @@
       "file": "2b864a7a536758e7ee4a9ffc373be0843488feeea6bf4707147c2ffa2ead00dd.wav"
     },
     {
+      "text": "Девочка",
+      "file": "35a404b2ec6efd0dab49fe83cacab66c045b246e7afd7f742541793f76b0b1a6.wav"
+    },
+    {
+      "text": "Девочка катает",
+      "file": "7b2774fb36f952388265da19c999024ca383c1cc391de5a717bedb216209734a.wav"
+    },
+    {
+      "text": "Девочка катает машинку",
+      "file": "1539542174dc9d8b750329faac3980da721556a4a0c31b2abe989322d342cabc.wav"
+    },
+    {
+      "text": "Девочка кормит",
+      "file": "0d481b3d810e483048d0672cfcda7a33717874c4cc5a67a5583e54b15446c6af.wav"
+    },
+    {
+      "text": "Девочка кормит рыбок",
+      "file": "adf29830ffa13f4f062e87ca6560ff7037ab0b5c4163206d49fe92fef5487e8d.wav"
+    },
+    {
+      "text": "Девочка прыгает",
+      "file": "675681ac4c8175a3479ac10427ad4b17c10b1758fd0b646548903e7921ce9dcf.wav"
+    },
+    {
+      "text": "Девочка прыгает через скакалку",
+      "file": "819c9e4873c79999287ee4a43453df95f867c088595608a923e550bf7837bf40.wav"
+    },
+    {
+      "text": "Девочка рисует",
+      "file": "d7fff0794c522b3296cc3e2b18b6127467bf3bde411fb15ba17dc0b70d81d627.wav"
+    },
+    {
+      "text": "Девочка рисует дом",
+      "file": "12233952f3ee047d6a46efa4b98fa26dcc0327e94c7acfdafb6894dcbe38e781.wav"
+    },
+    {
+      "text": "Девочка собирает",
+      "file": "e018777bb05811c766c901c19d46c08d33a142fc258c6318b6fb50e37ec44373.wav"
+    },
+    {
+      "text": "Девочка собирает листья",
+      "file": "db8d543d46af40ee56b04c0b3a900328b046ae208c8097ace295c5c8c18b4519.wav"
+    },
+    {
       "text": "Дедушка",
       "file": "ec5e408258f821f8296f00e9bb981a05f9cc9b9d7451bdb7ff9e1da64ce4cf5f.wav"
+    },
+    {
+      "text": "Дедушка играет",
+      "file": "bf9b77f04b462f60befaa262dd820f418af82cc6beaa74bdd77693d64f0e16f0.wav"
+    },
+    {
+      "text": "Дедушка играет на гитаре",
+      "file": "96983998fb92d3a8ecbde5b4e126b49a4959f68e4ef66e1c5e02a404aa8b03c1.wav"
+    },
+    {
+      "text": "Дедушка чинит",
+      "file": "b39198e54062494b17e11703289166ae76aae1b3fb4f6720f67048c5bf502d36.wav"
+    },
+    {
+      "text": "Дедушка чинит стул",
+      "file": "4289d258df9ef7df1c87666b39d8869a3918988db1c11a4d26df416c71bb33a7.wav"
     },
     {
       "text": "Еда",
@@ -215,6 +303,10 @@
       "file": "774a0d800f610bbd7f1d9096c4f572308b9a0eabe60a92e591a1bf033ffa2b35.wav"
     },
     {
+      "text": "Как?",
+      "file": "15ce1ccda5fc5fd3ca3f63385493874bbdff68ccd38ea106c8448a4d9f72bc50.wav"
+    },
+    {
       "text": "Каша",
       "file": "b7eebbfccc55c0aa8250e0d391a6a9924dbdd1ef3e1e2b15bd4a81bb7b778cda.wav"
     },
@@ -243,6 +335,14 @@
       "file": "8ee6e46bac903631d12eb893f0141433590b005eb5d601fd55964ae48509a88f.wav"
     },
     {
+      "text": "Кого кормит?",
+      "file": "3b22f088833dc63f8bc6ecbee71f3ce1c86565e30fedcb2700fd89bb6f8a5a0f.wav"
+    },
+    {
+      "text": "Кого фотографирует?",
+      "file": "2155e5071faf8481901a3176b2534fed3dfa65c31fcee24c0bcacf2daca8421d.wav"
+    },
+    {
       "text": "Коза",
       "file": "99a818469a5916e2b02615dadd9e876ecb3c887d71af3123f83e9356718e81b4.wav"
     },
@@ -267,6 +367,14 @@
       "file": "622f817517ce94d90f17cf17f3273a3547b75627b6c4d07241fd4877ff45bc0c.wav"
     },
     {
+      "text": "Кот спит",
+      "file": "eaefac208660768d268635b0c4b2382527d9ed2f7de93cb998b7a9a91acc0042.wav"
+    },
+    {
+      "text": "Кот спит на коврике",
+      "file": "ee2d18e86b0604b1c6cef684ec344287a78eaf09808d9f87edd6be87bda438dd.wav"
+    },
+    {
       "text": "Краски",
       "file": "57a9228b040e5282f4d8b5ba15961f9ecb28028e3d87c35210615ec21ea1f0b2.wav"
     },
@@ -277,6 +385,14 @@
     {
       "text": "Кролик",
       "file": "296b774d76c1cdd49b5dbb48e3257653f6db3983c2a5ad804f07ae5cea4255df.wav"
+    },
+    {
+      "text": "Кролик ест",
+      "file": "7cb57c72fd2884b952fb9888c067484badcb2b3245099e3e8b445b09fcdf1753.wav"
+    },
+    {
+      "text": "Кролик ест морковь",
+      "file": "943ac9bab4ab576da574411965363cf044976e18d4f042b48a65e89f6cf23bf0.wav"
     },
     {
       "text": "Кто бежит?",
@@ -301,6 +417,10 @@
     {
       "text": "Кто моет руки?",
       "file": "cf1746e3aaa0e8fdb44c55c76fdabf467d71afcd452b8cacc17be04eb1a3c182.wav"
+    },
+    {
+      "text": "Кто на картинке?",
+      "file": "07eb7aaa819bc729152f0c3d00f1044abd86e43a6e9afa8f39e43b39181e4b6f.wav"
     },
     {
       "text": "Кто пьёт?",
@@ -403,16 +523,92 @@
       "file": "95cc4bdbb1b0afe116bbfdde277951269d9ee13fda6da9a1454d6f566f6c9802.wav"
     },
     {
+      "text": "Лошадь пьёт",
+      "file": "cb893439c913950462d9b21bb9d19a311c9610b1832d9a7a4b269322b9b8ec43.wav"
+    },
+    {
+      "text": "Лошадь пьёт воду",
+      "file": "91c33c93e545deecebca27242d76ce91c2fe9c4d3184106aa198097b5ae67606.wav"
+    },
+    {
+      "text": "Мальчик",
+      "file": "df9a6eec311a342f86e4832ebd0c17a6788764cd757d3e873752d3780ca39c85.wav"
+    },
+    {
+      "text": "Мальчик пинает",
+      "file": "199e665cc20ae773cc71fa0e5de60110d58f2ac9f47434ade767dd74a4764c76.wav"
+    },
+    {
+      "text": "Мальчик пинает мяч",
+      "file": "d679202fef11b5bc513a83e5139e5509b702309745d88e1a71e1b51e79bcf41c.wav"
+    },
+    {
+      "text": "Мальчик плывёт",
+      "file": "fd2d77b28b76e916eb913ad1cf6c928345b46646bbaad73d8cfc6a097b3eb256.wav"
+    },
+    {
+      "text": "Мальчик плывёт в бассейне",
+      "file": "484023b43292568f03e883241f2faf5958283e6ebef2c18c1f400ae7cfef5566.wav"
+    },
+    {
+      "text": "Мальчик сажает",
+      "file": "1391b7d262e2d5f1f65d1bcefe7e1411c71cf0af8d32742e1a47a703c9fda826.wav"
+    },
+    {
+      "text": "Мальчик сажает дерево",
+      "file": "812f1ef3b871c15c045e01ec99bf01a391ceab4046e7ae6dad7e3d7b320c3fc1.wav"
+    },
+    {
+      "text": "Мальчик складывает",
+      "file": "3fb4f99ad1265f2dcab5652464dec034a2e9c706b59af77a1a97365f63a76ed5.wav"
+    },
+    {
+      "text": "Мальчик складывает одежду",
+      "file": "99290efb06ef02635feedbaa582e04ad108240ab1b49d03f2d6b88070299480b.wav"
+    },
+    {
+      "text": "Мальчик строит",
+      "file": "eea0ba1109557ff134e126897825a3816cbe61e888d8fef6222f143c600c0c6b.wav"
+    },
+    {
+      "text": "Мальчик строит башню",
+      "file": "7173fff9b0cbe517734c76ebf90668018aa4d78d7fff861ee0da23de05a9358d.wav"
+    },
+    {
       "text": "Мама",
       "file": "4ad0802d5186f59dd69156f7f0979d40df04596034c368406bd085f4fb20f935.wav"
+    },
+    {
+      "text": "Мама готовит",
+      "file": "11de888ac11a08e1cce7a70657fd790489d8001f1a026a35dcc3cc24002cc145.wav"
+    },
+    {
+      "text": "Мама готовит суп",
+      "file": "fa0027b51be04c923046b273de98fde23140536db9c4cab89e51cb86d07a46e6.wav"
     },
     {
       "text": "Мама подошла к полке. Сначала возьмём мишку. Потом передадим его Мише.",
       "file": "e470a48642374672702adb63557b6eda5465b80d08ccc6a2ce2dbd98742b4920.wav"
     },
     {
+      "text": "Мама поливает",
+      "file": "35a33640391e540b5ff6d7532a4a7224c2fe730e1b8369d1392e9ece69e7e3b7.wav"
+    },
+    {
+      "text": "Мама поливает цветы",
+      "file": "828e9eb55867bba19fce11eed2e8e0a4834acf47b28912e0183daa9abb50290b.wav"
+    },
+    {
       "text": "Мама услышала просьбу. Сейчас она подойдёт.",
       "file": "3503aca23ee25fd465245317da48e1eb04840032e0c9571e67122ef8ed3247e1.wav"
+    },
+    {
+      "text": "Мама фотографирует",
+      "file": "eb69165974cbb7d5470100f7db0d54ef41eb874ecc1a164c5173914036b94aea.wav"
+    },
+    {
+      "text": "Мама фотографирует бабочку",
+      "file": "175540b428a4eab8290bddfc58d0c09f7ed429bcd341761c57fd2053c3049315.wav"
     },
     {
       "text": "Мама, дай мишку, пожалуйста",
@@ -595,6 +791,14 @@
       "file": "6219923a92f583995b36560d2e2a3e6e07eab64e716b194b8a2212788254bfc5.wav"
     },
     {
+      "text": "На чём едет?",
+      "file": "b717f0b34ffdf3534f76f5f6601ebc574b98bbb2d32fca355940deb42d9a4bf2.wav"
+    },
+    {
+      "text": "На чём играет?",
+      "file": "2392447bf7fa0815b3035a615269ea5eed58a42a1424be8468cbc97843b0a721.wav"
+    },
+    {
       "text": "Нет",
       "file": "71df74f212c1f534c181e5bab6c6be20110022097e3ea4c13ad1b84b1283facf.wav"
     },
@@ -625,6 +829,30 @@
     {
       "text": "Папа",
       "file": "400afa71e6b1fb06ad65e0f560a4c22452f920c24468471171aef2ac956379e6.wav"
+    },
+    {
+      "text": "Папа едет",
+      "file": "6c316dd09a6ebab8087839b0b4934c23276335ec075bc7d4bd0c75a17594e5c5.wav"
+    },
+    {
+      "text": "Папа едет на велосипеде",
+      "file": "99f37d20ec6c4ad0daba92df3c13eb8879b03da8b6c5452253c0e4b4410ddaea.wav"
+    },
+    {
+      "text": "Папа запускает",
+      "file": "ab1d67eaba2b2b784d2c7b8a3e43b08da5868615667c44cff637b98e3b5d78dc.wav"
+    },
+    {
+      "text": "Папа запускает воздушного змея",
+      "file": "4ddd28d16d03e6a1fba2ed155c159b1dd10a708643cd97c3a37830abe23e103a.wav"
+    },
+    {
+      "text": "Папа моет",
+      "file": "eb1f44164cb1252e2e08697a87c835903cb3d1eba50e2c7d31187d2e2e3c9c02.wav"
+    },
+    {
+      "text": "Папа моет посуду",
+      "file": "efc7fe8bf708b17a0aa589820e6ae8171be8baa81f930cd95b20370bd30812b8.wav"
     },
     {
       "text": "Пирамидка",
@@ -771,6 +999,10 @@
       "file": "ca6730546a3c42b7d290e9e3299cfdfc680b2e9ef3d6c467f570f59fa92b3a69.wav"
     },
     {
+      "text": "Посмотри ещё раз. Можно послушать слова или посмотреть образец.",
+      "file": "4e18ac73ab0a2032b4829cef658cd5df0372b36a674f674b436b05e74c992422.wav"
+    },
+    {
       "text": "Посмотри на правую полку. У мишки бирюзовый бантик.",
       "file": "9136a67871a3a8999bb18a4ad35e2f285e1e7856deb056c5be94d3f423214fc9.wav"
     },
@@ -789,6 +1021,18 @@
     {
       "text": "Птица",
       "file": "1037c4afdcc2cdc5088a6011ecc0704b4928cf375180a633a854220197737583.wav"
+    },
+    {
+      "text": "Птица строит",
+      "file": "60218be9a5da2805f8a34af510d21e4939953869b4fc9e08bcca6a8438f6df79.wav"
+    },
+    {
+      "text": "Птица строит гнездо",
+      "file": "55607beaf3649c8c56618925390babd6102ac8cd131cc76b64a5770ae6b81c57.wav"
+    },
+    {
+      "text": "Рассмотри картинку. Кто на ней?",
+      "file": "19bf124cd591c9f5eebeb0868a3bea4d4121ee05fa65db20ce892fe53583b616.wav"
     },
     {
       "text": "Ребёнок ест.",
@@ -887,6 +1131,14 @@
       "file": "19a79090ccaead4cf952b94bfc53b2b0cacc739c4a32c32b0eac7f03718e5f72.wav"
     },
     {
+      "text": "Собака бежит",
+      "file": "038d32911c0b4ea884dbcb640e9ad0b288ddc1d1b14774d75c3dbbf4de90a806.wav"
+    },
+    {
+      "text": "Собака бежит по дорожке",
+      "file": "e3f3d0e652e76a4e7a0b3daaafa5e32623ea6cb3ecf0e362f3b82eaef2b9d9bd.wav"
+    },
+    {
       "text": "Соедини предмет с действием. Выбери предмет, затем подходящую сцену.",
       "file": "9761659273b368a71e8a5d8170f94a816b56da2fe1312669d2c19ccf6bad2983.wav"
     },
@@ -979,12 +1231,84 @@
       "file": "16d2bf1c365821606d2afdb8cd88406e96a996e2bdfdd587918cc92ec38bc29c.wav"
     },
     {
+      "text": "Через что прыгает?",
+      "file": "c49b07d9d9118f0fce530bbb9a5f909f8af86e9c1570e0ed7df448f12aface36.wav"
+    },
+    {
       "text": "Черепаха",
       "file": "6d2e7c755fce2712aaabb3e46e11bc9a62d46d4db9e5796389ca5032ac977ea7.wav"
     },
     {
+      "text": "Что готовит?",
+      "file": "aaeecfd703e94d6b5ee5cd6f5e65aebd6b2e93be96376fb8958e6824a50303a0.wav"
+    },
+    {
+      "text": "Что делает?",
+      "file": "23d7840e8a6c736b69feaf67c824b7eae29d9268b3dcf98073df27f24e649def.wav"
+    },
+    {
+      "text": "Что ест?",
+      "file": "861c4abbe033f6f824f409b9951b4580c9cab4f2d4a0769a56f92b2a93950cd7.wav"
+    },
+    {
+      "text": "Что запускает?",
+      "file": "d07845336a218daa0dcdd5cc977ad5ea3932a15c944a650f8f23ccfca23ecfe4.wav"
+    },
+    {
+      "text": "Что катает?",
+      "file": "d677f60897386dc8bcf5c397c9fe08e20bed32cc4080448b3c967a76ea7002bf.wav"
+    },
+    {
+      "text": "Что моет?",
+      "file": "ce80b406566cdecf631b1ef6845252669c654b2e6002fb4e81ed3f6e1fe0ad7e.wav"
+    },
+    {
+      "text": "Что пинает?",
+      "file": "8dae70a4a7125d2c2efc1dead033ccb547338d3a564fc5d1e13d6cf3c6110463.wav"
+    },
+    {
+      "text": "Что поливает?",
+      "file": "2c8a2a673953e0b072ae7c4080f260a7296c7643ec0a17fc99bb9de38a40b393.wav"
+    },
+    {
+      "text": "Что пьёт?",
+      "file": "e0dd54442f19a4ee898bb0769900a28d5456e47e33d616e4eb0d0574ace0f809.wav"
+    },
+    {
+      "text": "Что рисует?",
+      "file": "18d41663ecb613b2a1535aa061d9dea727cbdc63afaf49beb5406e29cd56e7b4.wav"
+    },
+    {
+      "text": "Что сажает?",
+      "file": "28791b736e4dfebe6d76d1457700e46f61646d559672a724230e724488b431fb.wav"
+    },
+    {
+      "text": "Что складывает?",
+      "file": "292b60e3e6526743f28f4e9396f5506af1a7bc234451c4e72ec7f4acf12a7533.wav"
+    },
+    {
+      "text": "Что собирает?",
+      "file": "25ddd86c08ecf83f7dd5c842b693533c98b2a53d7f51afa9d6e77e03edd30eb3.wav"
+    },
+    {
+      "text": "Что строит?",
+      "file": "5f1f7ded372878e1ab0b6e6b455e87a0ed33d634d7ff2e4644a2c752330c65b9.wav"
+    },
+    {
+      "text": "Что чинит?",
+      "file": "292beac28cf1d47aa4af794d248ebb7d0ade10370ff24cb4e0e79d0dda6d10d2.wav"
+    },
+    {
+      "text": "Что читает?",
+      "file": "45dfd1c22f9f9fac5a5b02f8767088fc62e65056f71d6e0c7c9c4c53f8d9c2d3.wav"
+    },
+    {
       "text": "Что это?",
       "file": "93ca194a733e94b25997d0f6ef05567da23cfd44f4a272694f03104901361d09.wav"
+    },
+    {
+      "text": "Что?",
+      "file": "2b02c510271d783e71074ccc2ca30a62dcc89a81ecefdf65db767c017066bf2a.wav"
     },
     {
       "text": "Шапка",
@@ -1223,12 +1547,40 @@
       "file": "b24538aa93d5dc4926f29e2bd50003bc4a09342a8d94f77daca5c2004e0278ec.wav"
     },
     {
+      "text": "бабочку",
+      "file": "1319fd23de57cea6e1b9b17d83c3df91753a2b21541dd8707330ff58b58d7c08.wav"
+    },
+    {
       "text": "банан",
       "file": "6578daa33153d9bd0733d18cced9fa53a2fa0e7ec3fabf0b24cee22a67ebffb2.wav"
     },
     {
+      "text": "башню",
+      "file": "0bddbc100af5e008da93be9c44c905a83d961956d3db2d0a3c896e06f159a552.wav"
+    },
+    {
+      "text": "бежит",
+      "file": "cae45abbab0b30190685fc21c2cd24c9c970f82b0f5fc3f14ab9962e0b75fc1b.wav"
+    },
+    {
+      "text": "бумагу",
+      "file": "093feee2d8853b4be92d22b87fe697c061ac0d726f21691c91120443d71d39a5.wav"
+    },
+    {
+      "text": "в бассейне",
+      "file": "2ee1bf6baa2de513cb26d030fa0bb8b5433ea49f2985ee8208f0aed19591b073.wav"
+    },
+    {
       "text": "в коробке",
       "file": "cbd2f69541f7b12a70f74835aede1c2c64c5f4648926a4b46551dbda587cabd6.wav"
+    },
+    {
+      "text": "в море",
+      "file": "a609db104e585024824e13b7f7d2b50e9c03de4c39f3450babc177b2f0ac35ea.wav"
+    },
+    {
+      "text": "в реке",
+      "file": "b19c1c3876447c5a32d1c511d6c268f4eef2a88c43b81a5a6f16a22cffce8d7e.wav"
     },
     {
       "text": "вижу",
@@ -1239,12 +1591,64 @@
       "file": "6bf43848908a1bceb9239f098c5869dccd8fab535e1b8731219dc5b93a3dcbed.wav"
     },
     {
+      "text": "воздушного змея",
+      "file": "c150316b8fa2b754cd48521a50fabe3fc447e21dc4d1403afb7c0e08b21bd18e.wav"
+    },
+    {
+      "text": "газету",
+      "file": "6e74a9235c71e2fee7a0b17199662d87b708a3d5737de283d32944b984ea37fb.wav"
+    },
+    {
+      "text": "гнездо",
+      "file": "184c97a7bf7a10b2827ac6ab8bb5e1aca1fbb6a2146954ac3c08a62c18928f06.wav"
+    },
+    {
+      "text": "готовит",
+      "file": "7e4eb5c56cb7c0dec62a5eaf0dafb0ae3a4fede39fcff548f8339dca2fc5f617.wav"
+    },
+    {
+      "text": "грибы",
+      "file": "982eeaa3de746b501ed29cd18a3d3ad260818b3e16c16b7309723e2e5178ac21.wav"
+    },
+    {
       "text": "гулял",
       "file": "95c30bc95ee42ba0b57d4675c39bfbd02da6fc6fd9bb3c9ca650c310ac45e416.wav"
     },
     {
       "text": "гулять",
       "file": "8c104ebd8b446e80ea37de536ac2799efc1b53c859a61812415741f8787874c1.wav"
+    },
+    {
+      "text": "дверь",
+      "file": "6ec2a2cea865eb3cabba866aa32ca7f1da3e236ad655a80904c780b3f7cac54e.wav"
+    },
+    {
+      "text": "дерево",
+      "file": "93997673625d9efb515a588019f23516e7cb6a127b502473ab3605dbffeb85cc.wav"
+    },
+    {
+      "text": "дом",
+      "file": "ce169fcb69404d3feafd2d117c1dd42134ce50b25f456c8bf7f74277f47635aa.wav"
+    },
+    {
+      "text": "дорогу",
+      "file": "faa2d582987e087266b3342eaac1fd50b0462ad65a188c4395dabebd67e377af.wav"
+    },
+    {
+      "text": "едет",
+      "file": "73045016e43187ecf8325af90fb59178bac86076292c19010497e91ec93fc0f9.wav"
+    },
+    {
+      "text": "ест",
+      "file": "fe911031e8c58580d7f7972b68aa751de6275a60a0329468b6d6a04428ed628d.wav"
+    },
+    {
+      "text": "запускает",
+      "file": "2f3ae2c934183553be23d77500a7a5725fa8d35208577a35881dd10075e551bb.wav"
+    },
+    {
+      "text": "играет",
+      "file": "6710c883030b442f6d5cb7fafaf00cd28ffe402f74081062da8a87dc00803c74.wav"
     },
     {
       "text": "играл",
@@ -1255,8 +1659,24 @@
       "file": "995d36e97a0db2e418c54c68f7eb3a7b1133e556d9ad929a523555892659d39d.wav"
     },
     {
+      "text": "игрушки",
+      "file": "a7c83bcb8587ddd982cd669c90b6174ac65b03583ca465af1c01465c6625b093.wav"
+    },
+    {
       "text": "иду",
       "file": "605911bcb035d8148c5265db4d0f2a81661f49291dca0090b3813e6ae9289593.wav"
+    },
+    {
+      "text": "капусту",
+      "file": "e8f92d3f93674a64506dab9bde70d81ff6d57725b165ea3364bca078d5b86994.wav"
+    },
+    {
+      "text": "картошку",
+      "file": "7043537e39bb6497bfb83b82e2177119fd9eef7c5b56d57cff146846862688d8.wav"
+    },
+    {
+      "text": "катает",
+      "file": "969df6a4e80c46c13dda16ebb49cdfc5c2677e9a120cd7e6c68a7d69feabda8a.wav"
     },
     {
       "text": "кашу",
@@ -1267,12 +1687,32 @@
       "file": "ff92b9573d0691893be506f5ebd8778e366c556e9a5bb1a61d869bf073cccd2e.wav"
     },
     {
+      "text": "кормит",
+      "file": "35502993b31f023d9015ff0929d7e1b06f7751cfe92f0ad2c52744b4307341c0.wav"
+    },
+    {
       "text": "кот",
       "file": "6ed6ea7368ca3b6965cac64a474449c79f97bbffe729772e108f33b456ee74af.wav"
     },
     {
+      "text": "кота",
+      "file": "ca195ea48374debe1b22c1bdc007d3315e5e693e1b5d8d79ee6a2c589383aa19.wav"
+    },
+    {
+      "text": "красит",
+      "file": "ba7e0818c56d6fcf7060d12c834dac1976c2c689e38c5a8a60c6fed7e07a4773.wav"
+    },
+    {
       "text": "кровать",
       "file": "e83e44dfc9988dc4a2a25e7b169de9d2be382ca38e3162c99b5bab59c58da107.wav"
+    },
+    {
+      "text": "кролика",
+      "file": "a5d6248cd0b696b4b2d7a68c386f5ac546ba51522b6e0d3efe0e7a5c4ca7af47.wav"
+    },
+    {
+      "text": "кубик",
+      "file": "cd83bec63968bdd3cb38abafd1dc906ca2c757d1300847317a1e0488ea7340c1.wav"
     },
     {
       "text": "куклу",
@@ -1281,6 +1721,18 @@
     {
       "text": "лампа",
       "file": "a444afd48937e5a9fc93a1a733c64d9850fb26dfb0e650d2691592a6d7b6f1d5.wav"
+    },
+    {
+      "text": "летит",
+      "file": "a0c0f1b530e8281952d9fc252f4d8a20f21088cf4fe0a17b6ebd542dcdaac48b.wav"
+    },
+    {
+      "text": "листья",
+      "file": "0ca54e2724edb5a16f35d4e91bd6da8cd29ac50eecd38ac14224dbb5328494a4.wav"
+    },
+    {
+      "text": "ловит",
+      "file": "861f1ca16f6af436154aaf18fb410bf97ee9e41af2d93f7cc74c433ac9073205.wav"
     },
     {
       "text": "ложка",
@@ -1295,24 +1747,168 @@
       "file": "1701e09c1b86f3fae366c261150adc768bd1d4502b7f7f8b0d6a51d21b9e22a4.wav"
     },
     {
+      "text": "машину",
+      "file": "8cdb1d471d9048c431366123ef21ef29635c2f0bd02585a04fdb157af72c1899.wav"
+    },
+    {
+      "text": "моет",
+      "file": "aeabfe9b60a08a258afa4adfb273d6c86c2f62f08fb60053a5f287c87ae9dcdf.wav"
+    },
+    {
+      "text": "молоко",
+      "file": "3dbb90e158413a73dda0af4984a4b941036c2ee7f399713e85259a74c0f3da2d.wav"
+    },
+    {
+      "text": "морковь",
+      "file": "f1f52c16c690719943bb4b239289b6ebf51e9f09f651c7552a1eca2969742314.wav"
+    },
+    {
       "text": "мяч",
       "file": "c15cc917c38fb90d43eeebec41a1e3d1f9738bdb9d2d48d1c81f2cb5f8b1eb77.wav"
+    },
+    {
+      "text": "на барабане",
+      "file": "696a0f5cdb32a5fc76dfe11841cfda31dfed1e581f1c22548e32469eb387c59c.wav"
+    },
+    {
+      "text": "на велосипеде",
+      "file": "1ad9ee91428f0466c4c5c3805ea42bf281bb43e84abd6a0d8c0d3f781f3af0f5.wav"
+    },
+    {
+      "text": "на гитаре",
+      "file": "b15c0961828666cda5f268509af763d9742686c363656617ecd99fdfbccb7c8b.wav"
+    },
+    {
+      "text": "на диване",
+      "file": "a41bc980a52d02d44d5005dcad6d73d4994d0c562157a41a7cbb3fff1895d1e9.wav"
+    },
+    {
+      "text": "на коврике",
+      "file": "149ae0bafa1d6620706adea4ec56295a329263909197b2f1a01168ecba00b941.wav"
+    },
+    {
+      "text": "на машине",
+      "file": "d18672c8a19e316541635677e1391eea3388f46e4495da48669d5a91104eebf6.wav"
+    },
+    {
+      "text": "на пианино",
+      "file": "2e40028ccea1c8e6b2782da071b3154722faf392c2cdd67758278ec8291f41de.wav"
+    },
+    {
+      "text": "на самокате",
+      "file": "1030cefc14b0e94bf457577c809ecd69edf970a6fc0e211328ef4a5a2e471a78.wav"
     },
     {
       "text": "на столе",
       "file": "0b3abf0ac6423a9b2713180baf1feb07aeea86e2c281474da1f1c500028cc2c9.wav"
     },
     {
+      "text": "на стуле",
+      "file": "aad4b61bb642fc6d5dc4ed26b837770347c799ff38ff9b4e2696f0dfeb83ca48.wav"
+    },
+    {
+      "text": "несёт",
+      "file": "5e287317beca67678b5acaf0c591be65a7d7ab269c80406facbde06c30356510.wav"
+    },
+    {
+      "text": "одежду",
+      "file": "d2ebf911a6eff86ce0d03eea7bfb03c716c5cabad8532856b3d0bf4129a13d11.wav"
+    },
+    {
       "text": "пазл",
       "file": "4bdf65bff5a422bcdd1760924c676407c2fdab2e985bc95be45a272fd8cfb941.wav"
+    },
+    {
+      "text": "пинает",
+      "file": "85a3bcc5377d46f859f3453f2802860101a4d2512fc857251b1cf8649099e210.wav"
+    },
+    {
+      "text": "письмо",
+      "file": "e733131af03a1754f46574b411c97e9085798081f4fab3402519981f8248e3ca.wav"
+    },
+    {
+      "text": "плывёт",
+      "file": "84edd529219ec4420cd1214c8488b3778ddbd05e43e90fde9a5aba110934f43a.wav"
+    },
+    {
+      "text": "по дорожке",
+      "file": "5b22850bdeb2be237cd664104624c622ed47851c699ccd771e28ff628355e71b.wav"
+    },
+    {
+      "text": "по песку",
+      "file": "e9612ca7755837321ce9d053aced2c6a8c773e57786fa79b2aa62127185b9849.wav"
+    },
+    {
+      "text": "по снегу",
+      "file": "731f49619bceb6e73c7e2345bd716f113a477bf80a4590e187f0e751bf34fd9e.wav"
     },
     {
       "text": "под стулом",
       "file": "6b305935c8e6d798fc122e2c950ef608945c0b67ba48bf588d3f2c5db5245392.wav"
     },
     {
+      "text": "поливает",
+      "file": "03e2e35a647f03bbf38679eab8e8cc36cebb228ac0c41754d67093a507de033b.wav"
+    },
+    {
+      "text": "посуду",
+      "file": "ad04c1dd7cc9d378ca8905fe94b3c7d1ee4a62340fb8153ae474dd8932bd56be.wav"
+    },
+    {
+      "text": "прыгает",
+      "file": "a62316d79ed1e9ab8bc6e438b03ee485dfbab06758525f0180f4848d3afdf061.wav"
+    },
+    {
+      "text": "птиц",
+      "file": "0d996986b7909b5223ce47ad4e11ffa7e8e730361becb4e80996fb92740ae909.wav"
+    },
+    {
+      "text": "птицу",
+      "file": "822fcdc45128a01b70a921b6543937c1053b8395518be53ff3ef8c7e91b13b13.wav"
+    },
+    {
+      "text": "пьёт",
+      "file": "98d7b5f8a93fc79dcd8b13374bf2d1ef0644fd633d1a1619e669bf6485d2c34c.wav"
+    },
+    {
       "text": "рисовать",
       "file": "e9fdeecf38f2c83a5054986bae14d6e6155ca83aabeeb247410bac63bc190fa8.wav"
+    },
+    {
+      "text": "рисует",
+      "file": "3535d8793a285537e0c2cdda79ee5b1a928450070d9a2b76ad2f5d25e32fcbbf.wav"
+    },
+    {
+      "text": "руки",
+      "file": "9a1fe780341cb746b4f44b26fcf929519c7170d4f5f1ea31ec5dd848374c3faf.wav"
+    },
+    {
+      "text": "рыбок",
+      "file": "6f75270b71dd16bc81c75c08fad5670be713718ad881e3c781cb2275a56f9751.wav"
+    },
+    {
+      "text": "сажает",
+      "file": "b5bf3cf96362a90c79800b74c9abfe6cee075c0ab51e166417b19ba53fa0486e.wav"
+    },
+    {
+      "text": "салат",
+      "file": "5ac48288a1b5e6d72c3d64a3f7662f9f3ca18dab0c378ec0c5149d1fda0d0a9d.wav"
+    },
+    {
+      "text": "самолёт",
+      "file": "141b88c02f8d4e406ee4b51a93ecf14ebdc361f7a147a2a660d655e4dbd28e7a.wav"
+    },
+    {
+      "text": "сидит",
+      "file": "92eb81ba8d4fc08a9e4e93ea038192780085813ddc64ccb028d9ff9fc138837a.wav"
+    },
+    {
+      "text": "складывает",
+      "file": "04e703f58ec487da96ac53f22706b01c7a9066dc54f9a8d3006556f5a4ed2ea5.wav"
+    },
+    {
+      "text": "собирает",
+      "file": "7badcc8797d696c0a8aab48b2227ef36bd22b710001bc00a3076ca5e0b65987e.wav"
     },
     {
       "text": "сок",
@@ -1323,12 +1919,32 @@
       "file": "3bdebefaaae6e07d29337bfaa1028ebe75469ccfa028cadea67d1c9f9c5efd06.wav"
     },
     {
+      "text": "спит",
+      "file": "dbfddcfd1a38d1d15882da6cef9c70f3c018871f084d1bd5db16a71c1aa79299.wav"
+    },
+    {
+      "text": "стоит",
+      "file": "5f4d871cae3871c0ee26bf5e1a88e0e3193148edc0155f8c1588c0d31c52fc58.wav"
+    },
+    {
+      "text": "строит",
+      "file": "a812046b41b8563c3ce9010050ce18aca51dcad398a0c0f3507bec17cc0c4324.wav"
+    },
+    {
       "text": "стул",
       "file": "746ebe6a13bbce9fa99eb57f22316dc78440ef2337213bc37473f952fea2f32a.wav"
     },
     {
       "text": "суп",
       "file": "2addd90cefac48ec7b9896e932ce5598416301b3f9bd53b371ac0d824d1bd548.wav"
+    },
+    {
+      "text": "траву",
+      "file": "fe26edbb0ad915e330da1573acccaf606b61dedaabdfcba1c1e574bb96a7fbcb.wav"
+    },
+    {
+      "text": "фотографирует",
+      "file": "c0f4b1b12d4c5bba77ed8d4f0d5d3bec3acd29eea4eb0403308894d07c4f1cac.wav"
     },
     {
       "text": "хлеб",
@@ -1339,6 +1955,14 @@
       "file": "063fe1a31fef2529eecea25d521ad0d8662a56167b846f12a69df664924c87c2.wav"
     },
     {
+      "text": "цветок",
+      "file": "2e445e40d30fcd7154644119fab46d16a3e13de5e580ea34a388616f683e719c.wav"
+    },
+    {
+      "text": "цветы",
+      "file": "65ab1d464992cf86cc93857b173a39acce5e11db8ad7509de45394a186115801.wav"
+    },
+    {
       "text": "чай",
       "file": "108216dc05db83760b6947ed5ed5a021a0fbfde634757873a05edbde24046a47.wav"
     },
@@ -1347,8 +1971,32 @@
       "file": "27bc3aa579bc0bdc96d11e4dd86b2ee79394865116b770fc204e5ccfb75727c6.wav"
     },
     {
+      "text": "через лужу",
+      "file": "7fa14825592b98ce3e75b95c869e860cbd1f529b967e6f6adfe82ec462cafcce.wav"
+    },
+    {
+      "text": "через обруч",
+      "file": "393884f4a6239049181bdb3a7a66cdb828e547ee6d53df056c02acc25c4a855a.wav"
+    },
+    {
+      "text": "через скакалку",
+      "file": "7854707f6919864aec03127b91d233806842d88db23dcfc125cd51cf98a8b0c6.wav"
+    },
+    {
+      "text": "чинит",
+      "file": "0de792719738010ea226e65ad10123f35ec2ba6fdfe3c1ad1055e14c8ef09ee4.wav"
+    },
+    {
+      "text": "читает",
+      "file": "076363badcaf2b475818b0887b9ae688014c662838925e9deeae2f326eee2999.wav"
+    },
+    {
       "text": "читать",
       "file": "82aacd01197c1eaaefef5083762ef73f72c66d5e11b067ade94f59373b0b62fb.wav"
+    },
+    {
+      "text": "шьёт",
+      "file": "9152b2fcd626b8723d1db501f7a41857429ee6696761d80c952a5f80b643c970.wav"
     },
     {
       "text": "яблоко",

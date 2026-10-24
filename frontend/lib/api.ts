@@ -1,3 +1,4 @@
+import type { ObservationContent } from "./observationRuntime";
 import type { VariedContent, VariedMechanic } from "./variedRuntime";
 export type Role = "admin" | "parent" | "student" | "specialist";
 export type SkillName = "articulation" | "vocabulary" | "speech_comprehension" | "word_repetition" | "phrase_building" | "communication";
@@ -134,7 +135,7 @@ export type Exercise = {
     response_mode: "single_tap" | "tap_sequence" | "aac_card_sequence";
     prompt_policy: Record<string, unknown>;
     completion_rule: Record<string, unknown>;
-    content: VariedContent & {
+    content: VariedContent & ObservationContent & {
       stimuli?: Array<{
         key: string;
         label: string;

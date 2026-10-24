@@ -394,6 +394,10 @@ def validate_version(version: dict, *, enforce_visual_consistency: bool = True) 
     elif mechanic in VARIED_MECHANICS:
         errors.extend(validate_varied(version))
     elif mechanic == "guided_aac":
+        if content.get('presentation') == 'picture_description':
+            from .observation_content import validate_observation
+            errors.extend(validate_observation(content))
+            return errors
         labels = content.get("labels") if isinstance(content, dict) else None
         if not isinstance(labels, list) or not labels:
             errors.append("Для guided AAC нужен непустой список допустимых карточек")
@@ -433,6 +437,7 @@ def _decode_version(row: dict) -> dict:
 def published_exercise_rows(db) -> list[dict]:
     rows = db.execute(
         """SELECT e.*,v.id exercise_version_id,v.version content_version,v.mechanic,v.language,
+                  v.title published_title,v.instruction published_instruction,
                   v.objective,v.response_mode,v.prompt_policy_json,v.completion_rule_json,v.content_json,
                   v.review_status,v.publication_status,v.technical_status,v.methodology_status,
                   v.accessibility_status,v.release_status,v.admin_review_status
@@ -452,6 +457,8 @@ def published_exercise_rows(db) -> list[dict]:
     result = []
     for row in rows:
         item = dict(row)
+        item['title'] = item.pop('published_title')
+        item['instruction'] = item.pop('published_instruction')
         mechanic = item.pop("mechanic")
         content = json.loads(item.pop("content_json") or "{}")
         item["engine"] = {
