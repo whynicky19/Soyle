@@ -17,13 +17,15 @@ const attemptLabels: Record<string, string> = {
 
 export function RecommendationOutcome({ item }: { item: SpecialistAdvice }) {
   const attempt = item.latest_attempt;
+  const hasBreakdown = attempt?.attempt_status === "completed" && typeof attempt.independent_completions === "number" && typeof attempt.prompted_completions === "number";
   return <div className="recommendation-outcome">
     <p><strong>{familyDecisionLabels[item.family_decision]}</strong>{item.goal_title && <> · Цель: {item.goal_title}</>}</p>
     {item.family_note && <p>Сообщение семьи: {item.family_note}</p>}
     {item.completed_at && <p>Практика по рекомендации состоялась. Это не подтверждение освоения навыка.</p>}
     {attempt && <p>Последняя попытка: {attemptLabels[attempt.attempt_status] || "Участие"} · {new Date(attempt.created_at).toLocaleString("ru-RU")}
       {attempt.attempt_status === "completed" && attempt.attempts_count ? ` · ${attempt.correct_answers ?? 0} из ${attempt.attempts_count}` : ""}
-      {attempt.prompt_level && ` · ${attempt.prompt_level === "independent" ? "без подсказки" : "с помощью"}`}
+      {hasBreakdown && ` · Самостоятельно: ${attempt.independent_completions}, с помощью: ${attempt.prompted_completions}`}
+      {!hasBreakdown && attempt.prompt_level && ` · ${attempt.prompt_level === "independent" ? "без подсказки" : "с помощью"}`}
     </p>}
   </div>;
 }

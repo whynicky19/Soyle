@@ -14,6 +14,7 @@ from typing import Any
 from fastapi import HTTPException
 
 from .database import now_iso
+from .goal_progress import goal_progress
 
 
 PRACTICE_GOAL_TEMPLATES = (
@@ -189,6 +190,7 @@ def list_goals(db, child_id: int, *, full: bool = False) -> list[dict]:
     for row in rows:
         item = decode_goal(row)
         item["linked_exercises"] = _related_exercises(db, item)
+        item["progress"] = goal_progress(db, item)
         item["observations"] = [dict(observation) for observation in db.execute(
             """SELECT * FROM practice_goal_observations WHERE goal_id=? AND child_id=?
                ORDER BY observed_at DESC,id DESC""" + ("" if full else " LIMIT 20"),

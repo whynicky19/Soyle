@@ -1,5 +1,7 @@
 "use client";
 
+import { VariedExerciseRunner } from "./VariedExerciseRunner";
+import { variedMechanics, type VariedContent, type VariedMechanic } from "@/lib/variedRuntime";
 import { PracticeLength } from "@/components/PracticeLength";
 
 import { Check, ChevronRight, CircleX, Pause, RotateCcw, ShieldCheck, Volume2 } from "lucide-react";
@@ -26,7 +28,7 @@ export type DraftExerciseVersion = {
   title: string;
   instruction: string;
   objective: string;
-  mechanic: "auditory_choice" | "action_choice" | "tap_instruction" | "guided_aac";
+  mechanic: "auditory_choice" | "action_choice" | "tap_instruction" | "guided_aac" | VariedMechanic;
   review_status: string;
   publication_status: string;
   admin_review_status?: string;
@@ -35,7 +37,7 @@ export type DraftExerciseVersion = {
   accessibility_status?: string;
   release_status?: string;
   method_card?: ExerciseMethodCard;
-  content: {
+  content: VariedContent & {
     exemplar_policy?: "matched_set";
     bank_key?: string;
     round_choices?: number[];
@@ -87,7 +89,9 @@ export function DraftExercisePreview({ version, onClose, onSpeak }: { version: D
   return <section className="draft-runner-shell" aria-label={`Предпросмотр: ${version.title}`}>
     <header><div><span className="kicker">DRAFT · ТОЛЬКО ПРЕДПРОСМОТР</span><h2>{version.title}</h2><p>{version.objective}</p></div><button type="button" className="small-button" onClick={onClose}><CircleX size={17}/> Закрыть</button></header>
     <div className="draft-safety-note"><ShieldCheck size={19}/><span>Результат не сохраняется. Задание станет доступно ребёнку после проверки и публикации администратором.</span></div>
-    {version.mechanic === "tap_instruction"
+    {variedMechanics.includes(version.mechanic)
+      ? <VariedExerciseRunner mechanic={version.mechanic as VariedMechanic} content={version.content} soundEnabled onSpeak={onSpeak} onBack={onClose} onComplete={async () => ({preview: true})}/>
+      : version.mechanic === "tap_instruction"
       ? <TapInstructionPreview version={version} onSpeak={onSpeak}/>
       : version.mechanic === "auditory_choice" || version.mechanic === "action_choice"
         ? <ChoicePreview version={version} onSpeak={onSpeak}/>

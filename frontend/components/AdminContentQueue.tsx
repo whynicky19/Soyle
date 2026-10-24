@@ -7,7 +7,7 @@ import type { DraftExerciseVersion } from "./P1ExerciseRunners";
 import type { HomeActivityDraft } from "./ContentReviewWorkspace";
 
 type Draft = {version: DraftExerciseVersion; valid: boolean; can_publish: boolean; blocker: string | null; errors: string[]};
-const mechanicNames: Record<string,string> = {auditory_choice: "Понимание слов", action_choice: "Понимание действий", tap_instruction: "Выполнение инструкции", guided_aac: "Общение с карточками"};
+const mechanicNames: Record<string,string> = {category_sort: "Сортировка по группам", action_sequence: "Порядок действий", object_match: "Предмет и действие", auditory_choice: "Понимание слов", action_choice: "Понимание действий", tap_instruction: "Выполнение инструкции", guided_aac: "Общение с карточками"};
 function group(item: Draft) {
   if (!item.valid || item.version.review_status === "changes_requested") return "changes";
   return item.can_publish ? "ready" : "waiting";

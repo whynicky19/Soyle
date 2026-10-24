@@ -99,7 +99,7 @@ test("family invitation requires confirmation, workspaces stay navigable and rev
   await expect(page.locator(".parent-specialist-advice")).toContainText("Начните с выбора знакомого предмета");
   await expect(page.locator(".parent-specialist-advice")).toContainText(specialist.user.full_name);
   await page.screenshot({path: info.outputPath("parent-specialist-first-step.png"), fullPage: true});
-  await page.getByRole("button", {name: "Открыть задание", exact: true}).click();
+  await page.getByRole("button", {name: "Просмотреть задание", exact: true}).click();
   await expect(page.getByRole("button", {name: /Назад к занятиям|Вернуться к занятиям/, exact: true})).toBeVisible();
   await page.goto("/app");
   await page.getByRole("button", {name: "Все рекомендации", exact: true}).click();

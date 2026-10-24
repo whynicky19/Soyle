@@ -101,7 +101,7 @@ export function ParentDashboardExperience({
           <div className="v2-goal-copy">
             <span className="v2-kicker"><Target size={20}/> {childMode ? `Привет, ${child?.name || "друг"}!` : "Сегодняшняя практика"}</span>
             <h1 id="v2-goal-title">Учимся общаться<br/>каждый день</h1>
-            <div className="v2-goal-progress" role="progressbar" aria-label="Прогресс текущей цели" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress}><i style={{ width: `${progress}%` }}/></div>
+            <div className="v2-goal-progress" role="progressbar" aria-label={currentSession ? "Ход текущего занятия" : "Доля заданий с сохранёнными попытками"} aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress}><i style={{ width: `${progress}%` }}/></div>
             <p>{currentSession ? `${completed} из ${planCount} шагов` : `${dashboard?.completed_exercise_ids.length || 0} заданий с сохранёнными попытками`}</p>
           </div>
         </section>

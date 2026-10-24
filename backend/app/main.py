@@ -25,7 +25,7 @@ from .schemas import AACCardCreate, AACComposeRequest, AACFavoriteUpdate, AACPhr
 from .tts_library import bundled_tts_path
 from .aac_grammar import compose_aac_phrase
 from .ai_assistant import DISCLAIMER as LOCAL_ASSISTANT_DISCLAIMER, answer_parent
-from .exercise_engine import create_draft, preview_version, publish_version, published_exercise, published_exercise_rows, review_capabilities, review_workspace, submit_content_review
+from .exercise_engine import create_draft, preview_version, publish_version, published_exercise, published_exercise_rows, review_capabilities, review_workspace, submit_content_review, needs_admin_confirmation
 from .family_practice import descriptive_results, home_library, save_home_observation, skill_map, upsert_skill_observation
 from .adaptive_planner import create_plan as create_adaptive_plan, get_plan as get_adaptive_plan, plan_history as adaptive_plan_history
 from .practice_goals import create_goal as create_practice_goal, get_preferences, list_goals as list_practice_goals, list_templates as list_practice_goal_templates, save_observation as save_practice_goal_observation, save_preferences, update_goal as update_practice_goal
@@ -2377,9 +2377,13 @@ def update_active(user_id: int, payload: ActiveUpdate, admin: dict = Depends(req
 def list_exercise_drafts(_: dict = Depends(require_roles("admin"))) -> list[dict]:
     with connect() as db:
         rows = db.execute(
-            "SELECT id FROM exercise_versions WHERE publication_status='draft' ORDER BY id DESC"
+            """SELECT v.id FROM exercise_versions v JOIN exercises e ON e.id=v.exercise_id
+               WHERE v.publication_status='draft' OR
+                 (v.publication_status='published' AND e.is_active=1 AND v.admin_review_status<>'approved')
+               ORDER BY v.id DESC"""
         ).fetchall()
-        return [preview_version(db, row["id"]) for row in rows]
+        previews = [preview_version(db, row["id"]) for row in rows]
+        return [item for item in previews if item["version"]["publication_status"] == "draft" or needs_admin_confirmation(item["version"])]
 
 
 @app.post("/api/admin/exercise-drafts", status_code=201)

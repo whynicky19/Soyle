@@ -919,6 +919,65 @@ def _migration_29_expanded_practice(db) -> None:
             db.execute('UPDATE exercises SET title=? WHERE id=?', (current['title'], exercise['id']))
 
 
+def _migration_30_varied_mechanics(db) -> None:
+    from .varied_content import VARIED_EXERCISES, GOAL_TEMPLATES
+
+    for fixture in VARIED_EXERCISES:
+        existing = db.execute("SELECT v.content_json FROM exercise_versions v JOIN exercises e ON e.id=v.exercise_id WHERE e.target=?", (fixture['target'],)).fetchall()
+        if not any(json.loads(row['content_json']).get('revision') == fixture['content']['revision'] for row in existing):
+            _insert_p15_draft(db, fixture)
+        for asset in fixture['content']['asset_registry']:
+            db.execute("""INSERT INTO content_assets(media_ref,origin,license,license_status,created_at)
+                VALUES(?,?,?,?,?) ON CONFLICT(media_ref) DO NOTHING""",
+                (asset['media_ref'], asset['origin'], asset['license'], asset['license_status'], now_iso()))
+    for position, template in enumerate(GOAL_TEMPLATES, start=7):
+        db.execute("""INSERT INTO practice_goal_templates(
+            template_key,version,title,skill_category,observable_behavior,baseline_prompt,
+            target_outcome,accepted_responses_json,default_help_level,matching_targets_json,
+            matching_mechanics_json,status,position,created_at)
+            VALUES(?,1,?,?,?,?,?,?,?,?,?,'available',?,?) ON CONFLICT(template_key) DO NOTHING""",
+            (template['key'], template['title'], template['skill_category'], template['observable_behavior'],
+             template['baseline_prompt'], template['target_outcome'], json.dumps(template['accepted_responses'], ensure_ascii=False),
+             template['default_help_level'], json.dumps(template['matching_targets']), json.dumps(template['matching_mechanics']), position, now_iso()))
+
+
+def _migration_31_aac_publication_passports(db) -> None:
+    from .aac_method_cards import aac_method_card
+    from .exercise_engine import get_version
+
+    rows = db.execute("""SELECT v.* FROM exercise_versions v JOIN exercises e ON e.id=v.exercise_id
+        WHERE v.mechanic='guided_aac' AND v.publication_status IN ('published','draft')
+          AND e.is_active=1 ORDER BY v.exercise_id,v.version DESC""").fetchall()
+    seen = set()
+    for row in rows:
+        if row['exercise_id'] in seen:
+            continue
+        seen.add(row['exercise_id'])
+        version = get_version(db, row['id'])
+        source_errors = validate_version(version)
+        if not any(error.startswith('Методическая карточка:') for error in source_errors):
+            continue
+        card = aac_method_card(version)
+        candidate = {**version, 'method_card': card}
+        errors = validate_version(candidate)
+        passport_errors = [error for error in errors if error.startswith('Методическая карточка:')]
+        if passport_errors:
+            raise RuntimeError(f"AAC description invalid for {version['target']}: {passport_errors}")
+        revision = dict(row)
+        revision.pop('id')
+        revision.update(version=db.execute('SELECT MAX(version)+1 n FROM exercise_versions WHERE exercise_id=?', (row['exercise_id'],)).fetchone()['n'],
+            method_card_json=json.dumps(card, ensure_ascii=False), review_status='pending', publication_status='draft',
+            admin_review_status='pending', technical_status='pending' if errors else 'automated_passed', methodology_status='pending',
+            accessibility_status='pending', release_status='pending', created_by=None, created_at=now_iso(), published_at=None)
+        fields = list(revision)
+        new_id = db.execute(f"INSERT INTO exercise_versions({','.join(fields)}) VALUES({','.join('?' for _ in fields)}) RETURNING id", tuple(revision[field] for field in fields)).fetchone()['id']
+        db.execute("INSERT INTO content_reviews(version_id,stage,decision,comment,reviewer_id,created_at) VALUES(?,'revision','updated',?,NULL,?)",
+            (new_id, 'Добавлено описание существующей AAC-механики. Требуется решение администратора; экспертное одобрение не назначено.', now_iso()))
+    # Give-object and put-object are different banks; remove the prototype label.
+    db.execute("UPDATE exercise_versions SET title='Дай предмет: маме или папе' WHERE exercise_id IN (SELECT id FROM exercises WHERE target='p1-simple-instructions-demo') AND publication_status='draft' AND title LIKE ?", ('%демонстрацион%',))
+
+
+
 MIGRATIONS = (
     (9, _migration_9_exercise_engine),
     (10, _migration_10_content_contracts),
@@ -941,6 +1000,8 @@ MIGRATIONS = (
     (27, _migration_27_admin_publication),
     (28, _migration_28_card_illustrations),
     (29, _migration_29_expanded_practice),
+    (30, _migration_30_varied_mechanics),
+    (31, _migration_31_aac_publication_passports),
 )
 LATEST_SCHEMA_VERSION = MIGRATIONS[-1][0]
 

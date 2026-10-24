@@ -1,3 +1,4 @@
+import type { VariedContent, VariedMechanic } from "./variedRuntime";
 export type Role = "admin" | "parent" | "student" | "specialist";
 export type SkillName = "articulation" | "vocabulary" | "speech_comprehension" | "word_repetition" | "phrase_building" | "communication";
 
@@ -127,13 +128,13 @@ export type Exercise = {
   engine?: {
     version_id: number;
     version: number;
-    mechanic: "auditory_choice" | "action_choice" | "tap_instruction" | "guided_aac";
+    mechanic: "auditory_choice" | "action_choice" | "tap_instruction" | "guided_aac" | VariedMechanic;
     language: "ru";
     objective: string;
     response_mode: "single_tap" | "tap_sequence" | "aac_card_sequence";
     prompt_policy: Record<string, unknown>;
     completion_rule: Record<string, unknown>;
-    content: {
+    content: VariedContent & {
       stimuli?: Array<{
         key: string;
         label: string;
@@ -196,8 +197,8 @@ export type AdaptiveDifficultyParams = {
   difficulty_level: 1 | 2 | 3;
   option_count: 2 | 3 | 4 | null;
   round_count: number;
-  instruction_step_count: 1;
-  action_count: 1;
+  instruction_step_count: number;
+  action_count: number;
 };
 
 export type AdaptiveAssignmentReason = {
@@ -208,6 +209,7 @@ export type AdaptiveAssignmentReason = {
     attempts: number;
     accuracy: number | null;
     weighted_accuracy: number | null;
+    weighted_independent_accuracy: number | null;
     weighted_independence_rate: number | null;
     recency_weights: number[];
     independent_completions: number;
@@ -266,7 +268,7 @@ export type SpecialistAdvice = {
   family_note: string;
   completed_at: string | null;
   attempt_count: number;
-  latest_attempt: { attempt_status: string; created_at: string; attempts_count: number | null; correct_answers: number | null; prompt_level: string | null } | null;
+  latest_attempt: { independent_completions?: number | null; prompted_completions?: number | null; attempt_status: string; created_at: string; attempts_count: number | null; correct_answers: number | null; prompt_level: string | null } | null;
 };
 
 export type AdaptivePlan = {
@@ -312,6 +314,13 @@ export type PracticeGoalObservation = {
   observed_at: string;
 };
 
+export type GoalProgress = {
+  window_days: number; goal_version: number; completed_sessions: number; rounds: number;
+  independent: number; prompted: number; without_child_answer: number; independent_rate: number | null;
+  breaks: number; refusals: number; technical_errors: number; participations: number;
+  home_observations: number; home_independent: number;
+};
+
 export type PracticeGoal = {
   id: number;
   child_id: number;
@@ -326,6 +335,7 @@ export type PracticeGoal = {
   help_level: "independent" | "minimal" | "full";
   status: "active" | "paused" | "completed";
   source: "parent_home_practice";
+  progress?: GoalProgress;
   linked_exercises: Array<{ id: number; title: string; target: string; mechanic: string; exercise_version_id: number; exercise_version: number }>;
   observations: PracticeGoalObservation[];
   history: Array<{ id: number; goal_version: number; event_type: string; created_at: string }>;

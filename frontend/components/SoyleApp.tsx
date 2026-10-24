@@ -1,5 +1,6 @@
 "use client";
 
+import { useRefreshOnReturn } from "@/lib/hooks/useRefreshOnReturn";
 import { speak, stopCurrentSpeech } from "@/lib/speech";
 
 import {
@@ -134,6 +135,8 @@ import { categoriesToScores, evaluateMotorMovement, mergeBaseline, targetForSequ
 import { newAnswerEvidence, withSupport, withResponse, responseOutcome } from "@/lib/answerEvidence";
 import { chooseRoundMedia, createChoiceRound, resolveDifficulty, shuffleWithRandom as shuffled } from "@/lib/exerciseRuntime";
 import { PracticeLength } from "@/components/PracticeLength";
+import { VariedExerciseRunner } from "@/components/VariedExerciseRunner";
+import { variedMechanics, type VariedMechanic } from "@/lib/variedRuntime";
 import { PublishedInstructionRunner, type DraftExerciseVersion } from "@/components/P1ExerciseRunners";
 import { ContentReviewWorkspace, HomeActivityReviewPreview, type ContentReviewWorkspaceData, type HomeActivityDraft } from "@/components/ContentReviewWorkspace";
 import { FunctionalSkillMap, HomePracticeLibrary, P1ResultsSummary } from "@/components/FamilyPractice";
@@ -300,6 +303,7 @@ function AuthenticatedApp({ user, onLogout, externalError, onDismissExternalErro
   const [globalSearch, setGlobalSearch] = useState("");
   const [reward, setReward] = useState<{ stars: number; nonce: number } | null>(null);
   const gameStartedAtRef = useRef(0);
+  const variedStopRef = useRef<((status: "break" | "refused") => Promise<void>) | null>(null);
   const pendingAttemptRef = useRef<{ key: string; body: string } | null>(null);
   const savingAttemptRef = useRef(false);
   const [childrenLoading, setChildrenLoading] = useState(true);
@@ -433,7 +437,7 @@ function AuthenticatedApp({ user, onLogout, externalError, onDismissExternalErro
       setRequestError(cause instanceof Error ? `Не удалось проверить разрешения семьи: ${cause.message}` : "Не удалось проверить разрешения семьи");
     });
     return () => { active = false; };
-  }, [child?.id, user.role]);
+  }, [child?.id, user.role, catalogRevision]);
 
   useEffect(() => {
     if (!child?.id) { queueMicrotask(() => setActiveSessionLoading(false)); return; }
@@ -447,7 +451,7 @@ function AuthenticatedApp({ user, onLogout, externalError, onDismissExternalErro
       setRequestError(cause instanceof Error ? `Не удалось проверить незавершённое занятие: ${cause.message}` : "Не удалось проверить незавершённое занятие");
     }).finally(() => { if (!cancelled) setActiveSessionLoading(false); });
     return () => { cancelled = true; };
-  }, [child?.id, screen]);
+  }, [child?.id, screen, catalogRevision]);
 
   const refreshDashboard = useCallback(() => {
     if (child?.id) api<Dashboard>(`/api/dashboard/${child.id}`).then(setDashboard).catch((cause) => {
@@ -455,6 +459,12 @@ function AuthenticatedApp({ user, onLogout, externalError, onDismissExternalErro
     });
   }, [child]);
   useEffect(refreshDashboard, [refreshDashboard]);
+  const refreshPracticeOnReturn = useCallback(() => {
+    setCatalogRevision(value => value + 1);
+    refreshDashboard();
+    loadNotifications();
+  }, [refreshDashboard, loadNotifications]);
+  useRefreshOnReturn(refreshPracticeOnReturn, Boolean(child?.id) && ["parent", "student"].includes(user.role));
 
   const saveSession = async (exerciseId: number, module: ModuleName, score: number, details: Record<string, unknown>, measurement: GameMeasurement = {}) => {
     if (!child || !exerciseId) return;
@@ -780,14 +790,20 @@ function AuthenticatedApp({ user, onLogout, externalError, onDismissExternalErro
   const exerciseBack = () => sessionExerciseActive && activeSession ? setScreen("session") : openScreen("games");
   const activeExerciseContent = <>
     {screen === "motor" && <MotorGame exercises={exercises.filter((item) => item.module === "motor")} initialExercise={selectedExercise} cameraConsentGranted={Boolean(consent?.privacy_accepted && consent?.camera_processing && settings.camera_enabled)} canManageConsent={user.role === "parent"} onOpenConsent={() => openScreen("parent")} onBack={exerciseBack} onComplete={(score, exerciseId, measurement, details) => saveSession(exerciseId, "motor", score, details || { source: "manual" }, measurement)} />}
+    {screen === "sensory" && selectedExercise?.engine && variedMechanics.includes(selectedExercise.engine.mechanic) && <div className="page-enter game-page"><GameHeader title={selectedExercise.title} subtitle={selectedExercise.instruction} step="Игра с картинками" onBack={exerciseBack}/><VariedExerciseRunner stopRef={variedStopRef} key={`${selectedExercise.id}-${selectedExercise.engine.version_id}`} mechanic={selectedExercise.engine.mechanic as VariedMechanic} content={selectedExercise.engine.content} defaultRounds={selectedExercise.adaptive?.difficulty_params.round_count} soundEnabled={settings.sound_enabled} onSpeak={(text, rate) => speak(text, rate, settings.sound_enabled)} onBack={exerciseBack} onComplete={(measurement, details) => saveSession(selectedExercise.id, "sensory", 0, details, measurement)}/></div>}
     {screen === "sensory" && selectedExercise?.engine?.mechanic === "tap_instruction" ? <div className="page-enter game-page"><GameHeader title={selectedExercise.title} subtitle="Выполни один шаг" step="Предмет → цель" onBack={exerciseBack}/><PublishedInstructionRunner scenarios={selectedExercise.engine.content.scenarios || []} roundChoices={selectedExercise.engine.content.round_choices} defaultRounds={selectedExercise.adaptive?.difficulty_params.round_count || selectedExercise.engine.content.default_rounds} soundEnabled={settings.sound_enabled} onSpeak={(text, rate) => speak(text, rate, settings.sound_enabled)} onBack={exerciseBack} onComplete={(measurement, details) => saveSession(selectedExercise.id, "sensory", 0, details, measurement)}/></div> : null}
-    {screen === "sensory" && selectedExercise?.engine?.mechanic !== "tap_instruction" && <SensoryGame key={selectedExercise?.id || "sensory"} exercise={selectedExercise?.module === "sensory" ? selectedExercise : exercises.find((item) => item.module === "sensory")} soundEnabled={settings.sound_enabled} onBack={exerciseBack} onComplete={(score, exerciseId, measurement, details) => saveSession(exerciseId, "sensory", score, details || {}, measurement)} />}
+    {screen === "sensory" && selectedExercise?.engine?.mechanic !== "tap_instruction" && !variedMechanics.includes(selectedExercise?.engine?.mechanic || "") && <SensoryGame key={selectedExercise?.id || "sensory"} exercise={selectedExercise?.module === "sensory" ? selectedExercise : exercises.find((item) => item.module === "sensory")} soundEnabled={settings.sound_enabled} onBack={exerciseBack} onComplete={(score, exerciseId, measurement, details) => saveSession(exerciseId, "sensory", score, details || {}, measurement)} />}
     {screen === "mixed" && <PhraseGame key={selectedExercise?.id || "mixed"} childId={child?.id} canManage={user.role === "parent"} exercise={selectedExercise?.module === "mixed" ? selectedExercise : exercises.find((item) => item.module === "mixed")} soundEnabled={settings.sound_enabled} onBack={exerciseBack} onComplete={(score, phrase, exerciseId, measurement) => saveSession(exerciseId, "mixed", score, { phrase }, measurement)} />}
   </>;
   const isChildExerciseFocus = ["motor", "sensory", "mixed"].includes(screen) && (user.role === "student" || (user.role === "parent" && parentPracticeMode === "child_practice"));
   const focusExercise = selectedExercise || exercises.find((item) => item.module === screen);
   const stopFocusedExercise = async (status: "break" | "refused") => {
     if (focusStopping) return;
+    if (focusExercise?.engine && variedMechanics.includes(focusExercise.engine.mechanic) && variedStopRef.current) {
+      setFocusStopping(true);
+      try { await variedStopRef.current(status); } finally { setFocusStopping(false); }
+      return;
+    }
     if (!focusExercise || !["motor", "sensory", "mixed"].includes(focusExercise.module)) {
       exerciseBack();
       return;
@@ -888,7 +904,7 @@ function AuthenticatedApp({ user, onLogout, externalError, onDismissExternalErro
         {requestError && <div className="game-error global-request-error" role="alert"><ShieldAlert size={18}/><span>{requestError}</span><button type="button" className="small-button" onClick={() => setRequestError("")}>Закрыть</button></div>}
 
         <div className="page">
-          {screen === "home" && <HomeScreen onStartPlan={startPreparedPlan} onOpenSpecialist={() => openScreen("parent", "specialist")} onOpen={openScreen} onExercise={openExercise} onStartSession={startDailySession} onResume={resumeSession} activeSession={activeSession} activeSessionLoading={activeSessionLoading} dailyMinutes={dailyMinutes} onMinutesChange={setDailyMinutes} sessionLoading={sessionLoading} sessionError={sessionError} child={child} dashboard={dashboard} consent={consent} userRole={user.role} exercises={exercises} />}
+          {screen === "home" && <HomeScreen onStartPlan={startPreparedPlan} onOpenSpecialist={() => openScreen("parent", "specialist")} onOpen={openScreen} onExercise={exercise => { if (user.role === "parent") setParentPracticeMode("adult_preview"); openExercise(exercise); }} onStartSession={startDailySession} onResume={resumeSession} activeSession={activeSession} activeSessionLoading={activeSessionLoading} dailyMinutes={dailyMinutes} onMinutesChange={setDailyMinutes} sessionLoading={sessionLoading} sessionError={sessionError} child={child} dashboard={dashboard} consent={consent} userRole={user.role} exercises={exercises} />}
           {screen === "stories" && user.role === "student" && <StoryExperience childId={child?.id} calmMode={settings.calm_mode}/>}
           {screen === "world" && ["student", "parent"].includes(user.role) && <WorldExperience key={child?.id} childId={child?.id} canManage={user.role === "parent"} onWords={() => openScreen("aac")} onSpeak={(text) => speak(text, .82, true)}/>}
           {screen === "skills" && user.role === "student" && <SkillsExperience child={child} dashboard={dashboard} exercises={exercises} onNavigate={openScreen} onExercise={openExercise}/>}
@@ -905,7 +921,7 @@ function AuthenticatedApp({ user, onLogout, externalError, onDismissExternalErro
           {screen === "ai" && user.role === "parent" && <AIParentScreen child={child} />}
           {screen === "progress" && <ProgressScreen childId={child?.id} dashboard={dashboard} onStartPractice={() => openScreen("games")} />}
           {screen === "goals" && user.role === "parent" && <GoalsAndPractice key={child?.id} child={child} targetMinutes={dailyMinutes} onStartPlan={startPreparedPlan} onPracticeChanged={() => { setExercises([]); setCatalogRevision(value => value + 1); refreshDashboard(); }}/>}
-          {screen === "parent" && <ParentScreen key={child?.id} child={child} childProfiles={children} onSelectChild={setSelectedChildId} onDeleted={(id) => { const remaining = children.filter((item) => item.id !== id); setChildren(remaining); setSelectedChildId(remaining[0]?.id || null); setScreen("home"); }} dashboard={dashboard} onConsentChange={setConsent} onNavigate={openScreen} />}
+          {screen === "parent" && <ParentScreen key={child?.id} child={child} childProfiles={children} onSelectChild={setSelectedChildId} onDeleted={(id) => { const remaining = children.filter((item) => item.id !== id); setChildren(remaining); setSelectedChildId(remaining[0]?.id || null); setScreen("home"); }} dashboard={dashboard} onConsentChange={setConsent} onNavigate={openScreen} onStartPlan={startPreparedPlan} />}
           {screen === "more" && user.role === "student" && <ChildMoreScreen onOpen={openScreen}/>}
           {screen === "more" && user.role === "parent" && <ParentMoreScreen onOpen={openScreen}/>}
           {screen === "profile" && user.role === "parent" && <ParentAccountDeletion onDeleted={onLogout}/>}
@@ -2047,7 +2063,7 @@ function ParentMoreScreen({ onOpen }: { onOpen: (screen: Screen) => void }) {
 
 const parentSections = [{id: "overview", label: "Обзор"}, {id: "practice", label: "Практика"}, {id: "specialist", label: "Специалист"}, {id: "materials", label: "Материалы"}, {id: "access", label: "Доступ и данные"}] as const;
 
-function ParentScreen({ child, childProfiles, onSelectChild, onDeleted, dashboard, onConsentChange, onNavigate }: { child?: Child; childProfiles: Child[]; onSelectChild: (id: number) => void; onDeleted: (id: number) => void; dashboard: Dashboard | null; onConsentChange: (consent: ChildConsent) => void; onNavigate: (screen: Screen) => void }) {
+function ParentScreen({ child, childProfiles, onSelectChild, onDeleted, dashboard, onConsentChange, onNavigate, onStartPlan }: { child?: Child; childProfiles: Child[]; onSelectChild: (id: number) => void; onDeleted: (id: number) => void; dashboard: Dashboard | null; onConsentChange: (consent: ChildConsent) => void; onNavigate: (screen: Screen) => void; onStartPlan: (plan: AdaptivePlan) => Promise<void> }) {
   const [section, navigate] = useCabinetSection("parent", parentSections);
   const [student, setStudent] = useState<{ username: string } | null>(null);
   const [studentForm, setStudentForm] = useState({ username: "", pin: "" });
@@ -2141,7 +2157,7 @@ function ParentScreen({ child, childProfiles, onSelectChild, onDeleted, dashboar
 
     <section className="data-control"><div><ShieldCheck/><span><strong>Данные ребёнка принадлежат семье</strong><small>Экспорт включает профиль, занятия, истории, фотографии «Моего мира», AAC-карточки, избранное и историю практики.</small></span></div><div className="data-actions"><button className="secondary-button" onClick={exportData}>Скачать данные</button><button className="small-button danger-button" onClick={() => setDeleteOpen(!deleteOpen)}>Удалить данные</button></div></section>{deleteOpen && <form className="delete-data-form" onSubmit={deleteData}><div><strong>Удалить профиль и все связанные данные?</strong><p>Действие необратимо. Введите пароль родительского аккаунта для подтверждения.</p></div><input type="password" value={deletePassword} onChange={(e)=>setDeletePassword(e.target.value)} placeholder="Пароль" required/><button className="small-button danger-button">Удалить навсегда</button></form>}{dataMessage && <div className="usage-note"><Check size={18}/><p>{dataMessage}</p></div>}
     </div>
-    <div className="cabinet-page" hidden={section !== "specialist"}>{child && <FamilySpecialistAccess key={child.id} childId={child.id} enabled={consentReady && Boolean(consent.specialist_sharing)} onManagePermissions={() => navigate("access")}/>}</div>
+    <div className="cabinet-page" hidden={section !== "specialist"}>{child && <FamilySpecialistAccess key={child.id} childId={child.id} enabled={consentReady && Boolean(consent.specialist_sharing)} onManagePermissions={() => navigate("access")} onStartPlan={onStartPlan}/>}</div>
     <div className="medical-note"><ShieldCheck size={25}/><div><strong>Söyle - помощник, а не врач</strong><p>Платформа не ставит диагноз и не заменяет занятия с логопедом или консультацию специалиста.</p></div></div>
   </div>;
 }

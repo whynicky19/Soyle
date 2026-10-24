@@ -553,12 +553,20 @@ def init_db() -> None:
             "UPDATE aac_cards SET speech=? WHERE label=? AND language='ru'",
             ("Где?", "Где?"),
         )
+        # Bootstrap may retire unversioned prototypes, but publish/archive owns
+        # visibility once an exercise has version history. Re-running startup
+        # must not undo an administrator's publication or archive decision.
+        if db.backend == "postgresql":
+            has_versions = bool(db.execute("SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='exercise_versions'").fetchone())
+        else:
+            has_versions = bool(db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='exercise_versions'").fetchone())
+        unversioned_only = " AND NOT EXISTS (SELECT 1 FROM exercise_versions v WHERE v.exercise_id=exercises.id)" if has_versions else ""
         supported_aac_scenarios = ("request", "choice", "refusal", "feelings", "help", "answer", "observation", "past_event", "question", "routine")
         scenario_placeholders = ",".join("?" for _ in supported_aac_scenarios)
-        db.execute(f"UPDATE exercises SET is_active=0 WHERE module='mixed' AND target NOT IN ({scenario_placeholders})", supported_aac_scenarios)
+        db.execute(f"UPDATE exercises SET is_active=0 WHERE module='mixed' AND target NOT IN ({scenario_placeholders}){unversioned_only}", supported_aac_scenarios)
         supported_sensory_sets = ("animals", "food", "toys")
         sensory_placeholders = ",".join("?" for _ in supported_sensory_sets)
-        db.execute(f"UPDATE exercises SET is_active=0 WHERE module='sensory' AND target NOT IN ({sensory_placeholders})", supported_sensory_sets)
+        db.execute(f"UPDATE exercises SET is_active=0 WHERE module='sensory' AND target NOT IN ({sensory_placeholders}){unversioned_only}", supported_sensory_sets)
         # Motor prototypes remain in the database for expert review and historical
         # session integrity, but are never part of the public catalogue.
         db.execute("UPDATE exercises SET is_active=0 WHERE module='motor'")

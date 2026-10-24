@@ -152,7 +152,8 @@ def test_prompted_answers_do_not_raise_first_response_accuracy(client, parent_he
     plan = client.post(f"/api/adaptive-plans/{child_id}", headers=parent_headers, json={"target_minutes": 5}).json()
     for item in plan["items"]:
         assert item["difficulty_params"]["difficulty_level"] == 1
-        assert item["assignment_reason"]["evidence"]["weighted_accuracy"] == (0 if item["exercise_id"] == 7 else None)
+        assert item["assignment_reason"]["evidence"]["weighted_independent_accuracy"] == (0 if item["exercise_id"] == 7 else None)
+        assert item["assignment_reason"]["evidence"]["weighted_accuracy"] == (1 if item["exercise_id"] == 7 else None)
 
 
 def test_full_export_keeps_plans_and_observations_beyond_ui_limit(client, parent_headers):

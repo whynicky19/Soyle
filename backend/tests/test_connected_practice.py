@@ -238,3 +238,65 @@ def test_real_life_totals_include_goal_and_specialist_observations(workflow_clie
     summary = client.get(f'/api/results/{child}/summary', headers=parent).json()
     assert summary['real_life_observations'] == 2
     assert summary['gameplay_rounds'] == 0 and summary['independent_completions'] == 0
+
+
+@pytest.mark.parametrize('target', ['sort-familiar-groups', 'order-familiar-actions', 'match-object-action'])
+def test_new_mechanic_goal_recommendation_child_pause_result_shared_by_both_adults(workflow_client, admin_headers, monkeypatch, tmp_path, target):
+    import sqlite3
+    from app import database
+    from app.exercise_engine import publish_version
+    if database.DATABASE_URL:
+        pytest.skip('SQLite workflow isolation fixture')
+    copied = tmp_path / 'three-role-workflow.db'
+    with sqlite3.connect(database.DB_PATH) as source, sqlite3.connect(copied) as destination:
+        source.backup(destination)
+    monkeypatch.setattr(database, 'DB_PATH', copied)
+    client = workflow_client
+    parent, child, _, specialist, _ = setup_family(client, admin_headers)
+    with connect() as db:
+        row = db.execute("SELECT v.id FROM exercise_versions v JOIN exercises e ON e.id=v.exercise_id WHERE e.target=? AND v.publication_status='draft' ORDER BY v.version DESC LIMIT 1", (target,)).fetchone()
+        admin = db.execute("SELECT id FROM users WHERE role='admin' AND is_active=1 ORDER BY id LIMIT 1").fetchone()['id']
+        version = publish_version(db, row['id'], reviewer_id=admin, comment='Синтетическая проверка трёх ролей')
+    goal = add_goal(client, parent, child, target)
+    rec = recommend(client, specialist, child, goal, exercise=version['exercise_id'])
+    assert decision(client, parent, child, rec).status_code == 200
+    plan = make_plan(client, parent, child, rec)
+    assert len(plan['items']) == 1
+    item = plan['items'][0]
+    assert (item['goal_id'], item['exercise_version_id'], item['recommendation_id']) == (goal['id'], version['id'], rec['id'])
+    username = 'chain' + uuid4().hex[:12]
+    client.post(f'/api/children/{child}/student-account', headers=parent, json={'username':username, 'pin':'1234'}).raise_for_status()
+    login = client.post('/api/auth/student-login', headers={'X-Soyle-Auth-Mode':'bearer'}, json={'username':username, 'pin':'1234'})
+    student = {'Authorization':f"Bearer {login.json()['access_token']}"}
+    learning = start(client, student, child, plan)
+    assert learning.status_code == 201
+    paused = attempt(child, exercise=version['exercise_id'], session=learning.json()['id'], actor='student', status='break')
+    paused['details'] = {'mechanic':version['mechanic'], 'unfinished_round':{'selected':'partial'}}
+    saved_pause = client.post('/api/sessions', headers=student, json=paused)
+    assert saved_pause.status_code == 201, saved_pause.text
+    for auth, endpoint in [(parent, f'/api/children/{child}/specialist-recommendations'), (specialist, f'/api/specialist/children/{child}')]:
+        data = client.get(endpoint, headers=auth).json()
+        result = next(item for item in (data if isinstance(data,list) else data['recommendations']) if item['id'] == rec['id'])
+        assert result['ready_for_plan'] and result['completed_at'] is None
+        assert result['latest_attempt']['attempt_status'] == 'break'
+    assert client.patch(f"/api/learning-sessions/{learning.json()['id']}/pause", headers=student, json={'paused':False}).status_code == 200
+    rounds = version['content']['default_rounds']
+    payload = attempt(child, exercise=version['exercise_id'], session=learning.json()['id'], actor='student')
+    payload.update(attempts_count=rounds, correct_answers=rounds-1, independent_completions=rounds-2, prompted_completions=1, prompts_used=2, prompt_level='full')
+    payload['details'] = {'mechanic':version['mechanic'], 'round_count':rounds,
+        'round_outcomes':[{'outcome':'independent'}]*(rounds-2)+[{'outcome':'prompted'},{'outcome':'modelled'}]}
+    saved = client.post('/api/sessions', headers=student, json=payload)
+    assert saved.status_code == 201, saved.text
+    assert client.post('/api/sessions', headers=student, json=payload).json()['id'] == saved.json()['id']
+    family_result = next(item for item in client.get(f'/api/children/{child}/specialist-recommendations', headers=parent).json() if item['id'] == rec['id'])
+    workspace = client.get(f'/api/specialist/children/{child}', headers=specialist).json()
+    specialist_result = next(item for item in workspace['recommendations'] if item['id'] == rec['id'])
+    assert family_result['latest_attempt'] == specialist_result['latest_attempt']
+    assert family_result['latest_attempt']['id'] == saved.json()['id']
+    assert family_result['latest_attempt']['independent_completions'] == rounds-2
+    assert family_result['latest_attempt']['prompted_completions'] == 1
+    assert family_result['attempt_count'] == 2 and family_result['completed_at'] and not family_result['ready_for_plan']
+    assert next(item for item in workspace['practice_goals'] if item['id'] == goal['id'])['status'] == 'active'
+    with connect() as db:
+        row = db.execute('SELECT actor_role,recommendation_id,adaptive_plan_item_id FROM sessions WHERE id=?', (saved.json()['id'],)).fetchone()
+        assert (row['actor_role'], row['recommendation_id'], row['adaptive_plan_item_id']) == ('student', rec['id'], item['id'])

@@ -231,7 +231,7 @@ def test_all_migrations_upgrade_an_old_database_and_are_idempotent(tmp_path):
             assert "can_accessibility_review" in permission_columns
             learning_columns = {row["name"] for row in db.execute("PRAGMA table_info(learning_sessions)").fetchall()}
             assert "adaptive_plan_id" in learning_columns
-            assert db.execute("SELECT COUNT(*) count FROM practice_goal_templates").fetchone()["count"] == 7
+            assert db.execute("SELECT COUNT(*) count FROM practice_goal_templates").fetchone()["count"] == 10
             assert db.execute("SELECT matching_targets_json FROM practice_goal_templates WHERE template_key='recognise-familiar-examples'").fetchone()
             assert db.execute("SELECT COUNT(*) count FROM home_activity_templates").fetchone()["count"] == 12
             assert db.execute("SELECT COUNT(*) count FROM exercise_versions WHERE publication_status='draft'").fetchone()["count"] >= 11

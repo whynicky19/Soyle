@@ -6,9 +6,10 @@ from typing import Any
 from fastapi import HTTPException
 
 from .database import IS_PRODUCTION, env_enabled, now_iso
+from .varied_validation import VARIED_MECHANICS, validate_varied
 
 
-SUPPORTED_PUBLIC_MECHANICS = frozenset({"auditory_choice", "action_choice", "tap_instruction", "guided_aac"})
+SUPPORTED_PUBLIC_MECHANICS = frozenset({"auditory_choice", "action_choice", "tap_instruction", "guided_aac"}) | VARIED_MECHANICS
 # An explicit local demonstration is the only exception to the review gate.
 # Production must never accept this environment switch.
 ALLOW_UNREVIEWED_DEMO_CONTENT = not IS_PRODUCTION and env_enabled("SOYLE_ALLOW_UNREVIEWED_DEMO_CONTENT")
@@ -390,6 +391,8 @@ def validate_version(version: dict, *, enforce_visual_consistency: bool = True) 
             errors.append("Механика инструкции требует response_mode=tap_sequence")
         if version.get("completion_rule", {}).get("steps") != 1:
             errors.append("В P1 разрешены только одношаговые инструкции")
+    elif mechanic in VARIED_MECHANICS:
+        errors.extend(validate_varied(version))
     elif mechanic == "guided_aac":
         labels = content.get("labels") if isinstance(content, dict) else None
         if not isinstance(labels, list) or not labels:
@@ -541,6 +544,15 @@ def get_version(db, version_id: int) -> dict:
     return _decode_version(dict(row))
 
 
+def needs_admin_confirmation(version: dict) -> bool:
+    """A legacy publication is hidden until an administrator confirms it."""
+    return (version["publication_status"] == "published"
+            and version.get("admin_review_status") != "approved"
+            and not (version.get("technical_status") == "passed"
+                     and all(version.get(field) == "approved" for field in
+                             ("methodology_status", "accessibility_status", "release_status"))))
+
+
 def preview_version(db, version_id: int) -> dict:
     version = get_version(db, version_id)
     errors = validate_version(version)
@@ -548,7 +560,7 @@ def preview_version(db, version_id: int) -> dict:
         "version": version,
         "valid": not errors,
         "errors": errors,
-        "can_publish": not errors and version["publication_status"] == "draft",
+        "can_publish": not errors and (version["publication_status"] == "draft" or needs_admin_confirmation(version)),
         "blocker": "Исправьте замечания перед публикацией" if errors else None,
     }
 
@@ -556,8 +568,11 @@ def preview_version(db, version_id: int) -> dict:
 def publish_version(db, version_id: int, reviewer_id: int | None = None, comment: str = "") -> dict:
     preview = preview_version(db, version_id)
     version = preview["version"]
-    if version["publication_status"] not in {"draft", "archived"}:
+    confirming_legacy = needs_admin_confirmation(version)
+    if version["publication_status"] not in {"draft", "archived"} and not confirming_legacy:
         raise HTTPException(409, "Эта версия уже опубликована")
+    if confirming_legacy and reviewer_id is None:
+        raise HTTPException(409, "Нужно решение администратора")
     if preview["errors"]:
         raise HTTPException(422, {"message": "Исправьте ошибки задания", "errors": preview["errors"]})
     if reviewer_id is not None:
@@ -570,8 +585,9 @@ def publish_version(db, version_id: int, reviewer_id: int | None = None, comment
             VALUES(?,'admin','approved',?,?,?)""", (version_id, comment.strip() or "Администратор проверил задание и опубликовал", reviewer_id, now_iso()))
     elif version["review_status"] != "approved":
         raise HTTPException(409, "Нужно решение администратора")
-    db.execute("UPDATE exercise_versions SET publication_status='archived' WHERE exercise_id=? AND publication_status='published'", (version["exercise_id"],))
-    db.execute("UPDATE exercise_versions SET publication_status='published',published_at=? WHERE id=?", (now_iso(), version_id))
+    if not confirming_legacy:
+        db.execute("UPDATE exercise_versions SET publication_status='archived' WHERE exercise_id=? AND publication_status='published'", (version["exercise_id"],))
+        db.execute("UPDATE exercise_versions SET publication_status='published',published_at=? WHERE id=?", (now_iso(), version_id))
     db.execute("UPDATE exercises SET title=?,instruction=?,is_active=1 WHERE id=?", (version["title"], version["instruction"], version["exercise_id"]))
     return get_version(db, version_id)
 
@@ -623,10 +639,14 @@ def submit_content_review(
 ) -> dict:
     preview = preview_version(db, version_id)
     version = preview["version"]
-    if version["publication_status"] != "draft":
+    legacy = needs_admin_confirmation(version)
+    if version["publication_status"] != "draft" and not legacy:
         raise HTTPException(409, "Проверять можно только черновую версию")
     if stage != "admin" or decision != "changes_requested":
         raise HTTPException(422, "Используйте единое решение администратора: опубликовать или вернуть на доработку")
+    if legacy:
+        db.execute("UPDATE exercise_versions SET publication_status='draft' WHERE id=?", (version_id,))
+        db.execute("UPDATE exercises SET is_active=0 WHERE id=?", (version["exercise_id"],))
     db.execute("UPDATE exercise_versions SET admin_review_status='changes_requested',review_status='changes_requested' WHERE id=?", (version_id,))
     db.execute("""INSERT INTO content_reviews(version_id,stage,decision,comment,reviewer_id,created_at)
         VALUES(?,?,?,?,?,?)""", (version_id, stage, decision, comment.strip(), reviewer_id, now_iso()))

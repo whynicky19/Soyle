@@ -18,9 +18,10 @@ from .database import now_iso
 from .exercise_engine import published_exercise_rows
 from .practice_goals import decode_goal, exercise_matches_goal, get_preferences
 from .recommendations import recommendations
+from .practice_results import measured_result, verified_outcomes, compatible_goal_versions
 
 
-RULES_VERSION = "p2.5-connected-practice-1"
+RULES_VERSION = "p2.6-goal-progress-1"
 
 
 @dataclass(frozen=True)
@@ -34,6 +35,8 @@ class PlannerThresholds:
     minimum_independent_completions: int = 3
     minimum_level_two_independence_rate: float = 0.5
     minimum_level_three_independence_rate: float = 0.8
+    decrease_sessions: int = 3
+    decrease_independent_accuracy: float = 0.60
     oldest_result_weight: float = 1.0
     newest_result_weight: float = 2.0
 
@@ -68,16 +71,17 @@ def _recency_weights(count: int, thresholds: PlannerThresholds) -> list[float]:
 
 def _aggregate_results(rows: list[dict], thresholds: PlannerThresholds) -> dict:
     weights = _recency_weights(len(rows), thresholds)
-    total_weight = sum(weights)
-    accuracies = [row["independent_completions"] / row["attempts_count"] for row in rows]
-    independence = [row["independent_completions"] / max(1, row["independent_completions"] + row["prompted_completions"]) for row in rows]
+    total_weight = sum(row["attempts_count"] * weight for row, weight in zip(rows, weights))
+    completed_weight = sum((row["independent_completions"] + row["prompted_completions"]) * weight for row, weight in zip(rows, weights))
+    independent_weight = sum(row["independent_completions"] * weight for row, weight in zip(rows, weights))
     attempts = sum(row["attempts_count"] for row in rows)
     return {
         "recorded_sessions": len(rows), "attempts": attempts,
         "accuracy": round(sum(row["correct_answers"] for row in rows) / attempts, 3) if attempts else None,
-        "weighted_accuracy": round(sum(value * weight for value, weight in zip(accuracies, weights)) / total_weight, 3) if total_weight else None,
+        "weighted_accuracy": round(sum(row["correct_answers"] * weight for row, weight in zip(rows, weights)) / total_weight, 3) if total_weight else None,
+        "weighted_independent_accuracy": round(independent_weight / total_weight, 3) if total_weight else None,
         "independent_completions": sum(row["independent_completions"] for row in rows),
-        "weighted_independence_rate": round(sum(value * weight for value, weight in zip(independence, weights)) / total_weight, 3) if total_weight else None,
+        "weighted_independence_rate": round(independent_weight / completed_weight, 3) if completed_weight else None,
         "prompts_used": sum(row["prompts_used"] for row in rows),
         "recency_weights": [round(weight, 3) for weight in weights],
     }
@@ -90,7 +94,7 @@ def _evidence(db, child_id: int, exercise: dict, thresholds: PlannerThresholds) 
            WHERE s.child_id=? AND s.exercise_id=? AND s.exercise_version_id=?
              AND s.created_at>=? AND s.measurement_version>=3
              AND s.attempt_status='completed' AND s.response_owner='child'
-             AND s.support_context IN ('independent','caregiver_supported')
+             AND s.support_context IN ('independent','caregiver_supported','caregiver_modelled')
              AND s.attempts_count>0
            ORDER BY s.id DESC""",
         (child_id, exercise["id"], exercise["engine"]["version_id"], cutoff),
@@ -103,7 +107,19 @@ def _evidence(db, child_id: int, exercise: dict, thresholds: PlannerThresholds) 
     comparable = []
     for row in rows:
         details = _loads(row["details"], {})
-        if not isinstance(details, dict):
+        if not measured_result(row) or not isinstance(details, dict):
+            continue
+        if exercise['engine']['mechanic'] in {'category_sort', 'action_sequence', 'object_match', 'tap_instruction'}:
+            content = exercise['engine']['content']
+            if (details.get('mechanic') != exercise['engine']['mechanic']
+                    or details.get('round_count') != row['attempts_count']
+                    or row['attempts_count'] not in content.get('round_choices', [])
+                    or not verified_outcomes(row)):
+                continue
+            row['difficulty_level'] = 1
+            comparable.append(row)
+            if len(comparable) >= thresholds.recent_window:
+                break
             continue
         level = details.get("difficulty_level")
         if type(level) is not int or level not in levels:
@@ -127,8 +143,16 @@ def _evidence(db, child_id: int, exercise: dict, thresholds: PlannerThresholds) 
            ORDER BY id DESC LIMIT ?""",
         (child_id, exercise["id"], cutoff, thresholds.recent_window),
     ).fetchall()]
+    current_level = comparable[0]["difficulty_level"] if comparable else 1
+    current_run = []
+    for row in comparable:
+        if row["difficulty_level"] != current_level:
+            break
+        current_run.append(row)
     return {
         **_aggregate_results(comparable, thresholds),
+        "current_level": current_level,
+        "current_level_results": _aggregate_results(current_run, thresholds),
         "level_two_or_higher": _aggregate_results([row for row in comparable if row["difficulty_level"] >= 2], thresholds),
         "refusals": statuses.count("refused"), "breaks": statuses.count("break"),
         "technical_errors": statuses.count("technical_error"),
@@ -155,16 +179,24 @@ def _assignment_history(db, child_id: int) -> dict[int, dict]:
     return history
 
 
-def _parent_observation_evidence(db, goal_id: int) -> dict:
+def _parent_observation_evidence(db, goal_id: int, thresholds: PlannerThresholds = DEFAULT_THRESHOLDS) -> dict:
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=thresholds.evidence_max_age_days)).isoformat()
+    goal = decode_goal(db.execute("SELECT * FROM parent_practice_goals WHERE id=?", (goal_id,)).fetchone())
+    versions = compatible_goal_versions(db, goal)
+    placeholders = ",".join("?" for _ in versions)
     rows = [dict(row) for row in db.execute(
-        """SELECT result_type,prompt_level,observed_at
+        f"""SELECT result_type,prompt_level,observed_at
            FROM practice_goal_observations
            WHERE goal_id=? AND source='parent_real_life_observation'
+             AND goal_version IN ({placeholders})
+             AND observed_at>=? AND observed_at<=?
            ORDER BY observed_at DESC,id DESC LIMIT 5""",
-        (goal_id,),
+        (goal_id, *versions, cutoff, now_iso()),
     ).fetchall()]
+    actionable = next((row for row in rows if row["result_type"] in {"independent", "with_help", "not_observed"}), None)
     return {
         "count": len(rows),
+        "latest_skill_result": actionable["result_type"] if actionable else None,
         "latest_result": rows[0]["result_type"] if rows else None,
         "latest_prompt_level": rows[0]["prompt_level"] if rows else None,
         "independent": sum(row["result_type"] == "independent" for row in rows),
@@ -181,34 +213,32 @@ def _difficulty(
     help_level: str,
     thresholds: PlannerThresholds,
 ) -> tuple[dict, list[str]]:
-    completed = evidence["recorded_sessions"]
-    weighted_accuracy = evidence["weighted_accuracy"]
-    independence_rate = evidence["weighted_independence_rate"]
-    accurate = weighted_accuracy is not None and weighted_accuracy >= thresholds.minimum_accuracy
-    harder = evidence.get("level_two_or_higher", {})
-    harder_accuracy = harder.get("weighted_accuracy")
-    harder_independence = harder.get("weighted_independence_rate")
-    highly_accurate = harder_accuracy is not None and harder_accuracy >= thresholds.level_three_accuracy
-    independent = evidence["independent_completions"] >= thresholds.minimum_independent_completions
-    enough_independence = independence_rate is not None and independence_rate >= thresholds.minimum_level_two_independence_rate
-    high_independence = harder_independence is not None and harder_independence >= thresholds.minimum_level_three_independence_rate
-    level = 1
-    reason = ["Начинаем с минимальной нагрузки и доступной подсказки."]
-    if harder.get("recorded_sessions", 0) >= thresholds.level_three_sessions and highly_accurate and independent and high_independence and weighted_accuracy is not None and weighted_accuracy >= thresholds.level_three_accuracy:
-        level = 3
-        reason = [f"Уровень 3 выбран по {harder['recorded_sessions']} сопоставимым результатам уровня 2 или выше: точность первого ответа {round(harder_accuracy * 100)}%, самостоятельность {round(harder_independence * 100)}%."]
-    elif completed >= thresholds.level_two_sessions and accurate and independent and enough_independence:
-        level = 2
-        reason = [f"Уровень 2 выбран по {completed} последним результатам: взвешенная точность первого ответа {round(weighted_accuracy * 100)}%; свежие ответы имеют больший вес."]
-    elif completed:
-        accuracy_note = f", взвешенная точность первого ответа {round(weighted_accuracy * 100)}%" if weighted_accuracy is not None else ""
-        reason = [f"Сохраняем спокойный уровень: устойчивых данных для повышения пока недостаточно ({completed} из {thresholds.level_two_sessions} практик{accuracy_note})."]
+    current = evidence.get("current_level", 1)
+    recent = evidence.get("current_level_results", evidence)
+    level = current
+    completed = recent["recorded_sessions"]
+    accuracy = recent.get("weighted_independent_accuracy", recent["weighted_accuracy"])
+    independence = recent["weighted_independence_rate"]
+    enough_independent = recent["independent_completions"] >= thresholds.minimum_independent_completions
+    reason = [f"Сохраняем уровень {current}: сопоставимых результатов на этом уровне пока недостаточно."]
+    if current > 1 and completed >= thresholds.decrease_sessions and accuracy is not None and accuracy < thresholds.decrease_independent_accuracy:
+        level = current - 1
+        reason = [f"Уменьшаем сложность на один уровень после {completed} сопоставимых практик: самостоятельно выполнено {round(accuracy * 100)}% раундов. Перерывы и отказы сюда не входят."]
+    elif current < 3:
+        required = thresholds.level_two_sessions if current == 1 else thresholds.level_three_sessions
+        accuracy_threshold = thresholds.minimum_accuracy if current == 1 else thresholds.level_three_accuracy
+        independence_threshold = thresholds.minimum_level_two_independence_rate if current == 1 else thresholds.minimum_level_three_independence_rate
+        if completed >= required and accuracy is not None and accuracy >= accuracy_threshold and enough_independent and independence is not None and independence >= independence_threshold:
+            level = current + 1
+            reason = [f"Повышаем сложность на один уровень по {completed} сопоставимым результатам уровня {current}: самостоятельно выполнено {round(accuracy * 100)}% раундов; свежие ответы имеют больший вес."]
+        elif completed:
+            reason = [f"Сохраняем уровень {current}: для повышения нужны {required} устойчивых результата именно этого уровня; сейчас {completed}."]
     else:
-        reason = ["Сохраняем начальный уровень: сопоставимых результатов этой версии за последние 30 дней пока нет."]
+        reason = ["Сохраняем уровень 3. Один неудачный результат не обнуляет предыдущую практику."]
 
-    if parent_observations["latest_result"] == "with_help" and level > 1:
-        level = 1
-        reason.append("Последнее бытовое наблюдение было с помощью, поэтому повышение пока не применяется.")
+    if parent_observations.get("latest_skill_result", parent_observations["latest_result"]) == "with_help" and level > current:
+        level = current
+        reason.append("Свежему бытовому наблюдению нужна помощь: повышение отложено, текущий уровень сохранён.")
 
     recent_pause = (
         evidence["refusals"] + evidence["breaks"]
@@ -231,12 +261,15 @@ def _difficulty(
     else:
         option_count = None
         rounds = exercise["engine"]["content"].get("default_rounds") or len(exercise["engine"]["content"].get("scenarios", [])) or 1
+    tasks = exercise['engine']['content'].get('tasks', [])[:rounds]
+    step_count = max((len(task.get('correct_order', [])) for task in tasks), default=1) if mechanic == 'action_sequence' else 1
+    action_count = max((len(task.get('pairs', [])) for task in tasks), default=1) if mechanic == 'object_match' else step_count
     params = {
         "difficulty_level": level,
         "option_count": option_count,
         "round_count": rounds,
-        "instruction_step_count": 1,
-        "action_count": 1,
+        "instruction_step_count": step_count,
+        "action_count": action_count,
     }
     return params, reason
 
@@ -347,14 +380,16 @@ def create_plan(db, child_id: int, target_minutes: int, user_id: int, thresholds
     for goal in goals:
         if recommendation_id is not None and goal["id"] != accepted[0]["goal_id"]:
             continue
-        parent_observations = _parent_observation_evidence(db, goal["id"])
+        parent_observations = _parent_observation_evidence(db, goal["id"], thresholds)
         linked = [item for item in catalogue if exercise_matches_goal(item, goal) and item["id"] not in avoided
                   and (recommendation_id is None or (goal["id"], item["id"]) in recommended)]
         if not linked:
+            excluded = any(exercise_matches_goal(item, goal) and item["id"] in avoided for item in catalogue)
             notices.append({
                 "goal_id": goal["id"],
                 "goal_title": goal["title"],
-                "message": "Для этой цели пока нет опубликованного упражнения. Случайная замена не назначена.",
+                "message": ("Все подходящие опубликованные задания исключены в предпочтениях ребёнка. Проверьте отметки «Пока не предлагать»."
+                            if excluded else "Для этой цели пока нет опубликованного упражнения. Случайная замена не назначена."),
             })
             continue
         for exercise in linked:

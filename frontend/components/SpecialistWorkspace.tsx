@@ -1,16 +1,19 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useRefreshOnReturn } from "@/lib/hooks/useRefreshOnReturn";
+import { GoalPracticeProgress } from "./GoalPracticeProgress";
+import type { PracticeGoal } from "@/lib/api";
 import { BrandLogo } from "@/components/BrandLogo";
 import { Users, ArrowRight, LogOut, ClipboardList, MessageSquare, Clock, RefreshCw, Link2, Copy, Check } from "lucide-react";
 import { CabinetNavigation, useCabinetSection } from "./CabinetNavigation";
-import { api, type Child, type Exercise, type User, type SpecialistAdvice } from "@/lib/api";
+import { api, type Child, type Exercise, type User, type SpecialistAdvice, type AdaptivePlan } from "@/lib/api";
 
 import { RecommendationDecision, RecommendationOutcome } from "./RecommendationDecision";
 
 type Observation = { id: number; result_type: string; prompt_level: string; context: string; note: string; created_at: string; specialist_name?: string };
 type Workspace = {
-  practice_goals: Array<{ id: number; title: string; baseline: string; help_level: string; status: string; linked_exercises: Array<{ id: number }> }>;
+  practice_goals: PracticeGoal[];
   available_exercises: Exercise[];
   observations: Observation[];
   recommendations: SpecialistAdvice[];
@@ -43,18 +46,30 @@ export function SpecialistWorkspace({ user, onLogout }: { user: User; onLogout: 
       .catch(cause => { if (active) setError(cause.message); }).finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, []);
-  const reload = useCallback(async () => {
+  const workspaceRequest = useRef<AbortController | null>(null);
+  const reload = useCallback(async (background = false) => {
+    workspaceRequest.current?.abort();
     if (!selected) return;
-    setWorkspace(null); setError("");
-    try { setWorkspace(await api<Workspace>(`/api/specialist/children/${selected}`)); }
-    catch (cause) { setError(cause instanceof Error ? cause.message : "Доступ к профилю больше не предоставлен"); }
+    const controller = new AbortController();
+    workspaceRequest.current = controller;
+    if (!background) setWorkspace(null);
+    setError("");
+    try {
+      const next = await api<Workspace>(`/api/specialist/children/${selected}`, {signal: controller.signal});
+      if (!controller.signal.aborted) setWorkspace(next);
+    } catch (cause) {
+      if (!controller.signal.aborted) {
+        setWorkspace(null);
+        setError(cause instanceof Error ? cause.message : "Доступ к профилю больше не предоставлен");
+      }
+    }
   }, [selected]);
   useEffect(() => {
-    let active = true;
-    if (!selected) return;
-    api<Workspace>(`/api/specialist/children/${selected}`).then(value => { if (active) setWorkspace(value); }).catch(cause => { if (active) { setWorkspace(null); setError(cause.message); } });
-    return () => { active = false; };
-  }, [selected]);
+    const timer = window.setTimeout(() => void reload(), 0);
+    return () => { window.clearTimeout(timer); workspaceRequest.current?.abort(); };
+  }, [reload]);
+  const refreshOnReturn = useCallback(() => reload(true), [reload]);
+  useRefreshOnReturn(refreshOnReturn, Boolean(selected));
   const saveObservation = async (event: React.FormEvent) => {
     event.preventDefault(); if (!selected || saving) return;
     setSaving(true); setError(""); setNotice("");
@@ -90,7 +105,7 @@ export function SpecialistWorkspace({ user, onLogout }: { user: User; onLogout: 
   return <div className="professional-shell">
     <aside className="professional-sidebar"><a className="cabinet-brand" href="/app"><BrandLogo variant="compact" width={165}/><small>Кабинет специалиста</small></a><CabinetNavigation cabinet="specialist" sections={specialistSections} active={section} onNavigate={navigate}/><div className="professional-account"><strong>{user.full_name}</strong><small>@{user.username}</small><button className="secondary-button" onClick={onLogout}><LogOut size={18}/> Выйти из аккаунта</button></div></aside>
     <main className="specialist-workspace cabinet-content"><header className="cabinet-heading"><div><p className="kicker">РАБОТА С СЕМЬЁЙ</p><h1>{specialistSections.find(item => item.id === section)?.label}</h1><p>Наблюдения и поддержка, в удобном темпе для каждой семьи.</p></div><span className="cabinet-badge"><Users size={18}/>{children.length} {children.length % 10 === 1 && children.length % 100 !== 11 ? "профиль" : children.length % 10 >= 2 && children.length % 10 <= 4 && (children.length % 100 < 12 || children.length % 100 > 14) ? "профиля" : "профилей"}</span></header>
-    {error && <div className="cabinet-notice error" role="alert">{error}<button className="secondary-button" onClick={reload}>Проверить доступ снова</button></div>}{notice && <p className="cabinet-notice" role="status">{notice}</p>}
+    {error && <div className="cabinet-notice error" role="alert">{error}<button className="secondary-button" onClick={() => void reload()}>Проверить доступ снова</button></div>}{notice && <p className="cabinet-notice" role="status">{notice}</p>}
     {loading ? <p role="status">Загружаем доступные профили…</p> : !children.length ? <section className="cabinet-empty"><Users size={40}/><h2>Нет доступных профилей</h2><p>Откройте ссылку-приглашение от родителя и отправьте запрос. После подтверждения семьёй профиль появится здесь. Если запрос уже отправлен, дождитесь подтверждения и обновите список.</p><p>Ваш логин: <strong>{user.username}</strong></p><button className="secondary-button" onClick={() => window.location.reload()}><RefreshCw size={18}/> Обновить список детей</button></section> : <>
     {section === "children" ? <><div className="cabinet-intro"><h2>Семьи, с которыми вы работаете</h2><p>Каждый профиль открыт родителем. Выберите ребёнка, чтобы перейти к наблюдениям.</p></div><div className="specialist-children-grid">{children.map(child => <button className="specialist-child" key={child.id} onClick={() => { chooseChild(String(child.id)); navigate("observations"); }}><span className="cabinet-avatar" style={{background:child.avatar_color}}>{child.name[0]}</span><span><strong>{child.name}</strong><small>Открыть наблюдения</small></span><ArrowRight size={22}/></button>)}</div><p className="cabinet-footnote">Игровые результаты и наблюдения вне игры сохраняются отдельно. Они не являются автоматической диагностикой.</p></> : <>
     <button className="secondary-button" disabled={saving} onClick={() => void reload()}><RefreshCw size={17}/> Обновить профиль</button>
@@ -111,7 +126,7 @@ export function SpecialistWorkspace({ user, onLogout }: { user: User; onLogout: 
         <label>Как поддержать ребёнка<textarea value={recommendation} onChange={e => setRecommendation(e.target.value)} required minLength={3} maxLength={1000}/></label>
         <button className="primary-button" disabled={saving}>Сохранить рекомендацию</button>
       </form></section><section className="cabinet-panel"><h2>Ваши рекомендации</h2>{workspace.recommendations.length ? workspace.recommendations.map(item => <article className="cabinet-entry" key={item.id}><h3>{item.exercise_title || "Поддержка дома"}</h3><p>{item.comment}</p><RecommendationOutcome item={item}/>{item.is_current ? <button className="secondary-button" disabled={saving} onClick={() => void withdrawRecommendation(item.id)}>Отозвать рекомендацию</button> : <small>Рекомендация больше не действует</small>}</article>) : <div className="cabinet-empty-inline"><MessageSquare size={28}/><p>Рекомендаций пока нет. Семья увидит сохранённые рекомендации в своём кабинете.</p></div>}</section></div>}
-      {section === "history" && <><section className="cabinet-panel"><h2>Цели семьи</h2>{workspace.practice_goals.length ? workspace.practice_goals.map(item => <article className="cabinet-entry" key={item.id}><h3>{item.title}</h3><p>Исходное наблюдение: {item.baseline}</p><small>{item.status === "active" ? "Активная цель" : "Цель приостановлена"}</small></article>) : <p>Семья пока не добавила практические цели.</p>}</section><section className="cabinet-panel"><div className="cabinet-section-title"><Clock size={22}/><div><h2>История игровых попыток</h2><p>{workspace.dashboard.total_sessions} сохранённых попыток. Это история взаимодействий, а не оценка развития речи.</p></div></div>{workspace.dashboard.recent.map(item => <article className="cabinet-entry" key={item.id}><strong>{item.title || "Игровая попытка"}</strong><p>{new Date(item.created_at).toLocaleString("ru-RU")} · {outcomes[item.attempt_status] || "Попытка в игре"}</p></article>)}</section></>}
+      {section === "history" && <><section className="cabinet-panel"><h2>Цели семьи</h2>{workspace.practice_goals.length ? workspace.practice_goals.map(item => <article className="cabinet-entry" key={item.id}><h3>{item.title}</h3><p>Исходное наблюдение: {item.baseline}</p><small>{item.status === "active" ? "Активная цель" : item.status === "completed" ? "Цель завершена" : "Цель приостановлена"}</small><GoalPracticeProgress progress={item.progress}/></article>) : <p>Семья пока не добавила практические цели.</p>}</section><section className="cabinet-panel"><div className="cabinet-section-title"><Clock size={22}/><div><h2>История игровых попыток</h2><p>{workspace.dashboard.total_sessions} сохранённых попыток. Это история взаимодействий, а не оценка развития речи.</p></div></div>{workspace.dashboard.recent.map(item => <article className="cabinet-entry" key={item.id}><strong>{item.title || "Игровая попытка"}</strong><p>{new Date(item.created_at).toLocaleString("ru-RU")} · {outcomes[item.attempt_status] || "Попытка в игре"}</p></article>)}</section></>}
     </>}
     </>}
     </>}
@@ -119,7 +134,7 @@ export function SpecialistWorkspace({ user, onLogout }: { user: User; onLogout: 
   </div>;
 }
 
-export function FamilySpecialistAccess({ childId, enabled, onManagePermissions }: { childId: number; enabled: boolean; onManagePermissions?: () => void }) {
+export function FamilySpecialistAccess({ childId, enabled, onManagePermissions, onStartPlan }: { childId: number; enabled: boolean; onManagePermissions?: () => void; onStartPlan?: (plan: AdaptivePlan) => Promise<void> }) {
   const [items, setItems] = useState<Array<{ id: number; full_name: string; username: string }>>([]);
   const [observations, setObservations] = useState<Observation[]>([]);
   const [recommendations, setRecommendations] = useState<SpecialistAdvice[]>([]);
@@ -142,6 +157,8 @@ export function FamilySpecialistAccess({ childId, enabled, onManagePermissions }
     catch (cause) { setMessage(cause instanceof Error ? cause.message : "Не удалось создать приглашение"); }
     finally { setBusy(false); }
   };
+  const refreshFamilyAccess = useCallback(() => load().catch(cause => setMessage(cause instanceof Error ? cause.message : "Не удалось обновить рекомендации")), [load]);
+  useRefreshOnReturn(refreshFamilyAccess, enabled);
   const activeInviteUrl = enabled && invitations.some(item => item.id === createdInviteId && item.status === "open") ? inviteUrl : "";
   const copyLink = async () => {
     try { await navigator.clipboard.writeText(activeInviteUrl); setCopied(true); }
@@ -178,7 +195,7 @@ export function FamilySpecialistAccess({ childId, enabled, onManagePermissions }
       <details className="known-specialist"><summary>Добавить по известному логину</summary><form onSubmit={grant}><label>Логин специалиста<input value={username} onChange={e => setUsername(e.target.value)} required minLength={3} maxLength={40} disabled={!enabled || busy}/></label><button className="secondary-button" disabled={!enabled || busy}>Открыть доступ</button></form></details>
     </section>
     <section className="cabinet-panel"><h2>Подключённые специалисты</h2>{items.length ? items.map(item => <div className="connected-specialist" key={item.id}><span className="cabinet-avatar">{item.full_name[0]}</span><div><strong>{item.full_name}</strong><small>@{item.username}</small></div><button className="secondary-button" disabled={busy} onClick={() => revoke(item.id)}>Отозвать доступ</button></div>) : <p className="cabinet-empty-copy">Доступ пока никому не предоставлен.</p>}</section>
-    <div className="specialist-columns"><section className="cabinet-panel"><h2>Рекомендации специалиста</h2>{recommendations.length ? recommendations.map(item => <article className="cabinet-entry" key={item.id}><small>{item.specialist_name}</small><h3>{item.exercise_title || "Поддержка дома"}</h3><p>{item.comment}</p><RecommendationDecision key={`${item.id}:${item.family_decision}`} childId={childId} item={item} onChanged={() => { void load().catch(cause => setMessage(cause.message)); }}/></article>) : <p>Здесь появятся рекомендации для домашней практики.</p>}</section><section className="cabinet-panel"><h2>Наблюдения специалиста</h2>{observations.length ? observations.map(item => <article className="cabinet-entry" key={item.id}><small>{item.specialist_name} · {outcomes[item.result_type]}</small><p>{item.context}: {item.note}</p></article>) : <p>Наблюдения вне игры появятся после записи специалистом.</p>}</section></div>
+    <div className="specialist-columns"><section className="cabinet-panel"><h2>Рекомендации специалиста</h2>{recommendations.length ? recommendations.map(item => <article className="cabinet-entry" key={item.id}><small>{item.specialist_name}</small><h3>{item.exercise_title || "Поддержка дома"}</h3><p>{item.comment}</p><RecommendationDecision key={`${item.id}:${item.family_decision}`} childId={childId} item={item} onStartPlan={onStartPlan} onChanged={() => { void load().catch(cause => setMessage(cause.message)); }}/></article>) : <p>Здесь появятся рекомендации для домашней практики.</p>}</section><section className="cabinet-panel"><h2>Наблюдения специалиста</h2>{observations.length ? observations.map(item => <article className="cabinet-entry" key={item.id}><small>{item.specialist_name} · {outcomes[item.result_type]}</small><p>{item.context}: {item.note}</p></article>) : <p>Наблюдения вне игры появятся после записи специалистом.</p>}</section></div>
   </div>;
 }
 

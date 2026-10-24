@@ -39,6 +39,8 @@ test("a family accepts a goal-linked recommendation and its result returns to th
   await page.getByLabel("Как поддержать ребёнка").fill("Начните с выбора знакомого животного. Дождитесь ответа.");
   await page.getByRole("button", {name: "Сохранить рекомендацию", exact: true}).click();
   await expect(page.getByText("Ожидает решения семьи", {exact: true})).toBeVisible();
+  const specialistMenu = page.getByRole("button", {name: "Открыть меню", exact: true});
+  if (await specialistMenu.isVisible()) await specialistMenu.click();
   await page.getByRole("button", {name: "Выйти из аккаунта", exact: true}).click();
   await login(parent.user.username);
   const advice = page.locator(".parent-specialist-advice");
@@ -63,10 +65,12 @@ test("a family accepts a goal-linked recommendation and its result returns to th
   await page.route("http://localhost:8010/api/tts", route => route.fulfill({status: 503, body: "{}"}));
   await page.getByRole("button", {name: /Начать с разминки|Начать первое задание/}).click();
   await page.getByRole("button", {name: /Понятно, начать/}).click();
-  for (let round = 0; round < 4; round++) {
+  const rounds = Number(await page.getByRole("progressbar", {name: "Ход задания"}).getAttribute("aria-valuemax"));
+  expect(rounds).toBeGreaterThanOrEqual(12);
+  for (let round = 0; round < rounds; round++) {
     await page.locator(".picture-options button").nth(0).click();
     await expect(page.getByText("Получилось", {exact: true})).toBeVisible();
-    await page.getByRole("button", {name: round === 3 ? "Завершить" : "Дальше", exact: true}).click();
+    await page.getByRole("button", {name: round === rounds - 1 ? "Завершить" : "Дальше", exact: true}).click();
   }
   await expect(page.getByRole("heading", {name: "Задание завершено", exact: true})).toBeVisible();
   // Read the same persisted result through the specialist UI in another login.
@@ -74,11 +78,11 @@ test("a family accepts a goal-linked recommendation and its result returns to th
   await expect(page.locator(".parent-specialist-advice")).toBeVisible();
   const menu = page.getByRole("button", {name: "Открыть меню", exact: true});
   if (await menu.isVisible()) await menu.click();
-  await page.locator(".sidebar-logout").click();
+  await page.getByRole("button", {name: "Выйти из аккаунта", exact: true}).click();
   await login(specialist.user.username);
   await page.getByRole("button", {name: /Тестовый ребёнок Открыть наблюдения/}).click();
   await page.getByRole("link", {name: "Рекомендации", exact: true}).click();
   await expect(page.getByText("Практика по рекомендации состоялась. Это не подтверждение освоения навыка.")).toBeVisible();
-  await expect(page.getByText(/Последняя попытка: Задание выполнено/)).toContainText("4 из 4");
+  await expect(page.getByText(/Последняя попытка: Задание выполнено/)).toContainText(`${rounds} из ${rounds}`);
   await page.screenshot({path: info.outputPath("specialist-result.png"), fullPage: true});
 });

@@ -118,7 +118,30 @@ class ExerciseAssetCreate(BaseModel):
     license: str = Field(min_length=2, max_length=500)
     license_status: Literal["documented", "pending"]
 
+class LearningPictureCreate(BaseModel):
+    key: str = Field(min_length=2, max_length=50, pattern=r"^[a-z0-9][a-z0-9-]+$")
+    label: str = Field(min_length=1, max_length=80)
+    media_ref: str = Field(min_length=2, max_length=240, pattern=r"^/[^/]")
+
+class SortItemCreate(LearningPictureCreate):
+    category_key: str = Field(min_length=2, max_length=50)
+
+class LearningPairCreate(BaseModel):
+    object_key: str = Field(min_length=2, max_length=50)
+    target_key: str = Field(min_length=2, max_length=50)
+
+class LearningTaskCreate(BaseModel):
+    key: str = Field(min_length=2, max_length=50)
+    instruction: str = Field(min_length=2, max_length=500)
+    cards: list[LearningPictureCreate] = Field(min_length=2, max_length=6)
+    targets: list[LearningPictureCreate] = Field(default_factory=list, max_length=6)
+    correct_order: list[str] = Field(default_factory=list, max_length=4)
+    pairs: list[LearningPairCreate] = Field(default_factory=list, max_length=6)
+
 class ExerciseDraftContent(BaseModel):
+    categories: list[LearningPictureCreate] = Field(default_factory=list, max_length=4)
+    sort_items: list[SortItemCreate] = Field(default_factory=list, max_length=60)
+    tasks: list[LearningTaskCreate] = Field(default_factory=list, max_length=60)
     stimuli: list[ExerciseStimulusCreate] = Field(default_factory=list, max_length=64)
     difficulty_levels: list[ExerciseDifficultyLevel] = Field(default_factory=list, max_length=3)
     scenarios: list[InstructionScenarioCreate] = Field(default_factory=list, max_length=100)
@@ -152,7 +175,7 @@ class ExerciseMethodCard(BaseModel):
 
 class ExerciseDraftCreate(BaseModel):
     module: Literal["sensory", "mixed"]
-    mechanic: Literal["auditory_choice", "action_choice", "tap_instruction", "guided_aac"]
+    mechanic: Literal["auditory_choice", "action_choice", "tap_instruction", "guided_aac", "category_sort", "action_sequence", "object_match"]
     title: str = Field(min_length=2, max_length=100)
     objective: str = Field(min_length=5, max_length=300)
     instruction: str = Field(min_length=2, max_length=300)
