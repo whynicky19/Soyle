@@ -11,9 +11,10 @@ import { BookArt } from './BookArt';
 import { BookScene } from './BookScene';
 import './book.css';
 
-type Props={childId?:number;storyKey?:string;onExit:()=>void;calmMode?:boolean};
+type Props={childId?:number;storyKey?:string;onExit:()=>void;calmMode?:boolean;embedded?:boolean};
 type PendingEvent={version:number;expected_revision:number;scene_id:string;event_id:string;action:string};
-export function InteractiveBook({childId,storyKey='toy',onExit,calmMode=false}:Props){
+export function InteractiveBook({childId,storyKey='toy',onExit,calmMode=false,embedded=false}:Props){
+  const Container=embedded?'section':'main';
   const [snapshot,setSnapshot]=useState<BookSnapshot|null>(null),[assets,setAssets]=useState<BookAssetManifest|null>(null);
   const [started,setStarted]=useState(false),[loaded,setLoaded]=useState(false),[loadingCount,setLoadingCount]=useState(0),[busy,setBusy]=useState(false),[error,setError]=useState('');
   const [sound,setSound]=useState(true),[motion,setMotion]=useState(!calmMode),[systemReduced,setSystemReduced]=useState(false),[narrating,setNarrating]=useState(false),[audioNote,setAudioNote]=useState(''),[pausing,setPausing]=useState(false),[hidden,setHidden]=useState(false);
@@ -74,16 +75,17 @@ export function InteractiveBook({childId,storyKey='toy',onExit,calmMode=false}:P
   const exit=()=>{stopVoice();onExit();};
   const begin=async()=>{if(snapshot?.state.completed){if(!await dispatch('restart'))return;}setStarted(true);};
   const restart=async()=>{if(await dispatch('restart')){setStarted(true);window.scrollTo({top:0,behavior:'instant'});}};
-  if(!childId)return <main className="book-loading"><h1>Сначала добавьте профиль ребёнка</h1><button onClick={exit}>В кабинет</button></main>;
-  if(!loaded||!snapshot||!scene||!assets)return <main className="book-loading"><span className="book-eyebrow">SÖYLE · ИНТЕРАКТИВНАЯ КНИГА</span><h1>Открываем книгу</h1><p>{error||`Готовим иллюстрации${loadingCount?` · ${loadingCount}`:'…'}`}</p>{error&&<button onClick={()=>void load()}>Попробовать снова</button>}<button onClick={exit}>В кабинет</button></main>;
+  if(!childId)return <Container className="book-loading"><h1>Сначала добавьте профиль ребёнка</h1><button onClick={exit}>В кабинет</button></Container>;
+  if(!loaded||!snapshot||!scene||!assets)return <Container className="book-loading"><span className="book-eyebrow">SÖYLE · ИНТЕРАКТИВНАЯ КНИГА</span><h1>Открываем книгу</h1><p>{error||`Готовим иллюстрации${loadingCount?` · ${loadingCount}`:'…'}`}</p>{error&&<button onClick={()=>void load()}>Попробовать снова</button>}<button onClick={exit}>В кабинет</button></Container>;
   const {state,definition}=snapshot;
+  const backLabel=snapshot.preview?'В кабинет':'К историям';
   const choices=activeOptions(scene,state);
   const hint=state.hints.includes(scene.id);
   const isCards=['match','aac','choice','instruction'].includes(scene.kind);
   const ratio=assets.images[scene.image]?.width/assets.images[scene.image]?.height||1.5;
   const turns=canTurnPage(scene,state);
-  return <main className={`book-player ${motion&&!systemReduced?'book-has-motion':'book-reduced'}`} style={{'--book-ratio':ratio} as CSSProperties}>
-    <header className="book-topbar"><button className="book-back" aria-label="В кабинет" onClick={exit} disabled={busy}><ArrowLeft/><span>В кабинет</span></button><div className="book-title"><span className="book-eyebrow">SÖYLE · ИНТЕРАКТИВНАЯ КНИГА</span><strong>{definition.title}</strong></div><div className="book-top-tools"><span className="book-counter" aria-label={`Страница ${state.scene_index+1} из ${definition.scenes.length}`}>{state.scene_index+1}<small>/ {definition.scenes.length}</small></span><button aria-label={sound?'Выключить звук':'Включить звук'} aria-pressed={sound} onClick={()=>{stopVoice();setSound(!sound);}}>{sound?<Volume2/>:<VolumeX/>}</button><button ref={pauseButton} aria-label="Пауза" disabled={!started||paused||busy} onClick={()=>void pause()}><Pause/></button></div></header>
+  return <Container aria-label="Интерактивная книга" className={`book-player ${motion&&!systemReduced?'book-has-motion':'book-reduced'}`} style={{'--book-ratio':ratio} as CSSProperties}>
+    <header className="book-topbar"><button className="book-back" aria-label={backLabel} onClick={exit} disabled={busy}><ArrowLeft/><span>{backLabel}</span></button><div className="book-title"><span className="book-eyebrow">SÖYLE · ИНТЕРАКТИВНАЯ КНИГА</span><strong>{definition.title}</strong></div><div className="book-top-tools"><span className="book-counter" aria-label={`Страница ${state.scene_index+1} из ${definition.scenes.length}`}>{state.scene_index+1}<small>/ {definition.scenes.length}</small></span><button aria-label={sound?'Выключить звук':'Включить звук'} aria-pressed={sound} onClick={()=>{stopVoice();setSound(!sound);}}>{sound?<Volume2/>:<VolumeX/>}</button><button ref={pauseButton} aria-label="Пауза" disabled={!started||paused||busy} onClick={()=>void pause()}><Pause/></button></div></header>
     {error&&<aside className="book-error" role="alert"><strong>{error}</strong><button onClick={()=>void load()}>Восстановить сохранённую страницу</button></aside>}
     <section className={`book-spread ${!started?'book-spread-cover':''} ${state.completed?'book-is-complete':''}`} aria-label={`Страница: ${scene.title}`}>
       <div className="book-picture-column"><div className="book-image-frame" key={scene.id}>
@@ -93,7 +95,7 @@ export function InteractiveBook({childId,storyKey='toy',onExit,calmMode=false}:P
       <aside className="book-context">
         <span className="book-chapter">{state.completed?'КОНЕЦ ИСТОРИИ':`СТРАНИЦА ${String(state.scene_index+1).padStart(2,'0')}`}</span>
         <h1 ref={title} tabIndex={-1}>{!started?'Одна уютная история':state.completed?'Побудем вместе':scene.title}</h1>
-        {!started?<><p className="book-intro">{definition.scenes.length} сцен. Можно читать частями, выбирать и помогать.</p><div className="book-preview-note"><strong>DRAFT · предпросмотр взрослого</strong><p>Новые иллюстрации и сценарий ожидают проверки.</p></div></>:<>
+        {!started?<><p className="book-intro">{definition.scenes.length} сцен. Можно читать частями, выбирать и помогать.</p><div className="book-preview-note"><strong>{snapshot.preview ? definition.status === 'DRAFT' ? 'Черновик · предпросмотр взрослого' : 'Предпросмотр взрослого' : 'Твоя история'}</strong><p>{snapshot.preview ? 'Чтение здесь не меняет результат ребёнка.' : 'Страница сохраняется. Можно остановиться и продолжить позже.'}</p></div></>:<>
           <p className={`book-instruction ${state.ready?'book-feedback-ready':''}`} aria-live="polite">{state.completed?'Можно отдохнуть или вернуться в кабинет.':promptFor(scene,state)}</p>
           {!state.ready&&state.feedback&&<p className="book-gentle-feedback" role="status">{state.feedback}</p>}
           {!state.completed&&isCards&&!state.ready&&<div className={`book-options book-options-${scene.kind}`} aria-label={scene.instruction}>{choices.map(option=><button key={option.key} className={state.selected===option.key?'book-option-explored':''} aria-label={option.label} disabled={busy||paused||!!error} onClick={()=>void action(option.key)}><span className="book-art">{option.image?<Image src={option.image} alt="" width={120} height={120} unoptimized/>:<BookArt art={option.art}/>}</span><strong>{option.label}</strong>{option.speech&&<small>{option.speech}</small>}</button>)}</div>}
@@ -101,13 +103,13 @@ export function InteractiveBook({childId,storyKey='toy',onExit,calmMode=false}:P
           {!state.completed&&['help','sequence'].includes(scene.kind)&&!state.ready&&choices.map(option=><button key={option.key} className="book-scene-alternative" disabled={busy||paused||!!error} onClick={()=>void action(option.key)}>{option.label}<ArrowRight/></button>)}
           {state.ready&&!state.completed&&<div className="book-complete-mark" aria-hidden="true"><Check/><span>Можно перевернуть страницу</span></div>}
           {!state.completed&&turns&&<button className="book-primary book-next" disabled={busy||paused||!!error} onClick={()=>void dispatch('continue')} aria-label={scene.kind==='ending'?'Закончить книгу':'Дальше'}>{scene.kind==='ending'?'Закончить книгу':'Дальше'}<ArrowRight/></button>}
-          {state.completed&&chosen.length>0&&<p className="book-choice-memory">Ты выбрал: {chosen.join(" · ")}</p>}{state.completed&&<div className="book-ending-actions"><button className="book-primary" onClick={exit}>В кабинет<ArrowRight/></button><button onClick={()=>void restart()} disabled={busy}><RotateCcw/>Прочитать ещё раз</button></div>}
+          {state.completed&&chosen.length>0&&<p className="book-choice-memory">Ты выбрал: {chosen.join(" · ")}</p>}{state.completed&&<div className="book-ending-actions"><button className="book-primary" onClick={exit}>{backLabel}<ArrowRight/></button><button onClick={()=>void restart()} disabled={busy}><RotateCcw/>Прочитать ещё раз</button></div>}
         </>}
       </aside>
     </section>
     <footer className="book-bottom">{started&&!state.completed&&state.scene_index>0&&<button disabled={paused||busy} onClick={()=>void dispatch('back')}><ArrowLeft/>Назад</button>}{started&&!state.completed&&<><button className={narrating?'book-speaking':''} disabled={paused||!sound} onClick={()=>void (async()=>{if(await dispatch('repeat'))await narrate(narration || scene.narration);})()}><Volume2/>Послушать ещё раз</button><button disabled={paused||busy} onClick={()=>void dispatch('hint')}><CircleHelp/>Подсказка</button><button disabled={paused||busy} onClick={()=>void pause('break')}><Pause/>Перерыв</button><button disabled={paused||busy} onClick={()=>void pause('refuse')}><X/>Не хочу</button><details className="book-adult-help"><summary>Вместе со взрослым</summary><button disabled={paused||busy} onClick={()=>void dispatch('assist')}>Помочь вместе</button></details></>}<label className="book-motion-toggle"><input type="checkbox" checked={motion&&!systemReduced} disabled={systemReduced} onChange={event=>setMotion(event.target.checked)}/>Мягкие движения</label>{busy&&<span role="status" className="book-saving">Сохраняем…</span>}</footer>
     {audioNote&&<p role="status" className="book-audio-note">{audioNote}</p>}
-    {started&&<p className="book-draft-footer">DRAFT · предпросмотр родителя · без оценок и соревнования</p>}
-    <dialog ref={pauseDialog} className="book-pause" aria-label="Книга на паузе" onCancel={event=>{event.preventDefault();void resume();}}><span className="book-eyebrow">МОЖНО НЕ СПЕШИТЬ</span><h2>Книга подождёт</h2><p>Мы сохранили эту страницу.</p><button className="book-primary" disabled={busy} onClick={()=>void resume()}><Play/>Продолжить</button><button disabled={busy} onClick={exit}>Выйти в кабинет</button></dialog>
-  </main>;
+    {started&&<p className="book-draft-footer">{snapshot.preview ? 'Предпросмотр взрослого · результат ребёнка не меняется' : 'Читаем и выбираем в своём темпе'}</p>}
+    <dialog ref={pauseDialog} className="book-pause" aria-label="Книга на паузе" onCancel={event=>{event.preventDefault();void resume();}}><span className="book-eyebrow">МОЖНО НЕ СПЕШИТЬ</span><h2>Книга подождёт</h2><p>Мы сохранили эту страницу.</p><button className="book-primary" disabled={busy} onClick={()=>void resume()}><Play/>Продолжить</button><button disabled={busy} onClick={exit}>{backLabel}</button></dialog>
+  </Container>;
 }

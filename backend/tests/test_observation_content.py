@@ -51,3 +51,23 @@ def test_description_goal_selects_published_bank_and_twelve_round_plan(client, a
     item = next(item for item in plan.json()['items'] if item['goal_id'] == created.json()['id'])
     assert item['exercise_version_id'] == draft['id']
     assert item['difficulty_params']['round_count'] == 12
+
+
+def test_complete_phrase_revision_preserves_old_bank_and_is_idempotent(client, isolated_database):
+    import json
+    from app.migrations import _migration_33_complete_picture_phrases
+    with connect() as db:
+        old = db.execute("SELECT v.* FROM exercise_versions v JOIN exercises e ON e.id=v.exercise_id WHERE e.target='observation' ORDER BY v.version DESC LIMIT 1").fetchone()
+        previous = json.loads(old['content_json'])
+        previous['bank_key'] = 'observation-pictures-v2'
+        db.execute("UPDATE exercise_versions SET content_json=?,publication_status='published',review_status='approved',admin_review_status='approved' WHERE id=?", (json.dumps(previous),old['id']))
+        original = dict(db.execute('SELECT * FROM exercise_versions WHERE id=?',(old['id'],)).fetchone())
+        _migration_33_complete_picture_phrases(db)
+        newest = dict(db.execute('SELECT * FROM exercise_versions WHERE exercise_id=? ORDER BY version DESC LIMIT 1',(old['exercise_id'],)).fetchone())
+        assert newest['version'] == old['version'] + 1
+        assert json.loads(newest['content_json'])['bank_key'] == 'observation-pictures-v3'
+        assert newest['publication_status'] == 'draft'
+        assert newest['admin_review_status'] == 'pending'
+        assert dict(db.execute('SELECT * FROM exercise_versions WHERE id=?',(old['id'],)).fetchone()) == original
+        _migration_33_complete_picture_phrases(db)
+        assert db.execute('SELECT MAX(version) n FROM exercise_versions WHERE exercise_id=?',(old['exercise_id'],)).fetchone()['n'] == newest['version']

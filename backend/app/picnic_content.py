@@ -1,4 +1,4 @@
-"""A complete review-only comic, played by the existing interactive-book engine."""
+"""A published comic, played by the existing interactive-book engine."""
 from hashlib import sha256
 ROOT = "/learning-core/picnic"
 
@@ -14,11 +14,12 @@ def scene(key, title, narration, kind="watch", **extra):
 
 
 PICNIC = {
-    "key": "picnic", "version": 1, "schema_version": 1, "status": "DRAFT", "review_status": "pending",
-    "approval": {stage: "pending" for stage in ("technical", "methodology", "accessibility", "release")},
+    "key": "picnic", "version": 1, "schema_version": 1, "status": "PUBLISHED", "review_status": "approved",
+    "approval": {"administrator": "approved"},
+    "publication": {"approved_by": "project_owner", "date": "2026-10-25", "model": "administrator_review"},
     "title": "Пикник для мишки", "subtitle": "Выбираем, просим и играем вместе",
-    "review_note": "Сюжет и изображения подготовлены AI. Это предпросмотр, без утверждения специалистом.",
-    "assets_manifest": f"{ROOT}/manifest.json", "audio": {"status": "pending", "clips": {}},
+    "review_note": "Опубликовано по решению владельца проекта после технической проверки. Сюжет и изображения подготовлены AI; это не заключение профильного специалиста.",
+    "assets_manifest": f"{ROOT}/manifest.json", "audio": {"status": "ready", "clips": {}},
     "scenes": [
         scene("01", "Мишка идёт на пикник", "Миша зовёт мишку на пикник. Мама идёт с ними."),
         scene("02", "Что возьмём для игры?", "Что возьмём для игры: мяч или книгу?", "choice", personal_choice=True, options=[

@@ -193,7 +193,7 @@ test("lost save response retries the same event and returns the same stored resu
 test("child sees no retired quiz and No to continuing is accepted as refusal", async ({ page }) => {
   await login(page, "alikhan", "1234", true);
   await openMainSection(page, "Истории");
-  await expect(page.getByRole("heading", { name: "Истории готовятся" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Истории" })).toBeVisible();
   await expect(page.getByRole("button", { name: /На прогулке|Собираемся спать|Идём кушать/ })).toHaveCount(0);
   await openMainSection(page, "Занятия");
   await openCatalogExercise(page, /Ответить.*да.*нет/);

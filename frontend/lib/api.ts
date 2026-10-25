@@ -380,7 +380,10 @@ export type WorldPhoto = {
 };
 
 export type Story = {
-  engine?: "interactive_book";
+  engine?: "interactive_book" | "storybook" | "cinematic_story";
+  in_progress?: boolean;
+  progress_percent?: number;
+  progress_label?: string;
   key: string;
   title: string;
   summary: string;

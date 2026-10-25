@@ -9,9 +9,10 @@ import { playNarration } from '@/lib/storybook/cinematic/audio';
 import { CinematicStage } from './CinematicStage';
 import './cinematic.css';
 const phases: Phase[] = ['INTRO','NOTICE','REACH','AWAIT_REQUEST','REQUEST','MOTHER_ENTER','PICK_UP','TRANSFER','HUG','COMPLETE'];
-type Snapshot = { revision: number; definition: { title: string; review_note: string; communication_options: {action:string;label:string;speech:string}[]; audio:{clips:Record<string,string>} }; state:{phase:Phase;paused:boolean;completed:boolean} };
+type Snapshot = { preview: boolean; revision: number; definition: { title: string; review_note: string; communication_options: {action:string;label:string;speech:string}[]; audio:{clips:Record<string,string>} }; state:{phase:Phase;paused:boolean;completed:boolean} };
 const captions: Record<Phase,string> = {INTRO:'Миша играет в своей комнате',NOTICE:'На полке — любимый мишка',REACH:'Мишка слишком высоко',AWAIT_REQUEST:'Мише нужна помощь. Поможем попросить?',REQUEST:'Мама, помоги!',MOTHER_ENTER:'Мама услышала просьбу',MOTHER_WALK:'Мама подходит к полке',PICK_UP:'Мама берёт мишку',CARRY:'Мама несёт игрушку Мише',TRANSFER:'Мишка — для Миши',HUG:'Мишка у тебя! Обними его',COMPLETE:'Как хорошо играть вместе!'};
-export function CinematicStorybookExperience({childId,onExit,calmMode=false}:{childId?:number;onExit:()=>void;calmMode?:boolean}) {
+export function CinematicStorybookExperience({childId,onExit,calmMode=false,embedded=false}:{childId?:number;onExit:()=>void;calmMode?:boolean;embedded?:boolean}) {
+  const Container=embedded?'section':'main';
   const [snapshot,setSnapshot]=useState<Snapshot|null>(null), [manifest,setManifest]=useState<RigManifest|null>(null);
   const [started,setStarted]=useState(false), [ready,setReady]=useState(false), [phase,setPhase]=useState<Phase>('INTRO');
   const [paused,setPaused]=useState(false), [sound,setSound]=useState(true), [motion,setMotion]=useState(!calmMode), [hint,setHint]=useState(false), [busy,setBusy]=useState(false), [error,setError]=useState(''),[voiceNote,setVoiceNote]=useState('');
@@ -24,7 +25,7 @@ export function CinematicStorybookExperience({childId,onExit,calmMode=false}:{ch
     const next=await api<Snapshot>(`/api/cinematic-storybooks/${childId}/toy/events`,{method:'POST',body:JSON.stringify({version:2,expected_revision:saved.revision,phase:saved.state.phase,action,event_id:crypto.randomUUID()})}); accept(next); return next;
   };
   const enqueue=(work:()=>Promise<void>)=>{
-    queue.current=queue.current.then(async()=>{if(!failed.current&&alive.current) await work();}).catch(cause=>{
+    queue.current=queue.current.then(async()=>{if(!failed.current) await work();}).catch(cause=>{
       failed.current=true; controller.current?.pause(); rig.current?.setPaused(true); if(alive.current){setPaused(true);setError(cause instanceof Error?cause.message:'Не удалось сохранить действие');}
     }); return queue.current;
   };
@@ -69,7 +70,7 @@ export function CinematicStorybookExperience({childId,onExit,calmMode=false}:{ch
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[manifest,motion]);
   useEffect(()=>{const dialog=pauseDialog.current;if(started&&paused&&!error)dialog?.showModal();else dialog?.close();},[started,paused,error]);
-  const begin=()=>{if(!ready||!controller.current)return;setStarted(true);startedRef.current=true;if(current.current?.state.paused){controller.current.pause();rig.current?.setPaused(true);}void controller.current.restore(current.current?.state.phase||'INTRO');};
+  const begin=()=>{if(!ready||!controller.current)return;if(current.current?.state.completed){void act('restart',()=>{setStarted(true);startedRef.current=true;setPaused(false);rig.current?.setPaused(false);controller.current?.resume();void controller.current?.replay();});return;}setStarted(true);startedRef.current=true;if(current.current?.state.paused){controller.current.pause();rig.current?.setPaused(true);}void controller.current.restore(current.current?.state.phase||'INTRO');};
   const act=async(action:string,run?:()=>void)=>{
     if(actionLock.current||failed.current)return;actionLock.current=true;setBusy(true);
     await enqueue(async()=>{await post(action);run?.();});
@@ -80,23 +81,30 @@ export function CinematicStorybookExperience({childId,onExit,calmMode=false}:{ch
   const request=(action:string,text:string)=>void act(action,()=>void controller.current?.request(text));
   const teddy=()=>{if(phase==='HUG')void controller.current?.hug();else{setHint(true);controller.current?.observeTeddy();}};
   const repeat=()=>{activeAudio.current?.abort();extraAudio.current?.abort();const abort=new AbortController();extraAudio.current=abort;if(sound)void playNarration(captions[phase],abort.signal,snapshot?.definition.audio.clips).catch(()=>{if(!abort.signal.aborted)setVoiceNote('Не удалось включить звук. Можно продолжить по картинкам.');});};
-  const exit=()=>{extraAudio.current?.abort();activeAudio.current?.abort();controller.current?.dispose();rig.current?.dispose();onExit();};
+  const exit=async()=>{
+    const knownFailure=failed.current;
+    setBusy(true);controller.current?.pause();extraAudio.current?.abort();activeAudio.current?.abort();
+    await queue.current;
+    if(!knownFailure&&failed.current){setBusy(false);return;}
+    controller.current?.dispose();rig.current?.dispose();onExit();
+  };
   const restart=()=>void act('restart',()=>{setPaused(false);rig.current?.setPaused(false);controller.current?.resume();void controller.current?.replay();});
-  return <main className="cinema-player">
-    <header className="cinema-top"><button aria-label="В кабинет" onClick={exit}><ArrowLeft/><span>В кабинет</span></button><div><span className="cinema-eyebrow">SÖYLE STORIES · СЦЕНА 1 / 1</span><h1>Миша просит помощь</h1></div><div className="cinema-top-actions"><button aria-label={sound?'Выключить звук':'Включить звук'} aria-pressed={sound} onClick={()=>{setSound(!sound);extraAudio.current?.abort();if('speechSynthesis' in window)speechSynthesis.cancel();}}>{sound?<Volume2/>:<VolumeX/>}</button>{started&&<button aria-label="Пауза" onClick={()=>pause()} disabled={paused||busy}><Pause/></button>}</div></header>
-    {error&&<aside className="cinema-error" role="alert">{error}<button onClick={exit}>Вернуться в кабинет</button><p>Открой историю снова, чтобы восстановить сохранённый этап.</p></aside>}
+  const backLabel=snapshot?.preview?'В кабинет':'К историям';
+  return <Container aria-label="Живая история" className="cinema-player">
+    <header className="cinema-top"><button aria-label={backLabel} onClick={()=>void exit()}><ArrowLeft/><span>{backLabel}</span></button><div><span className="cinema-eyebrow">SÖYLE STORIES · СЦЕНА 1 / 1</span><h1>Миша просит помощь</h1></div><div className="cinema-top-actions"><button aria-label={sound?'Выключить звук':'Включить звук'} aria-pressed={sound} onClick={()=>{setSound(!sound);extraAudio.current?.abort();if('speechSynthesis' in window)speechSynthesis.cancel();}}>{sound?<Volume2/>:<VolumeX/>}</button>{started&&<button aria-label="Пауза" onClick={()=>pause()} disabled={paused||busy}><Pause/></button>}</div></header>
+    {error&&<aside className="cinema-error" role="alert">{error}<button onClick={()=>void exit()}>{backLabel}</button><p>Открой историю снова, чтобы восстановить сохранённый этап.</p></aside>}
     {!manifest?<section className="cinema-loading"><h2>Готовим уютную комнату…</h2></section>:<>
     <section className={`cinema-stage-wrap ${hint?'cinema-hinted':''}`}><CinematicStage ref={svg} manifest={manifest} phase={phase} hint={hint} paused={paused||!started} onTeddy={teddy}/>
-      {!started&&<div className="cinema-cover"><span>ОДНА ЖИВАЯ СЦЕНА</span><h2>Иногда нужна<br/>помощь мамы</h2><p>Посмотрим, как Миша попросит любимого мишку.</p><button className="cinema-primary" disabled={!ready||!!error} onClick={begin}><Play/>{snapshot?.revision?'Продолжить сцену':'Начать сцену'}</button></div>}
-      <dialog ref={pauseDialog} className="cinema-pause" aria-label="История на паузе" onCancel={e=>{e.preventDefault();resume();}}><div><span>МОЖНО НЕ СПЕШИТЬ</span><h2>Побудем здесь</h2><p>Продолжим, когда захочется.</p><button className="cinema-primary" onClick={resume} disabled={busy}><Play/>Продолжить</button><button onClick={exit}>Выйти в кабинет</button></div></dialog>
+      {!started&&<div className="cinema-cover"><span>ОДНА ЖИВАЯ СЦЕНА</span><h2>Иногда нужна<br/>помощь мамы</h2><p>Посмотрим, как Миша попросит любимого мишку.</p><button className="cinema-primary" disabled={!ready||!!error} onClick={begin}><Play/>{snapshot?.state.completed?'Пересмотреть сцену':snapshot?.revision?'Продолжить сцену':'Начать сцену'}</button></div>}
+      <dialog ref={pauseDialog} className="cinema-pause" aria-label="История на паузе" onCancel={e=>{e.preventDefault();resume();}}><div><span>МОЖНО НЕ СПЕШИТЬ</span><h2>Побудем здесь</h2><p>Продолжим, когда захочется.</p><button className="cinema-primary" onClick={resume} disabled={busy}><Play/>Продолжить</button><button onClick={()=>void exit()}>{backLabel}</button></div></dialog>
     </section>
     {started&&<section className="cinema-context"><p className="cinema-caption" aria-live="polite">{captions[phase]}</p>
       {phase==='AWAIT_REQUEST'&&!paused&&<div className="cinema-choices" aria-label="Выбери способ просьбы">{snapshot?.definition.communication_options.map((option,index)=><button key={option.action} aria-label={option.label} disabled={busy||snapshot.state.phase!=='AWAIT_REQUEST'||!!error} onClick={()=>request(option.action,option.speech)}><span className="cinema-choice-art"><NextImage src={index===0?"/app-illustrations/aac-help.webp":index===1?"/app-illustrations/aac-teddy.webp":"/app-illustrations/aac-teddy.webp"} width={76} height={76} alt=""/>{index===2&&<ArrowRight className="cinema-point-arrow"/>}</span><strong>{option.label}</strong><small>{option.speech}</small></button>)}<button className="cinema-refuse" disabled={busy} onClick={()=>pause('refuse')}>Не хочу</button></div>}
       {phase==='HUG'&&!paused&&<button className="cinema-primary cinema-hug" disabled={busy||!!error} onClick={teddy}><Heart/>Обнять мишку</button>}
-      {phase==='COMPLETE'&&<div className="cinema-end"><p>Миша попросил помощь — и мама помогла.</p><button className="cinema-primary" onClick={exit}>В кабинет<ArrowRight/></button></div>}
+      {phase==='COMPLETE'&&!snapshot?.state.completed&&<p role="status">Сохраняем историю…</p>}{phase==='COMPLETE'&&snapshot?.state.completed&&<div className="cinema-end"><p>Миша попросил помощь — и мама помогла.</p><button className="cinema-primary" onClick={()=>void exit()}>{backLabel}<ArrowRight/></button></div>}
     </section>}
     <footer className="cinema-bottom">{started&&<><button onClick={repeat} disabled={paused||!sound}><Volume2/>Повторить озвучку</button><button disabled={paused||busy} onClick={()=>{setHint(true);void act('hint');}}><CircleHelp/>Подсказка</button><button onClick={()=>pause('break')} disabled={paused||busy}><Pause/>Перерыв</button><button onClick={restart} disabled={busy||!!error}><RotateCcw/>Сначала</button>{!['AWAIT_REQUEST','HUG','COMPLETE'].includes(phase)&&<button disabled={paused||busy} onClick={()=>controller.current?.skip()}>Пропустить движение</button>}{phase==='AWAIT_REQUEST'&&<button disabled={paused||busy} onClick={()=>request('assist','Мама поможет достать мишку.')}>Помочь вместе</button>}</>}<label className="cinema-motion"><input type="checkbox" checked={motion} disabled={started&&!paused&&phase!=='COMPLETE'} onChange={e=>setMotion(e.target.checked)}/>Плавные движения</label></footer>
-    <aside className="cinema-review"><strong>DRAFT · предпросмотр родителя</strong><span>Озвучка устройства · аудио и сценарий ожидают проверки. Участие не означает освоение навыка.</span>{voiceNote&&<p role="status">{voiceNote}</p>}</aside>
+    <aside className="cinema-review"><strong>{snapshot?.preview ? 'Предпросмотр взрослого' : 'Одна живая сцена'}</strong><span>{snapshot?.preview ? 'Предпросмотр хранится отдельно от результата ребёнка.' : 'Можно выбрать просьбу, сделать перерыв и продолжить позже.'}</span>{voiceNote&&<p role="status">{voiceNote}</p>}</aside>
     </>}
-  </main>;
+  </Container>;
 }

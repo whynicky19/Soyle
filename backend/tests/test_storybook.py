@@ -15,7 +15,13 @@ def send(client, headers, child_id, snapshot, action, **overrides):
     return client.post(f"/api/storybooks/{child_id}/toy/events", headers=headers, json=payload)
 
 
-def test_storybook_draft_gate_version_and_full_non_scored_story(client, parent_headers, student_headers):
+def test_storybook_draft_gate_version_and_full_non_scored_story(client, parent_headers, student_headers, monkeypatch):
+    from app.storybook_content import FAVORITE_TOY
+    monkeypatch.setitem(FAVORITE_TOY, "status", "DRAFT")
+    monkeypatch.setitem(FAVORITE_TOY, "review_status", "pending")
+    for scene in FAVORITE_TOY["scenes"]:
+        monkeypatch.setitem(scene, "status", "DRAFT")
+        monkeypatch.setitem(scene, "review_status", "pending")
     child_id, snapshot = book(client, parent_headers)
     assert snapshot["preview"] and snapshot["definition"]["status"] == "DRAFT"
     assert len(snapshot["definition"]["scenes"]) == 6

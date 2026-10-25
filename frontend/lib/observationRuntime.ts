@@ -32,5 +32,6 @@ export function observationRounds(scenes: ObservationScene[], random = Math.rand
 }
 
 export function descriptionQuestion(scene: ObservationScene, step: number): string {
-  return step === 0 ? 'Кто на картинке?' : step === 1 ? 'Что делает?' : scene.detail_question;
+  const actor = scene.parts[0].toLocaleLowerCase('ru');
+  return step === 0 ? 'Кто на картинке?' : step === 1 ? `Что делает ${actor}?` : scene.detail_question.replace(/\?$/, ` ${actor}?`);
 }

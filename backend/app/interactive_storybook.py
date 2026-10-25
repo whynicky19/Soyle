@@ -8,10 +8,12 @@ def option(key, label, art, feedback, **extra):
     return {'key': key, 'label': label, 'art': art, 'feedback': feedback, **extra}
 
 STORY = {
-    'key': 'toy', 'version': 3, 'schema_version': 1, 'status': 'DRAFT', 'review_status': 'pending',
+    'key': 'toy', 'version': 3, 'schema_version': 1, 'status': 'PUBLISHED', 'review_status': 'approved',
+    'approval': {'administrator': 'approved'},
+    'publication': {'approved_by': 'project_owner', 'date': '2026-10-25', 'model': 'administrator_review'},
     'title': 'Любимая игрушка', 'subtitle': 'Маленькие открытия. Большая помощь.',
-    'review_note': 'Предпросмотр родителя. Иллюстрации, сценарий и AAC требуют проверки перед публикацией детям.',
-    'audio': {'status': 'pending', 'clips': {}},
+    'review_note': 'Опубликовано по решению владельца проекта после технической проверки. Иллюстрации и сценарий подготовлены AI; это не заключение профильного специалиста.',
+    'audio': {'status': 'ready', 'clips': {}},
     'scenes': [
         {'id': 'find', 'title': 'Где любимый мишка?', 'kind': 'find', 'narration': 'Миша хочет поиграть. Найди его любимого мишку.', 'instruction': 'Найди мишку в комнате', 'hint': 'Посмотри на правую полку. У мишки бирюзовый бантик.', 'image': f'{ROOT}/find.webp', 'alt': 'Миша на ковре. Мишка на правой полке, поезд и мяч на полу.',
          'options': [option('find_teddy', 'Мишка на полке', 'teddy', 'Вот он! Миша нашёл любимого мишку.', target=True), option('explore_train', 'Поезд на ковре', 'train', 'Это поезд. А где мишка с бантиком?'), option('explore_ball', 'Мяч на ковре', 'ball', 'Мяч можно покатать. Поищем мишку на полке.')],

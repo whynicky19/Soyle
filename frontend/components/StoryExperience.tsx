@@ -4,6 +4,9 @@ import Image from "next/image";
 import { ArrowLeft, BookOpen, Check, ChevronRight, Play, RotateCcw, Volume2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { api, type Story } from "@/lib/api";
+import { StorybookExperience } from "./storybook/StorybookExperience";
+import { CinematicStorybookExperience } from "./storybook/cinematic/CinematicStorybookExperience";
+import { speak, stopCurrentSpeech } from "@/lib/speech";
 import { InteractiveBook } from "./storybook/book/InteractiveBook";
 
 export function StoryExperience({ childId, calmMode = false }: { childId?: number; calmMode?: boolean }) {
@@ -18,14 +21,14 @@ export function StoryExperience({ childId, calmMode = false }: { childId?: numbe
   const categories = useMemo(() => ["Все", ...new Set(stories.map((story) => story.category))], [stories]);
 
   useEffect(() => {
-    if (!childId) return;
+    if (!childId || activeKey) return;
     let current = true;
     api<Story[]>(`/api/stories/${childId}`)
       .then((items) => { if (current) setStories(items); })
       .catch((cause) => { if (current) setError(cause instanceof Error ? cause.message : "Не удалось открыть истории"); })
       .finally(() => { if (current) setLoading(false); });
     return () => { current = false; window.speechSynthesis?.cancel(); };
-  }, [childId]);
+  }, [childId, activeKey]);
 
   const narrate = (text: string) => {
     if (!("speechSynthesis" in window)) { setFeedback("Озвучивание недоступно в этом браузере"); return; }
@@ -72,7 +75,9 @@ export function StoryExperience({ childId, calmMode = false }: { childId?: numbe
   if (!childId) return <div className="v2-screen v2-story-status" role="status">Сначала открой профиль ребёнка.</div>;
   if (loading) return <div className="v2-screen v2-story-status" role="status">Открываем истории…</div>;
 
-  if (active?.engine === "interactive_book") return <InteractiveBook childId={childId} storyKey={active.key} calmMode={calmMode} onExit={() => setActiveKey(null)}/>;
+  if (active?.engine === "storybook") return <StorybookExperience embedded key={childId} childId={childId} calmMode={calmMode} onExit={() => setActiveKey(null)} onSpeak={text => speak(text,.85,true)} onStopSpeech={stopCurrentSpeech}/>;
+  if (active?.engine === "cinematic_story") return <CinematicStorybookExperience embedded key={childId} childId={childId} calmMode={calmMode} onExit={() => setActiveKey(null)}/>;
+  if (active?.engine === "interactive_book") return <InteractiveBook embedded childId={childId} storyKey={active.key} calmMode={calmMode} onExit={() => setActiveKey(null)}/>;
   if (!stories.length && !error) return <div className="v2-screen v2-story-status" role="status"><BookOpen/><h1>Истории готовятся</h1><p>Здесь пока нет доступных историй. Можно выбрать игру в разделе «Занятия».</p></div>;
 
   if (active) {
@@ -87,12 +92,13 @@ export function StoryExperience({ childId, calmMode = false }: { childId?: numbe
     </div>;
   }
 
-  const featured = stories.find((story) => story.scene_index > 0 && story.scene_index < story.scene_count) || stories[0];
+  const featured = stories.find((story) => story.in_progress || story.scene_index > 0 && story.scene_index < story.scene_count) || stories[0];
+  const featuredComplete = featured && featured.scene_index >= featured.scene_count;
   return <div className="v2-screen v2-stories page-enter">
     <header className="v2-page-heading"><h1>Истории</h1><p>Слушай сказку, выбирай карточку и помогай героям. Можно остановиться и продолжить позже.</p></header>
     {error && <p className="v2-inline-alert" role="alert">{error}</p>}
-    {featured && <section className="v2-story-hero"><Image src={featured.cover} alt="" fill priority sizes="(max-width: 760px) 100vw, 80vw"/><div className="v2-story-hero-copy"><span className="v2-kicker"><BookOpen/> {featured.scene_index ? "Продолжить историю" : "Первая история"}</span><h2>{featured.title}</h2><p>{featured.summary}</p><div className="v2-story-progress"><i style={{ width: `${Math.round(featured.scene_index / featured.scene_count * 100)}%` }}/><span>{featured.scene_index} из {featured.scene_count} сцен</span></div><button onClick={() => { setActiveKey(featured.key); setFeedback(""); }}><Play fill="currentColor"/> {featured.scene_index ? "Продолжить" : "Начать"} <ChevronRight/></button></div></section>}
+    {featured && <section className="v2-story-hero"><Image src={featured.cover} alt="" fill priority sizes="(max-width: 760px) 100vw, 80vw"/><div className="v2-story-hero-copy"><span className="v2-kicker"><BookOpen/> {featuredComplete ? "История прочитана" : (featured.in_progress || featured.scene_index) ? "Продолжить историю" : "Первая история"}</span><h2>{featured.title}</h2><p>{featured.summary}</p><div className="v2-story-progress"><i style={{ width: `${featured.progress_percent ?? Math.round(featured.scene_index / featured.scene_count * 100)}%` }}/><span>{featured.progress_label || `${featured.scene_index} из ${featured.scene_count} сцен`}</span></div><button onClick={() => { setActiveKey(featured.key); setFeedback(""); }}><Play fill="currentColor"/> {featuredComplete ? "Перечитать" : (featured.in_progress || featured.scene_index) ? "Продолжить" : "Начать"} <ChevronRight/></button></div></section>}
     <div className="v2-filter-tabs" role="group" aria-label="Темы историй">{categories.map((category) => <button key={category} aria-pressed={filter === category} className={filter === category ? "active" : ""} onClick={() => setFilter(category)}>{category}</button>)}</div>
-    <section aria-labelledby="v2-all-stories"><h2 id="v2-all-stories" className="v2-section-title">{filter === "Все" ? "Другие истории" : `Тема: ${filter}`}</h2><div className="v2-story-grid">{stories.filter((story) => (filter === "Все" || story.category === filter) && story.key !== featured?.key).map((story) => <button key={story.key} className="v2-story-card" onClick={() => { setActiveKey(story.key); setFeedback(""); }}><span className="v2-story-cover"><Image src={story.cover} alt="" fill sizes="(max-width: 760px) 100vw, 25vw"/></span><span className="v2-story-body"><strong>{story.title}</strong><small>{story.summary}</small><small>{story.scene_index >= story.scene_count ? "Пройдено · можно повторить" : `${story.scene_index} из ${story.scene_count} сцен`}</small><i><ChevronRight/></i></span></button>)}</div></section>
+    <section aria-labelledby="v2-all-stories"><h2 id="v2-all-stories" className="v2-section-title">{filter === "Все" ? "Другие истории" : `Тема: ${filter}`}</h2><div className="v2-story-grid">{stories.filter((story) => (filter === "Все" || story.category === filter) && story.key !== featured?.key).map((story) => <button key={story.key} className="v2-story-card" onClick={() => { setActiveKey(story.key); setFeedback(""); }}><span className="v2-story-cover"><Image src={story.cover} alt="" fill sizes="(max-width: 760px) 100vw, 25vw"/></span><span className="v2-story-body"><strong>{story.title}</strong><small>{story.summary}</small><small>{story.scene_index >= story.scene_count ? "Пройдено · можно повторить" : story.progress_label || `${story.scene_index} из ${story.scene_count} сцен`}</small><i><ChevronRight/></i></span></button>)}</div></section>
   </div>;
 }

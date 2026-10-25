@@ -1,0 +1,39 @@
+[
+  {
+    "key": "room-reference",
+    "mode": "built-in image_gen reference edit",
+    "reference": "user-provided child home reference",
+    "prompt": "Use case: precise-object-edit. Asset type: background illustration for a real children's web app. Edit the supplied reference: extract and recreate ONLY the illustrated room, filling the entire image with the room. REMOVE the black device frame and white sidebar, ALL interface text, greeting bubble, star counter, avatar, buttons, orange navigation signs, mint navigation tab, turquoise play button, and cream bottom recommendation panel. Reconstruct the underlying artwork where UI was removed. Preserve the reference's composition, soft polished 3D children's illustration, warm sunlight, colors, camera distance and objects very closely: wooden house-shaped bookshelf at left with fox/rabbit books and green cushion; tall sunlit window upper-center; smiling curly-haired boy in teal bear sweatshirt sitting FULL BODY in center, small teddy with blue bow immediately to his LEFT; teepee and stacking rings/ball in back right; chalkboard at far right; round wooden table in right foreground with a large mint framed tray holding dog/apple/car picture cards and small stacks of cards. No labels on cards. Keep boy and teddy exactly the reference scale with visible feet, occupying roughly center 35%-57% width and 25%-65% height. Maintain original room edges after removing sidebar, wide aspect 3:2. Do not zoom in or enlarge boy. No UI, no text, no logo, no icons over the scene. This is a faithful cleanup of the supplied reference room, not a different room."
+  },
+  {
+    "key": "stories",
+    "transparent": true,
+    "prompt": "Use case: stylized-concept. Asset: transparent cutout illustration for a large children's Stories navigation button. A charming open picture book with a small friendly orange fox peeking up from the illustrated pages, two rounded page shapes. Polished soft 3D children's book style, warm coral orange, cream, teal accents, soft tactile paper. Bold unmistakable silhouette readable at 80 pixels, centered and fully within frame with small margins. No words or letters, no background, no frame, no badge, no button shape. Genuine transparent background."
+  },
+  {
+    "key": "games",
+    "transparent": true,
+    "prompt": "Use case: stylized-concept. Asset: transparent cutout illustration for a large children's practice activities navigation button. A friendly chunky turquoise and blue game controller with two cream rounded buttons and a simple D pad, next to three large colorful wooden stacking rings. Polished soft 3D children's book style, tactile rounded materials, warm cream/teal/coral palette. Bold simple silhouette readable at 80 pixels, centered entire object within frame with small margins. No text, letters, numbers, background, border, badge, or button frame. Genuine transparent background."
+  },
+  {
+    "key": "words",
+    "transparent": true,
+    "prompt": "Use case: stylized-concept. Asset: transparent cutout illustration for a children's AAC My words navigation button. Three thick rounded cream picture cards fanned slightly, front card shows a friendly dog face, second a red apple, third a blue toy car. The illustrations on the cards must be pictorial only, no letters. Polished soft 3D children's book style, tactile rounded materials, teal edges, soft shadows. Bold clear silhouette readable at 80 pixels, centered entire object visible with small margin. No outer badge, no frame, no background or text. Genuine transparent background."
+  },
+  {
+    "key": "reward-star",
+    "transparent": true,
+    "prompt": "Use case: stylized-concept. Asset: transparent star reward illustration for a child's app celebration animation. One beautiful golden five-point star with soft rounded points, slight three-dimensional pillow-like volume, bright warm gold and honey highlights, a tiny friendly smile and two subtle dot eyes. Polished tactile 3D children's illustration, cheerful, crisp simple silhouette readable at small size. Front-facing, centered, entire star visible, small margins, no surrounding sparkles, no words, no numbers, no badge or frame. Genuine transparent background."
+  },
+  {
+    "key": "room-detail",
+    "file": "room-detail.webp",
+    "mode": "built-in image_gen reference edit",
+    "prompt": "Use case: precise-object-edit. Improve resolution and fine detail of this exact children's room illustration to a crisp 4K master, target 3840 x 2560 pixels, same 3:2 aspect ratio. Preserve EXACTLY the framing, camera, boy's identity, pose and size, teddy to his left, furniture, picture cards, colors and sunlight. Refine hair curls, facial edges, fabric, teddy fur, wood grain, leaves and illustrated books with clean high resolution detail. No zoom, crop, rearrangement, added objects, text, UI or oversharpening halos. Keep the soft polished 3D children's illustration style; sharp subject and room, only the original extreme foreground depth blur. This is detail restoration of the supplied artwork, not a redesign.",
+    "actual_dimensions": [
+      1536,
+      1024
+    ],
+    "encoding": "lossless WebP; served without Next image recompression"
+  }
+]

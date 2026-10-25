@@ -350,7 +350,7 @@ test("admin can preview and publish with one decision", async ({ page }, info) =
 
 test("core screens have no serious axe violations and do not overflow", async ({ page }) => {
   await login(page, "alikhan", "1234", true);
-  await expect(page.getByRole("heading", { name: /Учимся общаться/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Привет, Алихан/ })).toBeVisible();
   const results = await new AxeBuilder({ page }).analyze();
   expect(results.violations.filter((item) => ["serious", "critical"].includes(item.impact || ""))).toEqual([]);
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);

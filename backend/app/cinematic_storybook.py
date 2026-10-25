@@ -4,10 +4,11 @@ from copy import deepcopy
 PHASES = ('INTRO', 'NOTICE', 'REACH', 'AWAIT_REQUEST', 'REQUEST', 'MOTHER_ENTER', 'PICK_UP', 'TRANSFER', 'HUG', 'COMPLETE')
 DEFINITION = {
     'key': 'toy', 'version': 2, 'schema_version': 2, 'title': 'Миша просит помощь',
-    'status': 'DRAFT', 'review_status': 'pending', 'phases': list(PHASES),
+    'status': 'PUBLISHED', 'review_status': 'approved', 'phases': list(PHASES),
     'scene_id': 'misha-asks-help', 'scene_count': 1,
-    'review_note': 'Предпросмотр родителя. Методическая, AAC и визуальная проверки ожидаются.',
-    'approval': {'methodology': 'pending', 'aac': 'pending', 'visual': 'pending', 'audio': 'pending'},
+    'review_note': 'Опубликовано по решению владельца проекта после технической проверки. Подготовлено AI; это не заключение профильного специалиста.',
+    'approval': {'administrator': 'approved'},
+    'publication': {'approved_by': 'project_owner', 'date': '2026-10-25', 'model': 'administrator_review'},
     'goal_references': ['functional_communication', 'request_help'],
     'skill_references': ['requesting_assistance', 'multimodal_communication'],
     'measurement_note': 'Участие в истории не подтверждает освоение навыка и не изменяет клиническую оценку.',

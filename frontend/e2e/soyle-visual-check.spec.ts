@@ -15,7 +15,8 @@ async function login(page: Page, role: "student" | "parent") {
 
 async function openNav(page: Page, _role: "student" | "parent", name: string) {
   const menu = page.getByRole("button", { name: "Открыть меню" });
-  if (await menu.isVisible()) await menu.click();
+  if ((page.viewportSize()?.width || 1440) > 1050) await expect(menu).toBeHidden();
+  else { await expect(menu).toBeVisible(); await menu.click(); }
   await page.locator("#primary-navigation nav").getByRole("button", { name, exact: true }).click();
 }
 
@@ -31,13 +32,13 @@ test("new child experience stays usable from 320 to 1440 pixels", async ({ page 
   for (const width of [320, 360, 390, 768, 1440]) {
     await page.setViewportSize({ width, height: width < 400 ? 820 : 1000 });
     await openNav(page, "student", "Главная");
-    await expect(page.locator(".v2-dashboard")).toBeVisible();
+    await expect(page.locator(".child-room-home")).toBeVisible();
     await noHorizontalOverflow(page);
     await page.screenshot({ path: info.outputPath(`${width}-child-home.png`), fullPage: true, animations: "disabled" });
 
     await openNav(page, "student", "Истории");
-    await expect(page.getByRole("heading", {name: "Истории готовятся"})).toBeVisible();
-    await expect(page.locator(".v2-story-card")).toHaveCount(0);
+    await expect(page.getByRole("heading", {name: "Истории"})).toBeVisible();
+    await expect(page.locator(".v2-story-card")).toHaveCount(3);
     await noHorizontalOverflow(page);
     await page.screenshot({ path: info.outputPath(`${width}-child-stories.png`), fullPage: true, animations: "disabled" });
 

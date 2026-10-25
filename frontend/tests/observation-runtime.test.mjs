@@ -20,8 +20,8 @@ test('picture series cover six themes without repeats or adjacent repeated actor
 test('each phrase grows grammatically by actor, action and its own detail question', () => {
   for (const scene of scenes) {
     assert.equal(descriptionQuestion(scene, 0), 'Кто на картинке?');
-    assert.equal(descriptionQuestion(scene, 1), 'Что делает?');
-    assert.equal(descriptionQuestion(scene, 2), scene.detail_question);
+    assert.equal(descriptionQuestion(scene, 1), `Что делает ${scene.parts[0].toLocaleLowerCase('ru')}?`);
+    assert.equal(descriptionQuestion(scene, 2), scene.detail_question.replace(/\?$/, ` ${scene.parts[0].toLocaleLowerCase('ru')}?`));
     assert.equal(new Set(scene.options.flat()).size, 9);
   }
 });

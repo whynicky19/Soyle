@@ -1319,4 +1319,4 @@ button,input,select,textarea,a,summary{scroll-margin-block:110px}
 .description-actions {display:flex;flex-direction:column;align-items:stretch;gap:12px;}
 .observation-intro {max-width:780px;margin-inline:auto;}
 .observation-intro>p {font-size:19px;line-height:1.6;}
-@media(max-width:760px) {.observation-exercise{padding:12px;}.observation-workspace{grid-template-columns:minmax(0,1fr);gap:16px;}.observation-heading{align-items:start;}.observation-heading .small-button{flex-shrink:0;}.observation-scene{border-radius:16px;}.description-options{grid-template-columns:1fr;}.description-word{font-size:21px;min-height:60px;}.description-slots li{font-size:18px;padding:10px;}}
+@media(max-width:760px) {.observation-exercise{padding:12px;}.observation-workspace{grid-template-columns:minmax(0,1fr);gap:16px;}.observation-heading{align-items:stretch;flex-direction:column;}.observation-heading .small-button{align-self:flex-start;max-width:100%;}.observation-scene{border-radius:16px;}.description-options{grid-template-columns:1fr;}.description-word{font-size:21px;min-height:60px;}.description-slots li{font-size:18px;padding:10px;}}

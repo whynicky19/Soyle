@@ -812,11 +812,30 @@ def child_stories(child_id: int, response: Response, user: dict = Depends(requir
         rows = db.execute("SELECT story_key,scene_index,completed_at FROM child_story_progress WHERE child_id=?", (child_id,)).fetchall()
     progress = {row["story_key"]: dict(row) for row in rows}
     catalogue = [public_story(key, story, progress.get(key)) for key, story in STORIES.items() if story_available(story)]
-    if comic_is_released(PICNIC):
+    for definition in (INTERACTIVE_BOOK, PICNIC):
+        if not book_is_released(definition):
+            continue
         with connect() as db:
-            saved = db.execute("SELECT state_json,updated_at FROM storybook_progress WHERE child_id=? AND story_key=? AND story_version=? AND actor_key='child'", (child_id, PICNIC["key"], PICNIC["version"])).fetchone()
+            saved = db.execute("SELECT state_json,updated_at FROM storybook_progress WHERE child_id=? AND story_key=? AND story_version=? AND actor_key='child'", (child_id, definition["key"], definition["version"])).fetchone()
         state = json.loads(saved["state_json"]) if saved else book_initial_state()
-        catalogue.append({"key": PICNIC["key"], "title": PICNIC["title"], "summary": PICNIC["subtitle"], "cover": PICNIC["scenes"][0]["image"], "category": "Выбор и помощь", "engine": "interactive_book", "scene_count": len(PICNIC["scenes"]), "scene_index": len(PICNIC["scenes"]) if state["completed"] else state["scene_index"], "completed_at": saved["updated_at"] if saved and state["completed"] else None, "scenes": []})
+        catalogue.append({"key": definition["key"], "title": definition["title"], "summary": definition["subtitle"], "cover": definition["scenes"][0]["image"], "category": "Выбор и помощь", "engine": "interactive_book", "scene_count": len(definition["scenes"]), "scene_index": len(definition["scenes"]) if state["completed"] else state["scene_index"], "completed_at": saved["updated_at"] if saved and state["completed"] else None, "scenes": []})
+    for key, engine, definition, initial in (
+        ("living-toy", "storybook", FAVORITE_TOY, storybook_initial_state),
+        ("misha-help", "cinematic_story", CINEMATIC_STORY, cinematic_initial_state),
+    ):
+        if not book_is_released(definition):
+            continue
+        if engine == "storybook" and any(scene.get("status") != "PUBLISHED" or scene.get("review_status") != "approved" for scene in definition["scenes"]):
+            continue
+        with connect() as db:
+            saved = db.execute("SELECT state_json,updated_at FROM storybook_progress WHERE child_id=? AND story_key=? AND story_version=? AND actor_key='child'", (child_id, definition["key"], definition["version"])).fetchone()
+        state = json.loads(saved["state_json"]) if saved else initial()
+        complete = bool(state["completed"])
+        cinematic = engine == "cinematic_story"
+        total = 1 if cinematic else len(definition["scenes"])
+        index = (1 if complete else 0) if cinematic else (total if complete else state["scene_index"])
+        progress = round(definition["phases"].index(state["phase"]) / (len(definition["phases"]) - 1) * 100) if cinematic else round(index / total * 100)
+        catalogue.append({"key": key, "title": definition["title"], "summary": "Одна живая сцена: Миша просит помощь, мама подходит и передаёт мишку." if cinematic else definition["summary"], "cover": "/storybooks/favorite-toy-book/request.webp" if cinematic else "/storybooks/favorite-toy-book/find.webp", "category": "Живые истории", "engine": engine, "scene_count": total, "scene_index": index, "in_progress": bool(saved and not complete), "progress_percent": progress, "progress_label": ("История прочитана" if complete else "Живая сцена · место сохраняется") if cinematic else f"{index} из {total} сцен", "completed_at": saved["updated_at"] if saved and complete else None, "scenes": []})
     return catalogue
 
 
@@ -863,7 +882,7 @@ def restart_story(child_id: int, story_key: str, user: dict = Depends(require_ro
 
 def storybook_access(child_id: int, user: dict) -> str:
     ensure_child_access(child_id, user)
-    if FAVORITE_TOY["status"] != "PUBLISHED" or FAVORITE_TOY["review_status"] != "approved" or any(scene.get("status") != "PUBLISHED" or scene.get("review_status") != "approved" for scene in FAVORITE_TOY["scenes"]):
+    if not book_is_released(FAVORITE_TOY) or any(scene.get("status") != "PUBLISHED" or scene.get("review_status") != "approved" for scene in FAVORITE_TOY["scenes"]):
         if user["role"] != "parent":
             raise HTTPException(403, "История DRAFT доступна только для предпросмотра родителю")
     return f"preview:{user['id']}" if user["role"] == "parent" else "child"
@@ -918,7 +937,7 @@ def storybook_event(child_id: int, payload: StorybookEvent, user: dict = Depends
 
 def cinematic_access(child_id: int, user: dict) -> str:
     ensure_child_access(child_id, user)
-    if CINEMATIC_STORY["status"] != "PUBLISHED" or CINEMATIC_STORY["review_status"] != "approved" or any(value != "approved" for value in CINEMATIC_STORY["approval"].values()):
+    if not book_is_released(CINEMATIC_STORY):
         if user["role"] != "parent":
             raise HTTPException(403, "История DRAFT доступна только для предпросмотра родителю")
     return f"preview:{user['id']}" if user["role"] == "parent" else "child"
@@ -973,7 +992,7 @@ def cinematic_storybook_event(child_id: int, payload: CinematicStorybookEvent, u
 
 def interactive_book_access(child_id: int, user: dict) -> str:
     ensure_child_access(child_id, user)
-    if INTERACTIVE_BOOK["status"] != "PUBLISHED" or INTERACTIVE_BOOK["review_status"] != "approved":
+    if not book_is_released(INTERACTIVE_BOOK):
         if user["role"] != "parent":
             raise HTTPException(403, "Книга DRAFT доступна только для предпросмотра родителю")
     return f"preview:{user['id']}" if user["role"] == "parent" else "child"
@@ -1018,10 +1037,10 @@ def interactive_book_event(child_id: int, payload: StorybookEvent, user: dict = 
     return {**snapshot, "state": state, "revision": changed["revision"]}
 
 
-def comic_is_released(definition: dict) -> bool:
-    return definition["status"] == "PUBLISHED" and definition["review_status"] == "approved" and all(
-        definition["approval"].get(stage) == "approved" for stage in ("technical", "methodology", "accessibility", "release")
-    )
+def book_is_released(definition: dict) -> bool:
+    return (definition.get("status") == "PUBLISHED"
+            and definition.get("review_status") == "approved"
+            and definition.get("approval", {}).get("administrator") == "approved")
 
 
 def comic_access(child_id: int, story_key: str, user: dict) -> tuple[dict, str]:
@@ -1029,7 +1048,7 @@ def comic_access(child_id: int, story_key: str, user: dict) -> tuple[dict, str]:
     if story_key != PICNIC["key"]:
         raise HTTPException(404, "История не найдена")
     definition = PICNIC
-    released = comic_is_released(definition)
+    released = book_is_released(definition)
     if not released and user["role"] != "parent":
         raise HTTPException(403, "Комикс DRAFT доступен только для предпросмотра родителю")
     return definition, f"preview:{user['id']}" if user["role"] == "parent" else "child"

@@ -166,8 +166,8 @@ test("sensory practice always exposes break and refusal actions", async () => {
 
 test("closed mobile navigation is inert and returns focus", async () => {
   const app = await readProjectFile("components/SoyleApp.tsx");
-  assert.match(app, /inert=\{sidebarIsDialog && !sidebarOpen/);
-  assert.match(app, /aria-hidden=\{sidebarIsDialog && !sidebarOpen/);
+  assert.match(app, /inert=\{navigationHidden/);
+  assert.match(app, /aria-hidden=\{navigationHidden/);
   assert.match(app, /menuButtonRef\.current\?\.focus/);
   assert.match(app, /event\.key === "Escape"/);
 });

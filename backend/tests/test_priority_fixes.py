@@ -139,7 +139,7 @@ def test_refusal_preserves_difficulty_and_legacy_choice_plan_matches_runner():
 def test_unreviewed_basic_stories_are_not_public(client, parent_headers, monkeypatch):
     monkeypatch.setattr(exercise_engine, "ALLOW_UNREVIEWED_DEMO_CONTENT", False)
     child_id = client.get("/api/children", headers=parent_headers).json()[0]["id"]
-    assert client.get(f"/api/stories/{child_id}", headers=parent_headers).json() == []
+    assert not {"park", "bedtime", "meal"} & {item["key"] for item in client.get(f"/api/stories/{child_id}", headers=parent_headers).json()}
 
 
 def test_prompted_answers_do_not_raise_first_response_accuracy(client, parent_headers):

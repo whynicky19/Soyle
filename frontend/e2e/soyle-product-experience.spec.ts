@@ -13,17 +13,17 @@ async function login(page: Page, role: "parent" | "student") {
   await expect(page.locator(".soyle-unified")).toBeVisible();
 }
 
-test("child sees dashboard, review-gated stories, AAC and achievements", async ({ page }, info) => {
+test("child sees dashboard, published stories, AAC and achievements", async ({ page }, info) => {
   test.skip(info.project.name !== "desktop", "Desktop walkthrough; mobile navigation is covered separately.");
   await login(page, "student");
-  await expect(page.locator(".v2-dashboard")).toBeVisible();
-  await expect(page.getByRole("heading", { name: /Учимся общаться/ })).toBeVisible();
-  await expect(page.locator(".v2-start-card h2")).toHaveCSS("color", "rgb(255, 255, 255)");
+  await expect(page.locator(".child-room-home")).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Привет, Алихан/ })).toBeVisible();
+  await expect(page.locator(".room-start-button")).toHaveCSS("color", "rgb(255, 255, 255)");
   await page.screenshot({ path: info.outputPath("child-home.png"), animations: "disabled" });
 
   await page.locator("#primary-navigation nav").getByRole("button", { name: "Истории" }).click();
-  await expect(page.getByRole("heading", {name: "Истории готовятся"})).toBeVisible();
-  await expect(page.locator(".v2-story-grid .v2-story-card")).toHaveCount(0);
+  await expect(page.getByRole("heading", {name: "Истории"})).toBeVisible();
+  await expect(page.locator(".v2-story-grid .v2-story-card")).toHaveCount(3);
   await page.screenshot({ path: info.outputPath("child-story-review-gate.png"), animations: "disabled" });
 
   await page.locator("#primary-navigation nav").getByRole("button", { name: "Мои слова" }).click();
@@ -65,29 +65,32 @@ test("parent has only three primary sections and working guide content", async (
   await page.screenshot({ path: info.outputPath("parent-guide.png"), animations: "disabled" });
 });
 
-test("child More page is mobile-only and the desktop sidebar can sign out", async ({ page }, info) => {
-  test.skip(info.project.name !== "desktop", "Desktop sidebar walkthrough.");
+test("full child menu works on phone and desktop and can sign out", async ({ page }, info) => {
+  test.skip(info.project.name !== "desktop", "This test owns both viewport sizes.");
   await login(page, "student");
-  await expect(page.locator("#primary-navigation nav").getByRole("button", { name: "Ещё" })).toBeHidden();
-  await page.setViewportSize({ width: 320, height: 820 });
-  await page.locator("#primary-navigation nav").getByRole("button", { name: "Ещё" }).click();
-  const cards = page.locator(".v2-child-more-grid > button");
-  await expect(cards).toHaveCount(4);
-  await expect(page.locator(".v2-child-more-grid img")).toHaveCount(4);
-  await expect.poll(() => page.locator(".v2-child-more img").evaluateAll((images) => images.slice(0, 3).every((image) => (image as HTMLImageElement).complete && (image as HTMLImageElement).naturalWidth > 0))).toBe(true);
-  await expect.poll(() => cards.evaluateAll(elements => {
-    const [first, second] = elements.map(element => element.getBoundingClientRect());
-    return second.y - first.bottom;
-  })).toBeGreaterThanOrEqual(10);
-  expect(await cards.first().evaluate(element => element.getBoundingClientRect().height)).toBeGreaterThanOrEqual(140);
-  await expect(page.locator("#primary-navigation > .sidebar-logout")).toBeHidden();
-  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
-  await page.screenshot({ path: info.outputPath("child-more-mobile.png"), animations: "disabled" });
-  await cards.filter({ hasText: "Мой мир" }).click();
+  await page.getByRole("button", {name:"Свернуть меню",exact:true}).click();
+  await expect(page.locator("#primary-navigation")).not.toHaveAttribute("inert");
+  await expect(page.locator("#primary-navigation")).toHaveCSS("width","112px");
+  await expect(page.locator("#primary-navigation .sidebar-close")).toHaveCount(0);
+  await page.locator("#primary-navigation nav").getByRole("button",{name:"Мой мир",exact:true}).click();
   await expect(page.locator(".v2-world")).toBeVisible();
+  const logo=page.locator("#primary-navigation .brand");
+  await expect(logo).toHaveAccessibleName("Развернуть меню");
+  await logo.focus();await page.keyboard.press("Enter");
+  await expect(page.getByRole("button",{name:"Свернуть меню",exact:true})).toBeVisible();
+  await expect(page.locator(".v2-world")).toBeVisible();
+  await page.setViewportSize({ width: 320, height: 820 });
+  await page.getByRole("button", {name:"Открыть меню",exact:true}).click();
+  const menu=page.locator("#primary-navigation");
+  for(const name of ["Главная","Истории","Занятия","Мои слова","Мой мир","Навыки","Достижения"]){
+    await expect(menu.getByRole("button",{name,exact:true})).toBeVisible();
+  }
+  await page.screenshot({path:info.outputPath("child-full-menu-mobile.png"),animations:"disabled"});
+  await menu.getByRole("button",{name:"Мой мир",exact:true}).click();
+  await expect(page.locator(".v2-world")).toBeVisible();
+  await expect(menu).toHaveAttribute("inert", "");
+  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
   await page.setViewportSize({ width: 1440, height: 900 });
-  const logout = page.locator("#primary-navigation").getByRole("button", { name: "Выйти из аккаунта" });
-  await expect(logout).toBeVisible();
-  await logout.click();
+  await menu.getByRole("button", { name: "Выйти из аккаунта" }).click();
   await expect(page.locator(".auth-page")).toBeVisible();
 });

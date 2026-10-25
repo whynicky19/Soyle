@@ -111,12 +111,24 @@
       "file": "f54b89ba5cb62f5d9c44f63c4a5bc1794434de517d3f8a24978324dc5214d75b.wav"
     },
     {
+      "text": "Где бежит собака?",
+      "file": "3c9f810d2668c2939f7679da82e681a885b4ba401b479df6830747b0f11eb9c6.wav"
+    },
+    {
       "text": "Где бежит?",
       "file": "01c8fd11a03874544b6314af222cc3ccedc1a3733a79b26c6074466041a36f5d.wav"
     },
     {
+      "text": "Где плывёт мальчик?",
+      "file": "81edad87e8c47ebe89fdddfbddf21250d8818ce05e74b906bdb53734729638f1.wav"
+    },
+    {
       "text": "Где плывёт?",
       "file": "a138562aaf5e33050c4c8c5b20615f7897306dcd06e4088b1e83ce56668502c2.wav"
+    },
+    {
+      "text": "Где спит кот?",
+      "file": "8763821fee990e6d5d6a2d67f83a4ba742eb5a9b7f9e14c8d5e3190adea5fe0c.wav"
     },
     {
       "text": "Где спит?",
@@ -335,8 +347,16 @@
       "file": "8ee6e46bac903631d12eb893f0141433590b005eb5d601fd55964ae48509a88f.wav"
     },
     {
+      "text": "Кого кормит девочка?",
+      "file": "0eceb52e3012db56ce66ce9cf2e1853cd53d73fa84d25593878aed9a1caeff3d.wav"
+    },
+    {
       "text": "Кого кормит?",
       "file": "3b22f088833dc63f8bc6ecbee71f3ce1c86565e30fedcb2700fd89bb6f8a5a0f.wav"
+    },
+    {
+      "text": "Кого фотографирует мама?",
+      "file": "42f3749d712038e51aff0c4e8af2c644afeb3bb69413fa231733487142049381.wav"
     },
     {
       "text": "Кого фотографирует?",
@@ -791,8 +811,16 @@
       "file": "6219923a92f583995b36560d2e2a3e6e07eab64e716b194b8a2212788254bfc5.wav"
     },
     {
+      "text": "На чём едет папа?",
+      "file": "88b3e09b7790a988bb53bf4cfe7c82ecb49d0725c3a6a53c5effe91471a16cf8.wav"
+    },
+    {
       "text": "На чём едет?",
       "file": "b717f0b34ffdf3534f76f5f6601ebc574b98bbb2d32fca355940deb42d9a4bf2.wav"
+    },
+    {
+      "text": "На чём играет дедушка?",
+      "file": "d8b0e3914fbf31f4b1c1d4a96373696c663514823b35ca91f47527aefff8001e.wav"
     },
     {
       "text": "На чём играет?",
@@ -1231,6 +1259,10 @@
       "file": "16d2bf1c365821606d2afdb8cd88406e96a996e2bdfdd587918cc92ec38bc29c.wav"
     },
     {
+      "text": "Через что прыгает девочка?",
+      "file": "5274a23f4061b25836cbf5aa06ac61b7007453e0ada9762f2f25b3efbaefb05c.wav"
+    },
+    {
       "text": "Через что прыгает?",
       "file": "c49b07d9d9118f0fce530bbb9a5f909f8af86e9c1570e0ed7df448f12aface36.wav"
     },
@@ -1239,64 +1271,172 @@
       "file": "6d2e7c755fce2712aaabb3e46e11bc9a62d46d4db9e5796389ca5032ac977ea7.wav"
     },
     {
+      "text": "Что готовит мама?",
+      "file": "a98a88bc4b7ae7694592391246380b1e8d41db4a557f3f54205cf4bda5b36b4e.wav"
+    },
+    {
       "text": "Что готовит?",
       "file": "aaeecfd703e94d6b5ee5cd6f5e65aebd6b2e93be96376fb8958e6824a50303a0.wav"
+    },
+    {
+      "text": "Что делает бабушка?",
+      "file": "cc413613e7b3f6725e57ed25b1703d5bd469b3faf8dd98bba54b2c232a31699f.wav"
+    },
+    {
+      "text": "Что делает девочка?",
+      "file": "2967b6243188732d46efeb63f13d67cf4ecf370b76d71db3c94ed531b51e6e37.wav"
+    },
+    {
+      "text": "Что делает дедушка?",
+      "file": "64c06b3f98f29d5f04f8ad26af93ef33df7c761849bcee33c404ecaa37e133ab.wav"
+    },
+    {
+      "text": "Что делает кот?",
+      "file": "0f8021d66d8a134eafc426db16d415f6cff4d3793e576731db9e3e6113da75bf.wav"
+    },
+    {
+      "text": "Что делает кролик?",
+      "file": "0345e3d9881577e8206622169bc1f59efd63ca13c92b21b66fa08d460231c4b6.wav"
+    },
+    {
+      "text": "Что делает лошадь?",
+      "file": "a51f2aecec00b234cff45208d6e98b80e37f861b0d348c855d1efb0d27de80ee.wav"
+    },
+    {
+      "text": "Что делает мальчик?",
+      "file": "a0063946d9cd4c0b90d278f8cfb222eb39ff8b2873a31146592447b0fca90985.wav"
+    },
+    {
+      "text": "Что делает мама?",
+      "file": "c0b1b6d01afd0d5969be3c81b23911a9c23d79c345ac38a761aa6def77ad15ec.wav"
+    },
+    {
+      "text": "Что делает папа?",
+      "file": "0e3ea95d98f3333e4dc715f91dbfbb437f92046c32cec189fccb370c6b0391b9.wav"
+    },
+    {
+      "text": "Что делает птица?",
+      "file": "0963f1075e9ccca7b9c6e540cac87a23ce500f8709dc631e0b7b353f87e6c457.wav"
+    },
+    {
+      "text": "Что делает собака?",
+      "file": "e5f8daeb1f07878f2dd2877c49e261da3619942b0bfaaeefdb7e6706e462e6df.wav"
     },
     {
       "text": "Что делает?",
       "file": "23d7840e8a6c736b69feaf67c824b7eae29d9268b3dcf98073df27f24e649def.wav"
     },
     {
+      "text": "Что ест кролик?",
+      "file": "529529cceb58d0a74e07148aae8a9de83618ed22057582fcca9b197ce02897d9.wav"
+    },
+    {
       "text": "Что ест?",
       "file": "861c4abbe033f6f824f409b9951b4580c9cab4f2d4a0769a56f92b2a93950cd7.wav"
+    },
+    {
+      "text": "Что запускает папа?",
+      "file": "afac280591cf5098f1420c1dfe674d8148f7d334159ab28fa40cc9d7f936be54.wav"
     },
     {
       "text": "Что запускает?",
       "file": "d07845336a218daa0dcdd5cc977ad5ea3932a15c944a650f8f23ccfca23ecfe4.wav"
     },
     {
+      "text": "Что катает девочка?",
+      "file": "30b196704cfd0fca6def5ae64ffe0b21e1f12cd6a0094c63469690bb45367c3b.wav"
+    },
+    {
       "text": "Что катает?",
       "file": "d677f60897386dc8bcf5c397c9fe08e20bed32cc4080448b3c967a76ea7002bf.wav"
+    },
+    {
+      "text": "Что моет папа?",
+      "file": "0320274ebb723d4f249a7c57c7718b6f959af0268e6523c831ff181be37a43da.wav"
     },
     {
       "text": "Что моет?",
       "file": "ce80b406566cdecf631b1ef6845252669c654b2e6002fb4e81ed3f6e1fe0ad7e.wav"
     },
     {
+      "text": "Что пинает мальчик?",
+      "file": "fc2b19d48403c815197e0fa869b667bab7e4788f8210266984ec23157aabb57c.wav"
+    },
+    {
       "text": "Что пинает?",
       "file": "8dae70a4a7125d2c2efc1dead033ccb547338d3a564fc5d1e13d6cf3c6110463.wav"
+    },
+    {
+      "text": "Что поливает мама?",
+      "file": "f17f69e4f64bda8a724696abb67e89c22915706bcecea093e36809eaf5a4de15.wav"
     },
     {
       "text": "Что поливает?",
       "file": "2c8a2a673953e0b072ae7c4080f260a7296c7643ec0a17fc99bb9de38a40b393.wav"
     },
     {
+      "text": "Что пьёт лошадь?",
+      "file": "76b225d407be3bd7772fd8438f4849ecb19008c10dde9a778e0a177c61e40a8e.wav"
+    },
+    {
       "text": "Что пьёт?",
       "file": "e0dd54442f19a4ee898bb0769900a28d5456e47e33d616e4eb0d0574ace0f809.wav"
+    },
+    {
+      "text": "Что рисует девочка?",
+      "file": "0b316537ebf6b77d996709fe7bc036c21ebdbd52c97a89cfec43d65794b280f9.wav"
     },
     {
       "text": "Что рисует?",
       "file": "18d41663ecb613b2a1535aa061d9dea727cbdc63afaf49beb5406e29cd56e7b4.wav"
     },
     {
+      "text": "Что сажает мальчик?",
+      "file": "6971a9461485ba51be6b924936211436d9854ca12ece0044ad4b89751aa3823e.wav"
+    },
+    {
       "text": "Что сажает?",
       "file": "28791b736e4dfebe6d76d1457700e46f61646d559672a724230e724488b431fb.wav"
+    },
+    {
+      "text": "Что складывает мальчик?",
+      "file": "0784a59d81fcd107e5f287cd0ea3a2af640019d02d477f51e64d82035b2110a7.wav"
     },
     {
       "text": "Что складывает?",
       "file": "292b60e3e6526743f28f4e9396f5506af1a7bc234451c4e72ec7f4acf12a7533.wav"
     },
     {
+      "text": "Что собирает девочка?",
+      "file": "d27bda7da0c74b4b4d2fd42552920d36ba96e9f82b79fa409eaee5746dc5b612.wav"
+    },
+    {
       "text": "Что собирает?",
       "file": "25ddd86c08ecf83f7dd5c842b693533c98b2a53d7f51afa9d6e77e03edd30eb3.wav"
+    },
+    {
+      "text": "Что строит мальчик?",
+      "file": "18642323cbfa02a16cae703248666e6fcc5ff6929d39c978262e62f525634a8c.wav"
+    },
+    {
+      "text": "Что строит птица?",
+      "file": "5559943726ea38a5dea294c436f56c5d00538d5123b27ffae62e307f04297aa1.wav"
     },
     {
       "text": "Что строит?",
       "file": "5f1f7ded372878e1ab0b6e6b455e87a0ed33d634d7ff2e4644a2c752330c65b9.wav"
     },
     {
+      "text": "Что чинит дедушка?",
+      "file": "e8c18eb8d1ce190244bdd63a9327377cb7ae9ddff3a9690439f80cbdd8f18a2a.wav"
+    },
+    {
       "text": "Что чинит?",
       "file": "292beac28cf1d47aa4af794d248ebb7d0ade10370ff24cb4e0e79d0dda6d10d2.wav"
+    },
+    {
+      "text": "Что читает бабушка?",
+      "file": "f11964d541c4cebd5ab6a58c79551846c0f4302fdff96a684acb436744c164f1.wav"
     },
     {
       "text": "Что читает?",

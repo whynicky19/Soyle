@@ -998,7 +998,7 @@ def _migration_32_observation_pictures(db) -> None:
     revision = dict(row)
     revision.pop('id')
     revision.update(version=row['version'] + 1, title='Я вижу: опиши картинку',
-        objective='Составлять короткое описание отдельного рисунка из одного, двух или трёх компонентов',
+        objective='Составлять полное описание рисунка: кто, что делает, с чем или где',
         instruction=OBSERVATION_CONTENT['instruction'], content_json=json.dumps(OBSERVATION_CONTENT, ensure_ascii=False),
         method_card_json=json.dumps(observation_method_card(), ensure_ascii=False),
         prompt_policy_json=json.dumps({'steps': ['listen_word', 'retry', 'model'], 'time_limit': None}),
@@ -1013,6 +1013,11 @@ def _migration_32_observation_pictures(db) -> None:
             (asset['media_ref'], asset['origin'], asset['license'], asset['license_status'], now_iso()))
     db.execute("INSERT INTO content_reviews(version_id,stage,decision,comment,reviewer_id,created_at) VALUES(?,'revision','updated',?,NULL,?)",
         (version_id, 'Новая версия «Я вижу»: 24 рисунка, чередование тем, пошаговое описание. Требуется проверка администратора.', now_iso()))
+
+
+def _migration_33_complete_picture_phrases(db) -> None:
+    # Existing families get a separate revision; earlier plans and results keep their version.
+    _migration_32_observation_pictures(db)
 
 
 MIGRATIONS = (
@@ -1040,6 +1045,7 @@ MIGRATIONS = (
     (30, _migration_30_varied_mechanics),
     (31, _migration_31_aac_publication_passports),
     (32, _migration_32_observation_pictures),
+    (33, _migration_33_complete_picture_phrases),
 )
 LATEST_SCHEMA_VERSION = MIGRATIONS[-1][0]
 

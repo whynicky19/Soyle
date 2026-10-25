@@ -3,10 +3,10 @@
 import { ArrowLeft, CircleX, Pause, Volume2, VolumeX } from "lucide-react";
 import type { ReactNode } from "react";
 
-type ShellProps = { children: ReactNode };
+type ShellProps = { children: ReactNode; home?: boolean; navigationCollapsed?: boolean };
 
-export function ChildShell({ children }: ShellProps) {
-  return <div className="app-shell student-mode child-shell soyle-parent-v2 soyle-unified">{children}</div>;
+export function ChildShell({ children, home, navigationCollapsed }: ShellProps) {
+  return <div className={`app-shell student-mode child-shell soyle-parent-v2 soyle-unified ${home ? "room-home-active" : ""} ${navigationCollapsed ? "child-nav-collapsed" : ""}`}>{children}</div>;
 }
 
 export function ParentShell({ children }: ShellProps) {

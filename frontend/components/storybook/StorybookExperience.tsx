@@ -8,9 +8,10 @@ import type { StoryAction, StorySnapshot } from "@/lib/storybook/types";
 import { StoryScene, StorySprite } from "./StoryScene";
 import "./storybook.css";
 
-type Props = { childId?: number; onExit: () => void; onSpeak: (text: string) => Promise<boolean>; onStopSpeech: () => void; calmMode?: boolean };
+type Props = { childId?: number; onExit: () => void; onSpeak: (text: string) => Promise<boolean>; onStopSpeech: () => void; calmMode?: boolean; embedded?: boolean };
 
-export function StorybookExperience({ childId, onExit, onSpeak, onStopSpeech, calmMode = false }: Props) {
+export function StorybookExperience({ childId, onExit, onSpeak, onStopSpeech, calmMode = false, embedded = false }: Props) {
+  const Container = embedded ? "section" : "main";
   const [snapshot, setSnapshot] = useState<StorySnapshot | null>(null);
   const [started, setStarted] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -84,22 +85,23 @@ export function StorybookExperience({ childId, onExit, onSpeak, onStopSpeech, ca
   };
   const exit = () => { stopVoice(); onExit(); };
 
-  if (!childId || !snapshot || !scene) return <main className="sb-loading"><h1>Открываем живую историю</h1>{error && <p role="alert">{error}</p>}<button onClick={() => void load()}>Попробовать снова</button><button onClick={exit}>Назад в кабинет</button></main>;
+  if (!childId || !snapshot || !scene) return <Container className="sb-loading"><h1>Открываем живую историю</h1>{error && <p role="alert">{error}</p>}<button onClick={() => void load()}>Попробовать снова</button><button onClick={exit}>Назад в кабинет</button></Container>;
   const { definition, state } = snapshot;
+  const backLabel = snapshot.preview ? "В кабинет" : "К историям";
   const actions = availableActions(scene, state);
   const motionEnabled = motion && !reducedMotion && !state.paused;
   const continueEnabled = canContinue(scene, state);
   const voiceControls = <button type="button" className={narrating ? "sb-listening" : ""} onClick={() => { if (automaticVoice) void narrate(scene.narration); else setAutomaticVoice(true); }}><Volume2/>{automaticVoice ? "Повторить" : "Послушать"}</button>;
 
-  if (!started) return <main className="sb-welcome">
-    <button className="sb-back" onClick={exit}><ArrowLeft/> В кабинет</button>
+  if (!started) return <Container className="sb-welcome">
+    <button className="sb-back" onClick={exit}><ArrowLeft/> {backLabel}</button>
     <div className="sb-welcome-copy"><span className="sb-eyebrow">SÖYLE · ЖИВАЯ ИСТОРИЯ</span><h1>{definition.title}</h1><p>{definition.subtitle}</p></div>
     <div className="sb-cover"><StoryScene definition={definition} state={{ ...state, scene_index: 0, ready: false, paused: true }} revision={0} motion={false} hints={false} busy onAction={() => {}}/></div>
-    <div className="sb-welcome-bottom"><div className="sb-draft-note"><strong>DRAFT · предпросмотр взрослого</strong><p>{definition.review_note}</p><details><summary>О сценарии</summary><p>{definition.age_note}</p><p>Шесть сцен, примерно 3–5 минут. Можно нажимать на предметы, использовать карточки и помогать вместе со взрослым. Устный ответ не нужен.</p></details></div><button className="sb-primary" onClick={() => { setStarted(true); setAutomaticVoice(true); }}><Play/> {state.completed ? "Открыть завершение" : snapshot.revision ? "Продолжить историю" : "Открыть книгу"}</button></div>
-  </main>;
+    <div className="sb-welcome-bottom"><div className="sb-draft-note"><strong>{snapshot.preview ? "Предпросмотр взрослого" : "Живая история"}</strong><p>{snapshot.preview ? "Чтение здесь не меняет результат ребёнка." : "Нажимай на предметы, выбирай карточки и помогай Мише. Место сохраняется."}</p><details><summary>О сценарии</summary><p>{definition.age_note}</p><p>Шесть сцен, примерно 3–5 минут. Можно нажимать на предметы, использовать карточки и помогать вместе со взрослым. Устный ответ не нужен.</p></details></div><button className="sb-primary" disabled={busy} onClick={() => void (async () => { if (state.completed && !await dispatch("restart")) return; setStarted(true); setAutomaticVoice(true); })()}><Play/> {state.completed ? "Прочитать ещё раз" : snapshot.revision ? "Продолжить историю" : "Открыть книгу"}</button></div>
+  </Container>;
 
-  return <main className={`sb-player ${motionEnabled ? "" : "sb-no-motion"}`}>
-    <header className="sb-header"><button className="sb-back" aria-label="Закрыть историю" onClick={exit}><ArrowLeft/><span>Закрыть</span></button><div><span className="sb-eyebrow">{snapshot.preview ? "DRAFT · ПРЕДПРОСМОТР" : "SÖYLE · ИСТОРИЯ"}</span><h1>{definition.title}</h1></div><span className="sb-page-number" aria-label={`Сцена ${state.scene_index + 1} из ${definition.scenes.length}`}>{state.scene_index + 1}<span> / {definition.scenes.length}</span></span></header>
+  return <Container className={`sb-player ${motionEnabled ? "" : "sb-no-motion"}`}>
+    <header className="sb-header"><button className="sb-back" aria-label="Закрыть историю" onClick={exit}><ArrowLeft/><span>Закрыть</span></button><div><span className="sb-eyebrow">{snapshot.preview ? "ПРЕДПРОСМОТР ВЗРОСЛОГО" : "SÖYLE · ИСТОРИЯ"}</span><h1>{definition.title}</h1></div><span className="sb-page-number" aria-label={`Сцена ${state.scene_index + 1} из ${definition.scenes.length}`}>{state.scene_index + 1}<span> / {definition.scenes.length}</span></span></header>
     <div className="sb-reading-progress" role="group" aria-label="Страницы истории">{definition.scenes.map((item, index) => <span key={item.id} aria-current={index === state.scene_index ? "step" : undefined} className={index <= state.scene_index ? "filled" : ""}/>)}</div>
     <section className="sb-page" aria-labelledby="sb-scene-title">
       <div className="sb-scene-heading"><span className="sb-eyebrow">СТРАНИЦА {state.scene_index + 1}</span><h2 id="sb-scene-title">{scene.title}</h2><p>{state.completed ? "Можно вернуться к этой истории в другой раз." : scene.instruction}</p></div>
@@ -123,5 +125,5 @@ export function StorybookExperience({ childId, onExit, onSpeak, onStopSpeech, ca
       <p className="sb-save-state" role="status">{busy ? "Сохраняем место в книге…" : snapshot.preview ? "Место сохранено в предпросмотре. Детские результаты не изменяются." : "Место в книге сохранено."}</p>
     </section>
     <dialog ref={dialog} className="sb-pause-dialog" aria-labelledby="sb-pause-title" onCancel={(event) => { event.preventDefault(); void dispatch("resume"); }}><button className="sb-dialog-close" aria-label="Продолжить историю" disabled={busy} onClick={() => void dispatch("resume")}><X/></button><span className="sb-pause-art"><StorySprite sheet={definition.assets.objects} cell={0}/></span><h2 id="sb-pause-title">Можно отдохнуть</h2><p>История подождёт. Мы сохранили место.</p><button className="sb-primary" disabled={busy} onClick={() => void dispatch("resume")}><Play/> Продолжить</button><button className="sb-text-button" onClick={exit}>Закрыть книгу</button></dialog>
-  </main>;
+  </Container>;
 }

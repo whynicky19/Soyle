@@ -3,11 +3,13 @@
 from copy import deepcopy
 
 FAVORITE_TOY = {
-    "key": "toy", "version": 1, "schema_version": 1, "status": "DRAFT", "review_status": "pending",
-    "title": "Любимая игрушка", "subtitle": "Маленькая история о большой помощи",
+    "key": "toy", "version": 1, "schema_version": 1, "status": "PUBLISHED", "review_status": "approved",
+    "title": "Любимая игрушка — живая история", "subtitle": "Маленькая история о большой помощи",
+    "approval": {"administrator": "approved"},
+    "publication": {"approved_by": "project_owner", "date": "2026-10-25", "model": "administrator_review"},
     "summary": "Найти мишку, попросить помощь и придумать свою игру вместе с Мишей.",
-    "age_note": "Проект для совместного просмотра примерно в 3–7 лет. Возраст и коммуникативные задачи требуют проверки специалистом.",
-    "review_note": "Все шесть сцен — DRAFT. Методическая и AAC-проверка не проведена. Предпросмотр взрослого не записывается в достижения ребёнка.",
+    "age_note": "Можно читать вместе со взрослым, нажимать на предметы и выбирать карточки. Устный ответ не обязателен.",
+    "review_note": "Опубликовано по решению владельца проекта после технической проверки. Подготовлено AI; это не заключение профильного специалиста. Предпросмотр взрослого хранится отдельно.",
     "assets": {"room": "/storybooks/favorite-toy/room.webp", "misha": "/storybooks/favorite-toy/misha-atlas.webp", "mother": "/storybooks/favorite-toy/mother-standing.webp", "objects": "/storybooks/favorite-toy/objects-atlas.webp"},
     "characters": {"misha": {"name": "Миша", "outfit": "Бирюзовая футболка, кремовые шорты, охристые носки"}, "mother": {"name": "Мама", "outfit": "Коралловый кардиган, кремовая блуза, тёмно-бирюзовые брюки"}},
     "scenes": [
@@ -41,8 +43,8 @@ _BASE_LAYERS = {
     "basket": {"x": 5, "y": 44, "width": 21, "height": 24, "z": 2},
 }
 for scene in FAVORITE_TOY["scenes"]:
-    scene["status"] = "DRAFT"
-    scene["review_status"] = "pending"
+    scene["status"] = "PUBLISHED"
+    scene["review_status"] = "approved"
     scene["layers"] = deepcopy(_BASE_LAYERS)
     scene["layer_reactions"] = []
     scene["decorative_motion"] = ["daylight"]

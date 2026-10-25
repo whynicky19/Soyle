@@ -16,9 +16,7 @@ type Props = {content: ObservationContent; soundEnabled: boolean; defaultRounds?
 export function ObservationExercise({content, soundEnabled, defaultRounds, onSpeak, onBack, onComplete, stopRef}: Props) {
   const rounds = useMemo(() => observationRounds(content.scenes || []), [content]);
   const [limit, setLimit] = useState(Math.min(defaultRounds || content.default_rounds || 12, rounds.length));
-  const [progressive, setProgressive] = useState(true);
   const [doneCount, setDoneCount] = useState(0);
-  const [target, setTarget] = useState<1 | 2 | 3>(1);
   const [index, setIndex] = useState(0);
   const [words, setWords] = useState<string[]>([]);
   const [phase, setPhase] = useState<'intro' | 'playing' | 'ready' | 'technical' | 'done'>('intro');
@@ -27,6 +25,7 @@ export function ObservationExercise({content, soundEnabled, defaultRounds, onSpe
   const [notice, setNotice] = useState('');
   const [technical, setTechnical] = useState('');
   const scene = rounds[index];
+  const target = 3;
   const step = Math.min(words.length, 2);
   const options = useMemo(() => shuffleWithRandom(scene?.options[step] || []), [scene, step]);
   const evidence = useRef({responses: [] as Description['responses'], supports: [] as string[]});
@@ -67,7 +66,7 @@ export function ObservationExercise({content, soundEnabled, defaultRounds, onSpe
   async function model() {
     if (inactive || audioLock.current) return;
     evidence.current.supports.push('model');
-    const next = scene.parts.slice(0, target); setWords(next); setPhase('ready'); setNotice('Это образец. Можно убрать последнее слово и попробовать самому.');
+    const next = scene.parts.slice(0, target); setWords(next); setPhase('ready'); setNotice('Это образец полной фразы. Можно убрать последнюю часть и попробовать самому.');
     await play(next.join(' '));
   }
   function remember() {
@@ -98,30 +97,29 @@ export function ObservationExercise({content, soundEnabled, defaultRounds, onSpe
   }
   useImperativeHandle(stopRef, () => async status => {await save(status);});
   async function advance(extend = false) {
-    if (inactive || audioLock.current) return;
+    if (inactive || audioLock.current || phase !== 'ready' || words.length !== target) return;
     remember();
     if (index === limit - 1 && !extend) {await save('participated'); return;}
     if (extend) setLimit(Math.min(rounds.length, limit + 6));
     evidence.current = {responses: [], supports: []};
-    if (progressive) setTarget(Math.max(target, index + 1 >= 8 ? 3 : index + 1 >= 4 ? 2 : 1) as 1 | 2 | 3);
     setWords([]); setIndex(index + 1); setNotice(''); setPhase('playing');
     await play('Кто на картинке?');
   }
   if (!scene) return <p role="alert">Картинки недоступны. <button onClick={onBack}>Назад</button></p>;
   if (phase === 'done') return <div className="runner-intro"><h3>Серия завершена</h3><p>Описано картинок: {doneCount}.</p><button className="primary-button" onClick={onBack}>Назад</button></div>;
   return <section className="observation-exercise" aria-label="Описание картинки">
-    {phase === 'intro' ? <div className="runner-intro observation-intro"><h2>Я вижу: опиши картинку</h2><p>На каждой картинке — новое действие. Сначала выбери, кто на ней. Затем можно добавить действие и подробность.</p>
+    {phase === 'intro' ? <div className="runner-intro observation-intro"><h2>Я вижу: опиши картинку</h2><p>На каждой картинке собери полную фразу: кто на ней, что делает и с чем или где. Например: «Папа запускает воздушного змея».</p>
       <PracticeLength value={limit} choices={content.round_choices || [12,18,24]} bankSize={rounds.length} unit="картинки" onChange={setLimit}/>
-      <fieldset className="practice-length"><legend>Как собирать фразу</legend><div><button aria-pressed={progressive} onClick={() => {setProgressive(true);setTarget(1);}}>Постепенно: 1 → 2 → 3</button>{([1,2,3] as const).map(count => <button key={count} aria-pressed={!progressive && target === count} onClick={() => {setProgressive(false);setTarget(count);}}>{count === 1 ? 'Кто?' : count === 2 ? 'Кто + действие' : 'Фраза с подробностью'}</button>)}</div><p>В постепенном режиме: 4 картинки с одним словом, затем 4 с действием, дальше — с подробностью. Короткий ответ тоже можно оставить.</p></fieldset>
+      <p>Выбирай по одной части. После «Папа» добавь «запускает», затем «воздушного змея». Перейти дальше можно, когда фраза собрана целиком.</p>
       <button className="primary-button" disabled={inactive} onClick={() => {setPhase('playing'); void play('Рассмотри картинку. Кто на ней?');}}>Послушать и начать</button></div> : phase === 'technical' ? <div className="runner-intro" role="alert"><h3>Не удалось продолжить</h3><p>{technical}</p><button className="primary-button" disabled={saving} onClick={() => void save('technical_error')}>Вернуться без оценки</button></div> : <>
-      <header className="observation-heading"><div><span className="kicker">КАРТИНКА {index + 1} ИЗ {limit} · {scene.theme}</span><h2>{phase === 'ready' ? 'Твоя фраза' : descriptionQuestion(scene, words.length)}</h2></div><button className="small-button" disabled={inactive} onClick={() => void play(phase === 'ready' ? phrase : descriptionQuestion(scene, words.length), 'repeat_question')}><Volume2 size={18}/> Повторить</button></header>
+      <header className="observation-heading"><div><span className="kicker">КАРТИНКА {index + 1} ИЗ {limit} · {scene.theme}</span><h2>{phase === 'ready' ? 'Фраза готова' : descriptionQuestion(scene, words.length)}</h2></div><button className="small-button" disabled={inactive} onClick={() => void play(phase === 'ready' ? phrase : descriptionQuestion(scene, words.length), 'repeat_question')}><Volume2 size={18}/> {phase === 'ready' ? 'Послушать фразу' : 'Повторить вопрос'}</button></header>
       <div className="observation-workspace"><figure className="observation-scene"><Image src={scene.media_ref} alt="Картинка для описания. Кого ты видишь и что происходит?" width={1440} height={1080} sizes="(max-width: 760px) 100vw, 55vw" priority onError={() => {setTechnical('Не загрузилась картинка. Попробуй открыть задание позже.');setPhase('technical');}}/></figure>
-      <div className="observation-compose"><ol className="description-slots" aria-label="Твоя фраза">{Array.from({length: Math.max(target, words.length)}, (_, position) => <li key={position} className={words[position] ? 'filled' : ''}>{words[position] || (position === 0 ? 'Кто?' : position === 1 ? 'Что делает?' : 'Подробность')}</li>)}</ol>
+      <div className="observation-compose"><ol className="description-slots" aria-label="Твоя фраза">{Array.from({length: Math.max(target, words.length)}, (_, position) => <li key={position} className={words[position] ? 'filled' : ''}>{words[position] || (position === 0 ? 'Кто?' : position === 1 ? 'Что делает?' : scene.detail_question)}</li>)}</ol>
         <div className="observation-live" aria-live="polite">{busy ? 'Слушаем…' : notice}</div>
-        {phase === 'playing' && <div className="description-options" role="group" aria-label={descriptionQuestion(scene, words.length)}>{options.map(label => <div key={label}><button className="description-word" disabled={inactive} onClick={() => void choose(label)}>{label}</button><button className="description-listen" disabled={inactive} aria-label={`Послушать слово: ${label}`} onClick={() => void play(label, 'listen_word')}><Volume2 size={21}/></button></div>)}</div>}
-        {words.length > 0 && <button className="small-button" disabled={inactive} onClick={() => {setWords(words.slice(0,-1));setPhase('playing');setNotice('');}}><RotateCcw size={17}/> Убрать последнее слово</button>}
-        {phase === 'ready' && <div className="description-actions"><button className="primary-button" disabled={inactive} onClick={() => void advance()}>{saving ? 'Сохраняем…' : index === limit - 1 ? 'Завершить серию' : 'Следующая картинка'}</button>{words.length < 3 && <button className="secondary-button" disabled={inactive} onClick={() => {setTarget((words.length + 1) as 2 | 3);setPhase('playing');setNotice('');void play(descriptionQuestion(scene, words.length));}}>Добавить {words.length === 1 ? 'действие' : 'подробность'}</button>}{index === limit - 1 && limit < rounds.length && <button className="secondary-button" disabled={inactive} onClick={() => void advance(true)}>Ещё 6 новых картинок</button>}</div>}
-        {phase === 'playing' && words.length > 0 && <button className="secondary-button" disabled={inactive} onClick={() => {setPhase('ready');void play(phrase);}}>Оставить короткую фразу</button>}
+        {phase === 'playing' && <div className="description-options" role="group" aria-label={descriptionQuestion(scene, words.length)}>{options.map(label => <div key={label}><button className="description-word" disabled={inactive} onClick={() => void choose(label)}>{label}</button><button className="description-listen" disabled={inactive} aria-label={`Послушать вариант: ${label}`} onClick={() => void play(label, 'listen_word')}><Volume2 size={21}/></button></div>)}</div>}
+        {words.length > 0 && <button className="small-button" disabled={inactive} onClick={() => {setWords(words.slice(0,-1));setPhase('playing');setNotice('');}}><RotateCcw size={17}/> Убрать последнюю часть</button>}
+        {phase === 'ready' && <div className="description-actions"><button className="primary-button" disabled={inactive} onClick={() => void advance()}>{saving ? 'Сохраняем…' : index === limit - 1 ? 'Завершить серию' : 'Следующая картинка'}</button>{index === limit - 1 && limit < rounds.length && <button className="secondary-button" disabled={inactive} onClick={() => void advance(true)}>Ещё 6 новых картинок</button>}</div>}
+
         {phase === 'playing' && <button className="small-button" disabled={inactive} onClick={() => void model()}>Показать образец</button>}
       </div></div>
     </>}

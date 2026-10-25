@@ -24,7 +24,10 @@ def step(client, headers, child, snapshot, action):
     return response.json()
 
 
-def test_continuous_scene_checkpoints_and_version_isolation(client, parent_headers, student_headers):
+def test_continuous_scene_checkpoints_and_version_isolation(client, parent_headers, student_headers, monkeypatch):
+    from app.cinematic_storybook import DEFINITION
+    monkeypatch.setitem(DEFINITION, 'status', 'DRAFT')
+    monkeypatch.setitem(DEFINITION, 'review_status', 'pending')
     child, snapshot = open_book(client, parent_headers)
     assert snapshot['preview'] and snapshot['definition']['version'] == 2
     assert snapshot['definition']['status'] == 'DRAFT'

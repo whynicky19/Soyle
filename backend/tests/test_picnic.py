@@ -59,14 +59,19 @@ def test_adult_assistance_does_not_invent_the_childs_preference():
     assert state["ready"] and state["choices"]["02"] == "book"
 
 
-def test_picnic_real_api_preview_is_versioned_idempotent_and_not_child_published(client, parent_headers, student_headers, monkeypatch):
+def test_picnic_draft_preview_is_versioned_idempotent_and_separate_from_children(client, parent_headers, student_headers, monkeypatch):
     child = client.get("/api/children", headers=parent_headers).json()[0]["id"]
     url = f"/api/interactive-storybooks/{child}/picnic"
+    monkeypatch.setitem(PICNIC, "status", "DRAFT")
+    monkeypatch.setitem(PICNIC, "review_status", "pending")
+    monkeypatch.setitem(PICNIC, "approval", {})
     assert client.get(url, headers=student_headers).status_code == 403
-    # Marking a status alone cannot bypass the four existing release stages.
+    # A publication status alone cannot replace administrator approval.
     monkeypatch.setitem(PICNIC, "status", "PUBLISHED")
     monkeypatch.setitem(PICNIC, "review_status", "approved")
     assert client.get(url, headers=student_headers).status_code == 403
+    with connect() as db:
+        before_child = [dict(row) for row in db.execute("SELECT * FROM storybook_progress WHERE child_id=? AND story_key='picnic' AND actor_key='child'", (child,)).fetchall()]
     first = client.get(url, headers=parent_headers)
     assert first.status_code == 200 and first.headers["cache-control"] == "private, no-store"
     snapshot = first.json()
@@ -78,18 +83,17 @@ def test_picnic_real_api_preview_is_versioned_idempotent_and_not_child_published
     assert client.post(url + "/events", headers=parent_headers, json={**payload, "version": 2, "event_id": str(uuid4())}).status_code == 409
     assert client.post(url + "/events", headers=parent_headers, json={**payload, "event_id": str(uuid4())}).status_code == 409
     with connect() as db:
-        assert db.execute("SELECT count(*) n FROM storybook_progress WHERE child_id=? AND story_key='picnic' AND actor_key='child'", (child,)).fetchone()["n"] == 0
+        assert [dict(row) for row in db.execute("SELECT * FROM storybook_progress WHERE child_id=? AND story_key='picnic' AND actor_key='child'", (child,)).fetchall()] == before_child
 
 
-def test_child_catalogue_requires_every_release_stage_and_uses_the_same_player_api(client, parent_headers, student_headers, monkeypatch):
+def test_child_catalogue_requires_admin_approval_and_uses_the_same_player_api(client, parent_headers, student_headers, monkeypatch):
     child = client.get("/api/children", headers=parent_headers).json()[0]["id"]
     url = f"/api/interactive-storybooks/{child}/picnic"
     monkeypatch.setitem(PICNIC, "status", "PUBLISHED")
     monkeypatch.setitem(PICNIC, "review_status", "approved")
     approvals = {stage: "pending" for stage in PICNIC["approval"]}
     monkeypatch.setitem(PICNIC, "approval", approvals)
-    # A fixture simulates independently completed approvals; the live definition
-    # stays DRAFT/pending and no account receives reviewer permissions.
+    # Publishing is one administrator decision; pending content stays hidden.
     for stage in approvals:
         assert not any(story["key"] == "picnic" for story in client.get(f"/api/stories/{child}", headers=student_headers).json())
         assert client.get(url, headers=student_headers).status_code == 403

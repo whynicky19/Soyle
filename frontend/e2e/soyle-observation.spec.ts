@@ -13,7 +13,7 @@ async function login(page:Page,student=false){
   await page.getByRole('button',{name:student?'Начать заниматься':'Войти',exact:true}).click();
   await expect(page.getByRole('button',{name:'Выйти из аккаунта',exact:true,includeHidden:true})).toBeAttached();
 }
-test('picture bank: progressive phrases, corrections, model, all 24 images and saved evidence',async({page},testInfo)=>{
+test('picture bank: complete phrases, corrections, model, all 24 images and saved evidence',async({page},testInfo)=>{
   await page.route('http://localhost:8010/**',route=>new URL(route.request().url()).pathname==='/api/tts'
     ? route.fulfill({status:503,body:'{}'}) : route.continue({url:route.request().url().replace(':8010',':8011')}));
   await page.addInitScript(()=>{
@@ -30,8 +30,7 @@ test('picture bank: progressive phrases, corrections, model, all 24 images and s
   expect(result.status()).toBe(200);
   for(const scene of version.content.scenes as Scene[])expect((await page.request.get(scene.media_ref)).status()).toBe(200);
   await page.context().clearCookies();await login(page,true);
-  const menu=page.getByRole('button',{name:'Открыть меню'});if(await menu.isVisible())await menu.click();
-  await page.getByRole('button',{name:'Занятия',exact:true}).click();
+  await page.locator('.room-doors').getByRole('button',{name:'Занятия',exact:true}).click();
   const button=page.getByRole('button',{name:new RegExp(version.title)}).first();
   if(!await button.isVisible())await page.locator('.child-more-games summary').click();
   await button.click();
@@ -42,7 +41,7 @@ test('picture bank: progressive phrases, corrections, model, all 24 images and s
     const src=await page.locator('.observation-scene img').getAttribute('src');
     const scene=(version.content.scenes as Scene[]).find(item=>decodeURIComponent(src||'').includes(item.media_ref))!;
     expect(scene).toBeTruthy();expect(seen.has(scene.key)).toBe(false);seen.add(scene.key);
-    const target=index<4?1:index<8?2:3;
+    const target=3;
     if(index===1){
       const wrong=page.locator('.description-word').filter({hasNotText:scene.parts[0]}).first();await wrong.click();
       await expect(page.getByText('Посмотри ещё раз. Можно послушать слова или посмотреть образец.',{exact:true})).toBeVisible();
@@ -51,9 +50,20 @@ test('picture bank: progressive phrases, corrections, model, all 24 images and s
     else{
       for(let word=0;word<target;word++){
         const option=page.getByRole('button',{name:scene.parts[word],exact:true});await expect(option).toBeEnabled();await option.focus();await option.press('Enter');
+        if(word<2){
+          await expect(page.getByRole('button',{name:'Следующая картинка',exact:true})).toHaveCount(0);
+          await expect(page.getByRole('button',{name:'Оставить короткую фразу',exact:true})).toHaveCount(0);
+          const question=word===0?`Что делает ${scene.parts[0].toLocaleLowerCase('ru')}?`:(scene as Scene & {detail_question:string}).detail_question.replace(/\?$/, ` ${scene.parts[0].toLocaleLowerCase('ru')}?`);
+          await expect(page.getByRole('heading',{name:question,exact:true})).toBeVisible();
+        }
       }
     }
     await expect(page.getByRole('button',{name:'Следующая картинка',exact:true}).or(page.getByRole('button',{name:'Завершить серию',exact:true}))).toBeEnabled();
+    if(index===4){
+      await page.getByRole('button',{name:'Убрать последнюю часть',exact:true}).click();
+      await expect(page.getByRole('button',{name:'Следующая картинка',exact:true})).toHaveCount(0);
+      await page.getByRole('button',{name:scene.parts[2],exact:true}).click();
+    }
     if(index===9)await page.screenshot({path:testInfo.outputPath('picture-description-full-phrase.png'),fullPage:true});
     if(index===3){
       expect((await new AxeBuilder({page}).include('.observation-exercise').analyze()).violations).toEqual([]);
@@ -67,7 +77,7 @@ test('picture bank: progressive phrases, corrections, model, all 24 images and s
       const saved=await response;expect(saved.ok()).toBe(true);
       const payload=saved.request().postDataJSON();
       expect(payload.attempt_status).toBe('participated');expect(payload.details.descriptions).toHaveLength(24);
-      expect(payload.details.descriptions.map((item:{parts_count:number})=>item.parts_count)).toEqual([...Array(4).fill(1),...Array(4).fill(2),...Array(16).fill(3)]);
+      expect(payload.details.descriptions.map((item:{parts_count:number})=>item.parts_count)).toEqual(Array(24).fill(3));
       expect(payload.details.descriptions[1].supports).toContain('retry');expect(payload.details.descriptions[2].supports).toContain('model');
     }else await page.getByRole('button',{name:'Следующая картинка',exact:true}).click();
   }
@@ -75,12 +85,21 @@ test('picture bank: progressive phrases, corrections, model, all 24 images and s
   async function reopen(){
     await page.reload();
     await expect(page.getByRole('button',{name:'Выйти из аккаунта',exact:true,includeHidden:true})).toBeAttached();
-    const menu=page.getByRole('button',{name:'Открыть меню'});if(await menu.isVisible())await menu.click();
-    await page.getByRole('button',{name:'Занятия',exact:true}).click();
+    await page.locator('.room-doors').getByRole('button',{name:'Занятия',exact:true}).click();
     const entry=page.getByRole('button',{name:new RegExp(version.title)}).first();
     if(!await entry.isVisible())await page.locator('.child-more-games summary').click();
     await entry.click();
   }
+  await reopen();
+  await page.getByRole('button',{name:'Послушать и начать',exact:true}).click();
+  const partialSrc=await page.locator('.observation-scene img').getAttribute('src');
+  const partialScene=(version.content.scenes as Scene[]).find(item=>decodeURIComponent(partialSrc||'').includes(item.media_ref))!;
+  for(const part of partialScene.parts.slice(0,2))await page.getByRole('button',{name:part,exact:true}).click();
+  const partialSave=page.waitForResponse(r=>r.request().method()==='POST'&&r.url().includes('/api/sessions'));
+  await page.getByRole('button',{name:'Перерыв',exact:true}).first().click();
+  const partial=await partialSave;expect(partial.ok()).toBe(true);
+  expect(partial.request().postDataJSON().details.descriptions).toEqual([]);
+  expect(partial.request().postDataJSON().details.unfinished_description.words).toEqual(partialScene.parts.slice(0,2));
   await reopen();
   await page.evaluate(()=>{(window as typeof window & {__holdVoice:boolean}).__holdVoice=true;});
   await page.getByRole('button',{name:'Послушать и начать',exact:true}).click();

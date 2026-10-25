@@ -1,6 +1,9 @@
 "use client";
 
 import { useRefreshOnReturn } from "@/lib/hooks/useRefreshOnReturn";
+import { ChildRoomHome } from "./ChildRoomHome";
+import { StarReward, StarVault } from "./StarReward";
+import { savedReward } from "@/lib/rewards";
 import { ObservationExercise } from "./ObservationExercise";
 import { speak, stopCurrentSpeech } from "@/lib/speech";
 
@@ -73,6 +76,7 @@ import {
   LockKeyhole,
   LogOut,
   Menu,
+  PanelLeftClose,
   MapPin,
   Meh,
   MessageCircle,
@@ -150,7 +154,6 @@ import { StoryExperience } from "@/components/StoryExperience";
 import { WorldExperience } from "@/components/WorldExperience";
 import {
   GuidesExperience,
-  ParentDashboardExperience,
   SkillsExperience,
 } from "@/components/ProductExperience";
 
@@ -272,9 +275,11 @@ export function SoyleApp() {
 function AuthenticatedApp({ user, onLogout, externalError, onDismissExternalError }: { user: User; onLogout: () => void; externalError: string; onDismissExternalError: () => void }) {
   const [screen, setScreen] = useState<Screen>(() => user.role === "admin" ? "admin" : user.role === "parent" && new URLSearchParams(window.location.search).get("cabinet") === "parent" ? "parent" : "home");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [childNavigationCollapsed, setChildNavigationCollapsed] = useState(false);
   const [compactNavigation, setCompactNavigation] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const sidebarCloseRef = useRef<HTMLButtonElement>(null);
+  const sidebarBrandRef = useRef<HTMLButtonElement>(null);
   const [children, setChildren] = useState<Child[]>([]);
   const [selectedChildId, setSelectedChildId] = useState<number | null>(() => user.child_id || (user.role === "parent" ? Number(new URLSearchParams(window.location.search).get("child")) || null : null));
   useEffect(() => {
@@ -302,7 +307,9 @@ function AuthenticatedApp({ user, onLogout, externalError, onDismissExternalErro
   const [notifications, setNotifications] = useState<NotificationsData>({ unread: 0, items: [] });
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [globalSearch, setGlobalSearch] = useState("");
-  const [reward, setReward] = useState<{ stars: number; nonce: number } | null>(null);
+  const [reward, setReward] = useState<{ stars: number; nonce: string; total: number; childId: number } | null>(null);
+  const celebratedEvents = useRef(new Set<string>());
+  const dismissReward = useCallback(() => setReward(null), []);
   const gameStartedAtRef = useRef(0);
   const variedStopRef = useRef<((status: "break" | "refused") => Promise<void>) | null>(null);
   const pendingAttemptRef = useRef<{ key: string; body: string } | null>(null);
@@ -356,18 +363,26 @@ function AuthenticatedApp({ user, onLogout, externalError, onDismissExternalErro
     query.addEventListener("change", update);
     return () => query.removeEventListener("change", update);
   }, []);
-  const sidebarIsDialog = compactNavigation && user.role !== "student";
+  const childRail = user.role === "student" && childNavigationCollapsed && !compactNavigation;
+  const sidebarIsDialog = compactNavigation;
+  const navigationHidden = sidebarIsDialog && !sidebarOpen;
   useEffect(() => {
     if (!sidebarIsDialog || !sidebarOpen) return;
     sidebarCloseRef.current?.focus();
-    const closeOnEscape = (event: KeyboardEvent) => {
+    const handleKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         setSidebarOpen(false);
-        menuButtonRef.current?.focus();
+        window.requestAnimationFrame(() => menuButtonRef.current?.focus());
+      }
+      if (event.key === "Tab") {
+        const controls = Array.from(document.querySelectorAll<HTMLButtonElement>('#primary-navigation button:not([disabled])')).filter(button => button.getClientRects().length > 0);
+        const first = controls[0], last = controls[controls.length - 1];
+        if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+        else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
       }
     };
-    window.addEventListener("keydown", closeOnEscape);
-    return () => window.removeEventListener("keydown", closeOnEscape);
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
   }, [sidebarIsDialog, sidebarOpen]);
   const loadChildren = useCallback(() => {
     if (!["parent", "student"].includes(user.role)) { setChildrenLoading(false); return; }
@@ -529,10 +544,9 @@ function AuthenticatedApp({ user, onLogout, externalError, onDismissExternalErro
       return null;
     }).finally(() => { savingAttemptRef.current = false; });
     if (result) {
-      if (result.awarded_stars > 0 && !settingsRef.current.calm_mode) {
-        setReward({ stars: result.awarded_stars, nonce: Date.now() });
-        window.setTimeout(() => setReward(null), 2200);
-      }
+      const eventId = pendingAttemptRef.current ? JSON.parse(pendingAttemptRef.current.body).event_id as string : "";
+      const stars = savedReward(result, eventId, celebratedEvents.current);
+      if (stars > 0) setReward({ stars, nonce: eventId, total: (dashboard?.stars || 0) + stars, childId: child.id });
       gameStartedAtRef.current = Date.now();
       refreshDashboard();
       loadNotifications();
@@ -851,14 +865,15 @@ function AuthenticatedApp({ user, onLogout, externalError, onDismissExternalErro
   const AppRoleShell = user.role === "student" ? ChildShell : user.role === "admin" ? AdminShell : ParentShell;
 
   return (
-    <AppRoleShell>
+    <AppRoleShell home={user.role === "student" && screen === "home"} navigationCollapsed={childNavigationCollapsed}>
+      {user.role === "student" && compactNavigation && navigationHidden && <button ref={menuButtonRef} type="button" className="child-menu-toggle" onClick={() => { setSidebarOpen(true); }} aria-label="Открыть меню" aria-expanded={false} aria-controls="primary-navigation"><Menu size={23}/><span>Меню</span></button>}
       <div className="ambient ambient-one" />
       <div className="ambient ambient-two" />
-      <aside id="primary-navigation" className={`sidebar ${sidebarOpen ? "open" : ""}`} aria-hidden={sidebarIsDialog && !sidebarOpen ? true : undefined} inert={sidebarIsDialog && !sidebarOpen ? true : undefined}>
-        <button type="button" className="brand" onClick={() => openScreen("home")} aria-label="Söyle - на главную">
-          <BrandLogo variant="compact" width={170} decorative />
+      <aside id="primary-navigation" className={`sidebar ${sidebarOpen ? "open" : ""}`} aria-label="Навигация" role={sidebarIsDialog && sidebarOpen ? "dialog" : undefined} aria-modal={sidebarIsDialog && sidebarOpen ? true : undefined} aria-hidden={navigationHidden ? true : undefined} inert={navigationHidden ? true : undefined}>
+        <button ref={sidebarBrandRef} type="button" className="brand" onClick={() => childRail ? setChildNavigationCollapsed(false) : openScreen("home")} aria-label={childRail ? "Развернуть меню" : "Söyle - на главную"} title={childRail ? "Нажми на Söyle, чтобы развернуть меню" : undefined} aria-expanded={childRail ? false : undefined} aria-controls={childRail ? "primary-navigation" : undefined}>
+          <BrandLogo variant={user.role === "student" && childNavigationCollapsed && !compactNavigation ? "vertical" : "compact"} width={user.role === "student" && childNavigationCollapsed && !compactNavigation ? 72 : 170} decorative />
         </button>
-        <button ref={sidebarCloseRef} className="sidebar-close" onClick={closeSidebar} aria-label="Закрыть меню"><X /></button>
+        {!childRail && <button ref={sidebarCloseRef} type="button" className="sidebar-close" onClick={user.role === "student" && !compactNavigation ? () => { setChildNavigationCollapsed(true); window.requestAnimationFrame(() => sidebarBrandRef.current?.focus()); } : closeSidebar} aria-label={user.role === "student" && !compactNavigation ? "Свернуть меню" : "Закрыть меню"} aria-expanded={user.role === "student" && !compactNavigation ? true : undefined} aria-controls="primary-navigation">{user.role === "student" && !compactNavigation ? <PanelLeftClose/> : <X/>}</button>}
         <nav aria-label="Основное меню">
           {navigation.map((item) => {
             const active = screen === item.id || (item.id === "games" && ["session", "exercise-complete", "motor", "sensory", "mixed"].includes(screen));
@@ -885,9 +900,9 @@ function AuthenticatedApp({ user, onLogout, externalError, onDismissExternalErro
 
       {sidebarOpen && sidebarIsDialog && <button className="overlay" onClick={closeSidebar} aria-label="Закрыть меню" />}
 
-      <main className="main">
+      <main className="main" inert={sidebarIsDialog && sidebarOpen ? true : undefined}>
         <header className="topbar v2-topbar">
-          <button ref={menuButtonRef} className="menu-button" onClick={() => setSidebarOpen(true)} aria-label="Открыть меню" aria-expanded={sidebarOpen} aria-controls="primary-navigation"><Menu /></button>
+          {user.role !== "student" && <button ref={menuButtonRef} className="menu-button" onClick={() => setSidebarOpen(true)} aria-label="Открыть меню" aria-expanded={sidebarOpen} aria-controls="primary-navigation"><Menu /></button>}
           <div className="mobile-logo"><BrandLogo variant="compact" width={116} /></div>
           {user.role === "parent" && <form className="v2-global-search" role="search" onSubmit={submitGlobalSearch}><Search/><input value={globalSearch} onChange={(event) => setGlobalSearch(event.target.value)} placeholder="Поиск по занятиям, историям, гайдам…" aria-label="Поиск по Söyle"/><button aria-label="Найти"><ArrowRight/></button></form>}
           <div className="top-actions v2-top-actions">
@@ -897,6 +912,7 @@ function AuthenticatedApp({ user, onLogout, externalError, onDismissExternalErro
             {user.role === "parent" && <div className="notification-wrap"><button className="notification-button" onClick={() => setNotificationsOpen((value) => !value)} aria-label="Уведомления"><Bell size={19}/>{notifications.unread > 0 && <i>{notifications.unread}</i>}</button>{notificationsOpen && <div className="notification-panel"><div className="notification-head"><div><span className="kicker">УВЕДОМЛЕНИЯ</span><strong>События программы</strong></div>{notifications.unread > 0 && <button onClick={markAllNotificationsRead}>Прочитать все</button>}</div><div className="notification-list">{notifications.items.length ? notifications.items.map((item) => <button key={item.id} className={item.is_read ? "read" : "unread"} onClick={() => markNotificationRead(item.id)}><span className="notification-symbol"><Trophy size={18}/></span><div><strong>{item.title}</strong><p>{item.message}</p><small>{new Date(item.created_at).toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}</small></div>{!item.is_read && <i/>}</button>) : <div className="notification-empty"><Bell size={24}/><strong>Пока всё спокойно</strong><span>Здесь появятся отметки о занятиях и новых шагах программы.</span></div>}</div></div>}</div>}
             {user.role === "parent" && <span className="v2-top-divider"/>}
             {user.role === "parent" && <button className="v2-user-greeting" onClick={() => openScreen("profile")}><span>Привет,</span><strong>{user.full_name.split(" ")[0]}!</strong></button>}
+            {user.role === "student" && <StarVault total={dashboard?.stars || 0} onOpen={() => openScreen("achievements")}/>}
             <button className="avatar small avatar-button" onClick={() => openScreen("profile")} aria-label="Открыть профиль">{user.full_name[0]}</button>
           </div>
         </header>
@@ -906,7 +922,7 @@ function AuthenticatedApp({ user, onLogout, externalError, onDismissExternalErro
         {requestError && <div className="game-error global-request-error" role="alert"><ShieldAlert size={18}/><span>{requestError}</span><button type="button" className="small-button" onClick={() => setRequestError("")}>Закрыть</button></div>}
 
         <div className="page">
-          {screen === "home" && <HomeScreen onStartPlan={startPreparedPlan} onOpenSpecialist={() => openScreen("parent", "specialist")} onOpen={openScreen} onExercise={exercise => { if (user.role === "parent") setParentPracticeMode("adult_preview"); openExercise(exercise); }} onStartSession={startDailySession} onResume={resumeSession} activeSession={activeSession} activeSessionLoading={activeSessionLoading} dailyMinutes={dailyMinutes} onMinutesChange={setDailyMinutes} sessionLoading={sessionLoading} sessionError={sessionError} child={child} dashboard={dashboard} consent={consent} userRole={user.role} exercises={exercises} />}
+          {screen === "home" && <HomeScreen onStartPlan={startPreparedPlan} onOpenSpecialist={() => openScreen("parent", "specialist")} onOpen={openScreen} onExercise={exercise => { if (user.role === "parent") setParentPracticeMode("adult_preview"); openExercise(exercise); }} onStartSession={startDailySession} onResume={resumeSession} onPauseSession={pauseSession} soundEnabled={settings.sound_enabled} activeSession={activeSession} activeSessionLoading={activeSessionLoading} dailyMinutes={dailyMinutes} onMinutesChange={setDailyMinutes} sessionLoading={sessionLoading} sessionError={sessionError} child={child} dashboard={dashboard} consent={consent} userRole={user.role} exercises={exercises} />}
           {screen === "stories" && user.role === "student" && <StoryExperience childId={child?.id} calmMode={settings.calm_mode}/>}
           {screen === "world" && ["student", "parent"].includes(user.role) && <WorldExperience key={child?.id} childId={child?.id} canManage={user.role === "parent"} onWords={() => openScreen("aac")} onSpeak={(text) => speak(text, .82, true)}/>}
           {screen === "skills" && user.role === "student" && <SkillsExperience child={child} dashboard={dashboard} exercises={exercises} onNavigate={openScreen} onExercise={openExercise}/>}
@@ -932,13 +948,9 @@ function AuthenticatedApp({ user, onLogout, externalError, onDismissExternalErro
           {screen === "settings" && <SettingsScreen role={user.role} settings={settings} saving={settingsSaving} onChange={changeSettings} onLogout={onLogout} onOpenParent={() => openScreen("parent")} />}
         </div>
       </main>
-      {reward && <RewardCelebration key={reward.nonce} stars={reward.stars} />}
+      {reward && reward.childId === child?.id && <StarReward key={reward.nonce} stars={reward.stars} total={Math.max(reward.total, dashboard?.stars || 0)} calmMode={settings.calm_mode} onDone={dismissReward}/>}
     </AppRoleShell>
   );
-}
-
-function RewardCelebration({ stars }: { stars: number }) {
-  return <div className="reward-layer" role="status" aria-live="polite"><div className="reward-card"><div className="reward-star">★</div><strong>+{stars} {stars === 1 ? "звезда" : stars < 5 ? "звезды" : "звёзд"}</strong><span>Игровая попытка сохранена</span></div>{[0,1,2,3,4,5,6,7].map((item) => <i key={item} style={{ "--reward-index": item } as React.CSSProperties}>★</i>)}</div>;
 }
 
 function ChildOnboarding({ user, onCreated, onLogout }: { user: User; onCreated: (child: Child) => void; onLogout: () => void }) {
@@ -1002,7 +1014,7 @@ function AuthScreen({ onAuthenticated }: { onAuthenticated: (user: User) => void
   </div>;
 }
 
-type HomeScreenProps = { onStartPlan: (plan: AdaptivePlan) => Promise<void>; onOpenSpecialist: () => void; onOpen: (screen: Screen) => void; onExercise: (exercise: Exercise) => void; onStartSession: () => void; onResume: () => void; activeSession: LearningSession | null; activeSessionLoading: boolean; dailyMinutes: 3 | 5 | 10; onMinutesChange: (value: 3 | 5 | 10) => void; sessionLoading: boolean; sessionError: string; child?: Child; dashboard: Dashboard | null; consent: ChildConsent | null; userRole: Role; exercises: Exercise[] };
+type HomeScreenProps = { onPauseSession: () => void; soundEnabled: boolean; onStartPlan: (plan: AdaptivePlan) => Promise<void>; onOpenSpecialist: () => void; onOpen: (screen: Screen) => void; onExercise: (exercise: Exercise) => void; onStartSession: () => void; onResume: () => void; activeSession: LearningSession | null; activeSessionLoading: boolean; dailyMinutes: 3 | 5 | 10; onMinutesChange: (value: 3 | 5 | 10) => void; sessionLoading: boolean; sessionError: string; child?: Child; dashboard: Dashboard | null; consent: ChildConsent | null; userRole: Role; exercises: Exercise[] };
 
 function HomeScreen(props: HomeScreenProps) {
   if (props.userRole === "student") return <ChildHomeScreen {...props}/>;
@@ -1010,12 +1022,9 @@ function HomeScreen(props: HomeScreenProps) {
   return <>{props.sessionError && <div className="v2-inline-alert" role="alert">{props.sessionError}</div>}<ParentOverview onStartPlan={props.onStartPlan} exercises={props.exercises} onExercise={props.onExercise} onOpenSpecialist={props.onOpenSpecialist} child={props.child} dashboard={props.dashboard} activeSession={props.activeSession} onStartSession={props.onStartSession} onResume={props.onResume} onNavigate={props.onOpen}/></>;
 }
 
-function ChildHomeScreen({ onOpen, onExercise, onStartSession, onResume, activeSession, activeSessionLoading, dailyMinutes, onMinutesChange, sessionLoading, sessionError, child, dashboard, consent, exercises }: HomeScreenProps) {
+function ChildHomeScreen({ onOpen, onExercise, onStartSession, onResume, soundEnabled, activeSession, activeSessionLoading, sessionLoading, sessionError, child, dashboard, consent, exercises }: HomeScreenProps) {
   const currentSession = activeSession && activeSession.status !== "completed" ? activeSession : null;
-  return <div className="v2-child-dashboard">
-    {!consent?.privacy_accepted && <section className="consent-banner child-consent" role="status"><ShieldAlert size={24}/><div><strong>Попроси взрослого включить сохранение</strong><p>Игры можно посмотреть, но результат пока не сохранится.</p></div></section>}
-    <ParentDashboardExperience child={child} dashboard={dashboard} exercises={exercises} currentSession={currentSession} activeSessionLoading={activeSessionLoading} dailyMinutes={dailyMinutes} onMinutesChange={onMinutesChange} sessionLoading={sessionLoading} sessionError={sessionError} canSaveResults={Boolean(consent?.privacy_accepted)} onStartSession={onStartSession} onResume={onResume} onNavigate={onOpen} onExercise={onExercise} onProductScreen={(screen) => onOpen(screen)} childMode/>
-  </div>;
+  return <ChildRoomHome child={child} dashboard={dashboard} exercises={exercises} currentSession={currentSession} busy={activeSessionLoading || sessionLoading} error={sessionError} canSave={Boolean(consent?.privacy_accepted)} soundEnabled={soundEnabled} onStart={onStartSession} onResume={onResume} onNavigate={onOpen} onExercise={onExercise}/>;
 }
 
 function SessionScreen({ session, busy, onContinue, onPause, onFinish }: { session: LearningSession; busy: boolean; onContinue: () => void; onPause: () => void; onFinish: () => void }) {
