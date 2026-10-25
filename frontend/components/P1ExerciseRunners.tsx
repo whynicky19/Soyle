@@ -2,6 +2,8 @@
 
 import { ObservationExercise } from "./ObservationExercise";
 import type { ObservationContent } from "@/lib/observationRuntime";
+import { ExplorationExercise } from "./ExplorationExercise";
+import type { ExplorationContent } from "@/lib/explorationRuntime";
 import { VariedExerciseRunner } from "./VariedExerciseRunner";
 import { variedMechanics, type VariedContent, type VariedMechanic } from "@/lib/variedRuntime";
 import { PracticeLength } from "@/components/PracticeLength";
@@ -30,7 +32,7 @@ export type DraftExerciseVersion = {
   title: string;
   instruction: string;
   objective: string;
-  mechanic: "auditory_choice" | "action_choice" | "tap_instruction" | "guided_aac" | VariedMechanic;
+  mechanic: "auditory_choice" | "action_choice" | "tap_instruction" | "guided_aac" | "scene_search" | VariedMechanic;
   review_status: string;
   publication_status: string;
   admin_review_status?: string;
@@ -39,7 +41,7 @@ export type DraftExerciseVersion = {
   accessibility_status?: string;
   release_status?: string;
   method_card?: ExerciseMethodCard;
-  content: VariedContent & ObservationContent & {
+  content: VariedContent & ObservationContent & ExplorationContent & {
     exemplar_policy?: "matched_set";
     bank_key?: string;
     round_choices?: number[];
@@ -91,7 +93,9 @@ export function DraftExercisePreview({ version, onClose, onSpeak }: { version: D
   return <section className="draft-runner-shell" aria-label={`Предпросмотр: ${version.title}`}>
     <header><div><span className="kicker">DRAFT · ТОЛЬКО ПРЕДПРОСМОТР</span><h2>{version.title}</h2><p>{version.objective}</p></div><button type="button" className="small-button" onClick={onClose}><CircleX size={17}/> Закрыть</button></header>
     <div className="draft-safety-note"><ShieldCheck size={19}/><span>Результат не сохраняется. Задание станет доступно ребёнку после проверки и публикации администратором.</span></div>
-    {version.content.presentation === "picture_description"
+    {version.mechanic === "scene_search"
+      ? <ExplorationExercise content={version.content} previewVersionId={version.id} soundEnabled onSpeak={onSpeak} onBack={onClose} onComplete={async()=>({preview:true})}/>
+      : version.content.presentation === "picture_description"
       ? <ObservationExercise content={version.content} soundEnabled onSpeak={onSpeak} onBack={onClose} onComplete={async () => ({preview: true})}/>
       : variedMechanics.includes(version.mechanic)
       ? <VariedExerciseRunner mechanic={version.mechanic as VariedMechanic} content={version.content} soundEnabled onSpeak={onSpeak} onBack={onClose} onComplete={async () => ({preview: true})}/>

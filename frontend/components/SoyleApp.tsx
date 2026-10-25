@@ -4,6 +4,8 @@ import { useRefreshOnReturn } from "@/lib/hooks/useRefreshOnReturn";
 import { ChildRoomHome } from "./ChildRoomHome";
 import { StarReward, StarVault } from "./StarReward";
 import { savedReward } from "@/lib/rewards";
+import { ExplorationExercise } from "./ExplorationExercise";
+import { VocabularyProgress } from "./VocabularyProgress";
 import { ObservationExercise } from "./ObservationExercise";
 import { speak, stopCurrentSpeech } from "@/lib/speech";
 
@@ -805,9 +807,10 @@ function AuthenticatedApp({ user, onLogout, externalError, onDismissExternalErro
   const exerciseBack = () => sessionExerciseActive && activeSession ? setScreen("session") : openScreen("games");
   const activeExerciseContent = <>
     {screen === "motor" && <MotorGame exercises={exercises.filter((item) => item.module === "motor")} initialExercise={selectedExercise} cameraConsentGranted={Boolean(consent?.privacy_accepted && consent?.camera_processing && settings.camera_enabled)} canManageConsent={user.role === "parent"} onOpenConsent={() => openScreen("parent")} onBack={exerciseBack} onComplete={(score, exerciseId, measurement, details) => saveSession(exerciseId, "motor", score, details || { source: "manual" }, measurement)} />}
+    {screen === "sensory" && selectedExercise?.engine?.mechanic === "scene_search" && <ExplorationExercise key={`${selectedExercise.id}-${selectedExercise.engine.version_id}`} content={selectedExercise.engine.content} childId={child?.id} exerciseId={selectedExercise.id} previewVersionId={user.role==='parent'&&parentPracticeMode==='adult_preview'?selectedExercise.engine.version_id:undefined} learningSessionId={sessionExerciseActive?activeSession?.id:undefined} plannedLevel={selectedExercise.adaptive?.difficulty_params.difficulty_level} defaultRounds={selectedExercise.adaptive?.difficulty_params.round_count} soundEnabled={settings.sound_enabled} showStopControls={!(user.role==='student'||parentPracticeMode==='child_practice')} onSpeak={(text,rate)=>speak(text,rate,settings.sound_enabled)} onBack={exerciseBack} onComplete={(measurement,details)=>saveSession(selectedExercise.id,'sensory',0,details,measurement)} stopRef={variedStopRef}/>}
     {screen === "sensory" && selectedExercise?.engine && variedMechanics.includes(selectedExercise.engine.mechanic) && <div className="page-enter game-page"><GameHeader title={selectedExercise.title} subtitle={selectedExercise.instruction} step="Игра с картинками" onBack={exerciseBack}/><VariedExerciseRunner stopRef={variedStopRef} key={`${selectedExercise.id}-${selectedExercise.engine.version_id}`} mechanic={selectedExercise.engine.mechanic as VariedMechanic} content={selectedExercise.engine.content} defaultRounds={selectedExercise.adaptive?.difficulty_params.round_count} soundEnabled={settings.sound_enabled} onSpeak={(text, rate) => speak(text, rate, settings.sound_enabled)} onBack={exerciseBack} onComplete={(measurement, details) => saveSession(selectedExercise.id, "sensory", 0, details, measurement)}/></div>}
     {screen === "sensory" && selectedExercise?.engine?.mechanic === "tap_instruction" ? <div className="page-enter game-page"><GameHeader title={selectedExercise.title} subtitle="Выполни один шаг" step="Предмет → цель" onBack={exerciseBack}/><PublishedInstructionRunner scenarios={selectedExercise.engine.content.scenarios || []} roundChoices={selectedExercise.engine.content.round_choices} defaultRounds={selectedExercise.adaptive?.difficulty_params.round_count || selectedExercise.engine.content.default_rounds} soundEnabled={settings.sound_enabled} onSpeak={(text, rate) => speak(text, rate, settings.sound_enabled)} onBack={exerciseBack} onComplete={(measurement, details) => saveSession(selectedExercise.id, "sensory", 0, details, measurement)}/></div> : null}
-    {screen === "sensory" && selectedExercise?.engine?.mechanic !== "tap_instruction" && !variedMechanics.includes(selectedExercise?.engine?.mechanic || "") && <SensoryGame key={selectedExercise?.id || "sensory"} exercise={selectedExercise?.module === "sensory" ? selectedExercise : exercises.find((item) => item.module === "sensory")} soundEnabled={settings.sound_enabled} onBack={exerciseBack} onComplete={(score, exerciseId, measurement, details) => saveSession(exerciseId, "sensory", score, details || {}, measurement)} />}
+    {screen === "sensory" && selectedExercise?.engine?.mechanic !== "tap_instruction" && selectedExercise?.engine?.mechanic !== "scene_search" && !variedMechanics.includes(selectedExercise?.engine?.mechanic || "") && <SensoryGame key={selectedExercise?.id || "sensory"} exercise={selectedExercise?.module === "sensory" ? selectedExercise : exercises.find((item) => item.module === "sensory")} soundEnabled={settings.sound_enabled} onBack={exerciseBack} onComplete={(score, exerciseId, measurement, details) => saveSession(exerciseId, "sensory", score, details || {}, measurement)} />}
     {screen === "mixed" && selectedExercise?.engine?.content.presentation === "picture_description" && <div className="page-enter game-page"><GameHeader title={selectedExercise.title} subtitle="Рассмотри и опиши одну картинку" step="Описание картинки" onBack={exerciseBack}/><ObservationExercise stopRef={variedStopRef} key={`${selectedExercise.id}-${selectedExercise.engine.version_id}`} content={selectedExercise.engine.content} defaultRounds={selectedExercise.adaptive?.difficulty_params.round_count} soundEnabled={settings.sound_enabled} onSpeak={(text, rate) => speak(text, rate, settings.sound_enabled)} onBack={exerciseBack} onComplete={(measurement, details) => saveSession(selectedExercise.id, "mixed", 0, details, measurement)}/></div>}
     {screen === "mixed" && selectedExercise?.engine?.content.presentation !== "picture_description" && <PhraseGame key={selectedExercise?.id || "mixed"} childId={child?.id} canManage={user.role === "parent"} exercise={selectedExercise?.module === "mixed" ? selectedExercise : exercises.find((item) => item.module === "mixed")} soundEnabled={settings.sound_enabled} onBack={exerciseBack} onComplete={(score, phrase, exerciseId, measurement) => saveSession(exerciseId, "mixed", score, { phrase }, measurement)} />}
   </>;
@@ -815,7 +818,7 @@ function AuthenticatedApp({ user, onLogout, externalError, onDismissExternalErro
   const focusExercise = selectedExercise || exercises.find((item) => item.module === screen);
   const stopFocusedExercise = async (status: "break" | "refused") => {
     if (focusStopping) return;
-    if (focusExercise?.engine && (variedMechanics.includes(focusExercise.engine.mechanic) || focusExercise.engine.content.presentation === "picture_description") && variedStopRef.current) {
+    if (focusExercise?.engine && (variedMechanics.includes(focusExercise.engine.mechanic) || focusExercise.engine.mechanic === "scene_search" || focusExercise.engine.content.presentation === "picture_description") && variedStopRef.current) {
       setFocusStopping(true);
       try { await variedStopRef.current(status); } finally { setFocusStopping(false); }
       return;
@@ -1083,7 +1086,8 @@ function GamesScreen({ onOpen, onExercise, dashboard, exercises, childMode, pare
       {exercises.some((item) => item.engine?.review_gate.demo_only) && <div className="unreviewed-demo-banner" role="status"><ShieldAlert size={20}/><div><strong>{childMode ? "Знакомые игры" : "Практика из прежней библиотеки"}</strong><span>{childMode ? "Выбирай любую игру. Если понадобится помощь, позови взрослого." : "Эти задания доступны для свободной игры, но пока не прошли повторную независимую проверку. Это не утверждённая программа занятий."}</span></div></div>}
       <button className="child-aac-entry" onClick={() => onOpen("aac")}><Image src="/app-illustrations/aac-help.webp" width={78} height={78} alt="Карточка помощи"/><div><strong>Сказать, что нужно</strong><small>Помощь, перерыв, отказ и другие важные сообщения</small></div><ChevronRight size={24}/></button>
       {parentPracticeMode && <section className="practice-mode-card" aria-labelledby="practice-mode-title"><div><Eye size={22}/><span><strong id="practice-mode-title">Кто сейчас выполняет задание?</strong><small>Предпросмотр взрослого никогда не попадает в историю и адаптивный подбор.</small></span></div><div className="practice-mode-options"><button type="button" className={parentPracticeMode === "adult_preview" ? "active" : ""} aria-pressed={parentPracticeMode === "adult_preview"} onClick={() => onParentPracticeModeChange?.("adult_preview")}><Eye size={17}/> Предпросмотр взрослого</button><button type="button" className={parentPracticeMode === "child_practice" ? "active" : ""} aria-pressed={parentPracticeMode === "child_practice"} onClick={() => onParentPracticeModeChange?.("child_practice")}><Baby size={17}/> Практика ребёнка</button></div></section>}
-      <ExerciseLibrary items={exercises} completedIds={dashboard?.completed_exercise_ids || []} onExercise={onExercise} />
+      {exercises.some(e=>e.engine?.mechanic==='scene_search')&&<section aria-label="Исследуй мир"><div className="section-heading"><div><span className="kicker">СЛУШАЙ И НАХОДИ</span><h2>Исследуй мир</h2></div></div><div className="explore-location-grid">{exercises.filter(e=>e.engine?.mechanic==='scene_search').map(e=><button className="explore-location" key={e.id} onClick={()=>onExercise(e)}><Image src={e.engine!.content.exploration!.image.media_ref} alt="" width={640} height={360}/><span><strong>{e.engine!.content.exploration!.title}</strong><small>12 предметов · короткая серия или продолжение</small></span></button>)}</div></section>}
+      {(!exercises.length||exercises.some(e=>e.engine?.mechanic!=='scene_search'))&&<ExerciseLibrary items={exercises.filter(e=>e.engine?.mechanic!=='scene_search')} completedIds={dashboard?.completed_exercise_ids || []} onExercise={onExercise} />}
       {!childMode && <div className="tip-banner"><div className="tip-icon"><Sparkles/></div><div><strong>Подсказка для взрослых</strong><p>Короткую практику можно закончить в любой момент. Частоту, длительность и цели согласуйте со специалистом и состоянием ребёнка.</p></div></div>}
     </div>
   );
@@ -1474,6 +1478,7 @@ function SensoryGame({ exercise, soundEnabled, onBack, onComplete }: { exercise?
   const promptTypesRef = useRef<string[]>([]);
   const roundOutcomesRef = useRef<Array<Record<string, unknown>>>([]);
   const usedTargetsRef = useRef<Set<number>>(new Set());
+  const preferredTargetsRef = useRef([...(planned?.preferred_stimulus_keys || [])]);
   const evidenceRef = useRef(newAnswerEvidence());
   const answerLockRef = useRef(false);
   const audioLockRef = useRef(false);
@@ -1510,7 +1515,9 @@ function SensoryGame({ exercise, soundEnabled, onBack, onComplete }: { exercise?
     if (usedTargetsRef.current.size >= items.length) usedTargetsRef.current.clear();
     evidenceRef.current = newAnswerEvidence();
     answerLockRef.current = false;
-    const nextRound = createSensoryRound(items.length, difficulty.option_count, usedTargetsRef.current);
+    const preferredKey=preferredTargetsRef.current.shift();
+    const preferredIndex=preferredKey?items.findIndex(item=>item.key===preferredKey):-1;
+    const nextRound = preferredIndex>=0 ? {target:preferredIndex,options:shuffled([preferredIndex,...shuffled(items.map((_,i)=>i).filter(i=>i!==preferredIndex)).slice(0,difficulty.option_count-1)])} : createSensoryRound(items.length, difficulty.option_count, usedTargetsRef.current);
     usedTargetsRef.current.add(nextRound.target);
     const targetKey = consistentStimuli[nextRound.target].key;
     const media = chooseRoundMedia(consistentStimuli, targetKey, previousMediaRef.current, exercise?.engine?.content.exemplar_policy === "matched_set");
@@ -1630,7 +1637,7 @@ function SensoryGame({ exercise, soundEnabled, onBack, onComplete }: { exercise?
         independence: Math.round(independentAnswersRef.current / difficulty.rounds * 100),
         prompt_level: promptLevelRef.current === 0 ? "independent" : promptLevelRef.current === 1 ? "minimal" : "full",
       };
-      const result = exercise ? await onComplete(Math.round(correctAnswers / difficulty.rounds * 100), exercise.id, measurement, { bank_key: exercise?.engine?.content.bank_key, bank_size: items.length, prompt_types: promptTypesRef.current, difficulty_level: difficultyLevel, option_count: difficulty.option_count, round_count: difficulty.rounds, round_outcomes: roundOutcomesRef.current, accessibility_mode: accessibleSupportMode ? "spoken_options_non_scored" : "visual_choice" }) : null;
+      const result = exercise ? await onComplete(Math.round(correctAnswers / difficulty.rounds * 100), exercise.id, measurement, { exercise_version_id: exercise?.engine?.version_id, bank_key: exercise?.engine?.content.bank_key, bank_size: items.length, prompt_types: promptTypesRef.current, difficulty_level: difficultyLevel, option_count: difficulty.option_count, round_count: difficulty.rounds, round_outcomes: roundOutcomesRef.current, accessibility_mode: accessibleSupportMode ? "spoken_options_non_scored" : "visual_choice" }) : null;
       if (exercise && !result) return;
       correctAnswersRef.current = 0;
       independentAnswersRef.current = 0;
@@ -2148,6 +2155,7 @@ function ParentScreen({ child, childProfiles, onSelectChild, onDeleted, dashboar
     <div className="cabinet-page" hidden={section !== "practice"}>
     <div className="cabinet-intro"><h2>Практика в обычной жизни</h2><p>Замечайте конкретные действия ребёнка. Бытовые наблюдения хранятся отдельно от результатов игр.</p><button className="secondary-button" onClick={() => onNavigate("goals")}>Перейти к целям и плану</button></div>
     <section className="admin-card family-support-guide"><div className="admin-card-head"><div><span className="kicker">КАК БЫТЬ РЯДОМ</span><h3>Короткая памятка для занятия</h3><p>Цель - дать ребёнку понятный способ ответить, а не добиться ответа любой ценой.</p></div></div><div><article><span>1</span><div><strong>Подготовьте</strong><p>Проверьте звук, уберите лишние раздражители и предложите выбрать длительность.</p></div></article><article><span>2</span><div><strong>Подождите</strong><p>После инструкции оставьте не меньше пяти спокойных секунд на ответ.</p></div></article><article><span>3</span><div><strong>Помогайте по одному шагу</strong><p>Сначала повторите, затем сократите выбор. Не ведите руку ребёнка без согласия.</p></div></article><article className="stop"><Pause size={18}/><div><strong>Остановитесь сразу</strong><p>«Нет», «не хочу», «перерыв», боль, усталость или заметный дискомфорт - достаточная причина завершить действие без ошибки и уговоров.</p></div></article></div></section>
+    {child&&<VocabularyProgress key={child.id} childId={child.id} refreshKey={dashboard?.total_sessions||0}/>}
     <FunctionalSkillMap childId={child?.id}/>
     <HomePracticeLibrary childId={child?.id}/>
     <details className="cabinet-method-note"><summary>Как работает подбор заданий</summary>

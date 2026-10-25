@@ -721,6 +721,7 @@ def test_expanded_sensory_sets_have_twelve_unique_local_illustrations(client, pa
         "p15-nouns-animals", "p15-nouns-clothing", "p15-nouns-home",
         "p15-nouns-body", "p15-actions-core", "p15-instructions-one-step",
         "sort-familiar-groups", "order-familiar-actions", "match-object-action",
+        "explore-bedroom", "explore-kitchen", "explore-living-room", "explore-playground",
     }
 
 

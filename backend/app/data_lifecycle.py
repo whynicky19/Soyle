@@ -22,6 +22,9 @@ def delete_child_records(db, child_id: int) -> None:
         related |= row['object_type'] == 'child_goal' and row['object_id'] in old_goals
         if related:
             db.execute('DELETE FROM audit_events WHERE id=?', (row['id'],))
+    # Plan items restrict deletion of their goal. PostgreSQL may cascade the
+    # child's goals before its plans, so remove plans explicitly first.
+    db.execute('DELETE FROM adaptive_practice_plans WHERE child_id=?', (child_id,))
     db.execute('DELETE FROM children WHERE id=?', (child_id,))
 
 

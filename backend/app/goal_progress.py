@@ -1,4 +1,5 @@
 """Practice evidence attached to comparable versions of one goal, never a mastery score."""
+import json
 from datetime import datetime, timedelta, timezone
 
 from .practice_results import measured_result, compatible_goal_versions
@@ -9,7 +10,7 @@ def goal_progress(db, goal: dict) -> dict:
     versions = compatible_goal_versions(db, goal)
     placeholders = ",".join("?" for _ in versions)
     rows = [dict(row) for row in db.execute(
-        f"""SELECT s.* FROM sessions s
+        f"""SELECT s.*,v.mechanic FROM sessions s LEFT JOIN exercise_versions v ON v.id=s.exercise_version_id
            JOIN adaptive_practice_plan_items i ON i.id=s.adaptive_plan_item_id
            WHERE s.child_id=? AND i.goal_id=? AND i.goal_version IN ({placeholders})
              AND s.created_at>=? AND s.response_owner='child'
@@ -18,7 +19,7 @@ def goal_progress(db, goal: dict) -> dict:
         (goal["child_id"], goal["id"], *versions, cutoff),
     ).fetchall()]
     measured = [row for row in rows if measured_result(row)]
-    attempts = sum(row["attempts_count"] for row in measured)
+    attempts = sum(json.loads(row["details"]).get("round_count",row["attempts_count"]) if row.get("mechanic")=="scene_search" else row["attempts_count"] for row in measured)
     independent = sum(row["independent_completions"] for row in measured)
     prompted = sum(row["prompted_completions"] for row in measured)
     observations = [dict(row) for row in db.execute(

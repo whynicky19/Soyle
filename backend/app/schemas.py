@@ -147,7 +147,62 @@ class ObservationSceneCreate(BaseModel):
     detail_question: str = Field(min_length=2, max_length=100)
 
 
+class ExplorationImage(BaseModel):
+    media_ref: str = Field(min_length=5, max_length=240)
+    version: str = Field(min_length=1, max_length=80)
+    width: int = Field(ge=1, le=8192)
+    height: int = Field(ge=1, le=8192)
+    sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
+
+class ExplorationObject(BaseModel):
+    related_surfaces: list[str] = Field(default_factory=list,max_length=5)
+    part_feedback: str = Field(default="",max_length=160)
+    id: str = Field(min_length=2, max_length=80)
+    concept_id: str = Field(min_length=2, max_length=80)
+    label: str = Field(min_length=1, max_length=100)
+    instructions: dict[str, str]
+    hit_point: tuple[float, float]
+    hit_polygons: list[list[tuple[float, float]]] = Field(min_length=1, max_length=12)
+    hint_regions: list[tuple[float, float, float, float]] = Field(min_length=2, max_length=2)
+    beginner: bool = False
+
+class ExplorationLocation(BaseModel):
+    key: str = Field(min_length=2, max_length=80)
+    title: str = Field(min_length=2, max_length=100)
+    image: ExplorationImage
+    objects: list[ExplorationObject] = Field(min_length=10, max_length=12)
+
+class ExplorationStart(BaseModel):
+    exercise_id: int
+    level: Literal[1, 2, 3] = 1
+    rounds: Literal[4, 8, 12] = 4
+    accessible_labels: bool = False
+    learning_session_id: int | None = None
+
+class ExplorationPreviewStart(BaseModel):
+    level: Literal[1, 2, 3] = 1
+    rounds: Literal[4, 8, 12] = 4
+    accessible_labels: bool = False
+
+class ExplorationEvent(BaseModel):
+    event_id: str = Field(min_length=8, max_length=80)
+    expected_revision: int = Field(ge=0)
+    action: Literal['audio', 'repeat', 'hint', 'select', 'outside', 'next', 'pause', 'resume', 'refuse', 'technical_error']
+    point: tuple[float, float] | None = None
+    object_id: str | None = Field(default=None, max_length=80)
+    keyboard: bool = False
+    audio_success: bool | None = None
+    reason: str = Field(default='', max_length=160)
+
+class VocabularyPolicyUpdate(BaseModel):
+    min_observations: int = Field(default=3, ge=3, le=8)
+    difficulty_observations: int = Field(default=2, ge=2, le=8)
+    recovery_independent: int = Field(default=3, ge=2, le=8)
+    recent_window: int = Field(default=6, ge=3, le=12)
+    cooldown_hours: int = Field(default=24, ge=1, le=168)
+
 class ExerciseDraftContent(BaseModel):
+    exploration: ExplorationLocation | None = None
     presentation: Literal['picture_description'] | None = None
     scenes: list[ObservationSceneCreate] = Field(default_factory=list, max_length=60)
     scenario_key: str | None = Field(default=None, max_length=80)
@@ -198,7 +253,7 @@ class ExerciseMethodCard(BaseModel):
 
 class ExerciseDraftCreate(BaseModel):
     module: Literal["sensory", "mixed"]
-    mechanic: Literal["auditory_choice", "action_choice", "tap_instruction", "guided_aac", "category_sort", "action_sequence", "object_match"]
+    mechanic: Literal["auditory_choice", "action_choice", "tap_instruction", "guided_aac", "category_sort", "action_sequence", "object_match", "scene_search"]
     title: str = Field(min_length=2, max_length=100)
     objective: str = Field(min_length=5, max_length=300)
     instruction: str = Field(min_length=2, max_length=300)

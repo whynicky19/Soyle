@@ -21,7 +21,7 @@ from .recommendations import recommendations
 from .practice_results import measured_result, verified_outcomes, compatible_goal_versions
 
 
-RULES_VERSION = "p2.6-goal-progress-1"
+RULES_VERSION = "p2.7-word-transfer-1"
 
 
 @dataclass(frozen=True)
@@ -72,6 +72,7 @@ def _recency_weights(count: int, thresholds: PlannerThresholds) -> list[float]:
 def _aggregate_results(rows: list[dict], thresholds: PlannerThresholds) -> dict:
     weights = _recency_weights(len(rows), thresholds)
     total_weight = sum(row["attempts_count"] * weight for row, weight in zip(rows, weights))
+    question_weight = sum(row.get("question_count",row["attempts_count"]) * weight for row, weight in zip(rows, weights))
     completed_weight = sum((row["independent_completions"] + row["prompted_completions"]) * weight for row, weight in zip(rows, weights))
     independent_weight = sum(row["independent_completions"] * weight for row, weight in zip(rows, weights))
     attempts = sum(row["attempts_count"] for row in rows)
@@ -79,7 +80,7 @@ def _aggregate_results(rows: list[dict], thresholds: PlannerThresholds) -> dict:
         "recorded_sessions": len(rows), "attempts": attempts,
         "accuracy": round(sum(row["correct_answers"] for row in rows) / attempts, 3) if attempts else None,
         "weighted_accuracy": round(sum(row["correct_answers"] * weight for row, weight in zip(rows, weights)) / total_weight, 3) if total_weight else None,
-        "weighted_independent_accuracy": round(independent_weight / total_weight, 3) if total_weight else None,
+        "weighted_independent_accuracy": round(independent_weight / question_weight, 3) if question_weight else None,
         "independent_completions": sum(row["independent_completions"] for row in rows),
         "weighted_independence_rate": round(independent_weight / completed_weight, 3) if completed_weight else None,
         "prompts_used": sum(row["prompts_used"] for row in rows),
@@ -108,6 +109,14 @@ def _evidence(db, child_id: int, exercise: dict, thresholds: PlannerThresholds) 
     for row in rows:
         details = _loads(row["details"], {})
         if not measured_result(row) or not isinstance(details, dict):
+            continue
+        if exercise['engine']['mechanic'] == 'scene_search':
+            verified=db.execute('SELECT r.state_json FROM exploration_submissions x JOIN exploration_runs r ON r.id=x.run_id WHERE x.session_id=?',(row['id'],)).fetchone()
+            if not verified:continue
+            state=_loads(verified['state_json'],{})
+            if state.get('status')!='completed' or state.get('accessible_labels') or details.get('difficulty_level') not in (1,2,3):continue
+            row['difficulty_level']=details['difficulty_level'];row['question_count']=len(state['outcomes']);comparable.append(row)
+            if len(comparable)>=thresholds.recent_window:break
             continue
         if exercise['engine']['mechanic'] in {'category_sort', 'action_sequence', 'object_match', 'tap_instruction'}:
             content = exercise['engine']['content']
@@ -247,7 +256,7 @@ def _difficulty(
     if recent_pause:
         reason.append("Перерыв и отказ не снижают сложность и не считаются ошибкой. Нагрузку занятия можно уменьшить отдельно.")
     mechanic = exercise["engine"]["mechanic"]
-    if mechanic not in {"auditory_choice", "action_choice"}:
+    if mechanic not in {"auditory_choice", "action_choice", "scene_search"}:
         level = 1
         reason = ["Используется фиксированный формат задания; игровое участие не считается ростом речевого навыка."]
     levels = exercise["engine"]["content"].get("difficulty_levels") or []
@@ -398,6 +407,14 @@ def create_plan(db, child_id: int, target_minutes: int, user_id: int, thresholds
             params, difficulty_reason = _difficulty(
                 exercise, evidence, parent_observations, goal["help_level"], thresholds,
             )
+            from .vocabulary import focus_for_exercise
+            focus=focus_for_exercise(db,child_id,exercise)
+            params.update(focus)
+            if exercise['engine']['mechanic']=='scene_search' and params['difficulty_level']==1:
+                large={o['id'] for o in exercise['engine']['content']['exploration']['objects'] if o['beginner']}
+                if any(key not in large for key in focus['preferred_stimulus_keys']):
+                    params['difficulty_level']=2
+                    difficulty_reason.append('После самостоятельных карточных проб возвращаем конкретное слово в полную сцену с простой инструкцией.')
             use = assignment_history.get(exercise["id"], {
                 "assignment_count": 0,
                 "last_assigned_at": None,
@@ -405,6 +422,7 @@ def create_plan(db, child_id: int, target_minutes: int, user_id: int, thresholds
             })
             sort_key = (
                 0 if recommendation else 1,
+                0 if focus['preferred_stimulus_keys'] else 1,
                 0 if use["assignment_count"] == 0 else 1,
                 use["assignment_count"],
                 0 if exercise["id"] in preferred else 1,
@@ -415,6 +433,10 @@ def create_plan(db, child_id: int, target_minutes: int, user_id: int, thresholds
                 goal, exercise, evidence, parent_observations, difficulty_reason,
                 exercise["id"] in preferred, use,
             )
+            if focus['preferred_stimulus_keys']:
+                reason['codes'].append('vocabulary_reinforcement')
+                reason['messages'].extend(focus['vocabulary_reason'])
+                reason['evidence']['word_concept_ids']=focus['word_concept_ids']
             if recommendation:
                 reason["recommendation_id"] = recommendation["id"]
                 reason["codes"].append("family_accepted_recommendation")

@@ -2,6 +2,7 @@
 
 import { Check, ChevronLeft, CircleAlert, CircleX, Clock3, FileCheck2, History, LockKeyhole, MessageSquareText, Play, RotateCcw, ShieldCheck, Volume2 } from "lucide-react";
 import Image from "next/image";
+import { ExplorationReview } from "./ExplorationReview";
 import { useState } from "react";
 import { DraftExercisePreview, type DraftExerciseVersion, type ExerciseMethodCard } from "@/components/P1ExerciseRunners";
 
@@ -96,7 +97,8 @@ function MethodCardView({ card }: { card?: ExerciseMethodCard }) {
 
 function StimulusReview({ data, onSpeak }: { data: ContentReviewWorkspaceData; onSpeak: (text: string, rate?: number) => Promise<boolean> }) {
   const { version } = data;
-  if (version.content.presentation === "picture_description") return <div className="stimulus-review-grid">{version.content.scenes?.map(scene => <article key={scene.key}><Image src={scene.media_ref} alt={scene.parts.join(" ")} width={960} height={720}/><strong>{scene.parts.join(" ")}</strong><p>{scene.theme} · 1, 2 или 3 части фразы</p><button className="small-button" onClick={() => void onSpeak(scene.parts.join(" "), .76)}><Volume2 size={16}/> Прослушать</button></article>)}</div>;
+  if (version.mechanic === "scene_search" && version.content.exploration) return <ExplorationReview scene={version.content.exploration} onSpeak={onSpeak}/>;
+  if (version.content.presentation === "picture_description") return <div className="stimulus-review-grid">{version.content.scenes?.map(scene => <article key={scene.key}><Image src={scene.media_ref} alt={scene.parts.join(" ")} width={960} height={720}/><strong>{scene.parts.join(" ")}</strong><p>{scene.theme} · Полная фраза: кто, действие, предмет или место</p><button className="small-button" onClick={() => void onSpeak(scene.parts.join(" "), .76)}><Volume2 size={16}/> Прослушать</button></article>)}</div>;
   if (version.mechanic === "category_sort") return <div className="stimulus-review-grid">{(version.content.sort_items || []).map(item => <article key={item.key}><div className="stimulus-exemplars"><figure><Image src={item.media_ref} alt={item.label} width={640} height={640}/><figcaption>{item.label}</figcaption></figure></div><p>Группа: <strong>{version.content.categories?.find(group => group.key === item.category_key)?.label}</strong></p></article>)}</div>;
   if (version.mechanic === "action_sequence" || version.mechanic === "object_match") return <div className="scenario-review-list">{(version.content.tasks || []).map(task => <article key={task.key}><header><h4>{task.instruction}</h4><button className="small-button" onClick={() => void onSpeak(task.instruction, .78)}><Volume2 size={16}/> Прослушать</button></header><p>{version.mechanic === "action_sequence" ? `Верный порядок: ${(task.correct_order || []).map(key => task.cards.find(item => item.key === key)?.label).join(" → ")}` : `Пары: ${(task.pairs || []).map(pair => `${task.cards.find(item => item.key === pair.object_key)?.label} → ${task.targets?.find(item => item.key === pair.target_key)?.label}`).join("; ")}`}</p><div className="scenario-review-objects">{[...task.cards, ...(task.targets || [])].map((item, index) => <figure key={`${item.key}-${index}`}><Image src={item.media_ref} alt={item.label} width={640} height={640}/><figcaption>{item.label}</figcaption></figure>)}</div></article>)}</div>;
   if (version.mechanic === "tap_instruction") {

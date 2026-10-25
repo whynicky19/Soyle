@@ -1255,6 +1255,11 @@ def create_session(payload: SessionCreate, user: dict = Depends(require_roles("a
             raise HTTPException(409, "Родитель исключил это задание из практики")
         if not exercise:
             raise HTTPException(422, "Задание не опубликовано или находится на проверке")
+        exploration_run = None
+        if exercise['engine']['mechanic'] == 'scene_search':
+            from .exploration import trusted_submission
+            payload, exploration_run = trusted_submission(db, payload, exercise)
+            attempt_status = payload.attempt_status
         if exercise["module"] != payload.module:
             raise HTTPException(422, "Задание не относится к выбранному модулю")
         if exercise["module"] in {"motor", "mixed"} and attempt_status == "completed":
@@ -1301,7 +1306,7 @@ def create_session(payload: SessionCreate, user: dict = Depends(require_roles("a
                 if recommendation_id:
                     db.execute("UPDATE specialist_recommendations SET family_decision=family_decision WHERE id=?", (recommendation_id,))
                     validate_recommendation(db, payload.child_id, recommendation_id, payload.exercise_id, exercise["engine"]["version_id"], adaptive_item["goal_id"])
-        measurement_source = "local_automated_movement_check" if payload.details.get("source") == "local-face-movement-check" else "caregiver_or_user_observation"
+        measurement_source = "server_verified_scene_search" if exploration_run else "local_automated_movement_check" if payload.details.get("source") == "local-face-movement-check" else "caregiver_or_user_observation"
         cursor = db.execute(
             """INSERT INTO sessions(child_id,exercise_id,exercise_version_id,module,score,duration_seconds,details,measurement_version,
                learning_session_id,sequence_index,independence,prompt_level,response_ms,communication_initiatives,
@@ -1322,6 +1327,10 @@ def create_session(payload: SessionCreate, user: dict = Depends(require_roles("a
                 raise HTTPException(409, "Идентификатор попытки уже использован для другого результата")
             return saved_attempt_response(existing, replayed=True)
         row = db.execute("SELECT * FROM sessions WHERE id=?", (inserted["id"],)).fetchone()
+        if exploration_run:
+            db.execute('INSERT INTO exploration_submissions(run_id,revision,session_id) VALUES(?,?,?)',(exploration_run['id'],exploration_run['revision'],row['id']))
+        from .vocabulary import ingest_card_session
+        ingest_card_session(db, row, exercise)
         if payload.learning_session_id:
             published_ids = {item["id"] for item in child_exercise_rows(db, payload.child_id)}
             available_planned_ids = [exercise_id for exercise_id in planned_ids if exercise_id in published_ids]
@@ -2176,6 +2185,11 @@ def export_child_data(child_id: int, user: dict = Depends(require_roles("parent"
             "aac_history": history_rows,
             "world_photos": [dict(row) for row in db.execute("SELECT * FROM child_world_photos WHERE child_id=? ORDER BY id", (child_id,)).fetchall()],
             "storybook_progress": [dict(row) for row in db.execute("SELECT * FROM storybook_progress WHERE child_id=? ORDER BY story_key,story_version,actor_key", (child_id,)).fetchall()],
+            "exploration_runs": [dict(r) for r in db.execute('SELECT * FROM exploration_runs WHERE child_id=? ORDER BY created_at',(child_id,)).fetchall()],
+            "exploration_events": [dict(r) for r in db.execute('SELECT e.* FROM exploration_events e JOIN exploration_runs r ON r.id=e.run_id WHERE r.child_id=? ORDER BY e.created_at',(child_id,)).fetchall()],
+            "word_observations": [dict(r) for r in db.execute('SELECT * FROM word_observations WHERE child_id=? ORDER BY id',(child_id,)).fetchall()],
+            "vocabulary_policy": [dict(r) for r in db.execute('SELECT * FROM vocabulary_policies WHERE child_id=?',(child_id,)).fetchall()],
+            "vocabulary_repetitions": [dict(r) for r in db.execute('SELECT * FROM vocabulary_repetitions WHERE child_id=?',(child_id,)).fetchall()],
             "story_progress": [dict(row) for row in db.execute("SELECT * FROM child_story_progress WHERE child_id=? ORDER BY story_key", (child_id,)).fetchall()],
             "notifications": [dict(row) for row in db.execute("SELECT * FROM notifications WHERE child_id=? ORDER BY id", (child_id,)).fetchall()],
             "audit_events": audit_rows,
@@ -2484,6 +2498,8 @@ def publish_home_activity_draft(activity_id: int, admin: dict = Depends(require_
 def publish_exercise_draft(version_id: int, payload: ContentPublishCreate | None = None, admin: dict = Depends(require_roles("admin"))) -> dict:
     with connect() as db:
         version = publish_version(db, version_id, reviewer_id=admin["id"], comment=payload.comment if payload else "")
+        from .vocabulary import sync_concept_links
+        sync_concept_links(db)
     audit(admin, "exercise.version.publish", "exercise_version", version_id, {"exercise_id": version["exercise_id"]})
     return version
 
@@ -2619,3 +2635,7 @@ def prepare_recommendation_plan(child_id: int, recommendation_id: int, user: dic
 
 from .specialist_invitations import router as invitation_router
 app.include_router(invitation_router)
+
+
+from .exploration_routes import register_exploration_routes
+register_exploration_routes(app, ensure_child_access, ensure_privacy_consent)

@@ -3,6 +3,7 @@ import "./globals.css";
 import "./product.css";
 import "./branding.css";
 import "./child-room.css";
+import "./exploration.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : "http://localhost:3006")),

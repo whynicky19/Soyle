@@ -9,7 +9,7 @@ from .database import IS_PRODUCTION, env_enabled, now_iso
 from .varied_validation import VARIED_MECHANICS, validate_varied
 
 
-SUPPORTED_PUBLIC_MECHANICS = frozenset({"auditory_choice", "action_choice", "tap_instruction", "guided_aac"}) | VARIED_MECHANICS
+SUPPORTED_PUBLIC_MECHANICS = frozenset({"auditory_choice", "action_choice", "tap_instruction", "guided_aac", "scene_search"}) | VARIED_MECHANICS
 # An explicit local demonstration is the only exception to the review gate.
 # Production must never accept this environment switch.
 ALLOW_UNREVIEWED_DEMO_CONTENT = not IS_PRODUCTION and env_enabled("SOYLE_ALLOW_UNREVIEWED_DEMO_CONTENT")
@@ -342,6 +342,10 @@ def validate_version(version: dict, *, enforce_visual_consistency: bool = True) 
                 if not 1 <= max_attempts <= 4:
                     errors.append("Для каждого уровня нужно от 1 до 4 попыток")
                     break
+    elif mechanic == "scene_search":
+        from .exploration_content import validate_exploration
+        errors.extend(validate_exploration(content))
+        if version.get("response_mode") != "single_tap":errors.append("Поиск на сцене требует single_tap")
     elif mechanic == "tap_instruction":
         scenarios = content.get("scenarios") if isinstance(content, dict) else None
         if not isinstance(scenarios, list) or not scenarios:

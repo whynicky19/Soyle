@@ -1,0 +1,11 @@
+"use client";
+import {useEffect,useState} from 'react';
+import {api} from '@/lib/api';
+import {Volume2} from 'lucide-react';
+import {polygonPath,type SearchScene} from '@/lib/explorationRuntime';
+export function ExplorationReview({scene,onSpeak}:{scene:SearchScene;onSpeak:(text:string,rate?:number)=>Promise<boolean>}){
+ const [zones,setZones]=useState(true);
+ const [pending,setPending]=useState<string[]|null>(null);
+ useEffect(()=>{let active=true;api<{concept_id:string;status:string}[]>('/api/admin/vocabulary-content-gaps').then(items=>{if(active)setPending(items.filter(i=>i.status==='draft').map(i=>i.concept_id));}).catch(()=>{});return()=>{active=false;};},[]);
+ return <div className="exploration-review"><p>Версия рисунка: {scene.image.version}. {scene.objects.length} отдельных зон. Номера видны только при проверке взрослым.</p><label><input type="checkbox" checked={zones} onChange={e=>setZones(e.target.checked)}/> Показать интерактивные области</label><svg viewBox="0 0 1000 1000" preserveAspectRatio="none" role="img" aria-label={`Разметка локации ${scene.title}`}><image href={scene.image.media_ref} width="1000" height="1000" preserveAspectRatio="none"/>{zones&&scene.objects.map((o,i)=><g key={o.id}><path d={polygonPath(o.hit_polygons)}/><text x={o.hit_point[0]*1000} y={o.hit_point[1]*1000}>{i+1}</text></g>)}</svg><div className="exploration-review-scroll"><table><caption>Предметы и подготовленные инструкции</caption><thead><tr><th>Предмет</th><th>Простая инструкция</th><th>Признак или расположение</th><th>Звук</th></tr></thead><tbody>{scene.objects.map((o,i)=><tr key={o.id}><td>{i+1}. {o.label}</td><td>{o.instructions['2']}</td><td>{o.instructions['3']}</td><td><button className="small-button" aria-label={`Прослушать: ${o.instructions['3']}`} onClick={()=>void onSpeak(o.instructions['3'],.78)}><Volume2 size={19}/></button></td></tr>)}</tbody></table></div><p>Отдельные карточки пока не опубликованы для слов: {pending===null?'связи загружаются; доступность карточек пока не подтверждена':scene.objects.filter(o=>pending.includes(o.concept_id)).map(o=>o.label).join(', ')||'все слова связаны с доступными карточками'}.</p><p>На начальном уровне выбираются крупные цели, но на рисунке остаются все 12 предметов. Перед публикацией проверьте зоны и однозначность инструкций на реальной иллюстрации.</p></div>;
+}

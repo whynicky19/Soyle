@@ -1,3 +1,4 @@
+import type { ExplorationContent } from "./explorationRuntime";
 import type { ObservationContent } from "./observationRuntime";
 import type { VariedContent, VariedMechanic } from "./variedRuntime";
 export type Role = "admin" | "parent" | "student" | "specialist";
@@ -129,13 +130,13 @@ export type Exercise = {
   engine?: {
     version_id: number;
     version: number;
-    mechanic: "auditory_choice" | "action_choice" | "tap_instruction" | "guided_aac" | VariedMechanic;
+    mechanic: "auditory_choice" | "action_choice" | "tap_instruction" | "guided_aac" | "scene_search" | VariedMechanic;
     language: "ru";
     objective: string;
     response_mode: "single_tap" | "tap_sequence" | "aac_card_sequence";
     prompt_policy: Record<string, unknown>;
     completion_rule: Record<string, unknown>;
-    content: VariedContent & ObservationContent & {
+    content: VariedContent & ObservationContent & ExplorationContent & {
       stimuli?: Array<{
         key: string;
         label: string;
@@ -195,6 +196,9 @@ export type Exercise = {
 };
 
 export type AdaptiveDifficultyParams = {
+  preferred_stimulus_keys?: string[];
+  word_concept_ids?: string[];
+  vocabulary_reason?: string[];
   difficulty_level: 1 | 2 | 3;
   option_count: 2 | 3 | 4 | null;
   round_count: number;

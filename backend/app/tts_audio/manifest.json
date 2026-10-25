@@ -3,6 +3,10 @@
   "base_rate_wpm": 148,
   "clips": [
     {
+      "text": "Аквариум",
+      "file": "6068edb1fb058a223c0bf5eb37b1d950b52729d2ddb12ca372340950e8aa0896.wav"
+    },
+    {
       "text": "Бабочка",
       "file": "bb88cfd905117a90fe84b4e72e5907eefe834e2aa9839a881d29e8c6db20ca52.wav"
     },
@@ -63,8 +67,24 @@
       "file": "44749641180126a1a62558a738e09a17e6c56399df85a4a6d065d6545d6e84c6.wav"
     },
     {
+      "text": "Будильник",
+      "file": "f11268dd69bcf5336b45a2b1a57281bfae1f7659925c81f8f18b5fd4c79143ad.wav"
+    },
+    {
+      "text": "Ваза",
+      "file": "f1d69ca4367a660b1ae4bdb65804b64f5b78a8d33b57be02b335d214deb5f530.wav"
+    },
+    {
       "text": "Варежки",
       "file": "253615b9ec69baecb030ea371e1b6c548563ca1739de494b8c06b64a3e81805d.wav"
+    },
+    {
+      "text": "Ведёрко",
+      "file": "bc2c2d1a693ec51bd8b423a67ee4da8482dc817d3970e2a8dd863b9190cce7e9.wav"
+    },
+    {
+      "text": "Велосипед",
+      "file": "91f1c4f49d9c5c049672f010b12f84c85b1bc38cc4c71bdf94e9d06c43a0d9c5.wav"
     },
     {
       "text": "Взрослый помог выразить просьбу. Мама идёт к полке.",
@@ -139,6 +159,10 @@
       "file": "887b7807718119d28cfd157d397738bc10b283865a8e533a0d70337b38583389.wav"
     },
     {
+      "text": "Гитара",
+      "file": "b2cdd0d1a5b7c8c3afc2d1464d7b6588d4a1ed1f09a1864486532c272298b423.wav"
+    },
+    {
       "text": "Глаза",
       "file": "f9580f82106b52b29325110979532c6e464c6aa05b0b278b29380c1730896da5.wav"
     },
@@ -147,8 +171,208 @@
       "file": "89e7aabc1a41a84c1969beb3d78b237cf0850893e1de592f5c615b0f26e89edc.wav"
     },
     {
+      "text": "Горка",
+      "file": "1800f3f00e4e8affff5be5e4eb6515f988f31333236415bd00a2b67367a278ca.wav"
+    },
+    {
       "text": "Да",
       "file": "2e4507d2a16f5e6dca109dcc6058ebfb20f32b0b65e9ce21e9eb699dc39d1ed0.wav"
+    },
+    {
+      "text": "Да, это аквариум!",
+      "file": "c273ba5d906cb2c865c69b8b73bdfd351100218efb28ad8ca6d94407ed31560c.wav"
+    },
+    {
+      "text": "Да, это бабочка!",
+      "file": "94502146cd10c4cf490ea72c33d8eaa85dacd4a9c50c64a04e0ce9ad020ae172.wav"
+    },
+    {
+      "text": "Да, это банан!",
+      "file": "8fe234f9e58f846d038a1e553974fb548e12322c971b75e55e91a3c10c16b915.wav"
+    },
+    {
+      "text": "Да, это будильник!",
+      "file": "64f302e6fc187d6281c240e1bfb1ebd16c65c437be29e9b6a2702454ceae908e.wav"
+    },
+    {
+      "text": "Да, это ваза!",
+      "file": "2a2ae294e32b4bcfea46bb9bf13c0af0e32faccbd5b90e506dc12b3ecf0bde4c.wav"
+    },
+    {
+      "text": "Да, это ведёрко!",
+      "file": "63ced1ea47603041b98601dab2baf7610e5fcf49aefbddabd930a246edf887d8.wav"
+    },
+    {
+      "text": "Да, это велосипед!",
+      "file": "411f132f9c4a96366fc568048ffd9d203066d3613627c0cf122ed8d859ebe984.wav"
+    },
+    {
+      "text": "Да, это воздушный змей!",
+      "file": "671ab9afec1ff6d87ef5d217680d5f420e4775ff58f472c59788e4d86500d01a.wav"
+    },
+    {
+      "text": "Да, это гитара!",
+      "file": "3e3bc4985d39035952d1f35e31aeddeee1860e8da626b438fa5b212797d54441.wav"
+    },
+    {
+      "text": "Да, это горка!",
+      "file": "e71e511fd5ad32b6846097de3863c552bafb6ced3b310064f6dfda47f2d9bd29.wav"
+    },
+    {
+      "text": "Да, это диван!",
+      "file": "d46719e166c3895e4d6b77869903776274a234a5aed5dfd7fd42313ae6e530ec.wav"
+    },
+    {
+      "text": "Да, это динозавр!",
+      "file": "d30b54f918c9eb826688d9bd133b26de4e43f01512c8440b9a17cc08751b35e9.wav"
+    },
+    {
+      "text": "Да, это зеркало!",
+      "file": "35e5f89df37ee8dfd9e7f11109b069527ad5312b04436b7e4e450c9c1611a5bb.wav"
+    },
+    {
+      "text": "Да, это картина!",
+      "file": "2788b151f784b9643c7cb6cb19ea2ee766d9cf4a47e628d5855f54cbb6d2c364.wav"
+    },
+    {
+      "text": "Да, это кастрюля!",
+      "file": "9053bd8a21ea6ed126023f1f0cd658671d4ec0e375076fdcca1c03f23475ea22.wav"
+    },
+    {
+      "text": "Да, это качели!",
+      "file": "7d68ecdd4453b221633842d25a15a270667d97f4572f8882ff019b3721373e65.wav"
+    },
+    {
+      "text": "Да, это ковёр!",
+      "file": "0ca7ffb970a5324ce5393eb8f10e0dc253739779e6db047d90955240c8fa8131.wav"
+    },
+    {
+      "text": "Да, это корзина!",
+      "file": "c97594d7b7ee42d4358fdb867673575ef82762d8508e9d5136b62f5942386121.wav"
+    },
+    {
+      "text": "Да, это кресло!",
+      "file": "c06af7670a0ffe42fdef0e0fb33eca1e2384aa9f6c315e37757b9d9e16f9dd2b.wav"
+    },
+    {
+      "text": "Да, это кровать!",
+      "file": "6366a290d225b616f9e8e3fb7432370fa5c36f3ff1a7f18353fa264c85485a9a.wav"
+    },
+    {
+      "text": "Да, это кубики!",
+      "file": "37e0422ee5cb6b5e0289c41e7795553fd40943f263f952e9f428c0b88da5fccc.wav"
+    },
+    {
+      "text": "Да, это лейка!",
+      "file": "330e90e5e1c86316f8b80b08dab60acd90b94b5ca1a6cef85712194769e2b9c8.wav"
+    },
+    {
+      "text": "Да, это ложка!",
+      "file": "51c1a329acfc3f752215b73e8aa7eca142ffff39ec33fab973dd5182c4f2807a.wav"
+    },
+    {
+      "text": "Да, это лопатка!",
+      "file": "7a7366b30bba18d4df295aa4a6f6ae5c04e3c750d6f79fbf95d01cc11f951f86.wav"
+    },
+    {
+      "text": "Да, это морковь!",
+      "file": "194800bc7c044b0aee2e500ac8e7c88960c6e8378af1dbb5c716d0f83b1c2cf9.wav"
+    },
+    {
+      "text": "Да, это настольная игра!",
+      "file": "217f063cfd2a3ff6d4c7e1168ec26d550420a4290e964981bfef3ba7c735866c.wav"
+    },
+    {
+      "text": "Да, это ночник!",
+      "file": "7db4221849dddf3fbbf53465410bf036479d99a0c9e34352a388c51f5cb12fcd.wav"
+    },
+    {
+      "text": "Да, это одеяло!",
+      "file": "de51d85075e29976f54204d78283f3bd93e55b147a1d39e12eedc515f9cb6ae3.wav"
+    },
+    {
+      "text": "Да, это песочница!",
+      "file": "fc594370b0f8fa0318bf0922823a6ffc627164c79b68cd369f1b16d5f17ef551.wav"
+    },
+    {
+      "text": "Да, это пижама!",
+      "file": "6f10267ee2baadff3e5d9d33e579fdc43af1fd7a3463221e3ea8a5cb91b7690c.wav"
+    },
+    {
+      "text": "Да, это подушка!",
+      "file": "2e09c692fb719ea460731e66044bdc10e2e314feae7108aaa6f165205271e806.wav"
+    },
+    {
+      "text": "Да, это пульт!",
+      "file": "a64764576386186d784497323e1d4b390a58841b434c75ebaf95928d8f5b56df.wav"
+    },
+    {
+      "text": "Да, это раковина!",
+      "file": "4d31cca0d8058e234f71975590089086b0cc1b6747aae3d50046e5959057416c.wav"
+    },
+    {
+      "text": "Да, это салфетка!",
+      "file": "664f57cbd21fa6f1a31cbabbea3d8d82507de699b65e45926d61f22020ad81cd.wav"
+    },
+    {
+      "text": "Да, это скамейка!",
+      "file": "de99079258ae26daf124c6f1c841b1a3efd32e376b0a664d5a510bd1729b86f5.wav"
+    },
+    {
+      "text": "Да, это скворечник!",
+      "file": "3fc1c6198691fcb39689514f4f60011c081172ae40d5ba1e456b6c82b5f11407.wav"
+    },
+    {
+      "text": "Да, это тапочки!",
+      "file": "e3095f4347c4d0f7180bcdb696ac1f08130ced0de901d88aac5e3501fdf5f41e.wav"
+    },
+    {
+      "text": "Да, это тарелка!",
+      "file": "7042581a7725797c0537876568391a25961be7ff9d6a64c391c95fc0b8acb622.wav"
+    },
+    {
+      "text": "Да, это телевизор!",
+      "file": "2a8f318ab205c46b8de9d5416c32328c430037a0936de84ea80690c3729a0587.wav"
+    },
+    {
+      "text": "Да, это торшер!",
+      "file": "c44f65e73085107416f9e1c996eb60bed49c4eb17672baebfbf0f1cc0ecaa359.wav"
+    },
+    {
+      "text": "Да, это хлеб!",
+      "file": "e0d412457e78e83780d9b81e8ce554ab8360888f500f89cf76f434f4d49d938a.wav"
+    },
+    {
+      "text": "Да, это холодильник!",
+      "file": "9a0cd2dd40bb1b32a9c6db0fe934f5bae077eb5ad03dfaf3263a9cdfde75a156.wav"
+    },
+    {
+      "text": "Да, это цветок!",
+      "file": "b2fa6c0a5e8d6ea5a588fe90236f57aab047a98970cfeb4e062eb28cceab75eb.wav"
+    },
+    {
+      "text": "Да, это чайник!",
+      "file": "4237c243bafb8646dafa5c4617645c50d1cc5956a3d706e672f7a3d9d07301e7.wav"
+    },
+    {
+      "text": "Да, это чашка!",
+      "file": "3de2daf6b99e090e27d7983ef3db97c3e1eff871f276fa878a60f8b9051b2587.wav"
+    },
+    {
+      "text": "Да, это шкаф!",
+      "file": "41f32e7583c490daf97135a38b4195d1443ba07dd340adc270f78cda1682e23f.wav"
+    },
+    {
+      "text": "Да, это штора!",
+      "file": "67660eb0d3c8658866e31f53904d57f6e1e967c4c158c71afce0b6aeb46e6f19.wav"
+    },
+    {
+      "text": "Да, это яблоко!",
+      "file": "5dd5384c1c095915134763c64762f3178e94bf0e885b504431eca20e776ed041.wav"
+    },
+    {
+      "text": "Давай попробуем ещё раз.",
+      "file": "85af0813f663c65939ab2d37846e30193b012ef15e9c963bdf6ddcb961fdfb7f.wav"
     },
     {
       "text": "Дай взрослому банан",
@@ -283,6 +507,14 @@
       "file": "4289d258df9ef7df1c87666b39d8869a3918988db1c11a4d26df416c71bb33a7.wav"
     },
     {
+      "text": "Диван",
+      "file": "3438837628044ba6f040543c64517c16b69914bd9579d8e0b8da3d42071dfea2.wav"
+    },
+    {
+      "text": "Динозавр",
+      "file": "77a5c07dbf876e28b3a5270c7c35937eb617f7c7dbfc53257e797f38e67383d6.wav"
+    },
+    {
       "text": "Еда",
       "file": "f82c286ae401bf0029fe4b19291e0621f00f59ec237ed5ec94bb145ed8729c1e.wav"
     },
@@ -297,6 +529,10 @@
     {
       "text": "Здесь ничего не нужно угадывать. Можно послушать ещё раз или закончить.",
       "file": "6b5d507f8b4a13fc7ff1ee43f2dec0c734b2ce7df47246b7e41af4e967df074b.wav"
+    },
+    {
+      "text": "Зеркало",
+      "file": "d0770fa4e24141900030de391dbdddc3dad0f7056f3ba8baaf63c8ff2dd91bbe.wav"
     },
     {
       "text": "Зубная щётка",
@@ -317,6 +553,18 @@
     {
       "text": "Как?",
       "file": "15ce1ccda5fc5fd3ca3f63385493874bbdff68ccd38ea106c8448a4d9f72bc50.wav"
+    },
+    {
+      "text": "Картина",
+      "file": "a54753151cdf4d7b050ac654bbfd275c2703c755bad48dd8f055341027694d6e.wav"
+    },
+    {
+      "text": "Кастрюля",
+      "file": "73c22046b62a406e5003f2a91b4a25ca320965fcb558f76229fcfd335fbde718.wav"
+    },
+    {
+      "text": "Качели",
+      "file": "1bce0f2e6d9c80d89ae26cdbc1a88a9734dd3531fa64bfedc6e32ccdbe5bd22d.wav"
     },
     {
       "text": "Каша",
@@ -345,6 +593,10 @@
     {
       "text": "Книга у мишки.",
       "file": "8ee6e46bac903631d12eb893f0141433590b005eb5d601fd55964ae48509a88f.wav"
+    },
+    {
+      "text": "Ковёр",
+      "file": "0965de43061ad4778302d238b3f0d7530a58684ae600bdbeab84b70d0b9bed63.wav"
     },
     {
       "text": "Кого кормит девочка?",
@@ -397,6 +649,10 @@
     {
       "text": "Краски",
       "file": "57a9228b040e5282f4d8b5ba15961f9ecb28028e3d87c35210615ec21ea1f0b2.wav"
+    },
+    {
+      "text": "Кресло",
+      "file": "3d65a8aa8ace2e1a45e35fe47386f3bd3cec8d09aeaefc6d22b2946f7a368b1d.wav"
     },
     {
       "text": "Кровать",
@@ -511,6 +767,10 @@
       "file": "506148de5019cc16737679f1882259c23a274102721f80d5ae7b8b62ccdb3d03.wav"
     },
     {
+      "text": "Лейка",
+      "file": "0301af1c5780222d4d1ecff3ebbd6e831613e2263dea91b033103f825498ac32.wav"
+    },
+    {
       "text": "Ложка",
       "file": "6ed4a41b86fbbff2b228ece8f64f98495ee368f7e939beed0815f7a892e0c7e9.wav"
     },
@@ -537,6 +797,10 @@
     {
       "text": "Локоть",
       "file": "b9c0784352f7c42ea251a43ee18a71d14ab120350d76743492d05ccc343be8fb.wav"
+    },
+    {
+      "text": "Лопатка",
+      "file": "e07e370227d7836bc5082826fc0f487a3b65355e46472d155e8cdaf1362a3598.wav"
     },
     {
       "text": "Лошадь",
@@ -827,6 +1091,310 @@
       "file": "2392447bf7fa0815b3035a615269ea5eed58a42a1424be8468cbc97843b0a721.wav"
     },
     {
+      "text": "Найди аквариум",
+      "file": "329541d60db55f1072d96bf6800ebf7d9a80f79ccc784b722e3780c7ea2c638d.wav"
+    },
+    {
+      "text": "Найди аквариум с рыбками справа от телевизора",
+      "file": "7069137617dd1f8c966ef2c32bb683c7e3030c18a48ee51750190384dd90d949.wav"
+    },
+    {
+      "text": "Найди бабочку",
+      "file": "0df52981db4efe14cdb0cc5916378f35f60dc7df3a4f7307964712247648a6ca.wav"
+    },
+    {
+      "text": "Найди бабочку в небе между воздушным змеем и скворечником",
+      "file": "ec0ce920d64ee64a2f21153eb3d09e5b0dbe5949e1e0e3c42ec842bbc93f3c8e.wav"
+    },
+    {
+      "text": "Найди бабочку в небе над скамейкой",
+      "file": "03b89ce287ce50e8aa458cacfb2c6b0de86daae12e479456102ea17b31866506.wav"
+    },
+    {
+      "text": "Найди банан",
+      "file": "45176235ee6abc3f2314ce91e723339a0909f919f580af1e065e12a6661635b7.wav"
+    },
+    {
+      "text": "Найди белую тарелку на столе",
+      "file": "6368478eb16ee5f2f6ad2c0d7e30bcd380e51f132b6a50bea0b99b1fa5e1fbd8.wav"
+    },
+    {
+      "text": "Найди бирюзовое одеяло на кровати",
+      "file": "e2b4b5a0060b6a48685e703ff8a37c4361d8bf60f302661f2d6f109df0771931.wav"
+    },
+    {
+      "text": "Найди бирюзовую лейку рядом с цветком",
+      "file": "8390ab3a82e171dcbe3313ad4d32c46100bbe9477fd0eab056a3d3fee365fd17.wav"
+    },
+    {
+      "text": "Найди большой светлый ковёр на полу",
+      "file": "a0f880a993ffd6a5657f14558dde6eb32a4200036b563377bc37da8d9ff03007.wav"
+    },
+    {
+      "text": "Найди будильник",
+      "file": "d84b84f02485b58d380fe744aef427f61645be9f6dc0dd3aac32c8dbef84c7c2.wav"
+    },
+    {
+      "text": "Найди вазу",
+      "file": "d18309d705d08268f29eeff535b952e2423354369ad005ae973154c04c029eaa.wav"
+    },
+    {
+      "text": "Найди вазу между диваном и телевизором",
+      "file": "e19e2f807089a9d5e90fc7ccfccbbd3670348de738886676c1bb5a12cb2c8d4b.wav"
+    },
+    {
+      "text": "Найди ведёрко",
+      "file": "32687ecf0a13d596d84e40ef7d41e586ec70d577c0b406689961342d8842e067.wav"
+    },
+    {
+      "text": "Найди велосипед",
+      "file": "5f641042fdde0f603951d4ed8465b5b65d4be12f553a2daca5888139a5393286.wav"
+    },
+    {
+      "text": "Найди воздушного змея",
+      "file": "323733654ec5ea76e11fdce0aa8e193472b76a87abf68e440c8391b075b173f1.wav"
+    },
+    {
+      "text": "Найди гитару",
+      "file": "5bf46c0cf1d07dcffaebdcfab345fc5f40925f3f41210937ae3f436e7c479009.wav"
+    },
+    {
+      "text": "Найди горку",
+      "file": "0a6225e21ab9f4092a519dbb40ba47ff2652cefb14c91657fc2a7213c49e5a0e.wav"
+    },
+    {
+      "text": "Найди диван",
+      "file": "dcc63f53c6d7e11164ec9359a131b87e760d785880a4956fc762c08e6a87c486.wav"
+    },
+    {
+      "text": "Найди динозавра",
+      "file": "274d14607e33bf72ceb9ffbd57540fa9ddf08fcecd37ea2309ee25bfd8025f92.wav"
+    },
+    {
+      "text": "Найди жёлтое кресло слева от дивана",
+      "file": "1671a4bb3e7a8379ec837ac768c757e444f2b30e76b7c49133fd625e60b577bc.wav"
+    },
+    {
+      "text": "Найди зеркало",
+      "file": "51de4838134bbcf17b46e01d04aa1b45e9efc267da1d98c912e33625a76d94c5.wav"
+    },
+    {
+      "text": "Найди картину",
+      "file": "e0a4dd27071d2dd47236641d7966bcf4cf369d1b59d1d75a746e38a4ca8cfa49.wav"
+    },
+    {
+      "text": "Найди кастрюлю",
+      "file": "cf82e5100f4418faee474545b9a96d6acaf68c4fd7f891015616b9cf98e83c13.wav"
+    },
+    {
+      "text": "Найди качели",
+      "file": "5003348f638908281be2a4b4ab16ed0815d5f4f96363f53b4369da76cd0834ad.wav"
+    },
+    {
+      "text": "Найди качели с синей сидушкой",
+      "file": "e152bd1d7344ec6d73e4553ac44db1de46313cfa6df2d84a5eb3db7f1887ca8d.wav"
+    },
+    {
+      "text": "Найди ковёр",
+      "file": "9dc154cbf95f06c2d86bbf491acfefe3df6002fc264a1f29f2767fc0db16d5cb.wav"
+    },
+    {
+      "text": "Найди корзину",
+      "file": "2dc1d353fb75a420bdb17e6d8d8499c1a0233589e301677e5058d6af9519ce32.wav"
+    },
+    {
+      "text": "Найди красное ведёрко в песочнице",
+      "file": "fa22ae9d4435126ddceea6ae22c70eaf824c93bc2773843936824ed31aae0538.wav"
+    },
+    {
+      "text": "Найди красное яблоко рядом с бананом",
+      "file": "ef06eb1cb79aff413c493cb5190790e30641b827981209753397599232fa2142.wav"
+    },
+    {
+      "text": "Найди красную горку слева",
+      "file": "4b50c90beab64bb92196eed5cbf7bf19c2ab93c4fb24c7ec8464ada23a84e92c.wav"
+    },
+    {
+      "text": "Найди кресло",
+      "file": "40d1329a7c53068f4d612d7bb97f29f1487b7013ea573fea0bb621dc206d0f96.wav"
+    },
+    {
+      "text": "Найди кровать",
+      "file": "77753d2c8d261d562c07b5078df8220ab97bef690d1e4d8fa333ac69e713ef5e.wav"
+    },
+    {
+      "text": "Найди круглый будильник на тумбочке",
+      "file": "ad5caa565628e96cf0def42f572448948e007deeec634b39dae4e20107dab9dd.wav"
+    },
+    {
+      "text": "Найди кубики",
+      "file": "05e3870c0b9ecad5256efe238c9435afd33be5819f0c2758fceba57fa83a4ee4.wav"
+    },
+    {
+      "text": "Найди лейку",
+      "file": "c374d6cb584796be839273674ac8d154b60935654e7b70850c22dd5db7bf9258.wav"
+    },
+    {
+      "text": "Найди ложку",
+      "file": "1511afab917a16083eafebb1db479dbc596d277ffac5da9bddf594fc555eb3c1.wav"
+    },
+    {
+      "text": "Найди лопатку",
+      "file": "4b0ed34c852e8d2892957d5d3f6623c20b296af95dbe1e23d095903d89e1367c.wav"
+    },
+    {
+      "text": "Найди морковь",
+      "file": "40f7cb300f038f596c88a79e332901f2d99cfb87fbce73849ee83e39db6ffb65.wav"
+    },
+    {
+      "text": "Найди морковь слева от тарелки",
+      "file": "787aeffc4216f3f2105fba76d6862659e6ec49d0afefaaa389daba3e1e4cb539.wav"
+    },
+    {
+      "text": "Найди настольную игру",
+      "file": "45fc6aaa9303ebdad0c48f36b63ddfdca7ae9c54efbf9fff8bdb1065e094bbcb.wav"
+    },
+    {
+      "text": "Найди настольную игру перед журнальным столиком",
+      "file": "38dc3b5f274462422f0bb9b682673054565709dbbb2cb36241b5ed232bf3ca6c.wav"
+    },
+    {
+      "text": "Найди ночник",
+      "file": "a4cb9ba06f602758ebae634adfc7704bfbfa7c68e25d45338f15431725b3b491.wav"
+    },
+    {
+      "text": "Найди овальное зеркало над динозавром",
+      "file": "b32d0805daa52de7c40f5fdd79e39b05381e04a961e43a4b2eab327fdddf88c8.wav"
+    },
+    {
+      "text": "Найди одеяло",
+      "file": "69b23588dbcaf62c6d4753176248fd3c9752d91f95fda332bab9edce0d4b90c6.wav"
+    },
+    {
+      "text": "Найди оранжевую салфетку справа от ложки",
+      "file": "d3d0dfe5ea994e125bdd4cecb42f3d1bb89a383a7c8d7acce53ec2b5600fde50.wav"
+    },
+    {
+      "text": "Найди оранжевый цветок справа от лейки",
+      "file": "aecf6e55ecd6c35b96af6696554414ac481b00ceb49f2862c33a3af94ffaa54a.wav"
+    },
+    {
+      "text": "Найди песочницу",
+      "file": "475dc491186d63d63d2a0dc3089502c6449d04aeb9eb9a425bc541aaddf7eb6d.wav"
+    },
+    {
+      "text": "Найди пижаму",
+      "file": "b525405002b11d1a38b4720e022be0de29087548f8453083e06fd11874b0919a.wav"
+    },
+    {
+      "text": "Найди подушку",
+      "file": "b043b289f2066425a3eb47f110cf16d6847bea432899442dab2800c37d3c4157.wav"
+    },
+    {
+      "text": "Найди подушку у изголовья кровати",
+      "file": "f98a8f685334796fd01cf5e8af96ae95dafe0af1387b3aa0ac5766e399a85dd3.wav"
+    },
+    {
+      "text": "Найди пульт",
+      "file": "384275e533baace8eb13de5f53505c6660d17401b37f0c0bc2917fdce1b4c2e7.wav"
+    },
+    {
+      "text": "Найди разноцветного воздушного змея высоко в небе",
+      "file": "ce4350a6852ec8ab826ff7dc55de324c8849d0102abc5f43ef2527ba0ff6b92c.wav"
+    },
+    {
+      "text": "Найди раковину",
+      "file": "874c1f7cb2b14fc4ae5d5e388e576b8483d36e6d7e755bd7ed9730f59c8e95c8.wav"
+    },
+    {
+      "text": "Найди салфетку",
+      "file": "9910b93cdf7a62a53979bb5c6225b6e032940043ebb8934b93dae34bd1ae68ba.wav"
+    },
+    {
+      "text": "Найди светящийся ночник слева от будильника",
+      "file": "4b62f23e3fd1bc8c8e151fd47b67cccfd706340fc80a301f7f92ca426756e3f1.wav"
+    },
+    {
+      "text": "Найди синюю кастрюлю на плите",
+      "file": "d16585f9760acece9e8c20fa281a532c11eb45fbaee2f676ad81cd59b1f11b98.wav"
+    },
+    {
+      "text": "Найди синюю лопатку в песочнице",
+      "file": "1d1a43c1ee834da4179313072ef40487e4695982d1f5993de8b378aa5f229006.wav"
+    },
+    {
+      "text": "Найди синюю чашку на столе",
+      "file": "16a9cd771a55b77cd62611512049e26178e23d105966225beea68aabe009092f.wav"
+    },
+    {
+      "text": "Найди скамейку",
+      "file": "4ba2526dc0aaaacb29874ba7d120a598edc5464576c23d80bd11bf48c24be7ff.wav"
+    },
+    {
+      "text": "Найди скворечник",
+      "file": "82d48ea5da03fb4e41b3a2dce025124424026b7f4eaadb4e9fd8330df5805d36.wav"
+    },
+    {
+      "text": "Найди тапочки",
+      "file": "b6bbcda6ca1ca59b376c2a14c366c98dfbbe2283be9bf31961215d414a09f477.wav"
+    },
+    {
+      "text": "Найди тарелку",
+      "file": "2fda8c279b2cd37ee43c844a8b618f9cdc15bf31cce4e584f2c318c95677e49e.wav"
+    },
+    {
+      "text": "Найди телевизор",
+      "file": "05b237dd715f3ede43d1d2125877b3c93543ebe137a151288abb2a498cfc1c70.wav"
+    },
+    {
+      "text": "Найди телевизор слева от аквариума",
+      "file": "67f15e8d4db21e61e1bbb482d6f49b6e036a2e296885ac3d8427384ef8d5206c.wav"
+    },
+    {
+      "text": "Найди торшер",
+      "file": "30ffd16c2a8ba63a2f1e0d932d093f2e656ba258c6aeb02fff0f377859cf678e.wav"
+    },
+    {
+      "text": "Найди торшер между креслом и картиной",
+      "file": "f47049c0b00116120532f994d2accf783cb35c9d4bbf81cdd69b0dcafba4638d.wav"
+    },
+    {
+      "text": "Найди хлеб",
+      "file": "df7dd55341e0819e97ded431539bdb1c9cdcf5aaa6fd101d0371c989e0899d6c.wav"
+    },
+    {
+      "text": "Найди холодильник",
+      "file": "dc889fc7edbb0dc5b5f8ad79b75f216a0101caa29639946a09d1b32593b0d02b.wav"
+    },
+    {
+      "text": "Найди цветок",
+      "file": "f8506e5ca77ae33ecada5d29296efca42c06e3a440fc21e235f6547234925fa4.wav"
+    },
+    {
+      "text": "Найди чайник",
+      "file": "1ea63876c753bbef513619399f7d9ead39288ecec683c7133822493372d5c98e.wav"
+    },
+    {
+      "text": "Найди чашку",
+      "file": "c1125aeef71d68a6633654ed0d68669ea9a8f8b632e0ab89cb2fdc09160e4960.wav"
+    },
+    {
+      "text": "Найди шкаф",
+      "file": "66b9b6df3a58ccadb0d7774a6c5dd0a51dc7013604520a2739e51e90941ec34b.wav"
+    },
+    {
+      "text": "Найди штору",
+      "file": "480f8c142a2a091e230a7f500cf60ecb3f7931e45aad5e89616f9c7fabeb405e.wav"
+    },
+    {
+      "text": "Найди яблоко",
+      "file": "1c4fa5512bd8f54c513bdde7b136eac79b6332cb17b08a8cf63e3570c44b7f61.wav"
+    },
+    {
+      "text": "Настольная игра",
+      "file": "924f029160e8b2b3574de294cc8724fa4fd65140321734b113d1c20d6420c728.wav"
+    },
+    {
       "text": "Нет",
       "file": "71df74f212c1f534c181e5bab6c6be20110022097e3ea4c13ad1b84b1283facf.wav"
     },
@@ -843,12 +1411,20 @@
       "file": "edf28f96c640e6eaf19b08359abe0717ddc067a7eb4e95730d427b0f3f80f913.wav"
     },
     {
+      "text": "Ночник",
+      "file": "d2e763227f8d10235e87e6219e6434ad3af141d119932e3e552ff9ca697b8f95.wav"
+    },
+    {
       "text": "Огурец",
       "file": "afb13b752f98a152704beabc5aa778d30d77a8d8a59f9be3b06b89de34dd1069.wav"
     },
     {
       "text": "Одежда",
       "file": "814ae63c993076d6e1f2b73e4675060d5041bec20262468e5274e51aa2924d92.wav"
+    },
+    {
+      "text": "Одеяло",
+      "file": "9543bbf01bf5a6a1e6406324735405292919a79cfeed12db27e238a48260a028.wav"
     },
     {
       "text": "Пазл",
@@ -883,6 +1459,14 @@
       "file": "efc7fe8bf708b17a0aa589820e6ae8171be8baa81f930cd95b20370bd30812b8.wav"
     },
     {
+      "text": "Песочница",
+      "file": "5edafca02c0e35f96db9b2f786f80aeab2adc9da73ebfe55f90f7c34dbb7bbc2.wav"
+    },
+    {
+      "text": "Пижама",
+      "file": "c226ba233eb1dc4b6c41b34c6fa1a34ae14a6b7c1099d169198b6440b41d2820.wav"
+    },
+    {
       "text": "Пирамидка",
       "file": "5c26aaa06ef779c9d428a86a70675e2baa4f11362786ebdfbb0358453eb8b46b.wav"
     },
@@ -895,12 +1479,112 @@
       "file": "6f82aafcf862395144dc0ce8443f4074a6b2e8ef0e516514f294090f06ce7ae5.wav"
     },
     {
+      "text": "Подушка",
+      "file": "c18f4f76d5d4c383e3eb8f0d0f0688ce779cd70a2753b26baf7685fd03b2960d.wav"
+    },
+    {
       "text": "Поезд",
       "file": "17030e2a683cc021dfe702e4bd3743189c2f1368aad6780f9f1c47dc4778538f.wav"
     },
     {
       "text": "Поезд! Он может поехать по ковру.",
       "file": "24541869c21b2283419413cc9b489e5e76606a9072cd867d2ab28ce8ac9ac030.wav"
+    },
+    {
+      "text": "Покажи бирюзовый диван под картиной",
+      "file": "60e77828d6a73e4c12167d6e4f453641a39fac817225de7f1c8d03599ea6d270.wav"
+    },
+    {
+      "text": "Покажи большой деревянный шкаф справа",
+      "file": "525bd05dd6bfa2aa86294c4f4fb1fcc4f56f759a79d8a6ffd80a1a1ab44f2de6.wav"
+    },
+    {
+      "text": "Покажи большой холодильник слева",
+      "file": "c69c4c77fef85b14b836a048bf9b00e258fa8576aff5cfbf76596d963418bf6f.wav"
+    },
+    {
+      "text": "Покажи велосипед слева от песочницы",
+      "file": "1cb5ae34f2da06443987772527e6433eba6ef0144da4b2294f8bfb6c471b9fd5.wav"
+    },
+    {
+      "text": "Покажи гитару у окна слева от торшера",
+      "file": "11fb21559ab3328a0fabf50dc4aac4686c3a50b210377d5376f66331464e7202.wav"
+    },
+    {
+      "text": "Покажи деревянную кровать",
+      "file": "64e5ef5f612fc7f36cb50d7b89e78137a6c3e9d69c92800090d8031b1864d180.wav"
+    },
+    {
+      "text": "Покажи деревянную песочницу перед скамейкой",
+      "file": "f3c2b9cc21e6f8e0876eb84a12e727dd5208ac7e8b882807151f4aa04b205ab3.wav"
+    },
+    {
+      "text": "Покажи деревянную часть кровати.",
+      "file": "c5c998ee93e25f289cb6bf8ebe34ee692d8c43197661bc4bb42411230ed56071.wav"
+    },
+    {
+      "text": "Покажи жёлтый банан на столе",
+      "file": "bc56e043105bbda65b3b8f8afe45d960f542d49cd48579151c5f3c8a34f7b0be.wav"
+    },
+    {
+      "text": "Покажи зелёного динозавра на полу",
+      "file": "069c0cadf919b3690a8337c7fdcd2f4e8ce69bcb2805ee1c3bebe563d402edb3.wav"
+    },
+    {
+      "text": "Покажи картину над диваном",
+      "file": "0f1b224bcf4d50f1b200e8872150407502fc783c5036ff0deb329580b33cba56.wav"
+    },
+    {
+      "text": "Покажи ложку справа от тарелки",
+      "file": "c8e36cfe3509193fd6567e9cf3fea46cef05a51f676bfe66232a9cbb5b132bb6.wav"
+    },
+    {
+      "text": "Покажи оранжевую пижаму на стене",
+      "file": "eb5f789b4f2ab9ca8fa247a16d80d48bc776c4ed8aa379f806ccacb4bcde3a2e.wav"
+    },
+    {
+      "text": "Покажи плетёную корзину справа на полу",
+      "file": "f3fb5a5bfeec265dcde9dc0f9b1d3a7dde399ccbfd5fc269659dedc8178f6906.wav"
+    },
+    {
+      "text": "Покажи пульт на журнальном столике",
+      "file": "2e74e237c600168fc68cfbe064b1b208be7c11441bef43e1d70aeae86683571c.wav"
+    },
+    {
+      "text": "Покажи раковину под окном",
+      "file": "b66e251923ebf2a5e6f7eee42dde984365a4d894a7120771c8384ef462a5bb9b.wav"
+    },
+    {
+      "text": "Покажи светлую штору у окна",
+      "file": "8fd2fbbc59d51df326738fbcba272fb7dd301232c80ed7d0f7f3a69c2f1604d7.wav"
+    },
+    {
+      "text": "Покажи светлый чайник слева от плиты",
+      "file": "c200ceca2508f9bb743770eb39ff497489a7fcd08c61c9729f3efba5d2b0afdc.wav"
+    },
+    {
+      "text": "Покажи свободную часть песочницы.",
+      "file": "765127880bd4e8e219edd09802cdd827ff7d402cca358bf0866234f86b5395cf.wav"
+    },
+    {
+      "text": "Покажи скамейку за песочницей",
+      "file": "33af2b2abe2964f51c60924085d170f7ad575590e4b5b0b8b5b1d19e0f029fac.wav"
+    },
+    {
+      "text": "Покажи скворечник с красной крышей на дереве",
+      "file": "677f7c889c80868d30bb8eb7cd7dc8ee0022caa3579fa78851e61b14e75e3a67.wav"
+    },
+    {
+      "text": "Покажи тапочки рядом с кроватью",
+      "file": "36615891c2370ee6fcaa50caa3aee979bcfeb2ad84df6fd3a0934dc00a8c473b.wav"
+    },
+    {
+      "text": "Покажи хлеб между бананом и чашкой",
+      "file": "6a5371a87eb8b6cabaa1c0e551667d2d991fb567a0ec80ec2b574baea18ca24c.wav"
+    },
+    {
+      "text": "Покажи цветные кубики на полу справа",
+      "file": "bc5966327981725edbaf13956c8a98cbb2119f964291cf7b7f371add051e5cbd.wav"
     },
     {
       "text": "Положи банан в корзину",
@@ -1059,6 +1743,14 @@
       "file": "55607beaf3649c8c56618925390babd6102ac8cd131cc76b64a5770ae6b81c57.wav"
     },
     {
+      "text": "Пульт",
+      "file": "a2c9ffd6beadfd4ae09a61f3a46a08e3b057a2abaf55bdd172787bb11f2a7b91.wav"
+    },
+    {
+      "text": "Раковина",
+      "file": "38261d8162e6ac729a47f2f23e591c8d2ee820454e8d0aff6273b7deb9a376e6.wav"
+    },
+    {
       "text": "Рассмотри картинку. Кто на ней?",
       "file": "19bf124cd591c9f5eebeb0868a3bea4d4121ee05fa65db20ce892fe53583b616.wav"
     },
@@ -1095,12 +1787,24 @@
       "file": "a4b7e2f0aa66e1890d6f7f3eebcf980877036cb7292422a05f3e39ce5fbb88a5.wav"
     },
     {
+      "text": "Салфетка",
+      "file": "e6434c64aba07950452c15c7e2026baffb6c6612706ba1d07e59a9b54bc9514c.wav"
+    },
+    {
       "text": "Сапоги",
       "file": "b5ef9dbce92dde07745a858527fdd0b0fe04ad2c05fcaf7699e6403cc72e27c3.wav"
     },
     {
       "text": "Сестра",
       "file": "1e7c7101fa02673124fa6faeddc6ec136a841dcbeaee48738cc895a13822873b.wav"
+    },
+    {
+      "text": "Скамейка",
+      "file": "bea674b47c0dca4a23900996892c139735cfda5e5f6e307b6318221646493a49.wav"
+    },
+    {
+      "text": "Скворечник",
+      "file": "8d73edb87ad21585967b77eb927cf5ee362ba8441de259da00995e7518f860a2.wav"
     },
     {
       "text": "Сначала мальчик бежит. Потом мальчик сидит. В конце мальчик пьёт. Расставь картинки по порядку.",
@@ -1195,8 +1899,20 @@
       "file": "6b251b808dd9e3db5539279204cb209802c5052d15a70bbc30d65b5a0283a206.wav"
     },
     {
+      "text": "Тапочки",
+      "file": "ae4725b411dcca07ba2292409c63e69473ae6b46dea1d6ae2b85da058236e0de.wav"
+    },
+    {
       "text": "Тарелка",
       "file": "cb99972a864cb4725f01a2b0deabd6a9e7bb5653f23a728c80b60670e3d030a7.wav"
+    },
+    {
+      "text": "Телевизор",
+      "file": "5660068ba033534d91080927bf6646461cfb0af8cecadea144c6ac977f55d26d.wav"
+    },
+    {
+      "text": "Торшер",
+      "file": "4c59af147d8e998894b41480d2566ac91ec777dadc0178f1362ab037147008ae.wav"
     },
     {
       "text": "Улитка",
@@ -1219,6 +1935,10 @@
       "file": "528f7705feb51d026b9017fad8c5861b2411053c904e85bd6599c0b58fc983f3.wav"
     },
     {
+      "text": "Холодильник",
+      "file": "50a2d762cdc1571b28f3292d8142b867a33a18f3ef74b7dece3f9db5f2062b1d.wav"
+    },
+    {
       "text": "Хочу воду",
       "file": "0639abf7772780d7231d23a0ccc28f861bb7c92f6aa87e066c3aa28b04e26686.wav"
     },
@@ -1233,6 +1953,14 @@
     {
       "text": "Хочу сок",
       "file": "f724e503fd1f6cc03be41a893c62bc5e30e3bf0772abdde2cc15a1901096eb0b.wav"
+    },
+    {
+      "text": "Цветок",
+      "file": "e629f8eaaf9eeea86aafb22ac64954e300a885ce721633548efbd8c14d4a3f79.wav"
+    },
+    {
+      "text": "Чайник",
+      "file": "63657b6fede407b087b321276ce2112eb3958f56284a940287181279d58cebdc.wav"
     },
     {
       "text": "Чашка",
@@ -1463,8 +2191,16 @@
       "file": "f84f3f0dd4f021240adc00799c21458223f0c7e372cd4fd23d7706d5b699ab87.wav"
     },
     {
+      "text": "Шкаф",
+      "file": "f0a43d440a2ea066b7117b954432e4f38d67e670ce5a5eb5c7961c06ac650070.wav"
+    },
+    {
       "text": "Шорты",
       "file": "08077e65d96a4ed62fc40804398e1f163546e244208f85005a2addae8ff05f5f.wav"
+    },
+    {
+      "text": "Штора",
+      "file": "f18cf7b1b07938787dbfa22249b6add3bebe9b9e77a9cebf37f87ddd5ad12b5e.wav"
     },
     {
       "text": "Это Миша. Он хочет поиграть. С какой игрушки начнём?",

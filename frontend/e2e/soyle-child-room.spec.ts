@@ -91,7 +91,7 @@ test('room navigation, phone layout, saved stars, retry, replay, calm and reduce
     await expect(page.getByRole('button',{name:'Показать образец',exact:true})).toBeEnabled();
     const src=await page.locator('.observation-scene img').getAttribute('src');
     const scene=version.content.scenes.find((item:{media_ref:string})=>decodeURIComponent(src||'').includes(item.media_ref));
-    for(let part=0;part<(round<4?1:round<8?2:3);part++){
+    for(let part=0;part<3;part++){
       const word=page.getByRole('button',{name:scene.parts[part],exact:true});await expect(word).toBeEnabled();await word.click();
     }
     const next=page.getByRole('button',{name:round===11?'Завершить серию':'Следующая картинка',exact:true});await expect(next).toBeEnabled();
@@ -116,10 +116,10 @@ test('room navigation, phone layout, saved stars, retry, replay, calm and reduce
   if(info.project.name==='desktop'){
     await page.locator('.room-doors').getByRole('button',{name:/Занятия/}).click();
     const quietEntry=page.getByRole('button',{name:new RegExp(version.title)}).first();if(!await quietEntry.isVisible())await page.locator('.child-more-games summary').click();await quietEntry.click();
-    await page.getByRole('button',{name:'Кто?',exact:true}).click();await page.getByRole('button',{name:'Послушать и начать',exact:true}).click();
+    await page.getByRole('button',{name:'Послушать и начать',exact:true}).click();
     for(let round=0;round<12;round++){
       const src=await page.locator('.observation-scene img').getAttribute('src');const scene=version.content.scenes.find((item:{media_ref:string})=>decodeURIComponent(src||'').includes(item.media_ref));
-      const word=page.getByRole('button',{name:scene.parts[0],exact:true});await expect(word).toBeEnabled();await word.click();
+      for(const part of scene.parts){const word=page.getByRole('button',{name:part,exact:true});await expect(word).toBeEnabled();await word.click();}
       const next=page.getByRole('button',{name:round===11?'Завершить серию':'Следующая картинка',exact:true});await expect(next).toBeEnabled();await next.click();
     }
     await expect(page.locator('.starlight-reward')).toHaveAttribute('data-calm','true');await expect(page.locator('.starlight-particles')).toBeHidden();await expect(page.locator('.starlight-hero')).toHaveCSS('animation-name','none');

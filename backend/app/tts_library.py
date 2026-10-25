@@ -12,6 +12,7 @@ from .practice_content import PRACTICE_EXERCISES
 from .expanded_content import EXPANDED_SPEECH
 from .varied_content import VARIED_SPEECH
 from .observation_content import OBSERVATION_SPEECH
+from .exploration_content import EXPLORATION_SPEECH
 
 
 BUNDLED_TTS_DIR = Path(__file__).with_name("tts_audio")
@@ -62,7 +63,7 @@ def _exercise_speech(exercise: dict) -> set[str]:
 
 
 def known_russian_tts_texts() -> tuple[str, ...]:
-    texts = {"Получилось.", *EXPANDED_SPEECH, *VARIED_SPEECH, *OBSERVATION_SPEECH}
+    texts = {"Получилось.", *EXPANDED_SPEECH, *VARIED_SPEECH, *OBSERVATION_SPEECH, *EXPLORATION_SPEECH}
     for scene in FAVORITE_TOY["scenes"]:
         texts.update([scene["narration"], scene["hint"], scene["assisted_reaction"]])
         for action in scene["actions"]:

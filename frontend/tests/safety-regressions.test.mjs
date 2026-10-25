@@ -153,7 +153,8 @@ test("public child navigation does not expose motor prototypes", async () => {
   const app = await readProjectFile("components/SoyleApp.tsx");
   const modulesBlock = app.slice(app.indexOf("const modules = ["), app.indexOf("const moduleImages"));
   assert.doesNotMatch(modulesBlock, /id:\s*["']motor["']/);
-  assert.match(app, /<ExerciseLibrary items=\{exercises\}/);
+  assert.match(app, /<ExerciseLibrary items=\{exercises\.filter/);
+  assert.match(app, /className="explore-location-grid"/);
   assert.doesNotMatch(app, /<details className="child-more-games"/);
 });
 
