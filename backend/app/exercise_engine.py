@@ -312,6 +312,14 @@ def validate_version(version: dict, *, enforce_visual_consistency: bool = True) 
                 errors.append("Ключи стимулов не должны повторяться")
             if len(labels) != len(set(labels)):
                 errors.append("Подписи стимулов не должны повторяться")
+            for stimulus in stimuli:
+                if not isinstance(stimulus, dict) or stimulus.get("distractor_keys") is None:
+                    continue
+                distractors = stimulus["distractor_keys"]
+                if (not isinstance(distractors, list) or len(distractors) < 3
+                        or any(not isinstance(key, str) or key not in keys or key == stimulus.get("key") for key in distractors)
+                        or len(distractors) != len(set(distractors))):
+                    errors.append("Отвлекающие варианты должны содержать минимум три разных ключа этого набора без самого ответа")
             visual_systems = {
                 "illustration" if stimulus.get("media_ref") else "token"
                 for stimulus in stimuli
@@ -538,7 +546,9 @@ def create_draft(db, payload: dict, created_by: int) -> dict:
             (
                 version_id, stimulus["key"], "image", stimulus["label"], stimulus["speech"],
                 stimulus.get("media_ref"), position,
-                json.dumps({"hint": stimulus.get("hint", ""), "visual_token": stimulus.get("visual_token")}, ensure_ascii=False),
+                json.dumps({"hint": stimulus.get("hint", ""), "visual_token": stimulus.get("visual_token"),
+                            **({"word_concept_id": stimulus["word_concept_id"]} if stimulus.get("word_concept_id") else {}),
+                            **({"distractor_keys": stimulus["distractor_keys"]} if stimulus.get("distractor_keys") else {})}, ensure_ascii=False),
             ),
         )
     return get_version(db, version_id)

@@ -82,6 +82,8 @@ class ExerciseStimulusCreate(BaseModel):
     media_ref: str | None = Field(default=None, max_length=240)
     visual_token: str | None = Field(default=None, max_length=50)
     exemplars: list[str] | None = Field(default=None, min_length=1, max_length=5)
+    word_concept_id: str | None = Field(default=None, min_length=2, max_length=80, pattern=r"^[a-z0-9][a-z0-9-]+$")
+    distractor_keys: list[str] | None = Field(default=None, min_length=3, max_length=63)
 
 class ExerciseDifficultyLevel(BaseModel):
     level: Literal[1, 2, 3]

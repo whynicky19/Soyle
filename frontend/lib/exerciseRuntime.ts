@@ -6,6 +6,8 @@ export type ChoiceStimulus = {
   media_ref?: string;
   exemplars?: string[];
   visual_token?: string;
+  word_concept_id?: string;
+  distractor_keys?: string[];
 };
 
 export function chooseExemplar(stimulus: ChoiceStimulus, previous?: string, random: () => number = Math.random): string | undefined {
@@ -71,14 +73,18 @@ export function createChoiceRound(
   excludedTargetKeys?: string | readonly string[] | ReadonlySet<string>,
   random: () => number = Math.random,
   _previousCorrectIndex?: number,
+  preferredTargetKey?: string,
 ): ChoiceRound {
   if (stimuli.length < optionCount) throw new Error("Недостаточно стимулов для выбранной сложности");
   const excluded = typeof excludedTargetKeys === "string"
     ? new Set([excludedTargetKeys])
     : new Set(excludedTargetKeys || []);
   const possibleTargets = stimuli.filter((item) => !excluded.has(item.key));
-  const target = shuffleWithRandom(possibleTargets.length ? possibleTargets : stimuli, random)[0];
-  const distractors = shuffleWithRandom(stimuli.filter((item) => item.key !== target.key), random).slice(0, optionCount - 1);
+  const target = possibleTargets.find(item => item.key === preferredTargetKey)
+    || shuffleWithRandom(possibleTargets.length ? possibleTargets : stimuli, random)[0];
+  const pool = stimuli.filter(item => item.key !== target.key && (!target.distractor_keys || target.distractor_keys.includes(item.key)));
+  if (pool.length < optionCount - 1) throw new Error("Недостаточно проверенных отвлекающих вариантов");
+  const distractors = shuffleWithRandom(pool, random).slice(0, optionCount - 1);
   const optionKeys = shuffleWithRandom([target, ...distractors], random).map((item) => item.key);
   return { targetKey: target.key, optionKeys };
 }

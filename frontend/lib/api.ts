@@ -145,6 +145,8 @@ export type Exercise = {
         media_ref?: string;
         exemplars?: string[];
         visual_token?: string;
+        word_concept_id?: string;
+        distractor_keys?: string[];
       }>;
       exemplar_policy?: "matched_set";
     bank_key?: string;

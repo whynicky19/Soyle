@@ -74,6 +74,26 @@ test("targets do not repeat until the available stimulus set is exhausted", () =
   assert.ok(stimuli.some((item) => item.key === nextCycle.targetKey));
 });
 
+test("curated distractors are respected for random and planner-selected targets", () => {
+  const bank=stimuli.map((s,i)=>({...s,distractor_keys:stimuli.filter((_,j)=>j!==i&&j!==(i+1)%stimuli.length).map(s=>s.key)}));
+  for (const optionCount of [2,3,4]) {
+    const random=seededRandom(37+optionCount),used=new Set();
+    for (let i=0;i<bank.length;i++) {
+      const round=createChoiceRound(bank,optionCount,used,random,undefined,i===0?'apple':undefined);
+      if(i===0)assert.equal(round.targetKey,'apple');
+      assert.ok(!used.has(round.targetKey));used.add(round.targetKey);
+      const target=bank.find(s=>s.key===round.targetKey);
+      assert.equal(round.optionKeys.length,optionCount);
+      assert.ok(round.optionKeys.filter(key=>key!==target.key).every(key=>target.distractor_keys.includes(key)));
+    }
+  }
+});
+
+test("an incomplete curated pool cannot silently introduce unreviewed options", () => {
+  const bank=stimuli.map(s=>({...s,distractor_keys:[]}));
+  assert.throws(()=>createChoiceRound(bank,4,undefined,seededRandom()),/проверенных/);
+});
+
 test("difficulty keeps option count, round count and attempt limit separate", () => {
   const levels = [
     { level: 1, option_count: 2, rounds: 4, max_attempts: 3 },

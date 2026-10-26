@@ -1059,6 +1059,35 @@ def _migration_34_explore_world(db) -> None:
     sync_concept_links(db)
 
 
+def _migration_35_scene_word_reinforcement(db) -> None:
+    from .word_reinforcement import BANKS,TARGETS
+    from .exercise_engine import create_draft
+    from .vocabulary import sync_concept_links
+    from .practice_goals import decode_goal,goal_snapshot
+    for bank in BANKS:
+        if not db.execute('SELECT id FROM exercises WHERE target=?',(bank['target'],)).fetchone():
+            version=create_draft(db,bank,None)
+            db.execute('UPDATE exercises SET target=?,icon=? WHERE id=?',(bank['target'],bank['content']['stimuli'][0]['media_ref'],version['exercise_id']))
+            for asset in bank['content']['asset_registry']:
+                db.execute('INSERT INTO content_assets(media_ref,origin,license,license_status,created_at) VALUES(?,?,?,?,?) ON CONFLICT(media_ref) DO NOTHING',(asset['media_ref'],asset['origin'],asset['license'],asset['license_status'],now_iso()))
+    for key in ('understand-words-in-scenes','recognise-five-objects'):
+        template=db.execute('SELECT * FROM practice_goal_templates WHERE template_key=?',(key,)).fetchone()
+        if template:
+            old=json.loads(template['matching_targets_json']);expanded=list(dict.fromkeys([*old,*TARGETS]))
+            if old!=expanded:
+                db.execute('UPDATE practice_goal_templates SET matching_targets_json=?,version=version+1 WHERE id=?',(json.dumps(expanded),template['id']))
+        for goal in db.execute('SELECT * FROM parent_practice_goals WHERE template_key=?',(key,)).fetchall():
+            old=json.loads(goal['matching_targets_json']);expanded=list(dict.fromkeys([*old,*TARGETS]))
+            if old==expanded:continue
+            # Equivalent word cards expand available material, not the goal's
+            # criterion. Keep its version, existing plans and measured progress.
+            db.execute('UPDATE parent_practice_goals SET matching_targets_json=? WHERE id=?',(json.dumps(expanded),goal['id']))
+            current=decode_goal(db.execute('SELECT * FROM parent_practice_goals WHERE id=?',(goal['id'],)).fetchone())
+            db.execute("""INSERT INTO practice_goal_history(goal_id,child_id,goal_version,event_type,snapshot_json,changed_by,source,created_at)
+                VALUES(?,?,?,'content_mapping_extended',?,?,'system_content_extension',?)""",(goal['id'],goal['child_id'],goal['version'],json.dumps(goal_snapshot(current),ensure_ascii=False),goal['created_by'],now_iso()))
+    sync_concept_links(db)
+
+
 MIGRATIONS = (
     (9, _migration_9_exercise_engine),
     (10, _migration_10_content_contracts),
@@ -1086,6 +1115,7 @@ MIGRATIONS = (
     (32, _migration_32_observation_pictures),
     (33, _migration_33_complete_picture_phrases),
     (34, _migration_34_explore_world),
+    (35, _migration_35_scene_word_reinforcement),
 )
 LATEST_SCHEMA_VERSION = MIGRATIONS[-1][0]
 

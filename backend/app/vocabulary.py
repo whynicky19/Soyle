@@ -13,17 +13,23 @@ def policy_for(db,child_id):
 
 def sync_concept_links(db):
     """Only curated equal labels (and explicit aliases) link concepts; never fuzzy-match."""
-    concepts={r['label'].casefold():r['id'] for r in db.execute('SELECT id,label FROM word_concepts').fetchall()}
+    rows=db.execute('SELECT id,label FROM word_concepts').fetchall()
+    concepts={r['label'].casefold():r['id'] for r in rows}
+    concept_labels={r['id']:r['label'].casefold() for r in rows}
     for row in db.execute("SELECT id,content_json FROM exercise_versions WHERE mechanic='auditory_choice'").fetchall():
         for item in json.loads(row['content_json']).get('stimuli',[]):
-            concept=concepts.get(str(item.get('label','')).casefold())
+            label=str(item.get('label','')).casefold()
+            explicit=item.get('word_concept_id')
+            concept=explicit if explicit and concept_labels.get(explicit)==label else concepts.get(label) if not explicit else None
             if concept:
                 db.execute('INSERT INTO word_concept_stimuli(concept_id,version_id,stimulus_key) VALUES(?,?,?) ON CONFLICT(version_id,stimulus_key) DO NOTHING',(concept,row['id'],item['key']))
     from .exercise_engine import published_exercise_rows
     published={e['engine']['version_id'] for e in published_exercise_rows(db)}
     linked={r['concept_id'] for r in db.execute('SELECT concept_id,version_id FROM word_concept_stimuli').fetchall() if r['version_id'] in published}
     for concept in concepts.values():
-        db.execute("INSERT INTO vocabulary_content_gaps(concept_id,status,note,updated_at) VALUES(?,?,?,?) ON CONFLICT(concept_id) DO UPDATE SET status=excluded.status,updated_at=excluded.updated_at",(concept,'available' if concept in linked else 'draft','Нужны проверенные отдельные изображения и отвлекающие варианты для слухового выбора. Автоматическая публикация запрещена.',now_iso()))
+        available=concept in linked
+        note='Есть опубликованные карточки для слухового выбора; слово доступно для закрепления в плане.' if available else 'Нужны проверенные отдельные изображения и отвлекающие варианты для слухового выбора. Автоматическая публикация запрещена.'
+        db.execute("INSERT INTO vocabulary_content_gaps(concept_id,status,note,updated_at) VALUES(?,?,?,?) ON CONFLICT(concept_id) DO UPDATE SET status=excluded.status,note=excluded.note,updated_at=excluded.updated_at",(concept,'available' if available else 'draft',note,now_iso()))
 
 
 def observe(db,*,child_id,concept_id,source_key,position,context,outcome,first_correct,errors=0,repeats=0,hint_level=0,responses=None,supports=None,run_id=None,session_id=None):
@@ -101,7 +107,9 @@ def ingest_card_session(db,row,exercise):
         concept=links.get(outcome.get('target_key'))
         if not concept or type(outcome.get('attempts')) is not int or not 1<=outcome['attempts']<=1000 or not isinstance(outcome.get('supports'),list):continue
         if outcome['outcome']=='independent' and (outcome['attempts']!=1 or outcome['supports'] or outcome.get('selected_key')!=outcome.get('target_key')):continue
-        observe(db,child_id=row['child_id'],concept_id=concept,source_key='card:'+str(row['id']),position=index,context='card',outcome=outcome['outcome'],first_correct=outcome.get('first_response')==outcome.get('target_key'),errors=max(0,int(outcome.get('attempts',1))-int(outcome['outcome']!='modelled')),repeats=(outcome.get('supports') or []).count('repeat_audio'),responses=[outcome.get('selected_key')],supports=outcome.get('supports',[]),session_id=row['id'])
+        supports=outcome.get('supports',[])
+        hint_level=2 if any(s in supports for s in ('reduced_choice','model_answer')) else int('visual_hint' in supports)
+        observe(db,child_id=row['child_id'],concept_id=concept,source_key='card:'+str(row['id']),position=index,context='card',outcome=outcome['outcome'],first_correct=outcome.get('first_response')==outcome.get('target_key'),errors=max(0,int(outcome.get('attempts',1))-int(outcome['outcome']!='modelled')),repeats=supports.count('repeat_audio'),hint_level=hint_level,responses=[outcome.get('selected_key')],supports=supports,session_id=row['id'])
         db.execute('UPDATE vocabulary_repetitions SET last_practiced_at=? WHERE child_id=? AND concept_id=?',(now_iso(),row['child_id'],concept))
 
 

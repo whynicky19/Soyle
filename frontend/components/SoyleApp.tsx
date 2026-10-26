@@ -1431,12 +1431,6 @@ function SensoryVisual({ item }: { item: SensoryItem }) {
 
 type SensoryRound = { target: number; options: number[] };
 
-function createSensoryRound(itemCount: number, optionCount: 2 | 3 | 4, excludedTargets: ReadonlySet<number> = new Set()): SensoryRound {
-  const stimuli = Array.from({ length: itemCount }, (_, index) => ({ key: String(index), label: "", speech: "" }));
-  const round = createChoiceRound(stimuli, optionCount, [...excludedTargets].map(String));
-  return { target: Number(round.targetKey), options: round.optionKeys.map(Number) };
-}
-
 function SensoryGame({ exercise, soundEnabled, onBack, onComplete }: { exercise?: Exercise; soundEnabled: boolean; onBack: () => void; onComplete: (score: number, exerciseId: number, measurement: GameMeasurement, details?: Record<string, unknown>) => Promise<unknown> | void }) {
   const sourceStimuli = exercise?.engine?.content.stimuli || [];
   const mixesVisualSystems = sourceStimuli.some((item) => Boolean(item.media_ref)) && sourceStimuli.some((item) => Boolean(item.visual_token));
@@ -1516,8 +1510,8 @@ function SensoryGame({ exercise, soundEnabled, onBack, onComplete }: { exercise?
     evidenceRef.current = newAnswerEvidence();
     answerLockRef.current = false;
     const preferredKey=preferredTargetsRef.current.shift();
-    const preferredIndex=preferredKey?items.findIndex(item=>item.key===preferredKey):-1;
-    const nextRound = preferredIndex>=0 ? {target:preferredIndex,options:shuffled([preferredIndex,...shuffled(items.map((_,i)=>i).filter(i=>i!==preferredIndex)).slice(0,difficulty.option_count-1)])} : createSensoryRound(items.length, difficulty.option_count, usedTargetsRef.current);
+    const choice = createChoiceRound(consistentStimuli, difficulty.option_count, [...usedTargetsRef.current].map(i=>items[i].key), Math.random, undefined, preferredKey);
+    const nextRound = {target:items.findIndex(item=>item.key===choice.targetKey),options:choice.optionKeys.map(key=>items.findIndex(item=>item.key===key))};
     usedTargetsRef.current.add(nextRound.target);
     const targetKey = consistentStimuli[nextRound.target].key;
     const media = chooseRoundMedia(consistentStimuli, targetKey, previousMediaRef.current, exercise?.engine?.content.exemplar_policy === "matched_set");
@@ -1541,6 +1535,21 @@ function SensoryGame({ exercise, soundEnabled, onBack, onComplete }: { exercise?
     else setPhase("technical");
   };
 
+  const meaningHint = async () => {
+    if (!roundData || phase !== "playing" || !audioPlayed || audioLockRef.current || answerLockRef.current || stoppedRef.current) return;
+    evidenceRef.current = withSupport(evidenceRef.current, "visual_hint");
+    promptsUsedRef.current += 1;
+    promptTypesRef.current.push("visual_hint");
+    promptLevelRef.current = Math.max(1, promptLevelRef.current) as 1 | 2;
+    const hint = items[roundData.target].hint;
+    setFeedback(hint);
+    audioLockRef.current = true;
+    setAudioPending(true);
+    await speak(hint, speechRate, soundEnabled);
+    audioLockRef.current = false;
+    if (!stoppedRef.current) setAudioPending(false);
+  };
+
   const choose = (index: number) => {
     if (!roundData || phase !== "playing" || !audioPlayed || audioLockRef.current || answerLockRef.current || stoppedRef.current) return;
     evidenceRef.current = withResponse(evidenceRef.current, items[index].key);
@@ -1560,7 +1569,7 @@ function SensoryGame({ exercise, soundEnabled, onBack, onComplete }: { exercise?
         option_keys: roundData.options.map((value) => items[value].key),
         selected_key: items[index].key,
         attempts: attempt,
-        outcome: responseOutcome(evidenceRef.current),
+        outcome: independent ? "independent" : "prompted",
         supports: evidenceRef.current.supports,
         first_response: evidenceRef.current.first_response,
       });
@@ -1680,6 +1689,7 @@ function SensoryGame({ exercise, soundEnabled, onBack, onComplete }: { exercise?
           <div className="sound-zone"><button ref={soundButtonRef} className="sound-button" disabled={audioPending} onClick={() => void playWord()} aria-label="Прослушать слово"><Volume2 size={34} strokeWidth={2} /></button><div><span className="kicker">ПОСЛУШАЙ</span><h2>{audioPending ? "Слово загружается…" : audioPlayed ? "Теперь покажи картинку" : "Нажми и послушай"}</h2><div className="wave"><i /><i /><i /><i /><i /><i /><i /></div><div className="speech-rate" aria-label="Скорость речи">{[{v:.65,l:"Медленно"},{v:.78,l:"Обычно"},{v:1,l:"Быстрее"}].map((item)=><button key={item.v} className={speechRate===item.v?"active":""} aria-pressed={speechRate===item.v} onClick={()=>setSpeechRate(item.v)}>{item.l}</button>)}</div></div><button className="replay" disabled={audioPending} onClick={() => void playWord()}><RotateCcw size={17} /> Повторить</button></div>
           {accessibleSupportMode && <p id="accessible-support-note" className="accessible-support-note in-game"><ShieldAlert size={17}/> Варианты озвучиваются. Эта попытка сохраняется без оценки правильности.</p>}
           <h3 className="choose-title">Послушай. Покажи картинку.</h3>
+          {exercise?.engine?.content.bank_key?.startsWith("scene-words-") && phase === "playing" && <button className="secondary-button" disabled={!audioPlayed || audioPending} onClick={()=>void meaningHint()}><Sparkles size={18}/> Подсказка</button>}
           <div className={`picture-options ${reducedOptions ? "reduced" : ""}`} data-option-count={visibleOptions.length}>
             {visibleOptions.map((index) => { const item = items[index]; const isAnswer = roundData?.target === index; const revealed = phase === "resolved"; const optionNumber = visibleOptions.indexOf(index) + 1; return <button key={item.word} disabled={!audioPlayed || audioPending || phase === "resolved" || (!reducedOptions && wrongChoices.includes(index))} aria-label={revealed || accessibleSupportMode ? item.word : `Вариант ${optionNumber}`} aria-describedby={accessibleSupportMode ? "accessible-support-note" : undefined} onClick={() => choose(index)} className={`${wrongChoices.includes(index) ? "wrong" : ""} ${revealed && isAnswer ? "answer" : ""}`}><SensoryVisual item={item}/>{revealed && <strong>{item.word}</strong>}{revealed && isAnswer && <i><Check size={16}/></i>}</button>; })}
           </div>

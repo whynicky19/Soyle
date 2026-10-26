@@ -1,0 +1,376 @@
+{
+  "generated_count": 37,
+  "reused_count": 11,
+  "items": [
+    {
+      "key": "pillow",
+      "label": "Подушка",
+      "media_ref": "/word-reinforcement/pillow-v1.webp",
+      "width": 1254,
+      "height": 1254,
+      "sha256": "6387489e6dae04f561ee8dbd146c324ec9d3eda16a2565787031dd6b1e686e18",
+      "source_file": "exec-37d82f02-fd58-44ea-95da-7f3e253b7ee2.png",
+      "generator": "built-in image_gen"
+    },
+    {
+      "key": "blanket",
+      "label": "Одеяло",
+      "media_ref": "/word-reinforcement/blanket-v1.webp",
+      "width": 1254,
+      "height": 1254,
+      "sha256": "8b6e76537cedcb3d6e20bdd1739968d00eba322f7043221e00d387bf64b5be26",
+      "source_file": "exec-c9d77b16-b030-4efb-ba62-f92f152eb5ba.png",
+      "generator": "built-in image_gen"
+    },
+    {
+      "key": "slippers",
+      "label": "Тапочки",
+      "media_ref": "/word-reinforcement/slippers-v1.webp",
+      "width": 1254,
+      "height": 1254,
+      "sha256": "4e9db98316b7ac39beace4ea933deda16590162b332e7a890aebb045c50eef29",
+      "source_file": "exec-5f039ad7-5959-43f5-9335-f1039b1fdf65.png",
+      "generator": "built-in image_gen"
+    },
+    {
+      "key": "pajamas",
+      "label": "Пижама",
+      "media_ref": "/word-reinforcement/pajamas-v1.webp",
+      "width": 1254,
+      "height": 1254,
+      "sha256": "2b93c0575a608fbbe6f74f5e9f904a9ad2b773d92bf041474c0229d07fdf1eef",
+      "source_file": "exec-2b851d16-721a-452d-bd08-ee9ac0e00862.png",
+      "generator": "built-in image_gen"
+    },
+    {
+      "key": "alarm-clock",
+      "label": "Будильник",
+      "media_ref": "/word-reinforcement/alarm-clock-v1.webp",
+      "width": 1254,
+      "height": 1254,
+      "sha256": "f075acd8ab730791575b79335d5e5a24542c2ba6f04694c066045e9d43662528",
+      "source_file": "exec-eeb15646-4c5d-43aa-a5e7-febea097dcca.png",
+      "generator": "built-in image_gen"
+    },
+    {
+      "key": "wardrobe",
+      "label": "Шкаф",
+      "media_ref": "/word-reinforcement/wardrobe-v1.webp",
+      "width": 1254,
+      "height": 1254,
+      "sha256": "e3e4081fef074803c3efad62072381df1311d3d7740f0a74db396d7c77e93076",
+      "source_file": "exec-dfb658c7-f38f-4991-90ad-a9d8bd2efba6.png",
+      "generator": "built-in image_gen"
+    },
+    {
+      "key": "curtain",
+      "label": "Штора",
+      "media_ref": "/word-reinforcement/curtain-v1.webp",
+      "width": 1254,
+      "height": 1254,
+      "sha256": "392f5ffeb19aa04959a763cc9d0c5c4e0c9664e6daa75e2b1d2f014688b8a981",
+      "source_file": "exec-753b1a8c-896a-4a93-8ef2-533d9b351e53.png",
+      "generator": "built-in image_gen"
+    },
+    {
+      "key": "night-light",
+      "label": "Ночник",
+      "media_ref": "/word-reinforcement/night-light-v1.webp",
+      "width": 1254,
+      "height": 1254,
+      "sha256": "0434d008a79bbe813f2cf265fc0157a85f24acb18fa86db2ed1fd7039a570cda",
+      "source_file": "exec-fdd43c6d-cbae-4e2c-a534-960f99fbe83f.png",
+      "generator": "built-in image_gen"
+    },
+    {
+      "key": "dinosaur",
+      "label": "Динозавр",
+      "media_ref": "/word-reinforcement/dinosaur-v1.webp",
+      "width": 1254,
+      "height": 1254,
+      "sha256": "a38f1ae51f59e6b440236172877a0934b70a34516408ec8a4840aceb4ad41ec2",
+      "source_file": "exec-00578daa-c633-4298-9771-6e9986ee6637.png",
+      "generator": "built-in image_gen"
+    },
+    {
+      "key": "mirror",
+      "label": "Зеркало",
+      "media_ref": "/word-reinforcement/mirror-v1.webp",
+      "width": 1254,
+      "height": 1254,
+      "sha256": "25ad6577aaf1bd468417f86166b0677089e60db40e0b08c044ca43e34e61a687",
+      "source_file": "exec-4d5cb4bd-64d4-49a0-a9da-85f5175cd69e.png",
+      "generator": "built-in image_gen"
+    },
+    {
+      "key": "kettle",
+      "label": "Чайник",
+      "media_ref": "/word-reinforcement/kettle-v1.webp",
+      "width": 1254,
+      "height": 1254,
+      "sha256": "3f36d746c885bd189e82d1c54db658839e536571ff5790d3619534755c17f7c4",
+      "source_file": "exec-e9fb2199-c023-4fae-990c-ce50184442ae.png",
+      "generator": "built-in image_gen"
+    },
+    {
+      "key": "pot",
+      "label": "Кастрюля",
+      "media_ref": "/word-reinforcement/pot-v1.webp",
+      "width": 1254,
+      "height": 1254,
+      "sha256": "c0b81b4b7825d3c7444781112371ff659d625181d295090c8dad0f54457ff150",
+      "source_file": "exec-03184f1e-7b16-44f9-ac6b-2a3cbc905fa1.png",
+      "generator": "built-in image_gen"
+    },
+    {
+      "key": "refrigerator",
+      "label": "Холодильник",
+      "media_ref": "/word-reinforcement/refrigerator-v1.webp",
+      "width": 1254,
+      "height": 1254,
+      "sha256": "4052d67f4c9502f02c7be24b0acd10d4f79a7334a34392f829bc2ed061ca2745",
+      "source_file": "exec-ad1c32ef-676e-423e-8fdb-bf4f9f237ea2.png",
+      "generator": "built-in image_gen"
+    },
+    {
+      "key": "sink",
+      "label": "Раковина",
+      "media_ref": "/word-reinforcement/sink-v1.webp",
+      "width": 1254,
+      "height": 1254,
+      "sha256": "0d3bec76c8a22e3d2740953815d99aaa406ac46354b1a24ed4a53514445d17b3",
+      "source_file": "exec-3dc1fd09-b30b-4773-9479-73e235822af7.png",
+      "generator": "built-in image_gen"
+    },
+    {
+      "key": "napkin",
+      "label": "Салфетка",
+      "media_ref": "/word-reinforcement/napkin-v1.webp",
+      "width": 1254,
+      "height": 1254,
+      "sha256": "cb4a3a82e7fa3388bbae9fa86dac909546c9a893f1d23bf538d808fbcd2094f5",
+      "source_file": "exec-1debd345-6731-4b32-878a-af10dc4029ce.png",
+      "generator": "built-in image_gen"
+    },
+    {
+      "key": "sofa",
+      "label": "Диван",
+      "media_ref": "/word-reinforcement/sofa-v1.webp",
+      "width": 1254,
+      "height": 1254,
+      "sha256": "6df936fc9a43be2bb1195950fd6985abc353af7b733e855873a008be8f47a985",
+      "source_file": "exec-4943900e-22e0-4883-a000-8d8b0c676840.png",
+      "generator": "built-in image_gen"
+    },
+    {
+      "key": "armchair",
+      "label": "Кресло",
+      "media_ref": "/word-reinforcement/armchair-v1.webp",
+      "width": 1254,
+      "height": 1254,
+      "sha256": "a77ae521a0529f7d68a2d709170457d2770c72e5e9d2142b2cad559200c22906",
+      "source_file": "exec-2c4be247-e194-4074-b5e2-30ea17acf29c.png",
+      "generator": "built-in image_gen"
+    },
+    {
+      "key": "television",
+      "label": "Телевизор",
+      "media_ref": "/word-reinforcement/television-v1.webp",
+      "width": 1254,
+      "height": 1254,
+      "sha256": "06d4a790c87da3af7ae77560c3106d6928a6c630a797a4347d0467a6b23d5c1c",
+      "source_file": "exec-704f5abf-9ae5-4d79-8c97-0ff7d5494fa3.png",
+      "generator": "built-in image_gen"
+    },
+    {
+      "key": "remote",
+      "label": "Пульт",
+      "media_ref": "/word-reinforcement/remote-v1.webp",
+      "width": 1254,
+      "height": 1254,
+      "sha256": "3fa2a19ff8bf0b1175748bccb1742e6a454bd335c34bb99581e703069dff89f9",
+      "source_file": "exec-03b7fb99-641c-4ac4-81ad-3fecb7c21c82.png",
+      "generator": "built-in image_gen"
+    },
+    {
+      "key": "floor-lamp",
+      "label": "Торшер",
+      "media_ref": "/word-reinforcement/floor-lamp-v1.webp",
+      "width": 1254,
+      "height": 1254,
+      "sha256": "0f71726f02afde8ed1f70b9f021fae6117b690a976c07998336e9426f06cbdef",
+      "source_file": "exec-a8f9d2e4-e47f-4f2b-b81b-c4dfeb613f34.png",
+      "generator": "built-in image_gen"
+    },
+    {
+      "key": "carpet",
+      "label": "Ковёр",
+      "media_ref": "/word-reinforcement/carpet-v1.webp",
+      "width": 1254,
+      "height": 1254,
+      "sha256": "4f8c3031477474e6c6ee63d5a15632b3a27b1faed8ca36d6d05b36c21c9a04ce",
+      "source_file": "exec-06db4fd5-f752-41e4-b21e-1e977ef10dc5.png",
+      "generator": "built-in image_gen"
+    },
+    {
+      "key": "painting",
+      "label": "Картина",
+      "media_ref": "/word-reinforcement/painting-v1.webp",
+      "width": 1254,
+      "height": 1254,
+      "sha256": "0f0168a7f06d2aa01fb9d6565b76998eaca30ab735287bb5a96b576475906e07",
+      "source_file": "exec-ac8f9214-84b8-4fe6-b219-127f30ee7392.png",
+      "generator": "built-in image_gen"
+    },
+    {
+      "key": "vase",
+      "label": "Ваза",
+      "media_ref": "/word-reinforcement/vase-v1.webp",
+      "width": 1254,
+      "height": 1254,
+      "sha256": "d8b6099452f8d87edc2aa355709c4dd67daa0ce60fb49ac3850e290daa4c4f92",
+      "source_file": "exec-27c2204b-3887-4208-8336-d09bc67e1c4e.png",
+      "generator": "built-in image_gen"
+    },
+    {
+      "key": "aquarium",
+      "label": "Аквариум",
+      "media_ref": "/word-reinforcement/aquarium-v1.webp",
+      "width": 1254,
+      "height": 1254,
+      "sha256": "3198cd73bf4140f7dc3cce3c1650bea6b0544ca8900087d6521756942a505446",
+      "source_file": "exec-1ddb8225-0f67-4b63-80e7-0e2a8e83e1b2.png",
+      "generator": "built-in image_gen"
+    },
+    {
+      "key": "guitar",
+      "label": "Гитара",
+      "media_ref": "/word-reinforcement/guitar-v1.webp",
+      "width": 1254,
+      "height": 1254,
+      "sha256": "7c320be23fdeb7d5d3f1219e0c84da3d504caee875920f94b1dca61f43d0e747",
+      "source_file": "exec-33e0d013-e908-4193-9bac-b013d1748f62.png",
+      "generator": "built-in image_gen"
+    },
+    {
+      "key": "board-game",
+      "label": "Настольная игра",
+      "media_ref": "/word-reinforcement/board-game-v1.webp",
+      "width": 1254,
+      "height": 1254,
+      "sha256": "8566ec936f37bbbf09b08cf5d903ff2c1f3dd0272c9b9f4610c63567d464136c",
+      "source_file": "exec-7f0dac2c-3e0a-4c22-927b-8382262a9c5a.png",
+      "generator": "built-in image_gen"
+    },
+    {
+      "key": "slide",
+      "label": "Горка",
+      "media_ref": "/word-reinforcement/slide-v1.webp",
+      "width": 1254,
+      "height": 1254,
+      "sha256": "6a45deb9230ff25ba657917796deaf869b6f14433da29a93276e22116ac31d63",
+      "source_file": "exec-a2a02fa9-7ffd-4803-8080-d79b768b8d15.png",
+      "generator": "built-in image_gen"
+    },
+    {
+      "key": "swing",
+      "label": "Качели",
+      "media_ref": "/word-reinforcement/swing-v1.webp",
+      "width": 1254,
+      "height": 1254,
+      "sha256": "1bddb969bf8bd60b96c7d1c68744d0f4b13f886922de00df5be783514b0f56d9",
+      "source_file": "exec-bd9d8d78-b296-4230-8bc6-f3caae1190e3.png",
+      "generator": "built-in image_gen"
+    },
+    {
+      "key": "sandbox",
+      "label": "Песочница",
+      "media_ref": "/word-reinforcement/sandbox-v1.webp",
+      "width": 1254,
+      "height": 1254,
+      "sha256": "cbe510f3fce18a3b6c8036f09f931d18a034ee3820f3da7380738da42c7b9792",
+      "source_file": "exec-7233c4bb-5ae1-4b57-9def-454885615fc9.png",
+      "generator": "built-in image_gen"
+    },
+    {
+      "key": "bucket",
+      "label": "Ведёрко",
+      "media_ref": "/word-reinforcement/bucket-v1.webp",
+      "width": 1254,
+      "height": 1254,
+      "sha256": "58c7caec16b3d6cba09c3bdf93839d65723963477e642664c3510da9bc9dff05",
+      "source_file": "exec-8a88e844-f030-4b1d-a6cb-f0a6b9888420.png",
+      "generator": "built-in image_gen"
+    },
+    {
+      "key": "shovel",
+      "label": "Лопатка",
+      "media_ref": "/word-reinforcement/shovel-v1.webp",
+      "width": 1254,
+      "height": 1254,
+      "sha256": "c20fcbc7597185d61d6f75506c49c29b182c77b255c5568ddda6c79512c3e1e7",
+      "source_file": "exec-e546eb32-3ff1-4d39-a74b-a357a5583007.png",
+      "generator": "built-in image_gen"
+    },
+    {
+      "key": "bicycle",
+      "label": "Велосипед",
+      "media_ref": "/word-reinforcement/bicycle-v1.webp",
+      "width": 1254,
+      "height": 1254,
+      "sha256": "2bdd7ac55f95ab773b0438d85b38808ed40b55f6914c8824fa53bb89ab2c4d3d",
+      "source_file": "exec-635b0359-b3a6-4cdd-81d1-6858b4e60902.png",
+      "generator": "built-in image_gen"
+    },
+    {
+      "key": "bench",
+      "label": "Скамейка",
+      "media_ref": "/word-reinforcement/bench-v1.webp",
+      "width": 1254,
+      "height": 1254,
+      "sha256": "fcea3cf1161ce12ade93253f546ed4b50f44835982c29a39d11d0e6b2ef1377a",
+      "source_file": "exec-e75dd53c-ffa7-4785-9944-174b8867c0e6.png",
+      "generator": "built-in image_gen"
+    },
+    {
+      "key": "watering-can",
+      "label": "Лейка",
+      "media_ref": "/word-reinforcement/watering-can-v1.webp",
+      "width": 1254,
+      "height": 1254,
+      "sha256": "73720243a31a16b2255bbad88a4149ed1d6ad73a1858cd4233b36c4dba1707b0",
+      "source_file": "exec-f24d8fe3-a784-4937-aaee-8f0bdd8d1abc.png",
+      "generator": "built-in image_gen"
+    },
+    {
+      "key": "birdhouse",
+      "label": "Скворечник",
+      "media_ref": "/word-reinforcement/birdhouse-v1.webp",
+      "width": 1254,
+      "height": 1254,
+      "sha256": "e3b17866c3885383f8469543c33b21072fa381e6e578efae84cbfb83541d3c31",
+      "source_file": "exec-8f965d41-2617-4a84-9db8-6a7ffbf83f71.png",
+      "generator": "built-in image_gen"
+    },
+    {
+      "key": "flower",
+      "label": "Цветок",
+      "media_ref": "/word-reinforcement/flower-v1.webp",
+      "width": 1254,
+      "height": 1254,
+      "sha256": "16b459e19d79ef857659394c38ec0fb0f35b2f081568296aa465885653393a85",
+      "source_file": "exec-9c4d010e-e1fb-44c9-a9f8-ed033a7e351a.png",
+      "generator": "built-in image_gen"
+    },
+    {
+      "key": "butterfly",
+      "label": "Бабочка",
+      "media_ref": "/word-reinforcement/butterfly-v1.webp",
+      "width": 1254,
+      "height": 1254,
+      "sha256": "31542c9f06130da22f9d394c352697c465e8791bbfff74557f73d0abdaa6b99c",
+      "source_file": "exec-8446a57d-566c-4eeb-9b03-951c3355eee9.png",
+      "generator": "built-in image_gen"
+    }
+  ]
+}
