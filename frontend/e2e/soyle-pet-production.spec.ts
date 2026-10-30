@@ -2,6 +2,7 @@ import {test,expect} from '@playwright/test';
 
 for(const mode of ['animated','reduced','load-error'] as const){
  test(`production penguin stays visible: ${mode}`,async({page},info)=>{
+  test.setTimeout(90000);
   await page.emulateMedia({reducedMotion:mode==='reduced'?'reduce':'no-preference'});
   const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
   // Keep real application rendering and CSP, using only the isolated test database.
@@ -27,6 +28,14 @@ for(const mode of ['animated','reduced','load-error'] as const){
    await expect.poll(async()=>!(await capture()).equals(first),{timeout:6000}).toBe(true);
   }
   await page.screenshot({path:info.outputPath(`penguin-${mode}.png`)});
+  if(mode!=='load-error'){
+   const expected=mode==='reduced'?['Greeting','Encouragement','Thinking','Encouragement','Greeting']:['Greeting','Happy','Thinking','Encouragement','Celebrate'];
+   for(const state of expected){
+    await expect(pet).toHaveAttribute('data-pet-state','idle',{timeout:6500});
+    await page.getByRole('button',{name:'Поздороваться с пингвином'}).click();
+    await expect(pet).toHaveAttribute('data-rive-state',new RegExp(state));
+   }
+  }
   if(mode==='animated'){
    await page.emulateMedia({reducedMotion:'reduce'});await expect(pet).toHaveAttribute('data-pet-motion','reduced');
    await page.emulateMedia({reducedMotion:'no-preference'});await expect(pet).toHaveAttribute('data-pet-renderer','rive');

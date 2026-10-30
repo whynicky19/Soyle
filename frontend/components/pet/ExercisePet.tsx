@@ -6,6 +6,8 @@ import type { Rive } from "@rive-app/webgl2";
 import { petReactions, type PetEvent, type PetPreferences } from "@/lib/pet";
 import { speakPet, stopPetSpeech } from "@/lib/speech";
 
+type PetReaction = { event: PetEvent; phrase: string; id: number; mood: number; duration: number };
+const tapReactions = ["greeting", "correct", "hint", "incorrect", "complete"] as const;
 const PetContext = createContext<(event: PetEvent) => void>(() => {});
 const PetMessageContext = createContext("Поиграем?");
 export const usePetMessage = () => useContext(PetMessageContext);
@@ -14,9 +16,10 @@ export const useExercisePet = () => useContext(PetContext);
 export const ExercisePet = () => useContext(PetDisplayContext);
 
 export function ExercisePetProvider({ preferences, soundEnabled, calmMode, initialEvent = "greeting", presentation = "exercise", children }: { presentation?: "exercise" | "home"; preferences: PetPreferences; soundEnabled: boolean; calmMode: boolean; initialEvent?: PetEvent; children: ReactNode }) {
-  const [reaction, setReaction] = useState<{ event: PetEvent; phrase: string; id: number } | null>(null);
+  const [reaction, setReaction] = useState<PetReaction | null>(null);
   const lastPhrase = useRef("");
   const lastTap = useRef(0);
+  const tapSequence = useRef(0);
   const sequence = useRef(0);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const speechTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -28,11 +31,11 @@ export function ExercisePetProvider({ preferences, soundEnabled, calmMode, initi
     if (event === "tap" && Date.now() - lastTap.current < 2500) return;
     if (event === "tap") lastTap.current = Date.now();
     clearTimeout(timer.current); clearTimeout(speechTimer.current); stopPetSpeech();
-    const spec = petReactions[event];
-    const phrases = spec.phrases.filter(phrase => phrase !== lastPhrase.current);
+    const spec = petReactions[event === "tap" ? tapReactions[tapSequence.current++ % tapReactions.length] : event];
+    const phrases = petReactions[event].phrases.filter(phrase => phrase !== lastPhrase.current);
     const phrase = phrases[sequence.current % phrases.length];
     lastPhrase.current = phrase;
-    setReaction({ event, phrase, id: ++sequence.current });
+    setReaction({ event, phrase, id: ++sequence.current, mood: spec.mood, duration: spec.duration });
     timer.current = setTimeout(() => { setReaction(null); stopPetSpeech(); }, spec.duration);
     // Allow the same interaction's exercise narration to claim audio first. Never queue stale speech.
     if (preferences.voice && soundEnabled) speechTimer.current = setTimeout(() => { void speakPet(phrase); }, 200);
@@ -45,7 +48,7 @@ export function ExercisePetProvider({ preferences, soundEnabled, calmMode, initi
   return <PetContext.Provider value={react}><PetDisplayContext.Provider value={display}><PetMessageContext.Provider value={reaction?.phrase || "Поиграем?"}>{children}</PetMessageContext.Provider></PetDisplayContext.Provider></PetContext.Provider>;
 }
 
-function PetCompanion({ reaction, motion, onTap, showBubble }: { showBubble: boolean; reaction: { event: PetEvent; phrase: string; id: number } | null; motion: PetPreferences["motion"]; onTap: () => void }) {
+function PetCompanion({ reaction, motion, onTap, showBubble }: { showBubble: boolean; reaction: PetReaction | null; motion: PetPreferences["motion"]; onTap: () => void }) {
   const {container: dragRef, offset, dragging, handlers} = usePetDrag(showBubble, onTap);
   const canvas = useRef<HTMLCanvasElement>(null);
   const runtime = useRef<Rive | null>(null);
@@ -77,8 +80,8 @@ function PetCompanion({ reaction, motion, onTap, showBubble }: { showBubble: boo
           if (!instance.viewModelInstance?.number("mood")) { setFailed(true); return; }
           runtime.current = instance; instance.resizeDrawingSurfaceToCanvas(); instance.drawFrame(); setReady(true);
         }, onLoadError: () => { if (!disposed) setFailed(true); },
-        // Development-only observation verifies the exported graph in browser tests.
-        ...(process.env.NODE_ENV === "development" ? { onStateChange: (event: { data?: unknown }) => { if (!disposed) setRiveState(String(event.data)); } } : {}),
+        // Expose the actual Rive graph state for production rendering checks.
+        onStateChange: (event: { data?: unknown }) => { if (!disposed) setRiveState(String(event.data)); },
       });
       observer = new ResizeObserver(() => { instance?.resizeDrawingSurfaceToCanvas(); instance?.drawFrame(); });
       observer.observe(canvas.current);
@@ -88,7 +91,7 @@ function PetCompanion({ reaction, motion, onTap, showBubble }: { showBubble: boo
   useEffect(() => {
     const rive = runtime.current;
     if (!ready || !rive) return;
-    // A static rest pose, even if reduced motion is enabled halfway through a jump.
+    // Reset to a rest pose when motion is explicitly disabled mid-reaction.
     rive.reset({ artboard: "Söyle • Full-body pet", stateMachine: still ? "Still" : "Companion", autoBind: true, autoplay: false });
     rive.resizeDrawingSurfaceToCanvas();
     rive.drawFrame();
@@ -97,13 +100,16 @@ function PetCompanion({ reaction, motion, onTap, showBubble }: { showBubble: boo
     const rive = runtime.current;
     if (!ready || !rive) return;
     const mood = rive.viewModelInstance?.number("mood");
-    if (mood) mood.value = still || reduced ? 0 : reaction ? petReactions[reaction.event].mood : 0;
+    const requestedMood = reaction?.mood || 0;
+    // Reduced motion keeps gestures and expressions, replacing only the two jumps.
+    const reactionMood = reduced && requestedMood === 2 ? 3 : reduced && requestedMood === 5 ? 1 : requestedMood;
+    if (mood) mood.value = still ? 0 : reactionMood;
     if (still || !pageVisible) { rive.pause(); } else rive.play("Companion");
   }, [ready, reaction, still, pageVisible, reduced]);
   // The exported rest frame also works when WebGL is unavailable or motion is disabled.
   const showStill = still || failed || !ready;
   return <div ref={dragRef} className="exercise-pet" data-draggable={showBubble} data-dragging={dragging} style={showBubble ? {transform:`translate(${offset.x}px, ${offset.y}px)`,position:"relative",zIndex:offset.x || offset.y || dragging ? 20 : undefined} : undefined} data-pet-renderer={showStill ? "static" : "rive"} data-pet-state={reaction?.event || "idle"} data-pet-motion={still ? "off" : reduced ? "reduced" : "full"} data-pet-ready={ready} data-rive-state={riveState}>
-    {showBubble && <div key={reaction?.id || "idle"} style={reaction ? { animationDelay: `${petReactions[reaction.event].duration - 250}ms` } : undefined} className={`pet-bubble ${reaction ? "visible" : ""}`} role="status" aria-live="polite" aria-atomic="true">{reaction?.phrase}</div>}
+    {showBubble && <div key={reaction?.id || "idle"} style={reaction ? { animationDelay: `${reaction.duration - 250}ms` } : undefined} className={`pet-bubble ${reaction ? "visible" : ""}`} role="status" aria-live="polite" aria-atomic="true">{reaction?.phrase}</div>}
     <button type="button" className="pet-button" {...handlers} title={showBubble ? "Перетащи пингвина. Стрелки — двигать, Home — вернуть на место." : undefined} aria-label="Поздороваться с пингвином" ><canvas ref={canvas} aria-hidden="true" style={{visibility:showStill ? "hidden" : "visible"}}/>{showStill && <Image className="pet-still" src="/mascot/soyle-mascot-still.png" width={561} height={630} unoptimized alt="" aria-hidden="true"/>}</button>
   </div>;
 }
