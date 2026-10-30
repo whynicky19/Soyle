@@ -41,7 +41,7 @@ export function ExercisePetProvider({ preferences, soundEnabled, calmMode, initi
     const start = setTimeout(() => react(initialEvent), 600);
     return () => { clearTimeout(start); clearTimeout(timer.current); clearTimeout(speechTimer.current); stopPetSpeech(); };
   }, [initialEvent, react, preferences.visible]);
-  const display = preferences.visible ? <PetCompanion showBubble={presentation !== "home"} reaction={reaction} motion={calmMode ? "off" : preferences.motion} onTap={() => react("tap")}/> : null;
+  const display = preferences.visible ? <PetCompanion showBubble={presentation !== "home"} reaction={reaction} motion={calmMode && preferences.motion !== "off" ? "reduced" : preferences.motion} onTap={() => react("tap")}/> : null;
   return <PetContext.Provider value={react}><PetDisplayContext.Provider value={display}><PetMessageContext.Provider value={reaction?.phrase || "Поиграем?"}>{children}</PetMessageContext.Provider></PetDisplayContext.Provider></PetContext.Provider>;
 }
 
@@ -61,7 +61,8 @@ function PetCompanion({ reaction, motion, onTap, showBubble }: { showBubble: boo
     update(); visibility(); media.addEventListener("change", update); document.addEventListener("visibilitychange", visibility);
     return () => { media.removeEventListener("change", update); document.removeEventListener("visibilitychange", visibility); };
   }, []);
-  const still = systemReduced || motion === "off";
+  const still = motion === "off";
+  const reduced = systemReduced || motion === "reduced";
   useEffect(() => {
     let disposed = false;
     let observer: ResizeObserver | undefined;
@@ -96,12 +97,12 @@ function PetCompanion({ reaction, motion, onTap, showBubble }: { showBubble: boo
     const rive = runtime.current;
     if (!ready || !rive) return;
     const mood = rive.viewModelInstance?.number("mood");
-    if (mood) mood.value = still || motion === "reduced" ? 0 : reaction ? petReactions[reaction.event].mood : 0;
+    if (mood) mood.value = still || reduced ? 0 : reaction ? petReactions[reaction.event].mood : 0;
     if (still || !pageVisible) { rive.pause(); } else rive.play("Companion");
-  }, [ready, reaction, still, pageVisible, motion]);
+  }, [ready, reaction, still, pageVisible, reduced]);
   // The exported rest frame also works when WebGL is unavailable or motion is disabled.
   const showStill = still || failed || !ready;
-  return <div ref={dragRef} className="exercise-pet" data-draggable={showBubble} data-dragging={dragging} style={showBubble ? {transform:`translate(${offset.x}px, ${offset.y}px)`,position:"relative",zIndex:offset.x || offset.y || dragging ? 20 : undefined} : undefined} data-pet-renderer={showStill ? "static" : "rive"} data-pet-state={reaction?.event || "idle"} data-pet-motion={still ? "off" : motion} data-pet-ready={ready} data-rive-state={riveState}>
+  return <div ref={dragRef} className="exercise-pet" data-draggable={showBubble} data-dragging={dragging} style={showBubble ? {transform:`translate(${offset.x}px, ${offset.y}px)`,position:"relative",zIndex:offset.x || offset.y || dragging ? 20 : undefined} : undefined} data-pet-renderer={showStill ? "static" : "rive"} data-pet-state={reaction?.event || "idle"} data-pet-motion={still ? "off" : reduced ? "reduced" : "full"} data-pet-ready={ready} data-rive-state={riveState}>
     {showBubble && <div key={reaction?.id || "idle"} style={reaction ? { animationDelay: `${petReactions[reaction.event].duration - 250}ms` } : undefined} className={`pet-bubble ${reaction ? "visible" : ""}`} role="status" aria-live="polite" aria-atomic="true">{reaction?.phrase}</div>}
     <button type="button" className="pet-button" {...handlers} title={showBubble ? "Перетащи пингвина. Стрелки — двигать, Home — вернуть на место." : undefined} aria-label="Поздороваться с пингвином" ><canvas ref={canvas} aria-hidden="true" style={{visibility:showStill ? "hidden" : "visible"}}/>{showStill && <Image className="pet-still" src="/mascot/soyle-mascot-still.png" width={561} height={630} unoptimized alt="" aria-hidden="true"/>}</button>
   </div>;

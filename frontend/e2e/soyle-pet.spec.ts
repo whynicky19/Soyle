@@ -83,7 +83,7 @@ test('existing penguin: live states, layout, reduced motion and child settings',
   await expect(pet).toHaveAttribute('data-pet-state', 'idle', { timeout: 6000 });
   await expect(pet.locator('.pet-bubble')).toBeEmpty();
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await expect(pet).toHaveAttribute('data-pet-motion', 'off');
+  await expect(pet).toHaveAttribute('data-pet-motion', 'reduced');
   await page.screenshot({ path: info.outputPath('penguin-static.png') });
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await page.getByRole('button', { name: 'Послушать и начать', exact: true }).click();

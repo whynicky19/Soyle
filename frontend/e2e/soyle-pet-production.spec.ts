@@ -15,16 +15,20 @@ for(const mode of ['animated','reduced','load-error'] as const){
   const pet=page.locator('.exercise-pet');
   if(mode==='load-error')await expect.poll(()=>failedAsset).toBe(true);
   else await expect(pet).toHaveAttribute('data-pet-ready','true',{timeout:25000});
-  await expect(pet).toHaveAttribute('data-pet-renderer',mode==='animated'?'rive':'static');
-  const visual=pet.locator(mode==='animated'?'canvas':'.pet-still');
+  await expect(pet).toHaveAttribute('data-pet-renderer',mode==='load-error'?'static':'rive');
+  const visual=pet.locator(mode==='load-error'?'.pet-still':'canvas');
   await expect(visual).toBeVisible();
-  if(mode!=='animated')await expect.poll(()=>visual.evaluate(el=>(el as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
+  if(mode==='load-error')await expect.poll(()=>visual.evaluate(el=>(el as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
   // Check actual character pixels, not merely a loaded runtime or an empty canvas.
   const capture=()=>visual.screenshot({omitBackground:true,style:'html,body {background:transparent!important} body * {visibility:hidden!important} .pet-button canvas,.pet-button .pet-still {visibility:visible!important}'});
   await expect.poll(async()=>(await capture()).length,{timeout:15000}).toBeGreaterThan(4000);
+  if(mode!=='load-error'){
+   const first=await capture();
+   await expect.poll(async()=>!(await capture()).equals(first),{timeout:6000}).toBe(true);
+  }
   await page.screenshot({path:info.outputPath(`penguin-${mode}.png`)});
   if(mode==='animated'){
-   await page.emulateMedia({reducedMotion:'reduce'});await expect(pet).toHaveAttribute('data-pet-renderer','static');
+   await page.emulateMedia({reducedMotion:'reduce'});await expect(pet).toHaveAttribute('data-pet-motion','reduced');
    await page.emulateMedia({reducedMotion:'no-preference'});await expect(pet).toHaveAttribute('data-pet-renderer','rive');
   }
   expect(errors).toEqual([]);
