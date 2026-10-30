@@ -1,0 +1,9 @@
+name: soyle-mascot-rive
+exclude:
+  - tools
+  - design
+  - README.md
+  - Preview.command
+logs:
+  file: build/rive.log
+  problems: build/problems.log

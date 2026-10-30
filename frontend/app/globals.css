@@ -1320,3 +1320,42 @@ button,input,select,textarea,a,summary{scroll-margin-block:110px}
 .observation-intro {max-width:780px;margin-inline:auto;}
 .observation-intro>p {font-size:19px;line-height:1.6;}
 @media(max-width:760px) {.observation-exercise{padding:12px;}.observation-workspace{grid-template-columns:minmax(0,1fr);gap:16px;}.observation-heading{align-items:stretch;flex-direction:column;}.observation-heading .small-button{align-self:flex-start;max-width:100%;}.observation-scene{border-radius:16px;}.description-options{grid-template-columns:1fr;}.description-word{font-size:21px;min-height:60px;}.description-slots li{font-size:18px;padding:10px;}}
+
+/* The companion shares the instruction row; bubbles occupy their own flow space. */
+.exercise-companion-instruction { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px; }
+.exercise-companion-instruction > p { margin:0; flex:1; min-width:0; font-size:18px; line-height:1.45; font-weight:650; }
+.exercise-companion-instruction:empty { display:none; }
+.exercise-pet { flex:none; display:flex; align-items:center; justify-content:flex-end; gap:8px; max-width:240px; }
+.pet-button { display:block; padding:0; width:96px; height:100px; flex:none; border:0; background:transparent; cursor:pointer; border-radius:22px; touch-action:manipulation; }
+.pet-button canvas { display:block; width:100%; height:100%; pointer-events:none; }
+.pet-button:focus-visible { outline:3px solid var(--primary, #1668c7); outline-offset:3px; }
+.pet-bubble { max-width:130px; padding:8px 10px; border:1px solid #bee5e9; border-radius:14px 14px 4px 14px; background:#f3fcfc; color:#234954; font-size:15px; line-height:1.3; font-weight:700; opacity:0; transition:opacity .2s ease; overflow-wrap:break-word; }
+.pet-bubble:not(.visible) { padding:0; border:0; width:0; }
+.pet-bubble.visible { opacity:1; animation:pet-bubble-out .25s ease forwards; }
+@keyframes pet-bubble-out { to { opacity:0; } }
+.pet-completion { display:flex; justify-content:center; }
+.pet-completion:empty { display:none; }
+.pet-motion-setting { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:16px 0; }
+.pet-motion-setting select { max-width:60%; min-height:44px; border:1px solid var(--line); border-radius:12px; padding:8px; background:var(--surface,#fff); color:inherit; }
+.pet-settings .setting-row > div { flex:1; }
+.pet-settings-note { font-size:14px; color:var(--muted); line-height:1.5; }
+@media(max-width:600px) {
+  .exercise-companion-instruction { gap:8px; align-items:flex-start; }
+  .exercise-companion-instruction > p { font-size:16px; }
+  .pet-button { width:68px; height:74px; border-radius:16px; }
+  .exercise-pet { max-width:166px; gap:4px; }
+  .pet-bubble { max-width:94px; padding:7px; font-size:13px; }
+}
+@media(max-width:380px) {
+  .exercise-pet { flex-direction:column-reverse; max-width:94px; gap:0; }
+}
+@media(prefers-reduced-motion:reduce) { .pet-bubble { transition:none; animation:none; } }
+.pet-settings .setting-row { grid-template-columns:minmax(0,1fr) auto; }
+
+/* Larger exercise companion; only its own surface captures touch drags. */
+.exercise-focus-shell .pet-button{width:144px;height:158px;}
+.exercise-focus-shell .exercise-pet{max-width:286px;}
+.exercise-pet[data-draggable=true] .pet-button{touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none;}
+.exercise-pet[data-dragging=true] .pet-button{cursor:grabbing;}
+@media(max-width:600px){.exercise-focus-shell .pet-button{width:104px;height:116px;}.exercise-focus-shell .exercise-pet{max-width:210px;}}
+@media(max-width:380px){.exercise-focus-shell .exercise-pet{max-width:104px;}}

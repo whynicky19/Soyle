@@ -1,6 +1,10 @@
 "use client";
 
+import { ExercisePetProvider, ExercisePet, useExercisePet } from "./pet/ExercisePet";
+import { usePetPreferences } from "./pet/usePetPreferences";
+import { PetSettings } from "./pet/PetSettings";
 import { useRefreshOnReturn } from "@/lib/hooks/useRefreshOnReturn";
+import { ChildSettingToggle } from "./ChildSettingToggle";
 import { ChildRoomHome } from "./ChildRoomHome";
 import { StarReward, StarVault } from "./StarReward";
 import { savedReward } from "@/lib/rewards";
@@ -159,7 +163,7 @@ import {
   SkillsExperience,
 } from "@/components/ProductExperience";
 
-type Screen = "comic-preview" | "story-preview" | "home" | "stories" | "world" | "skills" | "achievements" | "guides" | "games" | "session" | "exercise-complete" | "motor" | "sensory" | "mixed" | "aac" | "ai" | "progress" | "goals" | "parent" | "profile" | "settings" | "more" | "admin";
+type Screen = "learn" | "my-world" | "success" | "comic-preview" | "story-preview" | "home" | "stories" | "world" | "skills" | "achievements" | "guides" | "games" | "session" | "exercise-complete" | "motor" | "sensory" | "mixed" | "aac" | "ai" | "progress" | "goals" | "parent" | "profile" | "settings" | "more" | "admin";
 type ModuleName = "motor" | "sensory" | "mixed";
 type GameMeasurement = { attempts_count?: number; correct_answers?: number; prompts_used?: number; gameplay_choices?: number; independent_completions?: number; prompted_completions?: number; attempt_status?: "completed" | "participated" | "refused" | "break" | "technical_error"; independence?: number; prompt_level?: "independent" | "minimal" | "full"; response_ms?: number; communication_initiatives?: number };
 type ExerciseCompletion = { refused?: boolean; title: string; message: string; nextExercise: Exercise | null; sessionMode: boolean; sessionFinished: boolean };
@@ -432,6 +436,7 @@ function AuthenticatedApp({ user, onLogout, externalError, onDismissExternalErro
         ];
 
   const child = children.find((item) => item.id === selectedChildId) || children[0];
+  const petPreferences = usePetPreferences(["student", "parent"].includes(user.role) ? child?.id : undefined);
 
   useEffect(() => {
     const path = ["parent", "student"].includes(user.role) && selectedChildId
@@ -847,7 +852,8 @@ function AuthenticatedApp({ user, onLogout, externalError, onDismissExternalErro
     const progress = sessionExerciseActive && activeSession
       ? `Шаг ${Math.min(activeSession.current_index + 1, activeSession.exercises.length)} из ${activeSession.exercises.length}`
       : "Одно задание";
-    return <ExerciseFocusShell
+    return <ExercisePetProvider key={`${child?.id}:${focusExercise?.id}`} preferences={{ ...petPreferences.value, visible: petPreferences.ready && petPreferences.value.visible }} soundEnabled={settings.sound_enabled} calmMode={settings.calm_mode}><ExerciseFocusShell
+      instruction={focusExercise?.engine?.content.presentation === "picture_description" ? "Рассмотри картинку. Собери фразу." : focusExercise?.instruction?.split(/(?<=[.!?])\s+/)[0]}
       title={focusExercise?.title || "Спокойная практика"}
       progress={progress}
       soundEnabled={settings.sound_enabled}
@@ -862,7 +868,7 @@ function AuthenticatedApp({ user, onLogout, externalError, onDismissExternalErro
       {requestError && <div className="game-error global-request-error" role="alert"><ShieldAlert size={18}/><span>{requestError}</span><button type="button" className="small-button" onClick={() => setRequestError("")}>Закрыть</button></div>}
       {sessionError && <div className="game-error" role="alert"><ShieldAlert size={18}/><span>{sessionError}</span></div>}
       {activeExerciseContent}
-    </ExerciseFocusShell>;
+    </ExerciseFocusShell></ExercisePetProvider>;
   }
 
   const AppRoleShell = user.role === "student" ? ChildShell : user.role === "admin" ? AdminShell : ParentShell;
@@ -882,7 +888,7 @@ function AuthenticatedApp({ user, onLogout, externalError, onDismissExternalErro
             const active = screen === item.id || (item.id === "games" && ["session", "exercise-complete", "motor", "sensory", "mixed"].includes(screen));
             const Icon = item.icon;
             return (
-              <button key={item.id} className={`${active ? "active " : ""}${item.id === "more" ? "mobile-more-link" : ""}`} onClick={() => openScreen(item.id)}>
+              <button key={item.id} aria-current={active ? "page" : undefined} className={`${active ? "active " : ""}${item.id === "more" ? "mobile-more-link" : ""}`} onClick={() => openScreen(item.id)}>
                 <Icon size={20} strokeWidth={2} /><span>{item.label}</span>
               </button>
             );
@@ -925,22 +931,24 @@ function AuthenticatedApp({ user, onLogout, externalError, onDismissExternalErro
         {requestError && <div className="game-error global-request-error" role="alert"><ShieldAlert size={18}/><span>{requestError}</span><button type="button" className="small-button" onClick={() => setRequestError("")}>Закрыть</button></div>}
 
         <div className="page">
-          {screen === "home" && <HomeScreen onStartPlan={startPreparedPlan} onOpenSpecialist={() => openScreen("parent", "specialist")} onOpen={openScreen} onExercise={exercise => { if (user.role === "parent") setParentPracticeMode("adult_preview"); openExercise(exercise); }} onStartSession={startDailySession} onResume={resumeSession} onPauseSession={pauseSession} soundEnabled={settings.sound_enabled} activeSession={activeSession} activeSessionLoading={activeSessionLoading} dailyMinutes={dailyMinutes} onMinutesChange={setDailyMinutes} sessionLoading={sessionLoading} sessionError={sessionError} child={child} dashboard={dashboard} consent={consent} userRole={user.role} exercises={exercises} />}
+
+          {screen === "home" && <ExercisePetProvider presentation="home" key={`home-${child?.id}`} preferences={{ ...petPreferences.value, visible: user.role === "student" && petPreferences.ready && petPreferences.value.visible }} soundEnabled={settings.sound_enabled} calmMode={settings.calm_mode}><HomeScreen onStartPlan={startPreparedPlan} onOpenSpecialist={() => openScreen("parent", "specialist")} onOpen={openScreen} onExercise={exercise => { if (user.role === "parent") setParentPracticeMode("adult_preview"); openExercise(exercise); }} onStartSession={startDailySession} onResume={resumeSession} onPauseSession={pauseSession} soundEnabled={settings.sound_enabled} activeSession={activeSession} activeSessionLoading={activeSessionLoading} dailyMinutes={dailyMinutes} onMinutesChange={setDailyMinutes} sessionLoading={sessionLoading} sessionError={sessionError} child={child} dashboard={dashboard} consent={consent} userRole={user.role} exercises={exercises} /></ExercisePetProvider>}
           {screen === "stories" && user.role === "student" && <StoryExperience childId={child?.id} calmMode={settings.calm_mode}/>}
-          {screen === "world" && ["student", "parent"].includes(user.role) && <WorldExperience key={child?.id} childId={child?.id} canManage={user.role === "parent"} onWords={() => openScreen("aac")} onSpeak={(text) => speak(text, .82, true)}/>}
+          {(screen === "world" || screen === "my-world") && ["student", "parent"].includes(user.role) && <WorldExperience key={child?.id} childId={child?.id} canManage={user.role === "parent"} onWords={() => openScreen("aac")} onSpeak={(text) => speak(text, .82, true)}/>}
+
           {screen === "skills" && user.role === "student" && <SkillsExperience child={child} dashboard={dashboard} exercises={exercises} onNavigate={openScreen} onExercise={openExercise}/>}
-          {screen === "achievements" && user.role === "student" && <AchievementsExperience childId={child?.id} dashboard={dashboard} onStories={() => openScreen("stories")} onGames={() => openScreen("games")}/>}
+          {["success", "achievements", "progress"].includes(screen) && user.role === "student" && <AchievementsExperience childId={child?.id} dashboard={dashboard} onStories={() => openScreen("stories")} onGames={() => openScreen("games")}/>}
           {screen === "guides" && user.role === "parent" && <GuidesExperience child={child} dashboard={dashboard} exercises={exercises} onNavigate={openScreen} onExercise={openExercise}/>}
-          {screen === "games" && <GamesScreen onOpen={openScreen} onExercise={openExercise} dashboard={dashboard} exercises={exercises} childMode={user.role === "student"} parentPracticeMode={user.role === "parent" ? parentPracticeMode : undefined} onParentPracticeModeChange={setParentPracticeMode} />}
+          {(screen === "games" || screen === "learn") && <GamesScreen onOpen={openScreen} onExercise={openExercise} dashboard={dashboard} exercises={exercises} childMode={user.role === "student"} parentPracticeMode={user.role === "parent" ? parentPracticeMode : undefined} onParentPracticeModeChange={setParentPracticeMode} />}
           {screen === "session" && sessionError && <div className="v2-inline-alert" role="alert">{sessionError}</div>}
           {screen === "session" && activeSession && <SessionScreen session={activeSession} busy={sessionLoading} onContinue={continueSession} onPause={pauseSession} onFinish={() => { setActiveSession(null); refreshDashboard(); setScreen("home"); }} />}
-          {screen === "exercise-complete" && exerciseCompletion && <ExerciseCompletionScreen completion={exerciseCompletion} onContinue={continueAfterExercise} onFinish={() => { if (exerciseCompletion.refused) { if (exerciseCompletion.sessionMode) void pauseSession(); else openScreen("home"); } else openScreen(exerciseCompletion.sessionMode ? "session" : "games"); }} />}
+          {screen === "exercise-complete" && exerciseCompletion && <ExercisePetProvider key={`complete-${child?.id}-${selectedExercise?.id}`} preferences={{ ...petPreferences.value, visible: petPreferences.ready && petPreferences.value.visible && !exerciseCompletion.refused && (user.role === "student" || parentPracticeMode === "child_practice") }} soundEnabled={settings.sound_enabled} calmMode={settings.calm_mode} initialEvent="complete"><div className="pet-completion"><ExercisePet/></div><ExerciseCompletionScreen completion={exerciseCompletion} onContinue={continueAfterExercise} onFinish={() => { if (exerciseCompletion.refused) { if (exerciseCompletion.sessionMode) void pauseSession(); else openScreen("home"); } else openScreen(exerciseCompletion.sessionMode ? "session" : "games"); }} /></ExercisePetProvider>}
           {user.role === "parent" && parentPracticeMode === "adult_preview" && ["motor", "sensory", "mixed"].includes(screen) && <div className="adult-preview-banner" role="status"><Eye size={19}/><div><strong>Предпросмотр взрослого</strong><span>Ответы не сохраняются в профиль ребёнка.</span></div><button type="button" onClick={() => setParentPracticeMode("child_practice")}>Перейти к практике ребёнка</button></div>}
           {sessionError && ["motor", "sensory", "mixed"].includes(screen) && <div className="game-error" role="alert"><ShieldAlert size={18}/><span>{sessionError}</span></div>}
           {activeExerciseContent}
           {screen === "aac" && <PhraseGame key="free-aac" childId={child?.id} canManage={user.role === "parent"} freeMode soundEnabled={settings.sound_enabled} onBack={() => openScreen("home")} />}
           {screen === "ai" && user.role === "parent" && <AIParentScreen child={child} />}
-          {screen === "progress" && <ProgressScreen childId={child?.id} dashboard={dashboard} onStartPractice={() => openScreen("games")} />}
+          {screen === "progress" && user.role !== "student" && <ProgressScreen childId={child?.id} dashboard={dashboard} onStartPractice={() => openScreen("games")} />}
           {screen === "goals" && user.role === "parent" && <GoalsAndPractice key={child?.id} child={child} targetMinutes={dailyMinutes} onStartPlan={startPreparedPlan} onPracticeChanged={() => { setExercises([]); setCatalogRevision(value => value + 1); refreshDashboard(); }}/>}
           {screen === "parent" && <ParentScreen key={child?.id} child={child} childProfiles={children} onSelectChild={setSelectedChildId} onDeleted={(id) => { const remaining = children.filter((item) => item.id !== id); setChildren(remaining); setSelectedChildId(remaining[0]?.id || null); setScreen("home"); }} dashboard={dashboard} onConsentChange={setConsent} onNavigate={openScreen} onStartPlan={startPreparedPlan} />}
           {screen === "more" && user.role === "student" && <ChildMoreScreen onOpen={openScreen}/>}
@@ -948,7 +956,7 @@ function AuthenticatedApp({ user, onLogout, externalError, onDismissExternalErro
           {screen === "profile" && user.role === "parent" && <ParentAccountDeletion onDeleted={onLogout}/>}
           {screen === "profile" && <ProfileScreen user={user} child={child} dashboard={dashboard} settings={settings} onOpen={openScreen} onLogout={onLogout}/>}
           {screen === "admin" && <AdminScreen />}
-          {screen === "settings" && <SettingsScreen role={user.role} settings={settings} saving={settingsSaving} onChange={changeSettings} onLogout={onLogout} onOpenParent={() => openScreen("parent")} />}
+          {screen === "settings" && <SettingsScreen petPreferences={petPreferences} role={user.role} settings={settings} saving={settingsSaving} onChange={changeSettings} onLogout={onLogout} onOpenParent={() => openScreen("parent")} />}
         </div>
       </main>
       {reward && reward.childId === child?.id && <StarReward key={reward.nonce} stars={reward.stars} total={Math.max(reward.total, dashboard?.stars || 0)} calmMode={settings.calm_mode} onDone={dismissReward}/>}
@@ -1080,11 +1088,11 @@ function GamesScreen({ onOpen, onExercise, dashboard, exercises, childMode, pare
   return (
     <div className={`page-enter stack-xl exercise-catalog-page ${childMode ? "child-games" : ""}`}>
       <section className="exercise-catalog-hero">
-        <div className="exercise-catalog-hero-copy"><span className="kicker">ЗАНЯТИЯ · {exercises.length}</span><h1>{childMode ? "Выбери игру" : "Все занятия"}</h1><p>Все доступные задания собраны здесь. Выбирай любое — проходить их по порядку не нужно.</p></div>
+        <div className="exercise-catalog-hero-copy"><span className="kicker">ЗАНЯТИЯ · {exercises.length}</span><h1>{childMode ? "Выбери игру" : "Все занятия"}</h1><p>{childMode ? "Выбери, во что поиграть." : "Все доступные задания собраны здесь. Выбирайте любое."}</p></div>
         <Image src="/app-illustrations/exercise-library-hero.webp" width={768} height={512} alt="Ребёнок выбирает карточку с водой вместе с мишкой" priority />
       </section>
-      {exercises.some((item) => item.engine?.review_gate.demo_only) && <div className="unreviewed-demo-banner" role="status"><ShieldAlert size={20}/><div><strong>{childMode ? "Знакомые игры" : "Практика из прежней библиотеки"}</strong><span>{childMode ? "Выбирай любую игру. Если понадобится помощь, позови взрослого." : "Эти задания доступны для свободной игры, но пока не прошли повторную независимую проверку. Это не утверждённая программа занятий."}</span></div></div>}
-      <button className="child-aac-entry" onClick={() => onOpen("aac")}><Image src="/app-illustrations/aac-help.webp" width={78} height={78} alt="Карточка помощи"/><div><strong>Сказать, что нужно</strong><small>Помощь, перерыв, отказ и другие важные сообщения</small></div><ChevronRight size={24}/></button>
+      {!childMode && exercises.some((item) => item.engine?.review_gate.demo_only) && <div className="unreviewed-demo-banner" role="status"><ShieldAlert size={20}/><div><strong>{childMode ? "Знакомые игры" : "Практика из прежней библиотеки"}</strong><span>{childMode ? "Выбирай любую игру. Если понадобится помощь, позови взрослого." : "Эти задания доступны для свободной игры, но пока не прошли повторную независимую проверку. Это не утверждённая программа занятий."}</span></div></div>}
+      <button className="child-aac-entry" onClick={() => onOpen("aac")}><Image src="/app-illustrations/aac-help.webp" width={78} height={78} alt="Карточка помощи"/><div><strong>Сказать, что нужно</strong><small>Попросить помощь или перерыв</small></div><ChevronRight size={24}/></button>
       {parentPracticeMode && <section className="practice-mode-card" aria-labelledby="practice-mode-title"><div><Eye size={22}/><span><strong id="practice-mode-title">Кто сейчас выполняет задание?</strong><small>Предпросмотр взрослого никогда не попадает в историю и адаптивный подбор.</small></span></div><div className="practice-mode-options"><button type="button" className={parentPracticeMode === "adult_preview" ? "active" : ""} aria-pressed={parentPracticeMode === "adult_preview"} onClick={() => onParentPracticeModeChange?.("adult_preview")}><Eye size={17}/> Предпросмотр взрослого</button><button type="button" className={parentPracticeMode === "child_practice" ? "active" : ""} aria-pressed={parentPracticeMode === "child_practice"} onClick={() => onParentPracticeModeChange?.("child_practice")}><Baby size={17}/> Практика ребёнка</button></div></section>}
       {exercises.some(e=>e.engine?.mechanic==='scene_search')&&<section aria-label="Исследуй мир"><div className="section-heading"><div><span className="kicker">СЛУШАЙ И НАХОДИ</span><h2>Исследуй мир</h2></div></div><div className="explore-location-grid">{exercises.filter(e=>e.engine?.mechanic==='scene_search').map(e=><button className="explore-location" key={e.id} onClick={()=>onExercise(e)}><Image src={e.engine!.content.exploration!.image.media_ref} alt="" width={640} height={360}/><span><strong>{e.engine!.content.exploration!.title}</strong><small>12 предметов · короткая серия или продолжение</small></span></button>)}</div></section>}
       {(!exercises.length||exercises.some(e=>e.engine?.mechanic!=='scene_search'))&&<ExerciseLibrary items={exercises.filter(e=>e.engine?.mechanic!=='scene_search')} completedIds={dashboard?.completed_exercise_ids || []} onExercise={onExercise} />}
@@ -1432,6 +1440,7 @@ function SensoryVisual({ item }: { item: SensoryItem }) {
 type SensoryRound = { target: number; options: number[] };
 
 function SensoryGame({ exercise, soundEnabled, onBack, onComplete }: { exercise?: Exercise; soundEnabled: boolean; onBack: () => void; onComplete: (score: number, exerciseId: number, measurement: GameMeasurement, details?: Record<string, unknown>) => Promise<unknown> | void }) {
+  const pet = useExercisePet();
   const sourceStimuli = exercise?.engine?.content.stimuli || [];
   const mixesVisualSystems = sourceStimuli.some((item) => Boolean(item.media_ref)) && sourceStimuli.some((item) => Boolean(item.visual_token));
   const consistentStimuli = mixesVisualSystems ? sourceStimuli.filter((item) => Boolean(item.media_ref)) : sourceStimuli;
@@ -1541,6 +1550,7 @@ function SensoryGame({ exercise, soundEnabled, onBack, onComplete }: { exercise?
     promptsUsedRef.current += 1;
     promptTypesRef.current.push("visual_hint");
     promptLevelRef.current = Math.max(1, promptLevelRef.current) as 1 | 2;
+    pet("hint");
     const hint = items[roundData.target].hint;
     setFeedback(hint);
     audioLockRef.current = true;
@@ -1557,6 +1567,7 @@ function SensoryGame({ exercise, soundEnabled, onBack, onComplete }: { exercise?
     gameplayChoicesRef.current += 1;
     setAttemptsThisRound(attempt);
     if (index === roundData.target) {
+      pet("correct");
       correctAnswersRef.current += 1;
       answerLockRef.current = true;
       const independent = responseOutcome(evidenceRef.current) === "independent";
@@ -1586,6 +1597,7 @@ function SensoryGame({ exercise, soundEnabled, onBack, onComplete }: { exercise?
       promptLevelRef.current = Math.max(promptLevelRef.current, 1) as 0 | 1 | 2;
       promptTypesRef.current.push("repeat_audio");
       evidenceRef.current = withSupport(evidenceRef.current, "repeat_audio");
+      pet("incorrect");
       setFeedback("Попробуй ещё. Послушай слово ещё раз.");
       void playWord(roundData.target, false);
     } else if (attempt === 2) {
@@ -1777,6 +1789,7 @@ function AACVisual({ card, compact = false }: { card: AACCard; compact?: boolean
 }
 
 function PhraseGame({ childId, canManage, exercise, freeMode = false, soundEnabled, onBack, onComplete }: { childId?: number; canManage: boolean; exercise?: Exercise; freeMode?: boolean; soundEnabled: boolean; onBack: () => void; onComplete?: (score: number, phrase: string, exerciseId: number, measurement: GameMeasurement) => Promise<unknown> | void }) {
+  const pet = useExercisePet();
   const [cards, setCards] = useState<AACCard[]>([]);
   const [selected, setSelected] = useState<AACCard[]>([]);
   const [category, setCategory] = useState<string>(() => ({
@@ -1851,6 +1864,7 @@ function PhraseGame({ childId, canManage, exercise, freeMode = false, soundEnabl
   const sayPhrase = async () => {
     if (!selected.length || !childId || speechPending) return;
     if (!freeMode && !scenarioEvaluation.complete) {
+      pet("hint");
       setAacNotice(scenarioEvaluation.hint);
       return;
     }
@@ -1859,11 +1873,12 @@ function PhraseGame({ childId, canManage, exercise, freeMode = false, soundEnabl
     try {
       const composed = await api<{ valid: boolean; phrase: string; reason: string }>("/api/aac/compose", { method: "POST", body: JSON.stringify({ child_id: childId, card_ids: selected.map((item) => item.id), language: selected[0].language || "ru", mode: freeMode ? "free" : "guided" }) });
       if (lifetime !== speechLifetime.current) return;
-      if (!composed.valid) { setAacNotice(composed.reason || "Эту комбинацию пока нельзя озвучить как готовую фразу."); return; }
+      if (!composed.valid) { pet("incorrect"); setAacNotice(composed.reason || "Эту комбинацию пока нельзя озвучить как готовую фразу."); return; }
       setAacNotice("");
       const played = await speak(composed.phrase, 0.72, freeMode || soundEnabled, selected[0]?.language || "ru");
       if (lifetime !== speechLifetime.current) return;
       if (!played) { setAacNotice("Не удалось озвучить сообщение. Попробуйте ещё раз. Результат не сохранён."); return; }
+      pet("correct");
       try {
         const saved = await api<{ id: number; phrase: string }>("/api/aac/history", { method: "POST", body: JSON.stringify({ child_id: childId, card_ids: selected.map((item) => item.id), mode: freeMode ? "free" : "guided" }) });
         setHistory((items) => [saved, ...items.filter((item) => item.phrase !== saved.phrase)].slice(0, 12));
@@ -1876,6 +1891,7 @@ function PhraseGame({ childId, canManage, exercise, freeMode = false, soundEnabl
         const refused = (labels.includes("Не хочу") || labels.includes("Стоп") || (exercise.target === "answer" && labels.includes("Нет"))) && exercise.target !== "refusal";
         const paused = selected.some((card) => card.label === "Перерыв");
         if (!scenarioEvaluation.complete && !refused && !paused) {
+          pet("hint");
           setAacNotice(scenarioEvaluation.hint);
           return;
         }
@@ -2441,7 +2457,7 @@ function ProfileScreen({ user, child, dashboard, settings, onOpen, onLogout }: {
   </div>;
 }
 
-function SettingsScreen({ role, settings, saving, onChange, onLogout, onOpenParent }: { role: Role; settings: AppSettings; saving: boolean; onChange: (settings: AppSettings) => void; onLogout: () => void; onOpenParent: () => void }) {
+function SettingsScreen({ petPreferences, role, settings, saving, onChange, onLogout, onOpenParent }: { petPreferences: ReturnType<typeof usePetPreferences>; role: Role; settings: AppSettings; saving: boolean; onChange: (settings: AppSettings) => void; onLogout: () => void; onOpenParent: () => void }) {
   const themes = [
     { id: "peach", name: "Спокойная", description: "Нейтральный фон и синий акцент", colors: ["#1668c7", "#eaf3ff", "#ffffff"] },
     { id: "ocean", name: "Океан", description: "Приглушённый бирюзовый акцент", colors: ["#2d7180", "#e5f2f4", "#ffffff"] },
@@ -2452,10 +2468,10 @@ function SettingsScreen({ role, settings, saving, onChange, onLogout, onOpenPare
   const update = <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => onChange({ ...settings, [key]: value });
   const activeTheme = themes.find((item) => item.id === settings.theme) || themes[0];
   if (role === "student") return <div className="page-enter child-settings-page">
-    <PageTitle eyebrow="МОИ НАСТРОЙКИ" title="Как тебе удобнее?" subtitle="Выбери звук, спокойный режим и оформление."/>
+    <PageTitle eyebrow="МОИ НАСТРОЙКИ" title="Как тебе удобнее?" subtitle="Выбери звук, спокойный режим и поведение питомца."/>
     <div className="child-settings-grid">
-      <section className="child-settings-section"><div className="settings-section-heading"><span className="kicker">ВО ВРЕМЯ ЗАНЯТИЯ</span><h2>Звук и движение</h2></div><SettingRow icon={<Volume2/>} title="Звуковые подсказки" text="Слушать слова и сообщения" value={settings.sound_enabled} onChange={(value) => update("sound_enabled", value)}/><SettingRow icon={<Pause/>} title="Спокойный режим" text="Без звёзд и лишней анимации" value={settings.calm_mode} onChange={(value) => update("calm_mode", value)}/></section>
-      <section className="child-settings-section"><div className="settings-section-heading"><span className="kicker">ОФОРМЛЕНИЕ</span><h2>Цвета и контраст</h2></div><div className="child-theme-options" role="group" aria-label="Оформление экрана">{themes.map((item) => <button type="button" key={item.id} className={settings.theme === item.id ? "active" : ""} aria-pressed={settings.theme === item.id} onClick={() => update("theme", item.id as AppSettings["theme"])}><span className="theme-swatch">{item.colors.map((color) => <i key={color} style={{background:color}}/>)}</span><span><strong>{item.name}</strong><small>{item.id === "contrast" ? "Самые чёткие границы" : item.description}</small></span>{settings.theme === item.id && <Check size={20}/>}</button>)}</div></section>
+      <section className="child-settings-section"><div className="settings-section-heading"><span className="kicker">ВО ВРЕМЯ ЗАНЯТИЯ</span><h2>Звук и движение</h2></div><ChildSettingToggle title="Звуковые подсказки" description="Слушать слова и сообщения" value={settings.sound_enabled} onChange={(value) => update("sound_enabled", value)}/><ChildSettingToggle title="Спокойный режим" description="Без звёзд и лишней анимации" value={settings.calm_mode} onChange={(value) => update("calm_mode", value)}/></section>
+      <PetSettings preferences={petPreferences}/>
     </div>
     <div className="child-settings-footer"><span aria-live="polite">{saving ? "Сохраняем…" : "Настройки сохранены"}</span><button type="button" className="profile-logout" onClick={onLogout}><LogOut size={18}/> Выйти</button></div>
   </div>;

@@ -177,3 +177,36 @@
  .room-today{padding:12px 16px;width:62%;}.room-today h2{font-size:18px;margin-bottom:8px;}.room-today button{padding:6px 10px;}.room-today button img{width:44px;height:44px;}.room-today strong{font-size:15px;}.room-today small{font-size:12px;}
  .room-start{width:42%;bottom:calc(4% + var(--room-today-height,130px) + 16px);}.room-start-button{min-height:58px;font-size:22px;padding:12px 16px;}.room-start p{font-size:12px;margin-top:4px;padding:3px 12px;}
 }
+
+/* The same child companion greets the child in their room. */
+.room-welcome:has(.exercise-pet){display:flex;align-items:center;gap:8px;text-align:left;}
+.room-welcome-copy{min-width:0;flex:1;}
+.room-home-pet:empty{display:none;}
+.room-home-pet .exercise-pet{flex-direction:column-reverse;gap:3px;max-width:100px;}
+.room-home-pet .pet-bubble{max-width:100px;font-size:13px;padding:6px 8px;}
+.room-home-pet .pet-bubble:not(.visible){padding:0;}
+@media(max-width:760px){
+ .room-welcome:has(.exercise-pet){padding:18px 36px 18px 16px;}
+ .room-home-pet .pet-button{width:72px;height:78px;}
+ .room-home-pet .exercise-pet{max-width:88px;}
+ .room-home-pet .pet-bubble{max-width:88px;}
+}
+/* The home greeting gives the pet more presence than the compact exercise companion. */
+.room-home-pet .pet-button{width:144px;height:158px;}
+.room-home-pet .exercise-pet{max-width:144px;}
+.room-home-pet .pet-bubble{max-width:130px;}
+@media(min-width:761px){.room-welcome:has(.exercise-pet){width:40%;max-width:600px;}}
+@media(max-width:760px){
+ .room-home-pet .pet-button{width:120px;height:132px;}
+ .room-home-pet .exercise-pet{max-width:120px;}
+ .room-home-pet .pet-bubble{max-width:120px;}
+}
+/* A scalloped cloud silhouette behind the greeting, independent of its content. */
+.room-welcome{isolation:isolate;background:none;border:0;border-radius:0;box-shadow:none;padding:28px 26px;}
+.room-welcome::before{content:"";position:absolute;inset:-12px -16px;z-index:-1;background:url('/child-room/greeting-cloud.svg?v=2') center/100% 100% no-repeat;filter:drop-shadow(0 5px 10px #60432a10);pointer-events:none;}
+.room-greeting-audio{right:8px;bottom:8px;}
+@media(min-width:761px){.room-door-stories{top:max(25%,calc(var(--room-welcome-bottom,180px) + 22px));}}
+@media(max-width:760px){
+ .room-welcome,.room-welcome:has(.exercise-pet){padding:28px 26px;}
+ .room-welcome::before{inset:0 -6px;}
+}

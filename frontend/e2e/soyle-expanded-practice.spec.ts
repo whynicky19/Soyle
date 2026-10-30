@@ -19,6 +19,7 @@ async function login(page: Page, admin = true) {
   await page.getByLabel(admin ? "Логин" : "Логин ребёнка", {exact:true}).fill(admin ? "admin" : "alikhan");
   await page.getByLabel(admin ? "Пароль" : "PIN-код", {exact:true}).fill(admin ? "Admin123!" : "1234");
   await page.getByRole("button", {name:admin ? "Войти" : "Начать заниматься", exact:true}).click();
+  if (!admin) await expect(page.locator(".child-room-home")).toBeVisible();
 }
 
 async function openDraft(page: Page, title: string) {
@@ -47,7 +48,7 @@ test("word series covers twelve concepts then continues and saves eighteen outco
   await page.evaluate(() => { Math.random = () => .999; });
   const menu = page.getByRole("button", {name:"Открыть меню"});
   if (await menu.isVisible()) await menu.click();
-  await page.getByRole("button", {name:"Занятия", exact:true}).click();
+  await page.getByRole("navigation", {name:"Основное меню"}).getByRole("button", {name:"Занятия", exact:true}).click();
   const exercise = page.getByRole("button", {name:/Игрушки/}).first();
   if (!await exercise.isVisible()) await page.locator(".child-more-games summary").click();
   await exercise.click();

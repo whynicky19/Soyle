@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="420" viewBox="0 0 800 420" preserveAspectRatio="none">
+ <defs>
+  <radialGradient id="cream" cx="42%" cy="35%" r="80%"><stop stop-color="#fffdf9"/><stop offset=".7" stop-color="#fff8e9"/><stop offset="1" stop-color="#faebcd"/></radialGradient>
+  <linearGradient id="rim" x2="0" y2="1"><stop stop-color="#fff"/><stop offset="1" stop-color="#fff6df"/></linearGradient>
+ </defs>
+ <path d="M43 210C-17 126 46 53 137 79C157 13 249 3 298 58C330 11 395 12 431 49C499-18 608 5 633 71C722 39 796 101 765 174C819 225 791 297 730 309C737 371 666 410 613 382C574 429 501 424 468 383C408 430 322 418 297 382C226 432 147 420 131 367C53 394-3 336 26 279C-5 256 5 223 43 210Z" fill="url(#cream)" stroke="url(#rim)" stroke-width="7" stroke-linejoin="round"/>
+</svg>

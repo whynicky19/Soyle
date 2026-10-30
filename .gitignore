@@ -43,3 +43,7 @@ backend/skills-lock.json
 
 # Isolated browser-test build cache
 frontend/.next-e2e/
+
+# Rive preview artifacts; retain the distributable character.
+/soyle-mascot-rive/build/*
+!/soyle-mascot-rive/build/soyle-mascot-rive.riv

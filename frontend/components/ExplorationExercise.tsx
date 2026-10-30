@@ -1,4 +1,5 @@
 "use client";
+import { useExercisePet } from "./pet/ExercisePet";
 import Image from 'next/image';
 import {useCallback,useEffect,useImperativeHandle,useLayoutEffect,useRef,useState,type Ref} from 'react';
 import {Volume2,Lightbulb,ZoomIn,ZoomOut,Scan,Pause,CircleX,ArrowLeft,Check} from 'lucide-react';
@@ -8,6 +9,7 @@ import {polygonPath,scenePoint,type ExplorationContent,type SearchSnapshot,type 
 
 type Props={content:ExplorationContent;childId?:number;exerciseId?:number;previewVersionId?:number;learningSessionId?:number;plannedLevel?:1|2|3;defaultRounds?:number;soundEnabled:boolean;showStopControls?:boolean;onSpeak:(text:string,rate?:number)=>Promise<boolean>;onBack:()=>void;onComplete:(measurement:SearchMeasurement,details:Record<string,unknown>)=>Promise<unknown>|void;stopRef?:Ref<(status:'break'|'refused')=>Promise<void>>};
 export function ExplorationExercise({content,childId,exerciseId,previewVersionId,learningSessionId,plannedLevel,defaultRounds,soundEnabled,showStopControls=true,onSpeak,onBack,onComplete,stopRef}:Props){
+  const pet = useExercisePet();
   const [saved,setSaved]=useState<SearchSnapshot|null>(null),[level,setLevel]=useState<1|2|3>(plannedLevel||1),[rounds,setRounds]=useState(defaultRounds||4);
   const [accessible,setAccessible]=useState(false),[busy,setBusy]=useState(false),[saving,setSaving]=useState(false),[started,setStarted]=useState(false),[loading,setLoading]=useState(!previewVersionId),[error,setError]=useState(''),[finished,setFinished]=useState(false),[hasPending,setHasPending]=useState(false);
   const [view,setView]=useState<{zoom:number;center:{x:number;y:number}|null}>({zoom:1,center:null}),[viewportWidth,setViewportWidth]=useState(960),[hintVisible,setHintVisible]=useState(false);
@@ -93,6 +95,7 @@ export function ExplorationExercise({content,childId,exerciseId,previewVersionId
     setView({zoom:Math.max(viewportWidth/Math.max(viewportWidth,960),Math.min(3,value)),center:anchor});
   }
   async function hint(){
+    pet("hint");
     const next=await operation({action:'hint'});if(!next)return;setHintVisible(true);
     const obj=next.scene.objects.find(o=>o.id===next.state.order[next.state.index]);if(!obj)return;
     const region=obj.hint_regions[next.state.round.hint_level-1],base=Math.max(viewportWidth,960);
@@ -132,6 +135,7 @@ export function ExplorationExercise({content,childId,exerciseId,previewVersionId
   async function choose(point?:[number,number],object_id?:string){
     if(busy||saving||pending.current||!started||!saved?.state.round.audio_ready||saved.state.round.resolved)return;
     const next=await operation({action:'select',...(point?{point}:{object_id,keyboard:true})});
+    if(next) pet(next.state.round.resolved ? 'correct' : 'incorrect');
     if(next&&!next.state.round.resolved&&(next.state.feedback==='Давай попробуем ещё раз.'||next.state.round.related_responses?.length)){
       setBusy(true);await callbacks.current.onSpeak(next.state.feedback,.8).catch(()=>false);if(mounted.current)setBusy(false);
     }

@@ -146,7 +146,7 @@ test("child-facing copy does not require a streak or fixed daily quota", async (
   assert.doesNotMatch(app, /Серия:/);
   assert.doesNotMatch(app, /ПЛАН НА СЕГОДНЯ/);
   assert.doesNotMatch(app, /дней подряд/);
-  assert.match(app, /Можно сделать паузу в любой момент/);
+  assert.match(app, /Сделать паузу/);
 });
 
 test("public child navigation does not expose motor prototypes", async () => {

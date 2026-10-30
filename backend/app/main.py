@@ -30,7 +30,7 @@ from .family_practice import descriptive_results, home_library, save_home_observ
 from .adaptive_planner import create_plan as create_adaptive_plan, get_plan as get_adaptive_plan, plan_history as adaptive_plan_history
 from .practice_goals import create_goal as create_practice_goal, get_preferences, list_goals as list_practice_goals, list_templates as list_practice_goal_templates, save_observation as save_practice_goal_observation, save_preferences, update_goal as update_practice_goal
 from .migrations import LATEST_SCHEMA_VERSION
-from .schemas import FamilyRecommendationDecision
+from .schemas import FamilyRecommendationDecision, ChildPetSettingsUpdate
 from .practice_goals import decode_goal, exercise_matches_goal
 from .recommendations import recommendations as recommendation_list, validate_recommendation
 from .stories import STORIES, public_story, story_available
@@ -578,6 +578,25 @@ def update_settings(payload: UserSettingsUpdate, user: dict = Depends(get_curren
         )
         row = db.execute("SELECT * FROM user_settings WHERE user_key=?", (settings_key(user),)).fetchone()
     return public_settings(row)
+
+
+@app.get("/api/children/{child_id}/pet-settings")
+def get_child_pet_settings(child_id: int, user: dict = Depends(require_roles("parent", "student"))) -> dict:
+    ensure_child_access(child_id, user)
+    with connect() as db:
+        row = db.execute("SELECT visible,voice,motion FROM child_pet_settings WHERE child_id=?", (child_id,)).fetchone()
+    return {"visible": bool(row["visible"]), "voice": bool(row["voice"]), "motion": row["motion"]} if row else ChildPetSettingsUpdate().model_dump()
+
+
+@app.put("/api/children/{child_id}/pet-settings")
+def update_child_pet_settings(child_id: int, payload: ChildPetSettingsUpdate, user: dict = Depends(require_roles("parent", "student"))) -> dict:
+    ensure_child_access(child_id, user)
+    with connect() as db:
+        db.execute("""INSERT INTO child_pet_settings(child_id,visible,voice,motion,updated_at) VALUES(?,?,?,?,?)
+            ON CONFLICT(child_id) DO UPDATE SET visible=excluded.visible,voice=excluded.voice,
+            motion=excluded.motion,updated_at=excluded.updated_at""",
+            (child_id, int(payload.visible), int(payload.voice), payload.motion, now_iso()))
+    return payload.model_dump()
 
 
 @app.post("/api/tts")

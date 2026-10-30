@@ -1,4 +1,5 @@
 "use client";
+import { useExercisePet } from "./pet/ExercisePet";
 
 import Image from "next/image";
 import { useId, useImperativeHandle, useMemo, useRef, useState, type Ref } from "react";
@@ -20,6 +21,7 @@ const instructions: Record<VariedMechanic, string> = {
 };
 
 export function VariedExerciseRunner({mechanic, content, soundEnabled, defaultRounds, onSpeak, onComplete, onBack, stopRef}: Props) {
+  const pet = useExercisePet();
   const id = useId();
   const rounds = useMemo(() => createVariedRounds(mechanic, content), [mechanic, content]);
   const [limit, setLimit] = useState(Math.min(defaultRounds || content.default_rounds || rounds.length, rounds.length));
@@ -51,7 +53,7 @@ export function VariedExerciseRunner({mechanic, content, soundEnabled, defaultRo
   async function play(text: string, repeat = false) {
     if (audioLock.current || saving) return;
     audioLock.current = true; setAudioPending(true);
-    if (repeat) { evidence.current.supports.push("repeat_audio"); prompts.current++; }
+    if (repeat) { pet("hint"); evidence.current.supports.push("repeat_audio"); prompts.current++; }
     try {
       if (!soundEnabled || !await onSpeak(text, .78)) { setErrorReason("Озвучка не сработала. Попробуйте позже."); setPhase("technical"); }
     } catch { setErrorReason("Озвучка не сработала. Попробуйте позже."); setPhase("technical"); }
@@ -59,6 +61,7 @@ export function VariedExerciseRunner({mechanic, content, soundEnabled, defaultRo
   }
   function finishRound(modelled = false) {
     if (resolved.current) return;
+    pet(modelled ? "hint" : "correct");
     resolved.current = true;
     const current = evidence.current;
     const outcome: Outcome = {round_key: round.key, outcome: modelled ? "modelled" : current.corrections || current.supports.length ? "prompted" : "independent",
@@ -75,6 +78,7 @@ export function VariedExerciseRunner({mechanic, content, soundEnabled, defaultRo
     finishRound(true);
   }
   function wrong() {
+    pet("incorrect");
     evidence.current.corrections++;
     if (evidence.current.corrections >= 3) showModel();
     else setFeedback(mechanic === "action_sequence" ? "Послушай ещё раз или измени порядок картинок." : "Эта связь не подходит к картинкам задания. Попробуй ещё раз.");

@@ -1,6 +1,7 @@
 "use client";
 
 import { ArrowLeft, CircleX, Pause, Volume2, VolumeX } from "lucide-react";
+import { ExercisePet } from "./pet/ExercisePet";
 import type { ReactNode } from "react";
 
 type ShellProps = { children: ReactNode; home?: boolean; navigationCollapsed?: boolean };
@@ -19,6 +20,7 @@ export function AdminShell({ children }: ShellProps) {
 
 export function ExerciseFocusShell({
   title,
+  instruction,
   progress,
   soundEnabled,
   stopping = false,
@@ -29,6 +31,7 @@ export function ExerciseFocusShell({
   children,
 }: {
   title: string;
+  instruction?: string;
   progress: string;
   soundEnabled: boolean;
   stopping?: boolean;
@@ -56,7 +59,7 @@ export function ExerciseFocusShell({
           <button type="button" disabled={stopping} onClick={onRefuse}><CircleX size={20}/><span>Не хочу</span></button>
         </div>
       </header>
-      <main className="exercise-focus-main" aria-busy={stopping}>{children}</main>
+      <main className="exercise-focus-main" aria-busy={stopping}><div className="exercise-companion-instruction">{instruction && <p>{instruction}</p>}<ExercisePet/></div>{children}</main>
     </div>
   );
 }

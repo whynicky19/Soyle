@@ -1088,6 +1088,16 @@ def _migration_35_scene_word_reinforcement(db) -> None:
     sync_concept_links(db)
 
 
+def _migration_36_child_pet_settings(db) -> None:
+    db.execute("""CREATE TABLE IF NOT EXISTS child_pet_settings (
+        child_id BIGINT PRIMARY KEY REFERENCES children(id) ON DELETE CASCADE,
+        visible INTEGER NOT NULL DEFAULT 1,
+        voice INTEGER NOT NULL DEFAULT 0,
+        motion TEXT NOT NULL DEFAULT 'full',
+        updated_at TEXT NOT NULL
+    )""")
+
+
 MIGRATIONS = (
     (9, _migration_9_exercise_engine),
     (10, _migration_10_content_contracts),
@@ -1116,6 +1126,7 @@ MIGRATIONS = (
     (33, _migration_33_complete_picture_phrases),
     (34, _migration_34_explore_world),
     (35, _migration_35_scene_word_reinforcement),
+    (36, _migration_36_child_pet_settings),
 )
 LATEST_SCHEMA_VERSION = MIGRATIONS[-1][0]
 

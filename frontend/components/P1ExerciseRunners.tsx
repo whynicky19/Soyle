@@ -1,4 +1,5 @@
 "use client";
+import { useExercisePet } from "./pet/ExercisePet";
 
 import { ObservationExercise } from "./ObservationExercise";
 import type { ObservationContent } from "@/lib/observationRuntime";
@@ -217,6 +218,7 @@ export function PublishedInstructionRunner({
   onComplete: (measurement: InstructionRunnerMeasurement, details: Record<string, unknown>) => Promise<unknown> | void;
   onBack: () => void;
 }) {
+  const pet = useExercisePet();
   const orderedScenarios = useMemo(() => scenarios.every(item => item.result) ? createInstructionSequence(scenarios) : scenarios, [scenarios]);
   const [roundLimit, setRoundLimit] = useState(Math.min(defaultRounds || scenarios.length, scenarios.length));
   const [index, setIndex] = useState(0);
@@ -245,6 +247,7 @@ export function PublishedInstructionRunner({
   const playInstruction = async (repeat = false) => {
     if (busyRef.current || stoppedRef.current) return false;
     if (repeat && phase === "playing") {
+      pet("hint");
       evidenceRef.current = withSupport(evidenceRef.current, "repeat_audio");
       promptsRef.current += 1;
       promptLevelRef.current = Math.max(1, promptLevelRef.current) as 1 | 2;
@@ -281,6 +284,7 @@ export function PublishedInstructionRunner({
     const nextAttempts = attempts + 1;
     setAttempts(nextAttempts);
     if (instructionMatches(scenario, selectedObject, key)) {
+      pet("correct");
       resolvedRef.current = true;
       completedRef.current += 1;
       const independent = responseOutcome(evidenceRef.current) === "independent";
@@ -290,6 +294,7 @@ export function PublishedInstructionRunner({
       setFeedback(independent ? "Инструкция выполнена самостоятельно." : "Инструкция выполнена с подсказкой.");
       return;
     }
+    pet("incorrect");
     evidenceRef.current = withSupport(evidenceRef.current, nextAttempts >= 3 ? "model_answer" : nextAttempts >= 2 && !scenario.result ? "visual_hint" : "repeat_audio");
     promptsRef.current += 1;
     promptLevelRef.current = nextAttempts === 1 ? Math.max(promptLevelRef.current, 1) as 0 | 1 | 2 : 2;
@@ -308,6 +313,7 @@ export function PublishedInstructionRunner({
   };
   const showModel = () => {
     if (phase !== "playing" || busyRef.current || resolvedRef.current || stoppedRef.current) return;
+    pet("hint");
     evidenceRef.current = withSupport(evidenceRef.current, "model_answer");
     promptsRef.current += 1;
     promptLevelRef.current = 2;

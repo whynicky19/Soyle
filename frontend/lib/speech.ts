@@ -2,6 +2,7 @@ import { API_URL, getCsrfToken } from "./api";
 
 let currentSpeechAudio: HTMLAudioElement | null = null;
 let currentSpeechUrl = "";
+let speechOwner: "exercise" | "pet" = "exercise";
 let speechController: AbortController | null = null;
 let currentSpeechCompletion: ((played: boolean) => void) | null = null;
 
@@ -65,11 +66,12 @@ function speakWithBrowserVoice(text: string, rate: number, language: "ru" | "kk"
   });
 }
 
-export async function speak(text: string, rate = 0.78, enabled = true, language: "ru" | "kk" | "en" = "ru"): Promise<boolean> {
+export async function speak(text: string, rate = 0.78, enabled = true, language: "ru" | "kk" | "en" = "ru", owner: "exercise" | "pet" = "exercise"): Promise<boolean> {
   if (!enabled || typeof window === "undefined") return false;
   const cleaned = text.replace(/\s+/g, " ").trim();
   if (!cleaned) return false;
   stopCurrentSpeech();
+  speechOwner = owner;
   const controller = new AbortController();
   speechController = controller;
   let requestTimedOut = false;
@@ -139,4 +141,13 @@ export async function speak(text: string, rate = 0.78, enabled = true, language:
     clearTimeout(requestTimeout);
     if (speechController === controller) speechController = null;
   }
+}
+
+// Exercise speech always preempts the pet. Pet speech never preempts or queues behind it.
+export function speakPet(text: string): Promise<boolean> {
+  if (typeof window === "undefined" || speechController || currentSpeechAudio || window.speechSynthesis?.speaking || window.speechSynthesis?.pending) return Promise.resolve(false);
+  return speak(text, 0.78, true, "ru", "pet");
+}
+export function stopPetSpeech() {
+  if (speechOwner === "pet") stopCurrentSpeech();
 }

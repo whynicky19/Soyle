@@ -23,7 +23,8 @@ async function login(page:Page,admin=true){
   await page.getByLabel(admin?'Логин':'Логин ребёнка',{exact:true}).fill(admin?'admin':'alikhan');
   await page.getByLabel(admin?'Пароль':'PIN-код',{exact:true}).fill(admin?'Admin123!':'1234');
   await page.getByRole('button',{name:admin?'Войти':'Начать заниматься',exact:true}).click();
-  await expect(page.getByRole('button',{name:'Выйти из аккаунта',exact:true,includeHidden:true})).toBeAttached();
+  if(admin) await expect(page.getByRole('button',{name:'Выйти из аккаунта',exact:true,includeHidden:true})).toBeAttached();
+  else await expect(page.locator('.child-room-home')).toBeVisible();
 }
 async function csrf(page:Page){return(await page.context().cookies()).find(c=>c.name==='soyle_csrf')?.value||'';}
 async function clone(page:Page,mechanic:string,suffix:string){
@@ -39,7 +40,7 @@ async function cleanup(page:Page,version:Version){
 }
 async function catalog(page:Page,version:Version){
   const menu=page.getByRole('button',{name:'Открыть меню'});if(await menu.isVisible())await menu.click();
-  await page.getByRole('button',{name:'Занятия',exact:true}).click();
+  await page.getByRole('navigation',{name:'Основное меню'}).getByRole('button',{name:'Занятия',exact:true}).click();
   const button=page.getByRole('button',{name:new RegExp(version.title)}).first();
   if(!await button.isVisible())await page.locator('.child-more-games summary').click();
   await button.click();

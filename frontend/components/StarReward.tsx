@@ -17,14 +17,15 @@ export function StarReward({stars, total, calmMode, onDone}: {stars: number; tot
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
     const vault = document.querySelector<HTMLElement>('[data-star-vault]');
     const target = vault?.getBoundingClientRect();
-    if (layer.current && target) {
+    const visibleVault = target && !vault?.closest("[inert]") && target.left >= 0 && target.right <= window.innerWidth;
+    if (layer.current && target && visibleVault) {
       layer.current.style.setProperty('--flight-x', `${target.x + target.width / 2 - window.innerWidth / 2}px`);
       layer.current.style.setProperty('--flight-y', `${target.y + target.height / 2 - window.innerHeight / 2}px`);
       layer.current.dataset.hasVault = 'true';
     }
     const timers = [window.setTimeout(onDone, 4500)];
     let pulse: Animation | undefined;
-    if (vault && !calmMode && !reduced.matches) timers.push(window.setTimeout(() => {
+    if (vault && visibleVault && !calmMode && !reduced.matches) timers.push(window.setTimeout(() => {
       if (!reduced.matches) pulse = vault.animate([{transform:'scale(1)'},{transform:'scale(1.1)'},{transform:'scale(1)'}], {duration:450,easing:'ease-out'});
     }, 2850));
     return () => {timers.forEach(window.clearTimeout);pulse?.cancel();};

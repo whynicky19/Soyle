@@ -473,3 +473,9 @@ class SpecialistObservationCreate(BaseModel):
         if self.result_type == "with_help" and self.prompt_level == "independent":
             raise ValueError("Укажите уровень помощи для ответа с подсказкой")
         return self
+
+
+class ChildPetSettingsUpdate(BaseModel):
+    visible: bool = True
+    voice: bool = False
+    motion: Literal["full", "reduced", "off"] = "full"

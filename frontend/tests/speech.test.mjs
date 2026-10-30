@@ -6,7 +6,7 @@ import ts from "typescript";
 const source = (await readFile(new URL("../lib/speech.ts", import.meta.url), "utf8"))
   .replace('import { API_URL, getCsrfToken } from "./api";', 'const API_URL = ""; const getCsrfToken = () => "csrf";');
 const compiled = ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ES2022 } }).outputText;
-const { speak, stopCurrentSpeech } = await import(`data:text/javascript;base64,${Buffer.from(compiled).toString("base64")}`);
+const { speak, stopCurrentSpeech, speakPet, stopPetSpeech } = await import(`data:text/javascript;base64,${Buffer.from(compiled).toString("base64")}`);
 
 test("speech settles, cancels safely and retries the server after failures", async (t) => {
   const originals = Object.fromEntries(["window", "Audio", "SpeechSynthesisUtterance", "fetch", "setTimeout"].map(key => [key, globalThis[key]]));
@@ -56,4 +56,19 @@ test("speech settles, cancels safely and retries the server after failures", asy
     const count = voices.length; const cancelled = speak("Стоп"); stopCurrentSpeech();
     assert.equal(await cancelled, false); assert.equal(voices.length, count);
   });
+  await t.test("pet speech yields to exercise audio and pet cleanup cannot stop narration", async () => {
+    globalThis.setTimeout = originals.setTimeout;
+    globalThis.fetch = ok;
+    const narration = speak("Найди мяч"); await tick();
+    const exerciseAudio = audios.at(-1);
+    assert.equal(await speakPet("Привет!"), false);
+    stopPetSpeech(); assert.notEqual(exerciseAudio.paused, true);
+    exerciseAudio.onended(); assert.equal(await narration, true);
+    const pet = speakPet("Молодец!"); await tick(); const petAudio = audios.at(-1);
+    const next = speak("Найди кота"); await tick();
+    assert.equal(await pet, false); assert.equal(petAudio.paused, true);
+    stopPetSpeech(); assert.notEqual(audios.at(-1).paused, true);
+    audios.at(-1).onended(); assert.equal(await next, true);
+  });
+
 });

@@ -1,4 +1,5 @@
 "use client";
+import { useExercisePet } from "./pet/ExercisePet";
 
 import Image from 'next/image';
 import { useEffect, useImperativeHandle, useMemo, useRef, useState, type Ref } from 'react';
@@ -14,6 +15,7 @@ type Props = {content: ObservationContent; soundEnabled: boolean; defaultRounds?
   onComplete: (measurement: Measurement, details: Record<string, unknown>) => Promise<unknown> | void; stopRef?: Ref<(status: 'break' | 'refused') => Promise<void>>};
 
 export function ObservationExercise({content, soundEnabled, defaultRounds, onSpeak, onBack, onComplete, stopRef}: Props) {
+  const pet = useExercisePet();
   const rounds = useMemo(() => observationRounds(content.scenes || []), [content]);
   const [limit, setLimit] = useState(Math.min(defaultRounds || content.default_rounds || 12, rounds.length));
   const [doneCount, setDoneCount] = useState(0);
@@ -53,6 +55,7 @@ export function ObservationExercise({content, soundEnabled, defaultRounds, onSpe
     if (inactive || audioLock.current || phase !== 'playing') return;
     const matches = label === scene.parts[words.length];
     evidence.current.responses.push({step: words.length, label, matches});
+    pet(matches ? "correct" : "incorrect");
     if (!matches) {
       evidence.current.supports.push('retry');
       setNotice('Посмотри ещё раз. Можно послушать слова или посмотреть образец.');
@@ -65,6 +68,7 @@ export function ObservationExercise({content, soundEnabled, defaultRounds, onSpe
   }
   async function model() {
     if (inactive || audioLock.current) return;
+    pet('hint');
     evidence.current.supports.push('model');
     const next = scene.parts.slice(0, target); setWords(next); setPhase('ready'); setNotice('Это образец полной фразы. Можно убрать последнюю часть и попробовать самому.');
     await play(next.join(' '));
