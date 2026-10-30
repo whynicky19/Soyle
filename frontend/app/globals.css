@@ -1359,3 +1359,6 @@ button,input,select,textarea,a,summary{scroll-margin-block:110px}
 .exercise-pet[data-dragging=true] .pet-button{cursor:grabbing;}
 @media(max-width:600px){.exercise-focus-shell .pet-button{width:104px;height:116px;}.exercise-focus-shell .exercise-pet{max-width:210px;}}
 @media(max-width:380px){.exercise-focus-shell .exercise-pet{max-width:104px;}}
+
+.pet-button { position:relative; }
+.pet-button .pet-still { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; pointer-events:none; }

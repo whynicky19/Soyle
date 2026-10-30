@@ -1,5 +1,6 @@
 "use client";
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import Image from "next/image";
 import { usePetDrag } from "./usePetDrag";
 import type { Rive } from "@rive-app/webgl2";
 import { petReactions, type PetEvent, type PetPreferences } from "@/lib/pet";
@@ -96,11 +97,12 @@ function PetCompanion({ reaction, motion, onTap, showBubble }: { showBubble: boo
     if (!ready || !rive) return;
     const mood = rive.viewModelInstance?.number("mood");
     if (mood) mood.value = still || motion === "reduced" ? 0 : reaction ? petReactions[reaction.event].mood : 0;
-    if (still || !pageVisible) { rive.pause(); rive.drawFrame(); } else rive.play("Companion");
+    if (still || !pageVisible) { rive.pause(); } else rive.play("Companion");
   }, [ready, reaction, still, pageVisible, motion]);
-  if (failed) return null; // An optional companion must never prevent an exercise from running.
-  return <div ref={dragRef} className="exercise-pet" data-draggable={showBubble} data-dragging={dragging} style={showBubble ? {transform:`translate(${offset.x}px, ${offset.y}px)`,position:"relative",zIndex:offset.x || offset.y || dragging ? 20 : undefined} : undefined} data-pet-state={reaction?.event || "idle"} data-pet-motion={still ? "off" : motion} data-pet-ready={ready} data-rive-state={riveState}>
+  // The exported rest frame also works when WebGL is unavailable or motion is disabled.
+  const showStill = still || failed || !ready;
+  return <div ref={dragRef} className="exercise-pet" data-draggable={showBubble} data-dragging={dragging} style={showBubble ? {transform:`translate(${offset.x}px, ${offset.y}px)`,position:"relative",zIndex:offset.x || offset.y || dragging ? 20 : undefined} : undefined} data-pet-renderer={showStill ? "static" : "rive"} data-pet-state={reaction?.event || "idle"} data-pet-motion={still ? "off" : motion} data-pet-ready={ready} data-rive-state={riveState}>
     {showBubble && <div key={reaction?.id || "idle"} style={reaction ? { animationDelay: `${petReactions[reaction.event].duration - 250}ms` } : undefined} className={`pet-bubble ${reaction ? "visible" : ""}`} role="status" aria-live="polite" aria-atomic="true">{reaction?.phrase}</div>}
-    <button type="button" className="pet-button" {...handlers} title={showBubble ? "Перетащи пингвина. Стрелки — двигать, Home — вернуть на место." : undefined} aria-label="Поздороваться с пингвином" disabled={!ready}><canvas ref={canvas} aria-hidden="true"/></button>
+    <button type="button" className="pet-button" {...handlers} title={showBubble ? "Перетащи пингвина. Стрелки — двигать, Home — вернуть на место." : undefined} aria-label="Поздороваться с пингвином" ><canvas ref={canvas} aria-hidden="true" style={{visibility:showStill ? "hidden" : "visible"}}/>{showStill && <Image className="pet-still" src="/mascot/soyle-mascot-still.png" width={561} height={630} unoptimized alt="" aria-hidden="true"/>}</button>
   </div>;
 }

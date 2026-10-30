@@ -8,7 +8,7 @@ export default defineConfig({
   workers: 1,
   reporter: [["list"]],
   use: {
-    baseURL: "http://localhost:3003",
+    baseURL: process.env.SOYLE_TEST_URL || "http://localhost:3003",
     reducedMotion: "reduce",
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
@@ -27,11 +27,13 @@ export default defineConfig({
       reuseExistingServer: false,
       timeout: 120_000,
     },
-    {
-      command: "SOYLE_E2E_BUILD=true npm run dev -- --hostname localhost --port 3003",
+    ...(process.env.SOYLE_TEST_URL ? [] : [{
+      command: process.env.SOYLE_TEST_PRODUCTION === "true"
+        ? "SOYLE_E2E_BUILD=true npm run start -- --hostname localhost --port 3003"
+        : "SOYLE_E2E_BUILD=true npm run dev -- --hostname localhost --port 3003",
       url: "http://localhost:3003/app",
       reuseExistingServer: false,
       timeout: 120_000,
-    },
+    }]),
   ],
 });
