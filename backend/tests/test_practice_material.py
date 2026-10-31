@@ -1,3 +1,4 @@
+from audio_fixtures import approve_fixture_version
 from copy import deepcopy
 from pathlib import Path
 import json
@@ -96,6 +97,7 @@ def test_after_simulated_review_both_missing_goals_have_a_runnable_plan(client, 
         for fixture in (ACTIONS, GIVE, PUT):
             version = db.execute('SELECT id FROM exercise_versions WHERE title=? ORDER BY version DESC LIMIT 1', (fixture['title'],)).fetchone()['id']
             db.execute("UPDATE exercise_versions SET review_status='approved',technical_status='passed',methodology_status='approved',accessibility_status='approved',release_status='approved' WHERE id=?", (version,))
+            approve_fixture_version(version, db)
             exercise_engine.publish_version(db, version)
     child = client.post('/api/children', headers=parent_headers, json={'name': 'Практика инструкций', 'birth_date': '2021-01-01'}).json()['id']
     client.put(f'/api/children/{child}/consent', headers=parent_headers, json={'privacy_accepted': True}).raise_for_status()

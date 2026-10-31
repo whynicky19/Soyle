@@ -11,8 +11,8 @@ export function subscribeSpeech(listener: () => void) { listeners.add(listener);
 function setSpeechState(isSpeaking: boolean, isLoading: boolean) {
   speechState = { isSpeaking, isLoading }; listeners.forEach(listener => listener());
 }
-let lastSpeech: { text: string; rate: number; language: SpeechLanguage } | null = null;
-export function repeatSpeech() { return lastSpeech ? speak(lastSpeech.text, lastSpeech.rate, true, lastSpeech.language) : Promise.resolve(false); }
+let lastSpeech: { text: string; rate: number; language: SpeechLanguage; versionId?: number; profile: "exercise" | "pet" } | null = null;
+export function repeatSpeech() { return lastSpeech ? speak(lastSpeech.text, lastSpeech.rate, true, lastSpeech.language, "exercise", lastSpeech.versionId, lastSpeech.profile) : Promise.resolve(false); }
 // Reuse the same media element: iOS grants playback permission to the element.
 let reusableAudio: HTMLAudioElement | null = null;
 const silentWav = "/audio/tts-unlock.wav";
@@ -96,13 +96,13 @@ function speakWithBrowserVoice(text: string, rate: number, language: "ru" | "kk"
   });
 }
 
-export async function speak(text: string, rate = 0.78, enabled = true, language: "ru" | "kk" | "en" = "ru", owner: "exercise" | "pet" = "exercise"): Promise<boolean> {
+export async function speak(text: string, rate = 0.78, enabled = true, language: "ru" | "kk" | "en" = "ru", owner: "exercise" | "pet" = "exercise", versionId?: number, profile: "exercise" | "pet" = owner): Promise<boolean> {
   if (!enabled || typeof window === "undefined") return false;
   const cleaned = text.replace(/\s+/g, " ").trim();
   if (!cleaned) return false;
   stopCurrentSpeech();
   const preparedAudio = prepareAudio();
-  lastSpeech = { text: cleaned, rate, language };
+  lastSpeech = { text: cleaned, rate, language, versionId, profile };
   setSpeechState(false, true);
   speechOwner = owner;
   const controller = new AbortController();
@@ -114,7 +114,7 @@ export async function speak(text: string, rate = 0.78, enabled = true, language:
       method: "POST",
       headers: { "Content-Type": "application/json", "X-CSRF-Token": getCsrfToken() },
       credentials: "include",
-      body: JSON.stringify({ text: cleaned, rate, language, mode: rate < .75 ? "slow" : "normal" }),
+      body: JSON.stringify({ text: cleaned, rate, language, mode: rate < .75 ? "slow" : "normal", ...(profile === "pet" ? {profile} : {}), ...(versionId ? {version_id: versionId} : {}) }),
       signal: controller.signal,
     });
     if (!response.ok) {
@@ -132,7 +132,7 @@ export async function speak(text: string, rate = 0.78, enabled = true, language:
     currentSpeechAudio = audio;
     audio.volume = 0.92;
     // Azure applies speed in SSML; never slow it a second time.
-    audio.playbackRate = response.headers?.get("X-Soyle-TTS") === "azure" ? 1 : (rate < .75 ? .85 : 1);
+    audio.playbackRate = ["azure", "reviewed"].includes(response.headers?.get("X-Soyle-TTS") || "") ? 1 : (rate < .75 ? .85 : 1);
     audio.preservesPitch = true;
     return await new Promise<boolean>((resolve) => {
       let settled = false;
@@ -217,3 +217,6 @@ export async function playSpeechClip(url: string): Promise<boolean> {
     try { void audio.play().catch(() => finish(false)); } catch { finish(false); }
   });
 }
+
+/** Call synchronously from a review button before fetching a protected clip. */
+export function unlockSpeechPlayback() { stopCurrentSpeech(); prepareAudio(); }

@@ -4,18 +4,20 @@ import binascii
 import hashlib
 import io
 import json
+import re
 import wave
 
 from fastapi import HTTPException
 from .database import now_iso
-from .azure_tts import catalogue, phrase_kind, synthesize, TTSUnavailable
+from .azure_tts import catalogue, phrase_kind, synthesize, TTSUnavailable, PET_PHRASES
 from .tts_library import bundled_tts_path, normalize_tts_text
 
 MODES = ("normal", "slow")
 
 
-def key_for(text, language):
-    return hashlib.sha256(json.dumps([text, language], ensure_ascii=False).encode()).hexdigest()
+def key_for(text, language, profile="exercise"):
+    identity = [text, language] if profile == "exercise" else [text, language, profile]
+    return hashlib.sha256(json.dumps(identity, ensure_ascii=False).encode()).hexdigest()
 
 
 def phrases(version):
@@ -27,7 +29,10 @@ def phrases(version):
             return
         text = normalize_tts_text(text)
         key = key_for(text, language)
-        found[key] = dict(key=key, text=text, language=language, phrase_type=phrase_kind(text, language, hint))
+        kind = phrase_kind(text, language, hint)
+        if kind == "statement" and found.get(key, {}).get("phrase_type") == "instruction":
+            kind = "instruction"
+        found[key] = dict(key=key, text=text, language=language, phrase_type=kind)
     def walk(value, field=""):
         if isinstance(value, dict):
             for name, item in value.items():
@@ -35,6 +40,8 @@ def phrases(version):
                     add(item, "instruction" if name in {"instruction", "child_instruction"} else None)
                 elif name == "instructions" and isinstance(item, dict):
                     for text in item.values(): add(text, "instruction")
+                elif name == "steps" and isinstance(item, list):
+                    for text in item: add(text, "instruction")
                 elif name == "parts" and isinstance(item, list) and all(isinstance(part, str) for part in item):
                     add(" ".join(item))
                     for text in item: add(text)
@@ -42,19 +49,61 @@ def phrases(version):
         elif isinstance(value, list):
             for item in value: walk(item, field)
     add(version["instruction"], "instruction")
-    walk(version.get("content") or {})
+    content = version.get("content") or {}
+    walk(content)
+    if version.get("mechanic") in {"auditory_choice", "action_choice"}:
+        for praise in (("Жарайсың!", "Тағы бір рет көр.", "Екі суреттің бірін таңда.") if language == "kk" else ("Молодец!", "Получилось!", "Отлично!", "Ура!", "Подумай ещё раз.", "Попробуй ещё раз.", "Давай попробуем ещё раз.", "Теперь выбери из двух картинок.")):
+            add(praise)
+    if language == "ru" and version.get("mechanic") in {"auditory_choice", "action_choice"}:
+        for item in content.get("stimuli", []):
+            if item.get("label"):
+                prefix = "Ребёнок" if version["mechanic"] == "action_choice" else "Это"
+                add(f"{prefix} {item['label'].lower()}.")
+    if language == "ru" and content.get("presentation") == "picture_description":
+        for text in ("Кто на картинке?", "Рассмотри картинку. Кто на ней?", "Посмотри ещё раз. Можно послушать слова или посмотреть образец."):
+            add(text)
+        for scene in content.get("scenes", []):
+            parts = scene.get("parts", [])
+            if parts:
+                actor = parts[0].lower()
+                add(f"Что делает {actor}?")
+                add(re.sub(r"\?$", f" {actor}?", scene.get("detail_question", "")))
+                for length in range(1, len(parts) + 1): add(" ".join(parts[:length]))
+            for group in scene.get("options", []):
+                for word in group: add(word)
+    if language == "ru" and version.get("mechanic") == "scene_search":
+        add("Давай попробуем ещё раз.")
+        for item in content.get("exploration", {}).get("objects", []):
+            add("Да, это " + item["label"].lower() + "!")
+            add(item.get("part_feedback"))
+    if language == "ru" and version.get("mechanic") == "category_sort":
+        add("Посмотри на предмет и выбери его группу.", "instruction")
+    if version.get("mechanic") == "guided_aac" and language == "ru":
+        from .tts_library import _aac_cards
+        from .aac_grammar import compose_aac_phrase
+        cards = _aac_cards()
+        for label in content.get("labels", []):
+            if label in cards: add(cards[label]["speech"])
+        for sequence in content.get("accepted_sequences", []):
+            if all(label in cards for label in sequence):
+                result = compose_aac_phrase([cards[label] for label in sequence], "ru")
+                if result.get("valid"): add(result["phrase"])
     return list(found.values())
 
 
-def targets(db, scope_id, library_text=None, language="ru"):
+def targets(db, scope_id, library_text=None, language="ru", profile="exercise"):
     if scope_id == 0:
         entries = catalogue()
+        def item(text, lang, voice_profile):
+            return dict(key=key_for(text, lang, voice_profile), text=text, language=lang,
+                        phrase_type=phrase_kind(text, lang), profile=voice_profile)
         if library_text is not None:
             text = normalize_tts_text(library_text)
-            if (language, text) not in entries:
-                raise HTTPException(422, "Реплика отсутствует в безопасном учебном каталоге")
-            return [dict(key=key_for(text, language), text=text, language=language, phrase_type=phrase_kind(text, language))]
-        return [dict(key=key_for(text, lang), text=text, language=lang, phrase_type=phrase_kind(text, lang)) for lang, text in entries]
+            if (language, text) not in entries or (profile == "pet" and text not in PET_PHRASES.get(language, ())):
+                raise HTTPException(422, "Реплика отсутствует в каталоге выбранного голоса")
+            return [item(text, language, profile)]
+        return [item(text, lang, voice_profile) for lang, text in entries
+                for voice_profile in (("exercise", "pet") if text in PET_PHRASES.get(lang, ()) else ("exercise",))]
     from .exercise_engine import get_version
     return phrases(get_version(db, scope_id))
 
@@ -71,14 +120,15 @@ def lock_scope(db, scope_id):
         db.execute("UPDATE exercise_versions SET title=title WHERE id=?", (scope_id,))
         row = db.execute("SELECT publication_status FROM exercise_versions WHERE id=?", (scope_id,)).fetchone()
         if not row: raise HTTPException(404, "Версия не найдена")
-        if row["publication_status"] not in {"draft", "archived"}:
+        from .exercise_engine import get_version, needs_admin_confirmation
+        if row["publication_status"] != "draft" and not needs_admin_confirmation(get_version(db, scope_id)):
             raise HTTPException(409, "Для изменения опубликованной озвучки создайте новую версию задания")
     else:
         db.execute("UPDATE tts_control SET state_json=state_json WHERE id=1")
 
 
-def manifest(db, scope_id, library_text=None, language="ru"):
-    items = targets(db, scope_id, library_text, language)
+def manifest(db, scope_id, library_text=None, language="ru", profile="exercise"):
+    items = targets(db, scope_id, library_text, language, profile)
     rows = {(row["phrase_key"], row["mode"]): dict(row) for row in db.execute(
         "SELECT phrase_key,mode,digest,source,mime,approved_by,approved_at FROM speech_recordings WHERE scope_id=?", (scope_id,)).fetchall()}
     result = []
@@ -114,6 +164,8 @@ def validate_wav(encoded):
 
 
 def prepare_bytes(item, mode, source, encoded=None):
+    if len(item["text"]) > 300:
+        raise HTTPException(422, "Реплика длиннее 300 символов. Отредактируйте её в черновике — текст не сокращается автоматически")
     if source == "manual": return validate_wav(encoded), "audio/wav"
     if source == "bundled":
         if mode != "normal": raise HTTPException(422, "Для медленного режима загрузите отдельную запись или используйте Azure")
@@ -122,7 +174,7 @@ def prepare_bytes(item, mode, source, encoded=None):
         return path.read_bytes(), "audio/wav"
     try:
         # No unreviewed database text is sent to Azure. Manual upload is available.
-        return synthesize(item["text"], item["language"], mode, item["phrase_type"]), "audio/mpeg"
+        return synthesize(item["text"], item["language"], mode, item["phrase_type"], item.get("profile", "exercise")), "audio/mpeg"
     except TTSUnavailable:
         raise HTTPException(503, "Azure недоступен или текст отсутствует в безопасном каталоге. Можно загрузить запись вручную.") from None
 
@@ -167,22 +219,29 @@ def review(db, scope_id, phrase_key, mode, digest, reviewer_id, action):
         heard = db.execute("SELECT digest FROM speech_listens WHERE scope_id=? AND phrase_key=? AND mode=? AND reviewer_id=?", (scope_id, phrase_key, mode, reviewer_id)).fetchone()
         if not heard or heard["digest"] != digest: raise HTTPException(409, "Прослушайте эту запись полностью перед утверждением")
         db.execute("UPDATE speech_recordings SET approved_by=?,approved_at=? WHERE scope_id=? AND phrase_key=? AND mode=?", (reviewer_id, now_iso(), scope_id, phrase_key, mode))
+        if scope_id == 0:
+            db.execute("""INSERT INTO speech_library_active(phrase_key,mode,audio_base64,mime,digest) VALUES(?,?,?,?,?)
+                ON CONFLICT(phrase_key,mode) DO UPDATE SET audio_base64=excluded.audio_base64,mime=excluded.mime,digest=excluded.digest""",
+                (phrase_key, mode, row["audio_base64"], row["mime"], digest))
     audit(db, scope_id, phrase_key, mode, digest, action, reviewer_id)
     return {"ok": True}
 
 
-def runtime_recording(db, text, language, mode, version_id, user):
-    key = key_for(text, language)
+def runtime_recording(db, text, language, mode, version_id, user, profile="exercise"):
+    key = key_for(text, language, profile)
     scopes = [0]
-    if version_id is not None:
+    if version_id is not None and profile == "exercise":
         from .exercise_engine import get_version, published_exercise
         version = get_version(db, version_id)
         if version["language"] != language: raise HTTPException(422, "Язык не совпадает с заданием")
         if user["role"] != "admin":
             live = published_exercise(db, version["exercise_id"])
-            if live["engine"]["version_id"] != version_id: raise HTTPException(404, "Версия недоступна")
+            if not live or live["engine"]["version_id"] != version_id: raise HTTPException(404, "Версия недоступна")
         scopes.insert(0, version_id)
     for scope in scopes:
-        row = db.execute("SELECT * FROM speech_recordings WHERE scope_id=? AND phrase_key=? AND mode=? AND approved_by IS NOT NULL", (scope, key, mode)).fetchone()
+        if scope == 0:
+            row = db.execute("SELECT * FROM speech_library_active WHERE phrase_key=? AND mode=?", (key, mode)).fetchone()
+        else:
+            row = db.execute("SELECT * FROM speech_recordings WHERE scope_id=? AND phrase_key=? AND mode=? AND approved_by IS NOT NULL", (scope, key, mode)).fetchone()
         if row: return dict(row)
     return None

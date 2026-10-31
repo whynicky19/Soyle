@@ -1,3 +1,4 @@
+from audio_fixtures import approve_fixture_version
 import hashlib,json
 from copy import deepcopy
 from datetime import datetime,timedelta,timezone
@@ -20,6 +21,7 @@ PUBLIC=Path(__file__).resolve().parents[2]/'frontend/public'
 def publish(c,h,target_key):
     draft=next(d for d in c.get('/api/admin/exercise-drafts',headers=h).json() if d['version']['target']==target_key)
     assert draft['valid'],draft['errors']
+    approve_fixture_version(draft["version"]["id"])
     r=c.post(f'/api/admin/exercise-drafts/{draft["version"]["id"]}/publish',headers=h)
     assert r.status_code==200,r.text
     return r.json()

@@ -1,3 +1,4 @@
+from audio_fixtures import approve_fixture_version
 from copy import deepcopy
 from app.observation_content import OBSERVATION_CONTENT, validate_observation
 from app.database import connect
@@ -36,6 +37,7 @@ def test_revision_keeps_previous_content_and_needs_admin_decision(client, isolat
 def test_description_goal_selects_published_bank_and_twelve_round_plan(client, admin_headers, parent_headers, isolated_database):
     draft = next(item['version'] for item in client.get('/api/admin/exercise-drafts', headers=admin_headers).json()
                  if item['version']['content'].get('presentation') == 'picture_description')
+    approve_fixture_version(draft["id"])
     assert client.post(f"/api/admin/exercise-drafts/{draft['id']}/publish", headers=admin_headers).status_code == 200
     with connect() as db:
         db.execute("UPDATE exercises SET title='Я вижу',instruction='Старая инструкция' WHERE id=?", (draft['exercise_id'],))

@@ -1,3 +1,4 @@
+from audio_fixtures import approve_fixture_version
 from uuid import uuid4
 from app.database import connect
 from app.exploration_content import LOCATIONS,draft_for_location
@@ -14,6 +15,7 @@ def test_delete_family_with_plan_scene_events_and_words_preserves_other_family(c
     version=draft.json()['version'];exercise=version['exercise_id']
     with connect() as db:
         db.execute('UPDATE exercises SET target=? WHERE id=?',('explore-bedroom',exercise))
+    approve_fixture_version(version["id"])
     assert c.post(f'/api/admin/exercise-drafts/{version["id"]}/publish',headers=admin_headers).status_code==200
     try:
         goal=c.post('/api/practice-goals',headers=h,json={'child_id':child,'template_key':'understand-words-in-scenes','baseline':'Synthetic deletion test','help_level':'minimal'})

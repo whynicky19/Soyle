@@ -11,6 +11,8 @@ from datetime import date, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 from pathlib import Path
 
+from typing import Literal
+
 from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
@@ -27,7 +29,7 @@ from .family_practice import descriptive_results, home_library, save_home_observ
 from .adaptive_planner import create_plan as create_adaptive_plan, get_plan as get_adaptive_plan, plan_history as adaptive_plan_history
 from .practice_goals import create_goal as create_practice_goal, get_preferences, list_goals as list_practice_goals, list_templates as list_practice_goal_templates, save_observation as save_practice_goal_observation, save_preferences, update_goal as update_practice_goal
 from .migrations import LATEST_SCHEMA_VERSION
-from .schemas import FamilyRecommendationDecision, ChildPetSettingsUpdate
+from .schemas import FamilyRecommendationDecision, ChildPetSettingsUpdate, AudioCandidateCreate, AudioDecisionCreate
 from .practice_goals import decode_goal, exercise_matches_goal
 from .recommendations import recommendations as recommendation_list, validate_recommendation
 from .stories import STORIES, public_story, story_available
@@ -67,7 +69,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["X-Soyle-TTS", "X-Soyle-TTS-Mode", "Retry-After"],
+    expose_headers=["X-Soyle-TTS", "X-Soyle-TTS-Mode", "X-Soyle-Audio-Digest", "Retry-After"],
 )
 
 UNSAFE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
@@ -599,15 +601,25 @@ def update_child_pet_settings(child_id: int, payload: ChildPetSettingsUpdate, us
 
 @app.post("/api/tts")
 def text_to_speech(payload: TTSRequest, user: dict = Depends(require_roles("admin", "parent", "student"))) -> Response:
-    from .azure_tts import TTSUnavailable, limit_user, synthesize
+    from .azure_tts import TTSUnavailable, limit_user, synthesize, PET_PHRASES
     text = " ".join(payload.text.split()).strip()
     if not text or any(ord(c) < 32 for c in text):
         raise HTTPException(422, "Некорректный текст озвучивания")
+    if payload.profile == "pet" and text not in PET_PHRASES.get(payload.language, ()):
+        raise HTTPException(422, "Реплика отсутствует в каталоге пингвина")
     limit_user(user["id"])
     mode = payload.mode or ("slow" if payload.rate < .75 else "normal")
+    from .audio_review import runtime_recording
+    with connect() as db:
+        recording = runtime_recording(db, text, payload.language, mode, payload.version_id, user, payload.profile)
+    if recording:
+        return Response(base64.b64decode(recording["audio_base64"]), media_type=recording["mime"], headers={
+            "Cache-Control": "no-store", "X-Soyle-TTS": "reviewed", "X-Soyle-TTS-Mode": mode,
+            "X-Soyle-Audio-Digest": recording["digest"],
+        })
     retry = 60
     try:
-        audio = synthesize(text, payload.language, mode)
+        audio = synthesize(text, payload.language, mode, profile=payload.profile)
         return Response(audio, media_type="audio/mpeg", headers={
             "Cache-Control": "no-store", "X-Soyle-TTS": "azure", "X-Soyle-TTS-Mode": mode,
         })
@@ -2434,6 +2446,48 @@ def create_exercise_draft(payload: ExerciseDraftCreate, admin: dict = Depends(re
 def preview_exercise_draft(version_id: int, admin: dict = Depends(require_roles("admin"))) -> dict:
     with connect() as db:
         return review_workspace(db, version_id, admin["id"])
+
+
+@app.get("/api/admin/exercise-drafts/{version_id}/audio")
+def exercise_audio_manifest(version_id: int, _: dict = Depends(require_roles("admin"))) -> dict:
+    from .audio_review import manifest
+    with connect() as db:
+        return manifest(db, version_id)
+
+
+@app.get("/api/admin/audio/library")
+def library_audio_manifest(text: str = Query(min_length=1, max_length=300), language: Literal["ru", "kk"] = "ru", profile: Literal["exercise", "pet"] = "exercise", _: dict = Depends(require_roles("admin"))) -> dict:
+    from .audio_review import manifest
+    with connect() as db:
+        return manifest(db, 0, text, language, profile)
+
+
+@app.post("/api/admin/audio/{scope_id}/{phrase_key}/{mode}/prepare")
+def prepare_review_audio(scope_id: int, phrase_key: str, mode: Literal["normal", "slow"], payload: AudioCandidateCreate, admin: dict = Depends(require_roles("admin"))) -> dict:
+    from .audio_review import target, lock_scope, prepare_bytes, save_candidate
+    from .azure_tts import limit_user
+    limit_user(admin["id"])
+    with connect() as db:
+        lock_scope(db, scope_id)
+        item = target(db, scope_id, phrase_key)
+    audio, mime = prepare_bytes(item, mode, payload.source, payload.audio_base64)
+    with connect() as db:
+        return save_candidate(db, scope_id, phrase_key, mode, payload.source, audio, mime, admin["id"], payload.expected_digest)
+
+
+@app.get("/api/admin/audio/{scope_id}/{phrase_key}/{mode}/clip")
+def preview_review_audio(scope_id: int, phrase_key: str, mode: Literal["normal", "slow"], _: dict = Depends(require_roles("admin"))) -> Response:
+    from .audio_review import candidate
+    with connect() as db:
+        row = candidate(db, scope_id, phrase_key, mode)
+    return Response(base64.b64decode(row["audio_base64"]), media_type=row["mime"], headers={"Cache-Control": "no-store", "X-Soyle-Audio-Digest": row["digest"]})
+
+
+@app.post("/api/admin/audio/{scope_id}/{phrase_key}/{mode}/review")
+def decide_review_audio(scope_id: int, phrase_key: str, mode: Literal["normal", "slow"], payload: AudioDecisionCreate, admin: dict = Depends(require_roles("admin"))) -> dict:
+    from .audio_review import review
+    with connect() as db:
+        return review(db, scope_id, phrase_key, mode, payload.digest, admin["id"], payload.action)
 
 
 @app.get("/api/admin/content-review/capabilities")

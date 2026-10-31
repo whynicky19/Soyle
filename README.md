@@ -409,7 +409,16 @@ most 300 characters, `language: ru | kk`, and `mode: normal | slow`. The old `ra
 parameter remains compatible (`rate < .75` selects slow). The voices are
 `ru-RU-SvetlanaNeural` and `kk-KZ-AigulNeural`; slow mode uses SSML `rate="-15%"`,
 with the same voice pitch as normal mode. Following voice feedback, both modes use
-a gentle SSML pitch lift of +5%; the browser does not shift pitch or speed. Sentence
+a gentle SSML pitch lift of +8% for learning content. Requests explicitly select
+`profile: exercise | pet` (default `exercise`); text alone never selects the voice.
+The `pet` profile accepts only exact phrases in `PET_PHRASES` and uses +22% for a higher, cartoon-like female voice (not a native child
+voice). This also applies to praise/retry lines voiced by the exercise. Both speeds
+use the same pitch; no unsupported child role/style is requested. The browser does
+not shift pitch or speed. Existing approved recordings remain pinned: regenerate,
+listen and approve them to adopt the new timbre. The complete SSML in the cache key
+separates profiles and the new timbre from older generated clips. Reviewed library
+recordings also use separate profile keys: a penguin recording never replaces an
+exercise recording of the same text. Select the voice in the audio review library. Sentence
 boundaries are marked explicitly and editorial punctuation is retained. Azure MP3
 always plays at playbackRate 1. The endpoint
 limits each authenticated account to 60 requests/minute, including cache hits;
@@ -536,8 +545,64 @@ tests passed. No clinical approval is implied.
 Additional listener feedback on «Поиграем?» led to an exact-phrase contour override:
 the rise now peaks earlier, around the stressed part of this invitation, then falls
 softly. This timing is not copied to other words. Svetlana, the visible/spoken text,
-and the base +5% pitch remain unchanged; both playback modes synthesize the contour
+and the base +8% pitch remain unchanged; both playback modes synthesize the contour
 natively in Azure, with no syllable splicing or audio pitch post-processing. Native
 Dariya and a widened-range Svetlana sample were also generated for evaluation; neither
 replaces the site's voice. The revised normal/slow samples still require perceptual
 approval; automated tests only establish the synthesis and routing behavior.
+
+### Audio approval and manual replacement (migrations 38–39)
+
+The existing administrator exercise-review workspace now includes **Текст,
+произношение и интонация**. It enumerates instructional phrases, stimuli, supported
+model responses and prompts from that version, separately for normal/slow speech:
+
+1. Choose **Подготовить Azure**, an existing bundled normal-speed recording, or
+   **Заменить WAV**. New/unlisted draft text is never automatically sent to Azure;
+   add reviewed nonpersonal text to the server editorial catalogue or upload audio.
+2. Listen using **Прослушать запись**. A cancelled or failed playback does not enable
+   approval. Confirm the spoken text, RU/KK pronunciation, stress, question contour,
+   clarity and lack of extraneous sounds against the displayed text.
+3. Select **Утвердить текст и произношение** for each recording and each mode.
+   New publication requests are blocked by the backend until the required recordings
+   are approved. Existing published exercises are not silently unpublished.
+
+Only WAV PCM uploads are accepted: mono, 16-bit, 16/22.05/24/44.1/48 kHz,
+0.1–30 seconds, at most 2 MB. Metadata is discarded. Use your own/licensed voice
+recording with exactly the teaching text and no personal information or background
+music. Slow speech requires its own recording, not a pitch-shifted/retimed version.
+Text longer than the 300-character endpoint limit must be manually edited in the
+draft; it is not truncated or rewritten by the speech service.
+
+The same panel's **Отдельная реплика питомца или общего каталога** lets an admin
+find an exact catalogue phrase (e.g. «Поиграем?») in Russian or Kazakh and replace its
+normal/slow audio. A replacement candidate does not displace the previous approved
+library audio until approval. No recording has been approved on the user's behalf.
+
+Approvals are attached to a content digest and authenticated reviewer, with an audit
+trail. Replacing a candidate resets listening and approval. Concurrent stale updates
+return 409. The client reports successful playback; the backend enforces matching
+recording/reviewer/digest, not proof that a human actually listened. Final acoustic
+and semantic review remains the reviewer's responsibility.
+
+Published exercise playback passes `version_id` through `/api/tts` and uses that
+version's approved recording before any global clip/Azure/fallback. Published
+recordings are immutable; use a new draft for changes. They remain pinned even if
+Azure settings or the general library subsequently change. Approved clips are never
+slowed a second time in the browser. The existing shared speech player still prevents
+overlap with the pet and stories.
+
+SSML preserves `?`/`!` and all teaching words, uses the supported `s`, `prosody` and
+`break` elements, normal/slow rates, and phrase-dependent pauses (question 250 ms,
+statement 150 ms, exclamation 200 ms, instruction 300 ms). RU contours are not applied
+to Kazakh. No unsupported speaking styles or emotion tags are requested. Very short
+question intonation remains provider-dependent; use a reviewed human recording when
+SSML is inadequate. Question/statement/exclamation punctuation, language, mode,
+voice and full SSML remain distinct in the synthesis cache. Manual recording keys
+also preserve punctuation and distinguish languages and modes.
+
+Apply migrations with `cd backend && python -m app.migrations upgrade`. There are no
+new Azure environment variables. The current platform's Russian-only exercise
+publication policy is unchanged; Kazakh audio review and manual replacements are
+available in the shared catalogue without pretending that KK exercises were published.
+Tests use synthetic fixtures and never constitute clinical approval of real content.

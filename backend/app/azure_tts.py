@@ -24,6 +24,20 @@ from .tts_library import known_russian_tts_texts, normalize_tts_text
 VOICES = {"ru": "ru-RU-SvetlanaNeural", "kk": "kk-KZ-AigulNeural"}
 FORMAT = "audio-24khz-48kbitrate-mono-mp3"
 
+# Exact mascot lines only: never raise the pitch of a whole lesson containing one.
+# This is a stylized female neural voice, not a child voice or unsupported child role.
+PET_PHRASES = {
+    "ru": frozenset({
+        "Привет!", "Давай поиграем!", "Начнём?", "Молодец!", "Получилось!", "Отлично!", "Ура!",
+        "Попробуем ещё!", "Давай вместе!", "Я рядом!", "Я помогу!", "Посмотри сюда!",
+        "Ура! Мы закончили!", "Здорово!", "Ты старался!", "Я здесь!", "Поиграем?",
+        "Подумай ещё раз.", "Попробуй ещё раз.", "Давай попробуем ещё раз.",
+    }),
+    "kk": frozenset({"Жарайсың!", "Тағы бір рет көр."}),
+}
+PET_PITCH = "+22%"
+
+
 
 class TTSUnavailable(Exception):
     def __init__(self, retry_after=60):
@@ -40,6 +54,7 @@ def catalogue() -> dict[tuple[str, str], str]:
     texts = set(known_russian_tts_texts())
     texts.update(["Привет!", "Давай поиграем!", "Начнём?", "Молодец!", "Получилось!", "Отлично!", "Ура!",
                   "Попробуем ещё!", "Давай вместе!", "Я рядом!", "Я помогу!", "Посмотри сюда!",
+                  "Подумай ещё раз.", "Попробуй ещё раз.", "Давай попробуем ещё раз.", "Теперь выбери из двух картинок.",
                   "Ура! Мы закончили!", "Здорово!", "Ты старался!", "Я здесь!", "Поиграем?"])
     fields = {"speech", "text", "instruction", "child_instruction", "narration", "hint", "feedback", "reaction", "label", "prompt", "assisted_reaction"}
 
@@ -56,7 +71,7 @@ def catalogue() -> dict[tuple[str, str], str]:
     visit([CORE_EXERCISES, PRACTICE_EXERCISES, P15_EXERCISE_DRAFTS, STORIES, STORY, DEFINITION, PICNIC])
     result = {("ru", normalize_tts_text(t)): normalize_tts_text(t) for t in texts if 0 < len(normalize_tts_text(t)) <= 300}
     # Generic vocabulary only. This does not translate or publish any exercise.
-    for text in ("Доп", "Алма", "Су", "Мысық", "Ит", "Кітап", "Тыңда және көрсет", "Қайтала", "Жарайсың!"):
+    for text in ("Доп", "Алма", "Су", "Мысық", "Ит", "Кітап", "Тыңда және көрсет", "Қайтала", "Жарайсың!", "Тағы бір рет көр.", "Екі суреттің бірін таңда."):
         result[("kk", text)] = text
     # Version-controlled additions/overrides require a recorded human review.
     for entry in json.loads(Path(__file__).with_name("tts_editorial.json").read_text()):
@@ -137,7 +152,7 @@ def phrase_kind(text: str, language: str, hint: str | None = None) -> str:
     return "instruction" if re.search(commands.get(language, r"(?!)"), clean, re.I) else "statement"
 
 
-def speech_ssml(spoken: str, language: str, mode: str, phrase_type: str | None = None) -> str:
+def speech_ssml(spoken: str, language: str, mode: str, phrase_type: str | None = None, profile: str = "exercise") -> str:
     """Preserve editorial punctuation; give each sentence its own prosodic scope.
 
     The slight pitch lift is a voice preference, identical at both speeds.
@@ -145,6 +160,7 @@ def speech_ssml(spoken: str, language: str, mode: str, phrase_type: str | None =
     """
     voice = VOICES[language]
     rate = "-15%" if mode == "slow" else "0%"
+    pitch = PET_PITCH if profile == "pet" else "+8%"
     sentences = re.split(r"(?<=[.!?])(?=\s|$)", spoken)
     parts = []
     for sentence in sentences:
@@ -154,22 +170,24 @@ def speech_ssml(spoken: str, language: str, mode: str, phrase_type: str | None =
         pause = {"question": 250, "statement": 150, "exclamation": 200, "instruction": 300}[kind]
         contour = question_contour(sentence, language)
         contour_attribute = f' contour="{contour}"' if contour else ""
-        parts.append(f'<s><prosody rate="{rate}" pitch="+5%"{contour_attribute}>{escape(sentence)}</prosody><break time="{pause}ms"/></s>')
+        parts.append(f'<s><prosody rate="{rate}" pitch="{pitch}"{contour_attribute}>{escape(sentence)}</prosody><break time="{pause}ms"/></s>')
     body = "".join(parts)
     return (f'<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="{voice[:5]}">'
             f'<voice name="{voice}">{body}</voice></speak>')
 
 
-def synthesize(text: str, language: str, mode: str, phrase_type: str | None = None) -> bytes:
+def synthesize(text: str, language: str, mode: str, phrase_type: str | None = None, profile: str = "exercise") -> bytes:
+    if profile not in {"exercise", "pet"} or (profile == "pet" and normalize_tts_text(text) not in PET_PHRASES.get(language, ())):
+        raise TTSUnavailable()
     spoken = catalogue().get((language, normalize_tts_text(text)))
     key = os.getenv("AZURE_SPEECH_KEY", "")
     region = os.getenv("AZURE_SPEECH_REGION", "")
     if not enabled() or not spoken or not key or not re.fullmatch(r"[a-z0-9-]{2,40}", region):
         raise TTSUnavailable()
     voice = VOICES[language]
-    ssml = speech_ssml(spoken, language, mode, phrase_type)
+    ssml = speech_ssml(spoken, language, mode, phrase_type, profile)
     # Include the complete SSML so voice/intonation edits cannot replay stale audio.
-    digest = hashlib.sha256(json.dumps([text, language, voice, mode, ssml, FORMAT, "v2"], ensure_ascii=False).encode()).hexdigest()
+    digest = hashlib.sha256(json.dumps([text, language, voice, mode, ssml, FORMAT, "v2", profile], ensure_ascii=False).encode()).hexdigest()
     token = uuid.uuid4().hex
     deadline = time.monotonic() + 9
     while True:

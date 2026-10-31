@@ -85,6 +85,26 @@ test("speech settles, cancels safely and retries the server after failures", asy
     assert.deepEqual(requests[0], requests[1]);
     assert.deepEqual(getSpeechState(), {isSpeaking:false, isLoading:false});
   });
+  await t.test("reviewed slow audio stays at native speed and keeps exercise context", async () => {
+    let payload;
+    globalThis.fetch = async (_, options) => { payload = JSON.parse(options.body); return {ok:true, headers:new Headers({"X-Soyle-TTS":"reviewed"}), blob:async()=>new Blob(["reviewed"])}; };
+    const playing = speak("Поиграем?", .65, true, "ru", "exercise", 42);
+    await tick();
+    assert.equal(payload.version_id, 42);
+    assert.equal(audios.at(-1).playbackRate, 1);
+    audios.at(-1).onended(); assert.equal(await playing, true);
+    const repeated = repeatSpeech(); await tick();
+    assert.equal(payload.version_id, 42);
+    audios.at(-1).onended(); await repeated;
+  });
+  await t.test("pet clicks, reactions and repeat carry their own voice profile", async () => {
+    const requests = [];
+    globalThis.fetch = async (_, options) => { requests.push(JSON.parse(options.body)); return {ok:true, blob:async()=>new Blob(["audio"])}; };
+    for (const start of [() => speakPet("Поиграем?"), () => repeatSpeech(), () => speak("Молодец!", .78, true, "ru", "exercise", 42, "pet"), () => speak("Молодец!")]) {
+      const playing = start(); await tick(); audios.at(-1).onended(); assert.equal(await playing, true);
+    }
+    assert.deepEqual(requests.map(item => item.profile || "exercise"), ["pet", "pet", "pet", "exercise"]);
+  });
   await t.test("private fallback never uses a remote or wrong-language voice", async () => {
     globalThis.fetch = async () => ({ok:false,status:503});
     globalThis.window.speechSynthesis.getVoices = () => [{lang:"kk-KZ",localService:false},{lang:"ru-RU",localService:true}];

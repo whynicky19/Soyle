@@ -316,10 +316,12 @@ class UserSettingsUpdate(BaseModel):
     language: Literal["ru"] = "ru"
 
 class TTSRequest(BaseModel):
+    profile: Literal["exercise", "pet"] = "exercise"
     text: str = Field(min_length=1, max_length=300)
     rate: float = Field(default=0.78, ge=0.6, le=1.1)
     language: Literal["ru", "kk"] = "ru"
     mode: Literal["normal", "slow"] | None = None
+    version_id: int | None = Field(default=None, ge=1)
 
 class AACCardCreate(BaseModel):
     child_id: int
@@ -480,3 +482,20 @@ class ChildPetSettingsUpdate(BaseModel):
     visible: bool = True
     voice: bool = False
     motion: Literal["full", "reduced", "off"] = "full"
+
+
+class AudioCandidateCreate(BaseModel):
+    source: Literal["azure", "manual", "bundled"]
+    audio_base64: str | None = Field(default=None, max_length=2_666_668)
+    expected_digest: str | None = Field(default=None, pattern=r"^[a-f0-9]{64}$")
+
+    @model_validator(mode="after")
+    def validate_manual(self):
+        if self.source == "manual" and not self.audio_base64:
+            raise ValueError("Manual audio is required")
+        return self
+
+
+class AudioDecisionCreate(BaseModel):
+    digest: str = Field(pattern=r"^[a-f0-9]{64}$")
+    action: Literal["listened", "approved"]

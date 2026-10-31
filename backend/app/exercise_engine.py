@@ -587,6 +587,7 @@ def preview_version(db, version_id: int) -> dict:
 
 
 def publish_version(db, version_id: int, reviewer_id: int | None = None, comment: str = "") -> dict:
+    db.execute("UPDATE exercise_versions SET title=title WHERE id=?", (version_id,))
     preview = preview_version(db, version_id)
     version = preview["version"]
     confirming_legacy = needs_admin_confirmation(version)
@@ -596,6 +597,9 @@ def publish_version(db, version_id: int, reviewer_id: int | None = None, comment
         raise HTTPException(409, "Нужно решение администратора")
     if preview["errors"]:
         raise HTTPException(422, {"message": "Исправьте ошибки задания", "errors": preview["errors"]})
+    from .audio_review import publication_ready
+    if not publication_ready(db, version):
+        raise HTTPException(409, "Прослушайте и утвердите все реплики в обычном и медленном режимах перед публикацией")
     if reviewer_id is not None:
         # One explicit administrator decision, without fabricating expert approvals.
         actor = db.execute("SELECT role,is_active FROM users WHERE id=?", (reviewer_id,)).fetchone()

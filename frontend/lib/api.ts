@@ -454,7 +454,7 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
   }
   let response: Response;
   const controller = new AbortController();
-  const timeoutMs = path === "/api/tts" ? 45_000 : 8_000;
+  const timeoutMs = path.startsWith("/api/admin/audio/") && path.endsWith("/prepare") ? 20_000 : (path === "/api/tts" ? 45_000 : 8_000);
   const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
   if (options.signal) options.signal.addEventListener("abort", () => controller.abort(), { once: true });
   try {

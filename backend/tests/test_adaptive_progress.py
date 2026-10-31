@@ -1,3 +1,4 @@
+from audio_fixtures import approve_fixture_version
 from datetime import datetime, timedelta, timezone
 
 from app.adaptive_planner import DEFAULT_THRESHOLDS, _aggregate_results, _difficulty, _evidence, _parent_observation_evidence
@@ -146,6 +147,7 @@ def test_goal_progress_requires_exact_plan_link_and_deduplicates_replay(client, 
 def test_instruction_results_are_no_longer_lost_from_planner_evidence(client, parent_headers, admin_headers, isolated_database):
     drafts = client.get('/api/admin/exercise-drafts', headers=admin_headers).json()
     draft = next(item['version'] for item in drafts if item['version']['mechanic'] == 'tap_instruction')
+    approve_fixture_version(draft["id"])
     client.post(f"/api/admin/exercise-drafts/{draft['id']}/publish", headers=admin_headers, json={'comment':'Синтетическая проверка результатов инструкций'}).raise_for_status()
     exercise = next(item for item in client.get('/api/exercises', headers=parent_headers).json() if item['engine']['version_id'] == draft['id'])
     child = _new_child(client, parent_headers)['id']

@@ -1,3 +1,4 @@
+from audio_fixtures import approve_fixture_version
 from app import exercise_engine
 from app.database import connect
 from app.exercise_engine import get_version, publish_version
@@ -22,6 +23,7 @@ def test_legacy_publication_can_be_checked_by_admin_without_demo_bypass(client, 
         with pytest.raises(HTTPException) as error:
             publish_version(db, version_id)
         assert error.value.status_code == 409
+    approve_fixture_version(version_id)
     response = client.post(f'/api/admin/exercise-drafts/{version_id}/publish', headers=admin_headers, json={'comment':'Проверено на синтетических данных без деморежима'})
     assert response.status_code == 200, response.text
     assert response.json()['admin_review_status'] == 'approved'

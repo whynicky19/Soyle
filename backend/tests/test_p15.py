@@ -1,3 +1,4 @@
+from audio_fixtures import approve_fixture_version
 from pathlib import Path
 
 from app.database import connect
@@ -129,6 +130,7 @@ def test_admin_review_needs_no_separate_expert_permissions(client, admin_headers
         json={"stage": "admin", "decision": "changes_requested", "comment": "Проверить озвучку до выпуска"})
     assert returned.status_code == 200
     assert returned.json()["version"]["admin_review_status"] == "changes_requested"
+    approve_fixture_version(version_id)
     published = client.post(f"/api/admin/exercise-drafts/{version_id}/publish", headers=admin_headers,
         json={"comment": "Картинки, инструкция, звук и ответы проверены"})
     assert published.status_code == 200, published.text

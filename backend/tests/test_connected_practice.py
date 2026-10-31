@@ -1,3 +1,4 @@
+from audio_fixtures import approve_fixture_version
 """The same recommendation must survive the family → child → specialist workflow."""
 import json
 import pytest
@@ -256,6 +257,7 @@ def test_new_mechanic_goal_recommendation_child_pause_result_shared_by_both_adul
     with connect() as db:
         row = db.execute("SELECT v.id FROM exercise_versions v JOIN exercises e ON e.id=v.exercise_id WHERE e.target=? AND v.publication_status='draft' ORDER BY v.version DESC LIMIT 1", (target,)).fetchone()
         admin = db.execute("SELECT id FROM users WHERE role='admin' AND is_active=1 ORDER BY id LIMIT 1").fetchone()['id']
+        approve_fixture_version(row["id"], db)
         version = publish_version(db, row['id'], reviewer_id=admin, comment='Синтетическая проверка трёх ролей')
     goal = add_goal(client, parent, child, target)
     rec = recommend(client, specialist, child, goal, exercise=version['exercise_id'])

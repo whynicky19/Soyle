@@ -1,3 +1,4 @@
+from audio_fixtures import approve_fixture_version
 import hashlib,json
 from copy import deepcopy
 from uuid import uuid4
@@ -12,6 +13,7 @@ from test_varied_mechanics import isolated_database
 def child_id(c,h):return c.get('/api/children',headers=h).json()[0]['id']
 def publish(c,h,key):
     v=next(x['version'] for x in c.get('/api/admin/exercise-drafts',headers=h).json() if (x['version']['content'].get('exploration') or {}).get('key')==key)
+    approve_fixture_version(v["id"])
     r=c.post(f'/api/admin/exercise-drafts/{v["id"]}/publish',headers=h);assert r.status_code==200,r.text;return v
 
 def send(c,h,s,action,**extra):

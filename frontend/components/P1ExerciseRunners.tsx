@@ -27,6 +27,7 @@ import {
 } from "@/lib/exerciseRuntime";
 
 export type DraftExerciseVersion = {
+  language?: "ru" | "kk";
   id: number;
   exercise_id: number;
   version: number;

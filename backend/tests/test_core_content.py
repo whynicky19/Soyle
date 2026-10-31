@@ -1,3 +1,4 @@
+from audio_fixtures import approve_fixture_version
 from copy import deepcopy
 from pathlib import Path
 
@@ -76,14 +77,17 @@ def test_goal_link_and_rollback_in_a_disposable_copy_of_synthetic_database(clien
     with connect() as db:
         first = db.execute("SELECT id,exercise_id FROM exercise_versions WHERE title=?", (WORD_CORE["title"],)).fetchone()
         db.execute("UPDATE exercise_versions SET review_status='approved',technical_status='passed',methodology_status='approved',accessibility_status='approved',release_status='approved' WHERE id=?", (first["id"],))
+        approve_fixture_version(first["id"], db)
         exercise_engine.publish_version(db, first["id"])
         linked = _related_exercises(db, template)
         assert any(item["exercise_version_id"] == first["id"] for item in linked)
         _insert_p15_draft(db, {**WORD_CORE, "title": "Synthetic reviewed successor for rollback"})
         second = db.execute("SELECT id FROM exercise_versions WHERE title='Synthetic reviewed successor for rollback'").fetchone()["id"]
         db.execute("UPDATE exercise_versions SET review_status='approved',technical_status='passed',methodology_status='approved',accessibility_status='approved',release_status='approved' WHERE id=?", (second,))
+        approve_fixture_version(second, db)
         exercise_engine.publish_version(db, second)
         assert exercise_engine.published_exercise(db, first["exercise_id"])["engine"]["version_id"] == second
+        approve_fixture_version(first["id"], db)
         exercise_engine.publish_version(db, first["id"])
         assert exercise_engine.published_exercise(db, first["exercise_id"])["engine"]["version_id"] == first["id"]
 

@@ -1,3 +1,4 @@
+from audio_fixtures import approve_fixture_version
 from copy import deepcopy
 from pathlib import Path
 import sqlite3
@@ -65,6 +66,7 @@ def test_admin_publication_links_exact_goal_plan_and_child_result(client, admin_
     child = client.get('/api/children', headers=parent_headers).json()[0]['id']
     assert fixture['target'] not in {item['target'] for item in client.get('/api/exercises', headers=parent_headers).json()}
     assert client.post(f"/api/admin/exercise-drafts/{draft['id']}/publish", headers=parent_headers).status_code == 403
+    approve_fixture_version(draft["id"])
     published = client.post(f"/api/admin/exercise-drafts/{draft['id']}/publish", headers=admin_headers, json={'comment':'Проверено на синтетических данных'})
     assert published.status_code == 200, published.text
     with connect() as db:
@@ -111,6 +113,7 @@ def test_admin_publication_links_exact_goal_plan_and_child_result(client, admin_
 def test_restart_preserves_published_and_archived_admin_decisions(client, admin_headers, parent_headers, isolated_database, fixture):
     drafts = client.get('/api/admin/exercise-drafts', headers=admin_headers).json()
     draft = next(item['version'] for item in drafts if item['version']['target'] == fixture['target'])
+    approve_fixture_version(draft["id"])
     assert client.post(f"/api/admin/exercise-drafts/{draft['id']}/publish", headers=admin_headers).status_code == 200
     database.init_db()
     public = client.get('/api/exercises', headers=parent_headers).json()

@@ -47,7 +47,7 @@ def test_voices_modes_repeat_cache(azure, client, parent_headers, language, text
         assert response.content == b"ID3-test-audio"
     assert len(azure) == 1
     ssml = azure[0][1]["content"].decode()
-    assert voice in ssml and f'rate="{rate}"' in ssml and 'pitch="+5%"' in ssml
+    assert voice in ssml and f'rate="{rate}"' in ssml and 'pitch="+8%"' in ssml
     assert "server-only-test-key" not in response.text
 
 
@@ -170,9 +170,9 @@ def test_sentence_markup_preserves_question_statement_and_stress():
     assert "".join(root.itertext()) == text
     attributes = [node.find("s:prosody", ns).attrib for node in sentences]
     assert attributes[0]["contour"] == tts.QUESTION_CONTOURS["wh"]
-    assert attributes[1:] == [{"rate": "0%", "pitch": "+5%"}] * 2
+    assert attributes[1:] == [{"rate": "0%", "pitch": "+8%"}] * 2
     slow = ET.fromstring(tts.speech_ssml(text, "ru", "slow"))
-    assert all(node.attrib["rate"] == "-15%" and node.attrib["pitch"] == "+5%" for node in slow.findall(".//s:prosody", ns))
+    assert all(node.attrib["rate"] == "-15%" and node.attrib["pitch"] == "+8%" for node in slow.findall(".//s:prosody", ns))
 
 
 @pytest.mark.parametrize("text,kind", [
@@ -201,6 +201,50 @@ def test_short_invitation_has_its_own_stress_timed_contour():
         node = root.find(".//{http://www.w3.org/2001/10/synthesis}prosody")
         assert node.get("contour") == tts.SHORT_QUESTION_CONTOURS["поиграем?"]
         assert "".join(root.itertext()) == "Поиграем?"
-        assert node.get("pitch") == "+5%"
+        assert node.get("pitch") == "+8%"
     assert tts.question_contour("Начнём?", "ru") == tts.QUESTION_CONTOURS["polar"]
     assert tts.question_contour("Поиграем.", "ru") is None
+
+
+def test_question_statement_and_exclamation_have_distinct_cached_audio(azure, monkeypatch):
+    texts = ("Поиграем?", "Поиграем.", "Поиграем!")
+    monkeypatch.setattr(tts, "catalogue", lambda: {("ru", text): text for text in texts})
+    for text in texts * 2:
+        tts.synthesize(text, "ru", "normal")
+    assert len(azure) == 3
+    markup = [call[1]["content"].decode() for call in azure]
+    assert len(set(markup)) == 3
+    for text, ssml in zip(texts, markup):
+        assert text in ssml
+
+
+@pytest.mark.parametrize("language,text,word", [("ru", "Привет!", "Мяч"), ("kk", "Жарайсың!", "Доп")])
+@pytest.mark.parametrize("mode", ["normal", "slow"])
+def test_mascot_pitch_does_not_change_learning_words(language, text, word, mode):
+    from xml.etree import ElementTree as ET
+    ns = "{http://www.w3.org/2001/10/synthesis}"
+    for spoken, profile, expected in [(text, "pet", "+22%"), (text, "exercise", "+8%"), (word, "exercise", "+8%"), (text + " " + word, "exercise", "+8%")]:
+        root = ET.fromstring(tts.speech_ssml(spoken, language, mode, profile=profile))
+        assert "".join(root.itertext()) == spoken
+        assert all(node.get("pitch") == expected for node in root.iter(ns + "prosody"))
+        assert all(node.get("rate") == ("-15%" if mode == "slow" else "0%") for node in root.iter(ns + "prosody"))
+        assert "express-as" not in ET.tostring(root, encoding="unicode")
+
+
+def test_mascot_timbre_changes_invalidate_cache_and_repeats_reuse_it(azure, monkeypatch):
+    tts.synthesize("Привет!", "ru", "normal", profile="pet")
+    tts.synthesize("Привет!", "ru", "normal", profile="pet")
+    assert len(azure) == 1
+    monkeypatch.setattr(tts, "PET_PITCH", "+23%")
+    tts.synthesize("Привет!", "ru", "normal", profile="pet")
+    assert len(azure) == 2
+
+
+def test_same_text_has_separate_pet_and_exercise_cache(azure, client, parent_headers):
+    for profile in ("pet", "exercise", "pet", "exercise"):
+        response = client.post("/api/tts", headers=parent_headers, json={"text": "Поиграем?", "profile": profile})
+        assert response.status_code == 200
+    assert len(azure) == 2
+    assert 'pitch="+22%"' in azure[0][1]["content"].decode()
+    assert 'pitch="+8%"' in azure[1][1]["content"].decode()
+    assert client.post("/api/tts", headers=parent_headers, json={"text": "Мяч", "profile": "pet"}).status_code == 422

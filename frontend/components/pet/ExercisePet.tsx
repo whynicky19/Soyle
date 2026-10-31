@@ -3,12 +3,13 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 import Image from "next/image";
 import { usePetDrag } from "./usePetDrag";
 import type { Rive } from "@rive-app/webgl2";
-import { petReactions, type PetEvent, type PetPreferences } from "@/lib/pet";
+import { nextPetPhrase, petReactions, type PetEvent, type PetPreferences } from "@/lib/pet";
 import { speakPet, stopPetSpeech } from "@/lib/speech";
 
 type PetReaction = { event: PetEvent; phrase: string; id: number; mood: number; duration: number };
 const tapReactions = ["greeting", "correct", "hint", "incorrect", "complete"] as const;
-const PetContext = createContext<(event: PetEvent) => void>(() => {});
+type PetReactionOptions = { phrase?: string; silent?: boolean };
+const PetContext = createContext<(event: PetEvent, options?: PetReactionOptions) => void>(() => {});
 const PetMessageContext = createContext("Поиграем?");
 export const usePetMessage = () => useContext(PetMessageContext);
 const PetDisplayContext = createContext<ReactNode>(null);
@@ -17,7 +18,6 @@ export const ExercisePet = () => useContext(PetDisplayContext);
 
 export function ExercisePetProvider({ preferences, soundEnabled, calmMode, initialEvent = "greeting", presentation = "exercise", children }: { presentation?: "exercise" | "home"; preferences: PetPreferences; soundEnabled: boolean; calmMode: boolean; initialEvent?: PetEvent; children: ReactNode }) {
   const [reaction, setReaction] = useState<PetReaction | null>(null);
-  const lastPhrase = useRef("");
   const lastTap = useRef(0);
   const tapSequence = useRef(0);
   const sequence = useRef(0);
@@ -25,20 +25,18 @@ export function ExercisePetProvider({ preferences, soundEnabled, calmMode, initi
   const speechTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const options = useRef({ preferences, soundEnabled });
   useEffect(() => { options.current = { preferences, soundEnabled }; if (!preferences.visible || !preferences.voice || !soundEnabled) { clearTimeout(speechTimer.current); stopPetSpeech(); } }, [preferences, soundEnabled]);
-  const react = useCallback((event: PetEvent) => {
+  const react = useCallback((event: PetEvent, reactionOptions?: PetReactionOptions) => {
     const { preferences, soundEnabled } = options.current;
     if (!preferences.visible) return;
     if (event === "tap" && Date.now() - lastTap.current < 2500) return;
     if (event === "tap") lastTap.current = Date.now();
     clearTimeout(timer.current); clearTimeout(speechTimer.current); stopPetSpeech();
     const spec = petReactions[event === "tap" ? tapReactions[tapSequence.current++ % tapReactions.length] : event];
-    const phrases = petReactions[event].phrases.filter(phrase => phrase !== lastPhrase.current);
-    const phrase = phrases[sequence.current % phrases.length];
-    lastPhrase.current = phrase;
+    const phrase = reactionOptions?.phrase ?? nextPetPhrase(event);
     setReaction({ event, phrase, id: ++sequence.current, mood: spec.mood, duration: spec.duration });
     timer.current = setTimeout(() => { setReaction(null); stopPetSpeech(); }, spec.duration);
     // Allow the same interaction's exercise narration to claim audio first. Never queue stale speech.
-    if (preferences.voice && soundEnabled) speechTimer.current = setTimeout(() => { void speakPet(phrase); }, 200);
+    if (preferences.voice && soundEnabled && !reactionOptions?.silent) speechTimer.current = setTimeout(() => { void speakPet(phrase); }, 200);
   }, []);
   useEffect(() => {
     const start = setTimeout(() => react(initialEvent), 600);

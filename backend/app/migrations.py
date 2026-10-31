@@ -1131,6 +1131,13 @@ def _migration_38_audio_review(db) -> None:
     )""")
 
 
+def _migration_39_library_audio_snapshot(db) -> None:
+    db.execute("""CREATE TABLE speech_library_active (
+        phrase_key TEXT NOT NULL, mode TEXT NOT NULL, audio_base64 TEXT NOT NULL,
+        mime TEXT NOT NULL, digest TEXT NOT NULL, PRIMARY KEY(phrase_key,mode)
+    )""")
+
+
 MIGRATIONS = (
     (9, _migration_9_exercise_engine),
     (10, _migration_10_content_contracts),
@@ -1162,6 +1169,7 @@ MIGRATIONS = (
     (36, _migration_36_child_pet_settings),
     (37, _migration_37_azure_tts),
     (38, _migration_38_audio_review),
+    (39, _migration_39_library_audio_snapshot),
 )
 LATEST_SCHEMA_VERSION = MIGRATIONS[-1][0]
 

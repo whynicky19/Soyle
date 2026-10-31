@@ -12,6 +12,7 @@ import { ExplorationExercise } from "./ExplorationExercise";
 import { VocabularyProgress } from "./VocabularyProgress";
 import { ObservationExercise } from "./ObservationExercise";
 import { speak, stopCurrentSpeech } from "@/lib/speech";
+import { nextPetPhrase } from "@/lib/pet";
 
 import {
   ArrowLeft,
@@ -812,11 +813,11 @@ function AuthenticatedApp({ user, onLogout, externalError, onDismissExternalErro
   const exerciseBack = () => sessionExerciseActive && activeSession ? setScreen("session") : openScreen("games");
   const activeExerciseContent = <>
     {screen === "motor" && <MotorGame exercises={exercises.filter((item) => item.module === "motor")} initialExercise={selectedExercise} cameraConsentGranted={Boolean(consent?.privacy_accepted && consent?.camera_processing && settings.camera_enabled)} canManageConsent={user.role === "parent"} onOpenConsent={() => openScreen("parent")} onBack={exerciseBack} onComplete={(score, exerciseId, measurement, details) => saveSession(exerciseId, "motor", score, details || { source: "manual" }, measurement)} />}
-    {screen === "sensory" && selectedExercise?.engine?.mechanic === "scene_search" && <ExplorationExercise key={`${selectedExercise.id}-${selectedExercise.engine.version_id}`} content={selectedExercise.engine.content} childId={child?.id} exerciseId={selectedExercise.id} previewVersionId={user.role==='parent'&&parentPracticeMode==='adult_preview'?selectedExercise.engine.version_id:undefined} learningSessionId={sessionExerciseActive?activeSession?.id:undefined} plannedLevel={selectedExercise.adaptive?.difficulty_params.difficulty_level} defaultRounds={selectedExercise.adaptive?.difficulty_params.round_count} soundEnabled={settings.sound_enabled} showStopControls={!(user.role==='student'||parentPracticeMode==='child_practice')} onSpeak={(text,rate)=>speak(text,rate,settings.sound_enabled,selectedExercise?.engine?.language || "ru")} onBack={exerciseBack} onComplete={(measurement,details)=>saveSession(selectedExercise.id,'sensory',0,details,measurement)} stopRef={variedStopRef}/>}
-    {screen === "sensory" && selectedExercise?.engine && variedMechanics.includes(selectedExercise.engine.mechanic) && <div className="page-enter game-page"><GameHeader title={selectedExercise.title} subtitle={selectedExercise.instruction} step="Игра с картинками" onBack={exerciseBack}/><VariedExerciseRunner stopRef={variedStopRef} key={`${selectedExercise.id}-${selectedExercise.engine.version_id}`} mechanic={selectedExercise.engine.mechanic as VariedMechanic} content={selectedExercise.engine.content} defaultRounds={selectedExercise.adaptive?.difficulty_params.round_count} soundEnabled={settings.sound_enabled} onSpeak={(text, rate) => speak(text, rate, settings.sound_enabled, selectedExercise?.engine?.language || "ru")} onBack={exerciseBack} onComplete={(measurement, details) => saveSession(selectedExercise.id, "sensory", 0, details, measurement)}/></div>}
-    {screen === "sensory" && selectedExercise?.engine?.mechanic === "tap_instruction" ? <div className="page-enter game-page"><GameHeader title={selectedExercise.title} subtitle="Выполни один шаг" step="Предмет → цель" onBack={exerciseBack}/><PublishedInstructionRunner scenarios={selectedExercise.engine.content.scenarios || []} roundChoices={selectedExercise.engine.content.round_choices} defaultRounds={selectedExercise.adaptive?.difficulty_params.round_count || selectedExercise.engine.content.default_rounds} soundEnabled={settings.sound_enabled} onSpeak={(text, rate) => speak(text, rate, settings.sound_enabled, selectedExercise?.engine?.language || "ru")} onBack={exerciseBack} onComplete={(measurement, details) => saveSession(selectedExercise.id, "sensory", 0, details, measurement)}/></div> : null}
+    {screen === "sensory" && selectedExercise?.engine?.mechanic === "scene_search" && <ExplorationExercise key={`${selectedExercise.id}-${selectedExercise.engine.version_id}`} content={selectedExercise.engine.content} childId={child?.id} exerciseId={selectedExercise.id} previewVersionId={user.role==='parent'&&parentPracticeMode==='adult_preview'?selectedExercise.engine.version_id:undefined} learningSessionId={sessionExerciseActive?activeSession?.id:undefined} plannedLevel={selectedExercise.adaptive?.difficulty_params.difficulty_level} defaultRounds={selectedExercise.adaptive?.difficulty_params.round_count} soundEnabled={settings.sound_enabled} showStopControls={!(user.role==='student'||parentPracticeMode==='child_practice')} onSpeak={(text,rate)=>speak(text,rate,settings.sound_enabled,selectedExercise?.engine?.language || "ru", "exercise", selectedExercise?.engine?.version_id)} onBack={exerciseBack} onComplete={(measurement,details)=>saveSession(selectedExercise.id,'sensory',0,details,measurement)} stopRef={variedStopRef}/>}
+    {screen === "sensory" && selectedExercise?.engine && variedMechanics.includes(selectedExercise.engine.mechanic) && <div className="page-enter game-page"><GameHeader title={selectedExercise.title} subtitle={selectedExercise.instruction} step="Игра с картинками" onBack={exerciseBack}/><VariedExerciseRunner stopRef={variedStopRef} key={`${selectedExercise.id}-${selectedExercise.engine.version_id}`} mechanic={selectedExercise.engine.mechanic as VariedMechanic} content={selectedExercise.engine.content} defaultRounds={selectedExercise.adaptive?.difficulty_params.round_count} soundEnabled={settings.sound_enabled} onSpeak={(text, rate) => speak(text, rate, settings.sound_enabled, selectedExercise?.engine?.language || "ru", "exercise", selectedExercise?.engine?.version_id)} onBack={exerciseBack} onComplete={(measurement, details) => saveSession(selectedExercise.id, "sensory", 0, details, measurement)}/></div>}
+    {screen === "sensory" && selectedExercise?.engine?.mechanic === "tap_instruction" ? <div className="page-enter game-page"><GameHeader title={selectedExercise.title} subtitle="Выполни один шаг" step="Предмет → цель" onBack={exerciseBack}/><PublishedInstructionRunner scenarios={selectedExercise.engine.content.scenarios || []} roundChoices={selectedExercise.engine.content.round_choices} defaultRounds={selectedExercise.adaptive?.difficulty_params.round_count || selectedExercise.engine.content.default_rounds} soundEnabled={settings.sound_enabled} onSpeak={(text, rate) => speak(text, rate, settings.sound_enabled, selectedExercise?.engine?.language || "ru", "exercise", selectedExercise?.engine?.version_id)} onBack={exerciseBack} onComplete={(measurement, details) => saveSession(selectedExercise.id, "sensory", 0, details, measurement)}/></div> : null}
     {screen === "sensory" && selectedExercise?.engine?.mechanic !== "tap_instruction" && selectedExercise?.engine?.mechanic !== "scene_search" && !variedMechanics.includes(selectedExercise?.engine?.mechanic || "") && <SensoryGame key={selectedExercise?.id || "sensory"} exercise={selectedExercise?.module === "sensory" ? selectedExercise : exercises.find((item) => item.module === "sensory")} soundEnabled={settings.sound_enabled} onBack={exerciseBack} onComplete={(score, exerciseId, measurement, details) => saveSession(exerciseId, "sensory", score, details || {}, measurement)} />}
-    {screen === "mixed" && selectedExercise?.engine?.content.presentation === "picture_description" && <div className="page-enter game-page"><GameHeader title={selectedExercise.title} subtitle="Рассмотри и опиши одну картинку" step="Описание картинки" onBack={exerciseBack}/><ObservationExercise stopRef={variedStopRef} key={`${selectedExercise.id}-${selectedExercise.engine.version_id}`} content={selectedExercise.engine.content} defaultRounds={selectedExercise.adaptive?.difficulty_params.round_count} soundEnabled={settings.sound_enabled} onSpeak={(text, rate) => speak(text, rate, settings.sound_enabled, selectedExercise?.engine?.language || "ru")} onBack={exerciseBack} onComplete={(measurement, details) => saveSession(selectedExercise.id, "mixed", 0, details, measurement)}/></div>}
+    {screen === "mixed" && selectedExercise?.engine?.content.presentation === "picture_description" && <div className="page-enter game-page"><GameHeader title={selectedExercise.title} subtitle="Рассмотри и опиши одну картинку" step="Описание картинки" onBack={exerciseBack}/><ObservationExercise stopRef={variedStopRef} key={`${selectedExercise.id}-${selectedExercise.engine.version_id}`} content={selectedExercise.engine.content} defaultRounds={selectedExercise.adaptive?.difficulty_params.round_count} soundEnabled={settings.sound_enabled} onSpeak={(text, rate) => speak(text, rate, settings.sound_enabled, selectedExercise?.engine?.language || "ru", "exercise", selectedExercise?.engine?.version_id)} onBack={exerciseBack} onComplete={(measurement, details) => saveSession(selectedExercise.id, "mixed", 0, details, measurement)}/></div>}
     {screen === "mixed" && selectedExercise?.engine?.content.presentation !== "picture_description" && <PhraseGame key={selectedExercise?.id || "mixed"} childId={child?.id} canManage={user.role === "parent"} exercise={selectedExercise?.module === "mixed" ? selectedExercise : exercises.find((item) => item.module === "mixed")} soundEnabled={settings.sound_enabled} onBack={exerciseBack} onComplete={(score, phrase, exerciseId, measurement) => saveSession(exerciseId, "mixed", score, { phrase }, measurement)} />}
   </>;
   const isChildExerciseFocus = ["motor", "sensory", "mixed"].includes(screen) && (user.role === "student" || (user.role === "parent" && parentPracticeMode === "child_practice"));
@@ -1495,7 +1496,7 @@ function SensoryGame({ exercise, soundEnabled, onBack, onComplete }: { exercise?
 
   if (items.length < difficulty.option_count) return <div className="empty-state large" role="alert"><ShieldAlert size={28}/><strong>Задание пока недоступно</strong><span>Опубликованная версия не содержит достаточного числа проверенных стимулов.</span><button className="secondary-button" onClick={onBack}>Вернуться к занятиям</button></div>;
 
-  const playWord = async (target = roundData?.target, repeat = true) => {
+  const playWord = async (target = roundData?.target, repeat = true, encouragement?: string, encouragementProfile: "exercise" | "pet" = "exercise") => {
     if (target === undefined || audioLockRef.current || stoppedRef.current) return;
     if (repeat && phase === "playing") {
       evidenceRef.current = withSupport(evidenceRef.current, "repeat_audio");
@@ -1505,7 +1506,10 @@ function SensoryGame({ exercise, soundEnabled, onBack, onComplete }: { exercise?
     }
     audioLockRef.current = true;
     setAudioPending(true);
-    const played = await speak(items[target].speech || items[target].word, speechRate, soundEnabled, exercise?.engine?.language || "ru");
+    const language = exercise?.engine?.language || "ru";
+    // Hold the answer lock for the whole sequence; cancellation must not start a late word.
+    const encouraged = !encouragement || await speak(encouragement, speechRate, soundEnabled, language, "exercise", exercise?.engine?.version_id, encouragementProfile);
+    const played = encouraged && !stoppedRef.current && await speak(items[target].speech || items[target].word, speechRate, soundEnabled, language, "exercise", exercise?.engine?.version_id);
     audioLockRef.current = false;
     if (stoppedRef.current) return;
     setAudioPending(false);
@@ -1536,7 +1540,7 @@ function SensoryGame({ exercise, soundEnabled, onBack, onComplete }: { exercise?
     setFeedback("");
     audioLockRef.current = true;
     setAudioPending(true);
-    const played = await speak(items[nextRound.target].speech || items[nextRound.target].word, speechRate, soundEnabled, exercise?.engine?.language || "ru");
+    const played = await speak(items[nextRound.target].speech || items[nextRound.target].word, speechRate, soundEnabled, exercise?.engine?.language || "ru", "exercise", exercise?.engine?.version_id);
     audioLockRef.current = false;
     if (stoppedRef.current) return;
     setAudioPending(false);
@@ -1555,7 +1559,7 @@ function SensoryGame({ exercise, soundEnabled, onBack, onComplete }: { exercise?
     setFeedback(hint);
     audioLockRef.current = true;
     setAudioPending(true);
-    await speak(hint, speechRate, soundEnabled, exercise?.engine?.language || "ru");
+    await speak(hint, speechRate, soundEnabled, exercise?.engine?.language || "ru", "exercise", exercise?.engine?.version_id);
     audioLockRef.current = false;
     if (!stoppedRef.current) setAudioPending(false);
   };
@@ -1567,7 +1571,11 @@ function SensoryGame({ exercise, soundEnabled, onBack, onComplete }: { exercise?
     gameplayChoicesRef.current += 1;
     setAttemptsThisRound(attempt);
     if (index === roundData.target) {
-      pet("correct");
+      const language = exercise?.engine?.language || "ru";
+      const praise = language === "kk" ? "Жарайсың!" : nextPetPhrase("correct");
+      // Exercise feedback follows the exercise sound toggle, even when the pet is muted/hidden.
+      // The pet shows the same phrase without scheduling a second audio clip.
+      pet("correct", { phrase: praise, silent: true });
       correctAnswersRef.current += 1;
       answerLockRef.current = true;
       const independent = responseOutcome(evidenceRef.current) === "independent";
@@ -1586,7 +1594,7 @@ function SensoryGame({ exercise, soundEnabled, onBack, onComplete }: { exercise?
       });
       setPhase("resolved");
       setFeedback(independent ? "Ты нашёл картинку самостоятельно." : "Получилось. Подсказка помогла найти картинку.");
-      void speak("Получилось.", 0.9, soundEnabled, exercise?.engine?.language || "ru");
+      void speak(praise, speechRate, soundEnabled, language, "exercise", exercise?.engine?.version_id, "pet");
       return;
     }
 
@@ -1597,9 +1605,10 @@ function SensoryGame({ exercise, soundEnabled, onBack, onComplete }: { exercise?
       promptLevelRef.current = Math.max(promptLevelRef.current, 1) as 0 | 1 | 2;
       promptTypesRef.current.push("repeat_audio");
       evidenceRef.current = withSupport(evidenceRef.current, "repeat_audio");
-      pet("incorrect");
-      setFeedback("Попробуй ещё. Послушай слово ещё раз.");
-      void playWord(roundData.target, false);
+      const encouragement = exercise?.engine?.language === "kk" ? "Тағы бір рет көр." : nextPetPhrase("incorrect");
+      pet("incorrect", { phrase: encouragement, silent: true });
+      setFeedback(encouragement);
+      void playWord(roundData.target, false, encouragement, "pet");
     } else if (attempt === 2) {
       promptLevelRef.current = 2;
       promptTypesRef.current.push("reduced_choice");
@@ -1607,8 +1616,10 @@ function SensoryGame({ exercise, soundEnabled, onBack, onComplete }: { exercise?
       const other = shuffled(roundData.options.filter((value) => value !== roundData.target && !nextWrongChoices.includes(value)))[0]
         ?? roundData.options.find((value) => value !== roundData.target);
       setReducedOptions(other === undefined ? [roundData.target] : shuffled([roundData.target, other]));
-      setFeedback("Теперь выбери из двух картинок.");
-      void playWord(roundData.target, false);
+      const encouragement = exercise?.engine?.language === "kk" ? "Екі суреттің бірін таңда." : "Теперь выбери из двух картинок.";
+      pet("incorrect", { phrase: encouragement, silent: true });
+      setFeedback(encouragement);
+      void playWord(roundData.target, false, encouragement);
     } else {
       promptLevelRef.current = 2;
       promptTypesRef.current.push("model_answer");
@@ -1629,7 +1640,7 @@ function SensoryGame({ exercise, soundEnabled, onBack, onComplete }: { exercise?
       });
       const modelText = exercise?.engine?.mechanic === "action_choice" ? `Ребёнок ${items[roundData.target].word.toLowerCase()}.` : `Это ${items[roundData.target].word.toLowerCase()}.`;
       setFeedback(`Посмотрим вместе. ${modelText}`);
-      void speak(modelText, 0.75, soundEnabled, exercise?.engine?.language || "ru");
+      void speak(modelText, 0.75, soundEnabled, exercise?.engine?.language || "ru", "exercise", exercise?.engine?.version_id);
     }
   };
 
@@ -1875,7 +1886,7 @@ function PhraseGame({ childId, canManage, exercise, freeMode = false, soundEnabl
       if (lifetime !== speechLifetime.current) return;
       if (!composed.valid) { pet("incorrect"); setAacNotice(composed.reason || "Эту комбинацию пока нельзя озвучить как готовую фразу."); return; }
       setAacNotice("");
-      const played = await speak(composed.phrase, 0.72, freeMode || soundEnabled, selected[0]?.language || "ru");
+      const played = await speak(composed.phrase, 0.72, freeMode || soundEnabled, selected[0]?.language || "ru", "exercise", freeMode ? undefined : exercise?.engine?.version_id);
       if (lifetime !== speechLifetime.current) return;
       if (!played) { setAacNotice("Не удалось озвучить сообщение. Попробуйте ещё раз. Результат не сохранён."); return; }
       pet("correct");
@@ -1910,7 +1921,7 @@ function PhraseGame({ childId, canManage, exercise, freeMode = false, soundEnabl
     setSelected([card]);
     setAacNotice("Озвучиваем сообщение…");
     try {
-      const played = await speak(card.speech, 0.72, true, card.language || "ru");
+      const played = await speak(card.speech, 0.72, true, card.language || "ru", "exercise", freeMode ? undefined : exercise?.engine?.version_id);
       if (lifetime !== speechLifetime.current) return;
       setAacNotice(!played ? "Не удалось включить звук. Сообщение показано на экране. Отказ и перерыв нужно уважать." : card.label === "Перерыв" ? "Сообщение озвучено. Можно сделать паузу или вернуться на главную." : ["Нет", "Стоп", "Не хочу"].includes(card.label) ? "Сообщение озвучено. Продолжать действие не нужно." : "Сообщение озвучено.");
       if (!freeMode && !savedRef.current && exercise && onComplete && ["Перерыв", "Стоп", "Не хочу"].includes(card.label)) {
@@ -2356,7 +2367,7 @@ function AdminScreen() {
   const formatTokens = (value: number) => value.toLocaleString("ru-RU");
   const formatCost = (value: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 4, maximumFractionDigits: 6 }).format(value);
   const maxDailyTokens = Math.max(0, ...usage.daily.map((item) => item.total_tokens));
-  if (tab === "exercises" && reviewWorkspace) return <div className="page-enter admin-review-page"><ContentReviewWorkspace data={reviewWorkspace} onClose={closeReviewWorkspace} onSpeak={(text, rate) => speak(text, rate, true)} onReview={reviewContent} onPublish={publishContent}/></div>;
+  if (tab === "exercises" && reviewWorkspace) return <div className="page-enter admin-review-page"><ContentReviewWorkspace data={reviewWorkspace} onClose={closeReviewWorkspace} onSpeak={(text, rate) => speak(text, rate, true, reviewWorkspace.version.language || "ru", "exercise", reviewWorkspace.version.id)} onReview={reviewContent} onPublish={publishContent}/></div>;
   if (tab === "exercises" && homePreview) return <div className="page-enter admin-review-page"><HomeActivityReviewPreview activity={homePreview} onClose={closeHomePreview} onPublish={publishHomeContent}/></div>;
   return <div className="page-enter stack-xl admin-page">
     <div className="admin-heading"><PageTitle eyebrow="УПРАВЛЕНИЕ ПЛАТФОРМОЙ" title="Админ-панель" subtitle="Проверка заданий, управление доступом и история решений."/><span className={`system-status ${apiHealthy === false ? "blocked" : ""}`}><i/> {apiHealthy === null ? "Проверяем API" : apiHealthy ? "API доступен" : "API недоступен"}</span></div>
