@@ -8,7 +8,7 @@ test('dictionaries have identical nonempty keys and interpolation parameters', (
   assert.deepEqual(Object.keys(ru).sort(),Object.keys(kk).sort());
   for (const key of Object.keys(ru)) {
     assert.ok(ru[key].trim() && kk[key].trim(),key);
-    assert.deepEqual(ru[key].match(/\{\w+\}/g),kk[key].match(/\{\w+\}/g),key);
+    assert.deepEqual((ru[key].match(/\{\w+\}/g) ?? []).sort(),(kk[key].match(/\{\w+\}/g) ?? []).sort(),key);
   }
 });
 test('locale normalization preserves legacy preferences and supports BCP47', () => {

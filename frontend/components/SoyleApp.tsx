@@ -971,7 +971,7 @@ function AuthenticatedApp({ user, onLogout, externalError, onDismissExternalErro
           {screen === "session" && sessionError && <div className="v2-inline-alert" role="alert">{sessionError}</div>}
           {screen === "session" && activeSession && <SessionScreen session={activeSession} busy={sessionLoading} onContinue={continueSession} onPause={pauseSession} onFinish={() => { setActiveSession(null); refreshDashboard(); setScreen("home"); }} />}
           {screen === "exercise-complete" && exerciseCompletion && <ExercisePetProvider key={`complete-${child?.id}-${selectedExercise?.id}`} preferences={{ ...petPreferences.value, visible: petPreferences.ready && petPreferences.value.visible && !exerciseCompletion.refused && (user.role === "student" || parentPracticeMode === "child_practice") }} soundEnabled={settings.sound_enabled} calmMode={settings.calm_mode} initialEvent="complete"><div className="pet-completion"><ExercisePet/></div><ExerciseCompletionScreen completion={exerciseCompletion} onContinue={continueAfterExercise} onFinish={() => { if (exerciseCompletion.refused) { if (exerciseCompletion.sessionMode) void pauseSession(); else openScreen("home"); } else openScreen(exerciseCompletion.sessionMode ? "session" : "games"); }} /></ExercisePetProvider>}
-          {user.role === "parent" && parentPracticeMode === "adult_preview" && ["motor", "sensory", "mixed"].includes(screen) && <div className="adult-preview-banner" role="status"><Eye size={19}/><div><strong>Предпросмотр взрослого</strong><span>Ответы не сохраняются в профиль ребёнка.</span></div><button type="button" onClick={() => setParentPracticeMode("child_practice")}>Перейти к практике ребёнка</button></div>}
+          {user.role === "parent" && parentPracticeMode === "adult_preview" && ["motor", "sensory", "mixed"].includes(screen) && <div className="adult-preview-banner" role="status"><Eye size={19}/><div><strong>{t("cinema.copy054")}</strong><span>Ответы не сохраняются в профиль ребёнка.</span></div><button type="button" onClick={() => setParentPracticeMode("child_practice")}>Перейти к практике ребёнка</button></div>}
           {sessionError && ["motor", "sensory", "mixed"].includes(screen) && <div className="game-error" role="alert"><ShieldAlert size={18}/><span>{sessionError}</span></div>}
           {activeExerciseContent}
           {screen === "aac" && <PhraseGame key="free-aac" childId={child?.id} canManage={user.role === "parent"} freeMode soundEnabled={settings.sound_enabled} onBack={() => openScreen("home")} />}
@@ -1959,8 +1959,8 @@ function PhraseGame({ childId, canManage, exercise, freeMode = false, soundEnabl
     try {
       const played = await speak(card.speech, 0.72, true, card.language || "ru", "exercise", freeMode ? undefined : exercise?.engine?.version_id);
       if (lifetime !== speechLifetime.current) return;
-      setAacNotice(!played ? t("aac.copy009") : card.label === "Перерыв" ? t("aac.copy010") : [t("common.no"), t("game.stop"), "Не хочу"].includes(card.label) ? t("aac.copy011") : t("aac.copy012"));
-      if (!freeMode && !savedRef.current && exercise && onComplete && [t("specialist.copy006"), t("game.stop"), "Не хочу"].includes(card.label)) {
+      setAacNotice(!played ? t("aac.copy009") : card.label === "Перерыв" ? t("aac.copy010") : [t("common.no"), t("game.stop"), t("cinema.copy042")].includes(card.label) ? t("aac.copy011") : t("aac.copy012"));
+      if (!freeMode && !savedRef.current && exercise && onComplete && [t("specialist.copy006"), t("game.stop"), t("cinema.copy042")].includes(card.label)) {
         const result = await onComplete(0, card.speech, exercise.id, { attempts_count: 0, correct_answers: 0, prompts_used: 0, attempt_status: card.label === "Перерыв" ? "break" : "refused", communication_initiatives: 0 });
         if (result) savedRef.current = true;
       }

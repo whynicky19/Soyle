@@ -54,12 +54,12 @@ export function ExerciseFocusShell({
           <span>{progress}</span>
           <strong>{title}</strong>
         </div>
-        <button type="button" className="focus-sound" onClick={onToggleSound} aria-pressed={soundEnabled} aria-label={soundEnabled ? "Выключить звук" : "Включить звук"}>
+        <button type="button" className="focus-sound" onClick={onToggleSound} aria-pressed={soundEnabled} aria-label={soundEnabled ? t("cinema.copy024") : t("cinema.copy025")}>
           {soundEnabled ? <Volume2 size={23}/> : <VolumeX size={23}/>}<span>{soundEnabled ? t("settings.sound") : "Без звука"}</span>
         </button>
         <div className="focus-safety-actions" aria-label="Можно остановиться в любой момент">
           <button type="button" disabled={stopping} onClick={onBreak}><Pause size={20}/><span>{t("specialist.copy006")}</span></button>
-          <button type="button" disabled={stopping} onClick={onRefuse}><CircleX size={20}/><span>Не хочу</span></button>
+          <button type="button" disabled={stopping} onClick={onRefuse}><CircleX size={20}/><span>{t("cinema.copy042")}</span></button>
         </div>
       </header>
       <main className="exercise-focus-main" aria-busy={stopping}><div className="exercise-companion-instruction">{instruction && <p>{instruction}</p>}<ExercisePet/></div>{children}</main>

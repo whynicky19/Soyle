@@ -79,6 +79,15 @@ def catalogue() -> dict[tuple[str, str], str]:
         result[("kk", text)] = text
     for text in PET_PHRASES["kk"]:
         result[("kk", text)] = text
+    from .story_localization import story_adaptation
+    for story_key, version in (("toy", 1), ("toy", 2), ("toy", 3), ("picnic", 1)):
+        for original, text in story_adaptation(story_key, version)["texts"].items():
+            if 0 < len(text) <= 300: result[("kk", text)] = text
+            if 0 < len(original) <= 300: result[("ru", original)] = original
+    for toy in ("Доп", "Кітап"):
+        for fruit in ("Алма", "Банан"):
+            text = f"Пикник аяқталды. Демалуға болады. Сен таңдадың: {toy}, {fruit}."
+            result[("kk", text)] = text
     for language, phrases in PUBLIC_DEMO_PHRASES.items():
         for text in phrases.values(): result[(language, text)] = text
     # Version-controlled additions/overrides require a recorded human review.

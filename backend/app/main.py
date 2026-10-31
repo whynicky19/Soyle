@@ -851,7 +851,8 @@ def child_stories(child_id: int, response: Response, user: dict = Depends(requir
         index = (1 if complete else 0) if cinematic else (total if complete else state["scene_index"])
         progress = round(definition["phases"].index(state["phase"]) / (len(definition["phases"]) - 1) * 100) if cinematic else round(index / total * 100)
         catalogue.append({"key": key, "title": definition["title"], "summary": "Одна живая сцена: Миша просит помощь, мама подходит и передаёт мишку." if cinematic else definition["summary"], "cover": "/storybooks/favorite-toy-book/request.webp" if cinematic else "/storybooks/favorite-toy-book/find.webp", "category": "Живые истории", "engine": engine, "scene_count": total, "scene_index": index, "in_progress": bool(saved and not complete), "progress_percent": progress, "progress_label": ("История прочитана" if complete else "Живая сцена · место сохраняется") if cinematic else f"{index} из {total} сцен", "completed_at": saved["updated_at"] if saved and complete else None, "scenes": []})
-    return catalogue
+    from .story_localization import localize_story_catalogue
+    return localize_story_catalogue(catalogue, user["role"])
 
 
 @app.post("/api/stories/{child_id}/{story_key}/answer")
@@ -897,6 +898,8 @@ def restart_story(child_id: int, story_key: str, user: dict = Depends(require_ro
 
 def storybook_access(child_id: int, user: dict) -> str:
     ensure_child_access(child_id, user)
+    if LOCALE.get() == "kk-KZ" and user["role"] != "parent":
+        raise HTTPException(403, "translation.needs_specialist_review")
     if not book_is_released(FAVORITE_TOY) or any(scene.get("status") != "PUBLISHED" or scene.get("review_status") != "approved" for scene in FAVORITE_TOY["scenes"]):
         if user["role"] != "parent":
             raise HTTPException(403, "История DRAFT доступна только для предпросмотра родителю")
@@ -917,7 +920,8 @@ def get_storybook(child_id: int, response: Response, user: dict = Depends(requir
     actor = storybook_access(child_id, user)
     response.headers["Cache-Control"] = "private, no-store"
     with connect() as db:
-        return storybook_snapshot(db, child_id, actor)
+        from .story_localization import localize_story_snapshot
+        return localize_story_snapshot(storybook_snapshot(db, child_id, actor))
 
 
 @app.post("/api/storybooks/{child_id}/toy/events")
@@ -930,7 +934,8 @@ def storybook_event(child_id: int, payload: StorybookEvent, user: dict = Depends
     with connect() as db:
         snapshot = storybook_snapshot(db, child_id, actor)
         if snapshot["state"]["last_event_id"] == payload.event_id:
-            return snapshot
+            from .story_localization import localize_story_snapshot
+            return localize_story_snapshot(snapshot)
         if snapshot["revision"] != payload.expected_revision or FAVORITE_TOY["scenes"][snapshot["state"]["scene_index"]]["id"] != payload.scene_id:
             raise HTTPException(409, "Прохождение изменилось в другой вкладке. Откройте историю снова")
         try:
@@ -946,12 +951,15 @@ def storybook_event(child_id: int, payload: StorybookEvent, user: dict = Depends
         ).fetchone()
         if not changed:
             raise HTTPException(409, "Прохождение изменилось. Откройте историю снова")
-    return {**snapshot, "state": state, "revision": changed["revision"]}
+    from .story_localization import localize_story_snapshot
+    return localize_story_snapshot({**snapshot, "state": state, "revision": changed["revision"]})
 
 
 
 def cinematic_access(child_id: int, user: dict) -> str:
     ensure_child_access(child_id, user)
+    if LOCALE.get() == "kk-KZ" and user["role"] != "parent":
+        raise HTTPException(403, "translation.needs_specialist_review")
     if not book_is_released(CINEMATIC_STORY):
         if user["role"] != "parent":
             raise HTTPException(403, "История DRAFT доступна только для предпросмотра родителю")
@@ -972,7 +980,8 @@ def get_cinematic_storybook(child_id: int, response: Response, user: dict = Depe
     actor = cinematic_access(child_id, user)
     response.headers["Cache-Control"] = "private, no-store"
     with connect() as db:
-        return cinematic_snapshot(db, child_id, actor)
+        from .story_localization import localize_story_snapshot
+        return localize_story_snapshot(cinematic_snapshot(db, child_id, actor))
 
 
 @app.post("/api/cinematic-storybooks/{child_id}/toy/events")
@@ -985,7 +994,8 @@ def cinematic_storybook_event(child_id: int, payload: CinematicStorybookEvent, u
     with connect() as db:
         snapshot = cinematic_snapshot(db, child_id, actor)
         if any(event["id"] == payload.event_id for event in snapshot["state"]["events"]):
-            return snapshot
+            from .story_localization import localize_story_snapshot
+            return localize_story_snapshot(snapshot)
         if snapshot["revision"] != payload.expected_revision or snapshot["state"]["phase"] != payload.phase:
             raise HTTPException(409, "Прохождение изменилось в другой вкладке. Откройте историю снова")
         try:
@@ -1001,12 +1011,15 @@ def cinematic_storybook_event(child_id: int, payload: CinematicStorybookEvent, u
         ).fetchone()
         if not changed:
             raise HTTPException(409, "Прохождение изменилось. Откройте историю снова")
-    return {**snapshot, "state": state, "revision": changed["revision"]}
+    from .story_localization import localize_story_snapshot
+    return localize_story_snapshot({**snapshot, "state": state, "revision": changed["revision"]})
 
 
 
 def interactive_book_access(child_id: int, user: dict) -> str:
     ensure_child_access(child_id, user)
+    if LOCALE.get() == "kk-KZ" and user["role"] != "parent":
+        raise HTTPException(403, "translation.needs_specialist_review")
     if not book_is_released(INTERACTIVE_BOOK):
         if user["role"] != "parent":
             raise HTTPException(403, "Книга DRAFT доступна только для предпросмотра родителю")
@@ -1023,7 +1036,8 @@ def get_interactive_book(child_id: int, response: Response, user: dict = Depends
     actor = interactive_book_access(child_id, user)
     response.headers["Cache-Control"] = "private, no-store"
     with connect() as db:
-        return interactive_book_snapshot(db, child_id, actor)
+        from .story_localization import localize_toy_snapshot
+        return localize_toy_snapshot(interactive_book_snapshot(db, child_id, actor))
 
 
 @app.post("/api/interactive-storybooks/{child_id}/toy/events")
@@ -1036,7 +1050,8 @@ def interactive_book_event(child_id: int, payload: StorybookEvent, user: dict = 
     with connect() as db:
         snapshot = interactive_book_snapshot(db, child_id, actor)
         if any(event["id"] == payload.event_id for event in snapshot["state"]["events"]):
-            return snapshot
+            from .story_localization import localize_toy_snapshot
+            return localize_toy_snapshot(snapshot)
         scene = INTERACTIVE_BOOK["scenes"][snapshot["state"]["scene_index"]]
         if snapshot["revision"] != payload.expected_revision or scene["id"] != payload.scene_id:
             raise HTTPException(409, "Прохождение изменилось в другой вкладке. Откройте книгу снова")
@@ -1049,7 +1064,8 @@ def interactive_book_event(child_id: int, payload: StorybookEvent, user: dict = 
             WHERE storybook_progress.revision=? RETURNING revision""", (child_id, "toy", INTERACTIVE_BOOK["version"], actor, payload.expected_revision + 1, json.dumps(state, ensure_ascii=False), now_iso(), payload.expected_revision)).fetchone()
         if not changed:
             raise HTTPException(409, "Прохождение изменилось. Откройте книгу снова")
-    return {**snapshot, "state": state, "revision": changed["revision"]}
+    from .story_localization import localize_toy_snapshot
+    return localize_toy_snapshot({**snapshot, "state": state, "revision": changed["revision"]})
 
 
 def book_is_released(definition: dict) -> bool:
@@ -1062,6 +1078,8 @@ def comic_access(child_id: int, story_key: str, user: dict) -> tuple[dict, str]:
     ensure_child_access(child_id, user)
     if story_key != PICNIC["key"]:
         raise HTTPException(404, "История не найдена")
+    if LOCALE.get() == "kk-KZ" and user["role"] != "parent":
+        raise HTTPException(403, "translation.needs_specialist_review")
     definition = PICNIC
     released = book_is_released(definition)
     if not released and user["role"] != "parent":
@@ -1079,7 +1097,8 @@ def get_comic(child_id: int, story_key: str, response: Response, user: dict = De
     definition, actor = comic_access(child_id, story_key, user)
     response.headers["Cache-Control"] = "private, no-store"
     with connect() as db:
-        return comic_snapshot(db, child_id, definition, actor)
+        from .story_localization import localize_story_snapshot
+        return localize_story_snapshot(comic_snapshot(db, child_id, definition, actor))
 
 
 @app.post("/api/interactive-storybooks/{child_id}/{story_key}/events")
@@ -1092,7 +1111,8 @@ def comic_event(child_id: int, story_key: str, payload: StorybookEvent, user: di
     with connect() as db:
         snapshot = comic_snapshot(db, child_id, definition, actor)
         if any(event["id"] == payload.event_id for event in snapshot["state"]["events"]):
-            return snapshot
+            from .story_localization import localize_story_snapshot
+            return localize_story_snapshot(snapshot)
         scene = definition["scenes"][snapshot["state"]["scene_index"]]
         if snapshot["revision"] != payload.expected_revision or scene["id"] != payload.scene_id:
             raise HTTPException(409, "Прохождение изменилось в другой вкладке. Восстановите страницу")
@@ -1105,7 +1125,8 @@ def comic_event(child_id: int, story_key: str, payload: StorybookEvent, user: di
             WHERE storybook_progress.revision=? RETURNING revision""", (child_id, definition["key"], definition["version"], actor, payload.expected_revision + 1, json.dumps(state, ensure_ascii=False), now_iso(), payload.expected_revision)).fetchone()
         if not changed:
             raise HTTPException(409, "Прохождение изменилось. Восстановите страницу")
-    return {**snapshot, "state": state, "revision": changed["revision"]}
+    from .story_localization import localize_story_snapshot
+    return localize_story_snapshot({**snapshot, "state": state, "revision": changed["revision"]})
 
 
 @app.post("/api/aac/cards", status_code=201)
@@ -2756,6 +2777,8 @@ async def localized_http_error(request: Request, exc: StarletteHTTPException):
             code = exc.detail.split(":", 1)[0]
             messages = {
                 "translation.source_missing": "Исходная версия не найдена.",
+                "translation.needs_specialist_review": "Казахская версия ожидает проверки специалистом. Предпросмотр доступен родителю.",
+                "translation.source_changed": "Исходная версия изменилась. Перевод нужно проверить повторно.",
                 "translation.conflict": "Перевод изменился. Откройте последнюю редакцию.",
                 "translation.mechanic_needs_adaptation": "Для этого задания нужна отдельная языковая адаптация.",
                 "translation.incomplete": "Не все поля переведены. Проверьте перевод перед одобрением.",
@@ -2777,6 +2800,8 @@ async def localized_http_error(request: Request, exc: StarletteHTTPException):
     }
     codes = {
         "translation.conflict": "Аударма өзгерді. Соңғы нұсқасын ашыңыз.",
+        "translation.needs_specialist_review": "Қазақша нұсқа маманның тексеруін күтуде. Ата-ана алдын ала қарай алады.",
+        "translation.source_changed": "Бастапқы нұсқа өзгерді. Аударманы қайта тексеру қажет.",
         "translation.mechanic_needs_adaptation": "Бұл тапсырмаға бөлек тілдік бейімдеу қажет.",
     }
     code = exc.detail if isinstance(exc.detail, str) and exc.detail.startswith("translation.") else f"http.{exc.status_code}"

@@ -126,3 +126,51 @@ test('specialist forms and navigation switch languages without clearing entered 
   await page.getByRole('button',{name:'Қазақша',exact:true}).click();
   await expect(page.getByRole('textbox',{name:'Байқалған әрекеттер',exact:true})).toHaveValue('Бала өздігінен су сұрады.');
 });
+
+
+test('Kazakh book preview displays translated scenes and requests matching speech', async ({page}) => {
+  await page.addInitScript(() => localStorage.setItem('soyle-language','kk-KZ'));
+  await page.route('**/api/tts',route => route.fulfill({status:503,json:{detail:'Дыбыс қолжетімсіз'}}));
+  await page.goto('/app');
+  await page.getByLabel('Логин',{exact:true}).fill('parent');
+  await page.getByLabel('Құпиясөз',{exact:true}).fill('Parent123!');
+  await page.getByRole('button',{name:'Кіру',exact:true}).click();
+  await expect(page.locator('.parent-shell')).toBeVisible();
+  await page.goto('/app?cabinet=parent&section=materials');
+  await page.getByRole('button',{name:'Открыть книгу с играми',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'Сүйікті ойыншық',exact:true})).toBeVisible();
+  const request=page.waitForRequest(request => request.url().endsWith('/api/tts') && request.method()==='POST');
+  await page.getByRole('button',{name:'Кітапты ашу',exact:true}).click();
+  const payload=(await request).postDataJSON();
+  expect(payload.language).toBe('kk');
+  expect(payload.text).toContain('Миша ойнағысы келеді.');
+  await expect(page.getByText('Бөлмеден қонжықты тап',{exact:true}).first()).toBeVisible();
+});
+
+
+test('Kazakh picnic preview keeps translated choices and Kazakh narration', async ({page}) => {
+  await page.addInitScript(() => localStorage.setItem('soyle-language','kk-KZ'));
+  await page.route('**/api/tts',route => route.fulfill({status:503,json:{detail:'Дыбыс қолжетімсіз'}}));
+  await page.goto('/app');
+  await page.getByLabel('Логин',{exact:true}).fill('parent');
+  await page.getByLabel('Құпиясөз',{exact:true}).fill('Parent123!');
+  await page.getByRole('button',{name:'Кіру',exact:true}).click();
+  await expect(page.locator('.parent-shell')).toBeVisible();
+  const children=await (await page.request.get('http://localhost:8011/api/children')).json();
+  const bookUrl=`http://localhost:8011/api/interactive-storybooks/${children[0].id}/picnic`;
+  const saved=await (await page.request.get(bookUrl)).json();
+  const csrf=(await page.context().cookies()).find(cookie=>cookie.name==='soyle_csrf')?.value || '';
+  expect((await page.request.post(bookUrl+'/events',{headers:{'X-CSRF-Token':csrf},data:{version:saved.definition.version,expected_revision:saved.revision,scene_id:saved.definition.scenes[saved.state.scene_index].id,event_id:crypto.randomUUID(),action:'restart'}})).ok()).toBeTruthy();
+  await page.goto('/app?cabinet=parent&section=materials');
+  await page.getByRole('button',{name:'Открыть комикс',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'Қонжыққа арналған пикник',exact:true})).toBeVisible();
+  const request=page.waitForRequest(request => request.url().endsWith('/api/tts') && request.method()==='POST');
+  await page.getByRole('button',{name:/^(Кітапты ашу|Оқуды жалғастыру)$/,exact:true}).click();
+  const payload=(await request).postDataJSON();
+  expect(payload.language).toBe('kk');
+  expect(payload.text).toContain('Миша қонжықты пикникке шақырды.');
+  await page.getByRole('button',{name:'Әрі қарай',exact:true}).click();
+  await expect(page.getByRole('button',{name:'Кітап',exact:true})).toBeVisible();
+  await page.getByRole('button',{name:'Кітап',exact:true}).click();
+  await expect(page.getByText('Кітап алайық. Саябақта суреттерді бірге қараймыз.',{exact:true})).toBeVisible();
+});

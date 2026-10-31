@@ -1,4 +1,5 @@
 'use client';
+import { t, useLocale } from '@/lib/i18n';
 
 import { ArrowLeft, ArrowRight, BookOpen, Check, CircleHelp, Pause, Play, RotateCcw, Volume2, VolumeX, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
@@ -14,6 +15,7 @@ import './book.css';
 type Props={childId?:number;storyKey?:string;onExit:()=>void;calmMode?:boolean;embedded?:boolean};
 type PendingEvent={version:number;expected_revision:number;scene_id:string;event_id:string;action:string};
 export function InteractiveBook({childId,storyKey='toy',onExit,calmMode=false,embedded=false}:Props){
+  const locale = useLocale();
   const Container=embedded?'section':'main';
   const [snapshot,setSnapshot]=useState<BookSnapshot|null>(null),[assets,setAssets]=useState<BookAssetManifest|null>(null);
   const [started,setStarted]=useState(false),[loaded,setLoaded]=useState(false),[loadingCount,setLoadingCount]=useState(0),[busy,setBusy]=useState(false),[error,setError]=useState('');
@@ -32,14 +34,14 @@ export function InteractiveBook({childId,storyKey='toy',onExit,calmMode=false,em
     try{
       const next=await api<BookSnapshot>(`/api/interactive-storybooks/${childId}/${storyKey}`,{signal:abort.signal});
       const response=await fetch(next.definition.assets_manifest || '/storybooks/favorite-toy-book/manifest.json',{signal:abort.signal});
-      if(!response.ok)throw new Error('Иллюстрации пока не загрузились');
+      if(!response.ok)throw new Error(t("book.copy000"));
       const manifest=await response.json() as BookAssetManifest;
       const sources=[...new Set(next.definition.scenes.flatMap(page=>[page.image,...(page.result_image?[page.result_image]:[]),...Object.values(page.image_by_choice?.images || {}),...Object.values(page.step_images || {}),...page.options.flatMap(option=>[...(option.result_image?[option.result_image]:[]),...(option.image?[option.image]:[])])]))];
-      await Promise.all(sources.map(src=>new Promise<void>((resolve,reject)=>{const image=new window.Image();image.onload=()=>{void image.decode().then(()=>{if(live.current&&!abort.signal.aborted)setLoadingCount(count=>count+1);resolve();},reject);};image.onerror=()=>reject(new Error('Не удалось загрузить одну из иллюстраций. Попробуй ещё раз.'));image.src=src;})));
+      await Promise.all(sources.map(src=>new Promise<void>((resolve,reject)=>{const image=new window.Image();image.onload=()=>{void image.decode().then(()=>{if(live.current&&!abort.signal.aborted)setLoadingCount(count=>count+1);resolve();},reject);};image.onerror=()=>reject(new Error(t("book.copy001")));image.src=src;})));
       if(!live.current||abort.signal.aborted)return;setSnapshot(next);setAssets(manifest);setLoaded(true);pending.current=null;
-    }catch(cause){if(live.current&&!abort.signal.aborted)setError(cause instanceof Error?cause.message:'Не удалось открыть книгу');}
+    }catch(cause){if(live.current&&!abort.signal.aborted)setError(cause instanceof Error?cause.message:t("book.copy002"));}
   },[childId,storyKey]);
-  useEffect(()=>{live.current=true;const timer=window.setTimeout(()=>void load(),0);return()=>{clearTimeout(timer);live.current=false;loadAbort.current?.abort();voice.current?.abort();};},[load]);
+  useEffect(()=>{live.current=true;const timer=window.setTimeout(()=>void load(),0);return()=>{clearTimeout(timer);live.current=false;loadAbort.current?.abort();voice.current?.abort();};},[load,locale]);
   useEffect(()=>{
     const query=matchMedia('(prefers-reduced-motion: reduce)');const update=()=>setSystemReduced(query.matches);update();query.addEventListener('change',update);
     const visibility=()=>{setHidden(document.hidden);if(document.hidden)stopVoice();};document.addEventListener('visibilitychange',visibility);
@@ -47,15 +49,16 @@ export function InteractiveBook({childId,storyKey='toy',onExit,calmMode=false,em
   },[stopVoice]);
   const clipData=JSON.stringify(snapshot?.definition.audio.clips||{});
   const clips=useMemo(()=>JSON.parse(clipData) as Record<string,string>,[clipData]);
+  const narrationLanguage = snapshot?.definition.language || "ru";
   const narrate=useCallback(async(text:string)=>{
     stopVoice();if(!sound)return;
     const abort=new AbortController();voice.current=abort;setNarrating(true);
 
-    try{await playNarration(text,abort.signal,clips);}catch{if(!abort.signal.aborted)setAudioNote('Не удалось включить звук. Можно продолжать по картинкам.');}
+    try{await playNarration(text,abort.signal,clips,narrationLanguage);}catch{if(!abort.signal.aborted)setAudioNote(t("book.copy003"));}
     finally{if(live.current&&voice.current===abort){setNarrating(false);voice.current=null;}}
-  },[sound,clips,stopVoice]);
+  },[sound,clips,stopVoice,narrationLanguage]);
   const chosen=snapshot?.definition.scenes.filter(page=>page.kind==='choice' && page.id!=='04').flatMap(page=>page.options.filter(option=>option.key===snapshot.state.choices?.[page.id]).map(option=>option.label)) || [];
-  const narration=scene?.narration+(scene?.kind==='ending' && chosen.length?` Ты выбрал: ${chosen.join(', ')}.`:'');
+  const narration=scene?.narration+(scene?.kind==='ending' && chosen.length?` ${t("book.copy004")} ${chosen.join(', ')}.`:'');
   useEffect(()=>{const timer=window.setTimeout(()=>{if(started&&narration&&!paused&&!hidden&&sound)void narrate(narration);},80);return()=>{clearTimeout(timer);stopVoice();};},[started,narration,paused,hidden,sound,narrate,stopVoice]);
   useEffect(()=>{if(started&&paused)pauseDialog.current?.showModal();else pauseDialog.current?.close();},[started,paused]);
   useEffect(()=>{if(started)title.current?.focus({preventScroll:true});},[scene?.id,started]);
@@ -66,7 +69,7 @@ export function InteractiveBook({childId,storyKey='toy',onExit,calmMode=false,em
     try{
       const next=await api<BookSnapshot>(`/api/interactive-storybooks/${childId}/${storyKey}/events`,{method:'POST',body:JSON.stringify(event)});
       if(!live.current)return;stopVoice();setSnapshot(next);pending.current=null;return next;
-    }catch(cause){if(live.current)setError(cause instanceof Error?cause.message:'Действие не сохранилось. Можно повторить нажатие.');}
+    }catch(cause){if(live.current)setError(cause instanceof Error?cause.message:t("book.copy005"));}
     finally{sending.current=false;if(live.current)setBusy(false);}
   };
   const action=async(key:string)=>{const option=scene?.options.find(option=>option.key===key);const next=await dispatch(key);if(next&&sound)void narrate(option?.speech||next.state.feedback);};
@@ -75,41 +78,41 @@ export function InteractiveBook({childId,storyKey='toy',onExit,calmMode=false,em
   const exit=()=>{stopVoice();onExit();};
   const begin=async()=>{if(snapshot?.state.completed){if(!await dispatch('restart'))return;}setStarted(true);};
   const restart=async()=>{if(await dispatch('restart')){setStarted(true);window.scrollTo({top:0,behavior:'instant'});}};
-  if(!childId)return <Container className="book-loading"><h1>Сначала добавьте профиль ребёнка</h1><button onClick={exit}>В кабинет</button></Container>;
-  if(!loaded||!snapshot||!scene||!assets)return <Container className="book-loading"><span className="book-eyebrow">SÖYLE · ИНТЕРАКТИВНАЯ КНИГА</span><h1>Открываем книгу</h1><p>{error||`Готовим иллюстрации${loadingCount?` · ${loadingCount}`:'…'}`}</p>{error&&<button onClick={()=>void load()}>Попробовать снова</button>}<button onClick={exit}>В кабинет</button></Container>;
+  if(!childId)return <Container className="book-loading"><h1>{t("book.copy006")}</h1><button onClick={exit}>{t("book.copy007")}</button></Container>;
+  if(!loaded||!snapshot||!scene||!assets)return <Container className="book-loading"><span className="book-eyebrow">{t("book.copy008")}</span><h1>{t("book.copy009")}</h1><p>{error||`${t("book.copy010")}${loadingCount?` · ${loadingCount}`:'…'}`}</p>{error&&<button onClick={()=>void load()}>{t("book.copy011")}</button>}<button onClick={exit}>{t("book.copy007")}</button></Container>;
   const {state,definition}=snapshot;
-  const backLabel=snapshot.preview?'В кабинет':'К историям';
+  const backLabel=snapshot.preview?t("book.copy007"):t("book.copy012");
   const choices=activeOptions(scene,state);
   const hint=state.hints.includes(scene.id);
   const isCards=['match','aac','choice','instruction'].includes(scene.kind);
   const ratio=assets.images[scene.image]?.width/assets.images[scene.image]?.height||1.5;
   const turns=canTurnPage(scene,state);
-  return <Container aria-label="Интерактивная книга" className={`book-player ${motion&&!systemReduced?'book-has-motion':'book-reduced'}`} style={{'--book-ratio':ratio} as CSSProperties}>
-    <header className="book-topbar"><button className="book-back" aria-label={backLabel} onClick={exit} disabled={busy}><ArrowLeft/><span>{backLabel}</span></button><div className="book-title"><span className="book-eyebrow">SÖYLE · ИНТЕРАКТИВНАЯ КНИГА</span><strong>{definition.title}</strong></div><div className="book-top-tools"><span className="book-counter" aria-label={`Страница ${state.scene_index+1} из ${definition.scenes.length}`}>{state.scene_index+1}<small>/ {definition.scenes.length}</small></span><button aria-label={sound?'Выключить звук':'Включить звук'} aria-pressed={sound} onClick={()=>{stopVoice();setSound(!sound);}}>{sound?<Volume2/>:<VolumeX/>}</button><button ref={pauseButton} aria-label="Пауза" disabled={!started||paused||busy} onClick={()=>void pause()}><Pause/></button></div></header>
-    {error&&<aside className="book-error" role="alert"><strong>{error}</strong><button onClick={()=>void load()}>Восстановить сохранённую страницу</button></aside>}
-    <section className={`book-spread ${!started?'book-spread-cover':''} ${state.completed?'book-is-complete':''}`} aria-label={`Страница: ${scene.title}`}>
+  return <Container aria-label={t("book.copy013")} className={`book-player ${motion&&!systemReduced?'book-has-motion':'book-reduced'}`} style={{'--book-ratio':ratio} as CSSProperties}>
+    <header className="book-topbar"><button className="book-back" aria-label={backLabel} onClick={exit} disabled={busy}><ArrowLeft/><span>{backLabel}</span></button><div className="book-title"><span className="book-eyebrow">{t("book.copy008")}</span><strong>{definition.title}</strong></div><div className="book-top-tools"><span className="book-counter" aria-label={t("book.page", {page:state.scene_index+1,total:definition.scenes.length})}>{state.scene_index+1}<small>/ {definition.scenes.length}</small></span><button aria-label={sound?t("book.copy016"):t("book.copy017")} aria-pressed={sound} onClick={()=>{stopVoice();setSound(!sound);}}>{sound?<Volume2/>:<VolumeX/>}</button><button ref={pauseButton} aria-label={t("book.copy018")} disabled={!started||paused||busy} onClick={()=>void pause()}><Pause/></button></div></header>
+    {error&&<aside className="book-error" role="alert"><strong>{error}</strong><button onClick={()=>void load()}>{t("book.copy019")}</button></aside>}
+    <section className={`book-spread ${!started?'book-spread-cover':''} ${state.completed?'book-is-complete':''}`} aria-label={`${t("book.copy020")} ${scene.title}`}>
       <div className="book-picture-column"><div className="book-image-frame" key={scene.id}>
         <BookScene scene={scene} state={{...state,paused:paused||!started}} hint={hint} busy={busy||!!error} motion={motion&&!systemReduced&&!hidden&&!paused&&started} onAction={key=>void action(key)} ratio={ratio}/>
-        {!started&&<div className="book-cover"><span className="book-cover-label">КНИГА С МАЛЕНЬКИМИ ИГРАМИ</span><h1>{definition.title}</h1><p>{definition.subtitle}</p><button className="book-primary" onClick={()=>void begin()} disabled={busy}><BookOpen/>{state.completed?'Перечитать':snapshot.revision?'Продолжить чтение':'Открыть книгу'}</button></div>}
-      </div><nav className="book-page-dots" aria-label="Прогресс по страницам">{definition.scenes.map((page,index)=><span role="img" key={page.id} className={index===state.scene_index?'book-dot-current':index<state.scene_index?'book-dot-read':''} aria-label={`${page.title}${index===state.scene_index?', текущая страница':''}`} aria-current={index===state.scene_index?'step':undefined}/>)}</nav></div>
+        {!started&&<div className="book-cover"><span className="book-cover-label">{t("book.copy021")}</span><h1>{definition.title}</h1><p>{definition.subtitle}</p><button className="book-primary" onClick={()=>void begin()} disabled={busy}><BookOpen/>{state.completed?t("book.copy022"):snapshot.revision?t("book.copy023"):t("book.copy024")}</button></div>}
+      </div><nav className="book-page-dots" aria-label={t("book.copy025")}>{definition.scenes.map((page,index)=><span role="img" key={page.id} className={index===state.scene_index?'book-dot-current':index<state.scene_index?'book-dot-read':''} aria-label={`${page.title}${index===state.scene_index?t("book.copy026"):''}`} aria-current={index===state.scene_index?'step':undefined}/>)}</nav></div>
       <aside className="book-context">
-        <span className="book-chapter">{state.completed?'КОНЕЦ ИСТОРИИ':`СТРАНИЦА ${String(state.scene_index+1).padStart(2,'0')}`}</span>
-        <h1 ref={title} tabIndex={-1}>{!started?'Одна уютная история':state.completed?'Побудем вместе':scene.title}</h1>
-        {!started?<><p className="book-intro">{definition.scenes.length} сцен. Можно читать частями, выбирать и помогать.</p><div className="book-preview-note"><strong>{snapshot.preview ? definition.status === 'DRAFT' ? 'Черновик · предпросмотр взрослого' : 'Предпросмотр взрослого' : 'Твоя история'}</strong><p>{snapshot.preview ? 'Чтение здесь не меняет результат ребёнка.' : 'Страница сохраняется. Можно остановиться и продолжить позже.'}</p></div></>:<>
-          <p className={`book-instruction ${state.ready?'book-feedback-ready':''}`} aria-live="polite">{state.completed?'Можно отдохнуть или вернуться в кабинет.':promptFor(scene,state)}</p>
+        <span className="book-chapter">{state.completed?t("book.copy027"):`${t("book.copy028")} ${String(state.scene_index+1).padStart(2,'0')}`}</span>
+        <h1 ref={title} tabIndex={-1}>{!started?t("book.copy029"):state.completed?t("book.copy030"):scene.title}</h1>
+        {!started?<><p className="book-intro">{definition.scenes.length} {t("book.copy031")}</p><div className="book-preview-note"><strong>{snapshot.preview ? definition.status === 'DRAFT' ? t("book.copy032") : t("book.copy033") : t("book.copy034")}</strong><p>{snapshot.preview ? t("book.copy035") : t("book.copy036")}</p></div></>:<>
+          <p className={`book-instruction ${state.ready?'book-feedback-ready':''}`} aria-live="polite">{state.completed?t("book.copy037"):promptFor(scene,state)}</p>
           {!state.ready&&state.feedback&&<p className="book-gentle-feedback" role="status">{state.feedback}</p>}
           {!state.completed&&isCards&&!state.ready&&<div className={`book-options book-options-${scene.kind}`} aria-label={scene.instruction}>{choices.map(option=><button key={option.key} className={state.selected===option.key?'book-option-explored':''} aria-label={option.label} disabled={busy||paused||!!error} onClick={()=>void action(option.key)}><span className="book-art">{option.image?<Image src={option.image} alt="" width={120} height={120} unoptimized/>:<BookArt art={option.art}/>}</span><strong>{option.label}</strong>{option.speech&&<small>{option.speech}</small>}</button>)}</div>}
-          {!state.completed&&!isCards&&!state.ready&&scene.kind!=='watch'&&scene.kind!=='ending'&&<div className="book-on-picture"><span aria-hidden="true">✦</span><p>{scene.kind==='find'?'Игрушки прячутся прямо в иллюстрации.':scene.kind==='help'?'Нажми на мишку между мамой и Мишей.':scene.kind==='sequence'?'Два простых нажатия — поезд, затем рельсы.':'Можно послушать и немного побыть здесь.'}</p></div>}
+          {!state.completed&&!isCards&&!state.ready&&scene.kind!=='watch'&&scene.kind!=='ending'&&<div className="book-on-picture"><span aria-hidden="true">✦</span><p>{scene.kind==='find'?t("book.copy038"):scene.kind==='help'?t("book.copy039"):scene.kind==='sequence'?t("book.copy040"):t("book.copy041")}</p></div>}
           {!state.completed&&['help','sequence'].includes(scene.kind)&&!state.ready&&choices.map(option=><button key={option.key} className="book-scene-alternative" disabled={busy||paused||!!error} onClick={()=>void action(option.key)}>{option.label}<ArrowRight/></button>)}
-          {state.ready&&!state.completed&&<div className="book-complete-mark" aria-hidden="true"><Check/><span>Можно перевернуть страницу</span></div>}
-          {!state.completed&&turns&&<button className="book-primary book-next" disabled={busy||paused||!!error} onClick={()=>void dispatch('continue')} aria-label={scene.kind==='ending'?'Закончить книгу':'Дальше'}>{scene.kind==='ending'?'Закончить книгу':'Дальше'}<ArrowRight/></button>}
-          {state.completed&&chosen.length>0&&<p className="book-choice-memory">Ты выбрал: {chosen.join(" · ")}</p>}{state.completed&&<div className="book-ending-actions"><button className="book-primary" onClick={exit}>{backLabel}<ArrowRight/></button><button onClick={()=>void restart()} disabled={busy}><RotateCcw/>Прочитать ещё раз</button></div>}
+          {state.ready&&!state.completed&&<div className="book-complete-mark" aria-hidden="true"><Check/><span>{t("book.copy042")}</span></div>}
+          {!state.completed&&turns&&<button className="book-primary book-next" disabled={busy||paused||!!error} onClick={()=>void dispatch('continue')} aria-label={scene.kind==='ending'?t("book.copy043"):t("book.copy044")}>{scene.kind==='ending'?t("book.copy043"):t("book.copy044")}<ArrowRight/></button>}
+          {state.completed&&chosen.length>0&&<p className="book-choice-memory">{t("book.copy004")}{chosen.join(" · ")}</p>}{state.completed&&<div className="book-ending-actions"><button className="book-primary" onClick={exit}>{backLabel}<ArrowRight/></button><button onClick={()=>void restart()} disabled={busy}><RotateCcw/>{t("book.copy045")}</button></div>}
         </>}
       </aside>
     </section>
-    <footer className="book-bottom">{started&&!state.completed&&state.scene_index>0&&<button disabled={paused||busy} onClick={()=>void dispatch('back')}><ArrowLeft/>Назад</button>}{started&&!state.completed&&<><button className={narrating?'book-speaking':''} disabled={paused||!sound} onClick={()=>void (async()=>{if(await dispatch('repeat'))await narrate(narration || scene.narration);})()}><Volume2/>Послушать ещё раз</button><button disabled={paused||busy} onClick={()=>void dispatch('hint')}><CircleHelp/>Подсказка</button><button disabled={paused||busy} onClick={()=>void pause('break')}><Pause/>Перерыв</button><button disabled={paused||busy} onClick={()=>void pause('refuse')}><X/>Не хочу</button><details className="book-adult-help"><summary>Вместе со взрослым</summary><button disabled={paused||busy} onClick={()=>void dispatch('assist')}>Помочь вместе</button></details></>}<label className="book-motion-toggle"><input type="checkbox" checked={motion&&!systemReduced} disabled={systemReduced} onChange={event=>setMotion(event.target.checked)}/>Мягкие движения</label>{busy&&<span role="status" className="book-saving">Сохраняем…</span>}</footer>
+    <footer className="book-bottom">{started&&!state.completed&&state.scene_index>0&&<button disabled={paused||busy} onClick={()=>void dispatch('back')}><ArrowLeft/>{t("book.copy046")}</button>}{started&&!state.completed&&<><button className={narrating?'book-speaking':''} disabled={paused||!sound} onClick={()=>void (async()=>{if(await dispatch('repeat'))await narrate(narration || scene.narration);})()}><Volume2/>{t("book.copy047")}</button><button disabled={paused||busy} onClick={()=>void dispatch('hint')}><CircleHelp/>{t("book.copy048")}</button><button disabled={paused||busy} onClick={()=>void pause('break')}><Pause/>{t("book.copy049")}</button><button disabled={paused||busy} onClick={()=>void pause('refuse')}><X/>{t("book.copy050")}</button><details className="book-adult-help"><summary>{t("book.copy051")}</summary><button disabled={paused||busy} onClick={()=>void dispatch('assist')}>{t("book.copy052")}</button></details></>}<label className="book-motion-toggle"><input type="checkbox" checked={motion&&!systemReduced} disabled={systemReduced} onChange={event=>setMotion(event.target.checked)}/>{t("book.copy053")}</label>{busy&&<span role="status" className="book-saving">{t("book.copy054")}</span>}</footer>
     {audioNote&&<p role="status" className="book-audio-note">{audioNote}</p>}
-    {started&&<p className="book-draft-footer">{snapshot.preview ? 'Предпросмотр взрослого · результат ребёнка не меняется' : 'Читаем и выбираем в своём темпе'}</p>}
-    <dialog ref={pauseDialog} className="book-pause" aria-label="Книга на паузе" onCancel={event=>{event.preventDefault();void resume();}}><span className="book-eyebrow">МОЖНО НЕ СПЕШИТЬ</span><h2>Книга подождёт</h2><p>Мы сохранили эту страницу.</p><button className="book-primary" disabled={busy} onClick={()=>void resume()}><Play/>Продолжить</button><button disabled={busy} onClick={exit}>{backLabel}</button></dialog>
+    {started&&<p className="book-draft-footer">{snapshot.preview ? t("book.copy055") : t("book.copy056")}</p>}
+    <dialog ref={pauseDialog} className="book-pause" aria-label={t("book.copy057")} onCancel={event=>{event.preventDefault();void resume();}}><span className="book-eyebrow">{t("book.copy058")}</span><h2>{t("book.copy059")}</h2><p>{t("book.copy060")}</p><button className="book-primary" disabled={busy} onClick={()=>void resume()}><Play/>{t("book.copy061")}</button><button disabled={busy} onClick={exit}>{backLabel}</button></dialog>
   </Container>;
 }
