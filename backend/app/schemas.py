@@ -355,6 +355,7 @@ class AACPhraseCreate(BaseModel):
     card_ids: list[int] = Field(min_length=1, max_length=8)
 
 class AACComposeRequest(BaseModel):
+    preview_translations: bool = False
     mode: Literal["guided", "free"] = "guided"
     child_id: int
     card_ids: list[int] = Field(min_length=1, max_length=8)

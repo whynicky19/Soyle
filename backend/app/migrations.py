@@ -1158,6 +1158,37 @@ def _migration_40_translations(db) -> None:
     seed_translation_drafts(db)
 
 
+def _migration_41_aac_translations(db) -> None:
+    db.execute("""CREATE TABLE IF NOT EXISTS aac_card_translations (
+        source_card_id BIGINT NOT NULL REFERENCES aac_cards(id) ON DELETE CASCADE,
+        locale TEXT NOT NULL CHECK(locale='kk-KZ'), revision INTEGER NOT NULL,
+        source_digest TEXT NOT NULL,payload_json TEXT NOT NULL,
+        status TEXT NOT NULL CHECK(status IN ('draft','needs_review','approved')),
+        updated_by BIGINT REFERENCES users(id),updated_at TEXT NOT NULL,
+        reviewed_by BIGINT REFERENCES users(id),reviewed_at TEXT,review_comment TEXT,
+        PRIMARY KEY(source_card_id,locale))""")
+    db.execute("""CREATE TABLE IF NOT EXISTS aac_translation_history (
+        source_card_id BIGINT NOT NULL REFERENCES aac_cards(id) ON DELETE CASCADE,
+        locale TEXT NOT NULL,revision INTEGER NOT NULL,snapshot_json TEXT NOT NULL,recorded_at TEXT NOT NULL,
+        PRIMARY KEY(source_card_id,locale,revision))""")
+    columns = {row["column_name"] for row in db.execute("SELECT column_name FROM information_schema.columns WHERE table_schema='public' AND table_name='aac_phrase_history'").fetchall()} if db.backend == "postgresql" else {row["name"] for row in db.execute("PRAGMA table_info(aac_phrase_history)").fetchall()}
+    if "language" not in columns:
+        db.execute("ALTER TABLE aac_phrase_history ADD COLUMN language TEXT NOT NULL DEFAULT 'ru'")
+        for row in db.execute("SELECT id,card_ids FROM aac_phrase_history").fetchall():
+            ids=json.loads(row['card_ids'])
+            if not ids:continue
+            marks=",".join("?" for _ in ids)
+            languages={card['language'] for card in db.execute(f"SELECT language FROM aac_cards WHERE id IN ({marks})",tuple(ids)).fetchall()}
+            if languages == {'kk'}:db.execute("UPDATE aac_phrase_history SET language='kk' WHERE id=?",(row['id'],))
+    from .aac_localization import seed
+    seed(db)
+
+
+def _migration_42_varied_translations(db) -> None:
+    from .localization import seed_translation_drafts
+    seed_translation_drafts(db)
+
+
 MIGRATIONS = (
     (9, _migration_9_exercise_engine),
     (10, _migration_10_content_contracts),
@@ -1191,6 +1222,8 @@ MIGRATIONS = (
     (38, _migration_38_audio_review),
     (39, _migration_39_library_audio_snapshot),
     (40, _migration_40_translations),
+    (41, _migration_41_aac_translations),
+    (42, _migration_42_varied_translations),
 )
 LATEST_SCHEMA_VERSION = MIGRATIONS[-1][0]
 

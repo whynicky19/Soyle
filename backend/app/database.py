@@ -445,8 +445,8 @@ def init_db() -> None:
         object_labels = ("Сок", "Вода", "Чай", "Яблоко", "Банан", "Хлеб", "Суп", "Каша", "Мяч", "Машинка", "Кукла", "Книга", "Пазл", "Кот")
         for role, labels in (("subject", subject_labels), ("action", action_labels), ("object", object_labels)):
             placeholders = ",".join("?" for _ in labels)
-            db.execute(f"UPDATE aac_cards SET grammatical_role=? WHERE label IN ({placeholders})", (role, *labels))
-        db.execute("UPDATE aac_cards SET speech='хочу',lemma='хотеть',grammatical_role='action' WHERE label='Хочу' AND language='ru'")
+            db.execute(f"UPDATE aac_cards SET grammatical_role=? WHERE child_id IS NULL AND language='ru' AND label IN ({placeholders})", (role, *labels))
+        db.execute("UPDATE aac_cards SET speech='хочу',lemma='хотеть',grammatical_role='action' WHERE child_id IS NULL AND label='Хочу' AND language='ru'")
         if db.backend == "postgresql":
             learning_columns = {row["column_name"] for row in db.execute("SELECT column_name FROM information_schema.columns WHERE table_schema='public' AND table_name='learning_sessions'").fetchall()}
         else:
@@ -547,8 +547,8 @@ def init_db() -> None:
         db.execute("UPDATE aac_cards SET pictogram=image WHERE pictogram IS NULL OR pictogram='' ")
         for role, labels in (("subject", subject_labels), ("action", action_labels), ("object", object_labels)):
             placeholders = ",".join("?" for _ in labels)
-            db.execute(f"UPDATE aac_cards SET grammatical_role=?,language='ru' WHERE label IN ({placeholders})", (role, *labels))
-        db.execute("UPDATE aac_cards SET speech='хочу',lemma='хотеть',grammatical_role='action',language='ru' WHERE label='Хочу'")
+            db.execute(f"UPDATE aac_cards SET grammatical_role=?,language='ru' WHERE child_id IS NULL AND language='ru' AND label IN ({placeholders})", (role, *labels))
+        db.execute("UPDATE aac_cards SET speech='хочу',lemma='хотеть',grammatical_role='action',language='ru' WHERE child_id IS NULL AND language='ru' AND label='Хочу'")
         db.execute(
             "UPDATE aac_cards SET speech=? WHERE label=? AND language='ru'",
             ("Где?", "Где?"),

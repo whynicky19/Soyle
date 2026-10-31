@@ -174,3 +174,55 @@ test('Kazakh picnic preview keeps translated choices and Kazakh narration', asyn
   await page.getByRole('button',{name:'Кітап',exact:true}).click();
   await expect(page.getByText('Кітап алайық. Саябақта суреттерді бірге қараймыз.',{exact:true})).toBeVisible();
 });
+
+
+test('parent previews the Kazakh AAC library without saving a child result', async ({page}) => {
+  await page.addInitScript(() => localStorage.setItem('soyle-language','kk-KZ'));
+  let utterance:{text:string;language:string}|null=null;
+  await page.route('**/api/tts',route => { utterance=route.request().postDataJSON(); return route.fulfill({status:503,json:{detail:'Дыбыс қолжетімсіз'}}); });
+  await page.goto('/app');
+  await page.getByLabel('Логин',{exact:true}).fill('parent');
+  await page.getByLabel('Құпиясөз',{exact:true}).fill('Parent123!');
+  await page.getByRole('button',{name:'Кіру',exact:true}).click();
+  await expect(page.locator('.parent-shell')).toBeVisible();
+  await page.goto('/app?cabinet=parent&section=materials');
+  await page.getByRole('button',{name:'Карточки AAC',exact:true}).click();
+  await expect(page.getByText(/Карточка аудармаларын алдын ала қарау/)).toBeVisible();
+  await page.locator('.aac-card-main').filter({has:page.getByText('Қалаймын',{exact:true})}).click();
+  await page.getByRole('button',{name:/^Тағы/}).first().click();
+  await page.locator('#more-aac-categories').getByRole('button',{name:/Тағамдар/}).click();
+  await page.locator('.aac-card-main').filter({has:page.getByText('Су',{exact:true})}).click();
+  await expect(page.locator('.aac-composer-head strong')).toHaveText('Маған су керек.');
+  await page.getByRole('button',{name:'Хабарламаны дыбыстау',exact:true}).click();
+  await expect.poll(()=>utterance?.language).toBe('kk');
+  expect(utterance!.text).toBe('Маған су керек.');
+});
+
+
+test('specialist reviews an AAC translation through the explicit approval control', async ({page}) => {
+  await page.addInitScript(() => localStorage.setItem('soyle-language','kk-KZ'));
+  let reviewed=false;
+  const detail={source_card_id:12,source:{label:'Мама'},revision:1,status:'needs_review',payload:{label:'Ана',speech:'Ана.',concept_key:'mother'}};
+  await page.route('**/api/**',async route=>{
+    const path=new URL(route.request().url()).pathname;
+    if(path==='/api/auth/me')return route.fulfill({json:{id:9002,username:'reviewer-test',full_name:'Маман',role:'specialist',is_active:true,created_at:'2026-11-01'}});
+    if(path==='/api/settings')return route.fulfill({json:{language:'kk',language_configured:true,camera_enabled:false,sound_enabled:true,calm_mode:false,theme:'peach'}});
+    if(path==='/api/admin/aac-translations')return route.fulfill({json:[{source_card_id:12,title:'Мама',revision:1,status:'needs_review'}]});
+    if(path==='/api/admin/aac-translations/12')return route.fulfill({json:detail});
+    if(path==='/api/admin/aac-translations/12/approve') {
+      expect(route.request().postDataJSON().revision).toBe(1);
+      expect(route.request().postDataJSON().comment).toContain('Тест');
+      reviewed=true;return route.fulfill({json:{...detail,revision:2,status:'approved'}});
+    }
+    return route.fulfill({json:[]});
+  });
+  await page.goto('/app');
+  await page.locator('.cabinet-panel > summary').first().click();
+  const editor=page.locator('.settings-section').filter({has:page.getByRole('heading',{name:'AAC карточкаларының аудармалары',exact:true})});
+  await editor.getByRole('combobox').selectOption('12');
+  await editor.getByRole('textbox',{name:'Маманның пікірі',exact:true}).fill('Тест: жеке тексеруді модельдеу.');
+  const approve=editor.getByRole('button',{name:'Аударманы мақұлдау',exact:true});
+  await approve.click();
+  await expect.poll(()=>reviewed).toBeTruthy();
+  await expect(approve).toBeDisabled();
+});

@@ -739,17 +739,20 @@ def list_exercises(module: str | None = Query(default=None), child_id: int | Non
 
 
 @app.get("/api/aac/cards/{child_id}")
-def aac_cards(child_id: int, user: dict = Depends(require_roles("admin", "parent", "student"))) -> list[dict]:
+def aac_cards(child_id: int, preview: bool = False, user: dict = Depends(require_roles("admin", "parent", "student"))) -> list[dict]:
     ensure_child_access(child_id, user)
+    if preview and user["role"] not in {"parent", "admin"}:
+        raise HTTPException(403, "translation.needs_specialist_review")
     with connect() as db:
         rows = db.execute(
             """SELECT c.*,CASE WHEN f.card_id IS NULL THEN 0 ELSE 1 END favorite
                FROM aac_cards c LEFT JOIN aac_favorites f ON f.card_id=c.id AND f.child_id=?
-               WHERE c.is_active=1 AND c.language=? AND (c.child_id IS NULL OR c.child_id=?)
+               WHERE c.is_active=1 AND (c.language=? OR (c.language='ru' AND c.child_id IS NULL)) AND (c.child_id IS NULL OR c.child_id=?)
                ORDER BY c.is_core DESC,c.category,c.id""",
             (child_id, "kk" if LOCALE.get() == "kk-KZ" else "ru", child_id),
         ).fetchall()
-    return [dict(row) for row in rows]
+        from .aac_localization import localize_cards
+        return localize_cards(db, rows, "kk" if LOCALE.get() == "kk-KZ" else "ru", preview)
 
 
 @app.get("/api/world/{child_id}")
@@ -1188,9 +1191,13 @@ def compose_aac(payload: AACComposeRequest, user: dict = Depends(require_roles("
     placeholders = ",".join("?" for _ in unique_ids)
     with connect() as db:
         rows = db.execute(
-            f"SELECT id,label,speech,lemma,grammatical_role,language,pictogram FROM aac_cards WHERE is_active=1 AND (child_id IS NULL OR child_id=?) AND id IN ({placeholders})",
+            f"SELECT * FROM aac_cards WHERE is_active=1 AND (child_id IS NULL OR child_id=?) AND id IN ({placeholders})",
             (payload.child_id, *unique_ids),
         ).fetchall()
+        if payload.preview_translations and user["role"] not in {"parent", "admin"}:
+            raise HTTPException(403, "translation.needs_specialist_review")
+        from .aac_localization import localize_cards
+        rows = localize_cards(db, rows, payload.language, payload.preview_translations)
     by_id = {row["id"]: dict(row) for row in rows}
     if len(by_id) != len(unique_ids):
         raise HTTPException(422, "Одна из карточек недоступна")
@@ -1207,9 +1214,11 @@ def save_aac_phrase(payload: AACPhraseCreate, user: dict = Depends(require_roles
     placeholders = ",".join("?" for _ in unique_ids)
     with connect() as db:
         cards = db.execute(
-            f"SELECT id,label,speech,lemma,grammatical_role,language,pictogram FROM aac_cards WHERE is_active=1 AND (child_id IS NULL OR child_id=?) AND id IN ({placeholders})",
+            f"SELECT * FROM aac_cards WHERE is_active=1 AND (child_id IS NULL OR child_id=?) AND id IN ({placeholders})",
             (payload.child_id, *unique_ids),
         ).fetchall()
+        from .aac_localization import localize_cards
+        cards = localize_cards(db, cards, "kk" if LOCALE.get() == "kk-KZ" else "ru")
         by_id = {row["id"]: dict(row) for row in cards}
         if len(by_id) != len(unique_ids):
             raise HTTPException(422, "Одна из карточек недоступна")
@@ -1217,12 +1226,13 @@ def save_aac_phrase(payload: AACPhraseCreate, user: dict = Depends(require_roles
         languages = {card.get("language") or "ru" for card in ordered_cards}
         if len(languages) != 1:
             raise HTTPException(422, "Карточки разных языков нельзя сохранять как одно сообщение")
-        composed = compose_aac_phrase(ordered_cards, languages.pop(), payload.mode)
+        language = languages.pop()
+        composed = compose_aac_phrase(ordered_cards, language, payload.mode)
         if not composed["valid"]:
             raise HTTPException(422, composed["reason"])
         cursor = db.execute(
-            "INSERT INTO aac_phrase_history(child_id,user_key,phrase,card_ids,created_at) VALUES(?,?,?,?,?) RETURNING id",
-            (payload.child_id, settings_key(user), composed["phrase"], json.dumps(unique_ids), now_iso()),
+            "INSERT INTO aac_phrase_history(child_id,user_key,phrase,card_ids,created_at,language) VALUES(?,?,?,?,?,?) RETURNING id",
+            (payload.child_id, settings_key(user), composed["phrase"], json.dumps(unique_ids), now_iso(), language),
         )
         row = db.execute("SELECT * FROM aac_phrase_history WHERE id=?", (cursor.fetchone()["id"],)).fetchone()
     result = dict(row)
@@ -1237,16 +1247,9 @@ def aac_history(child_id: int, user: dict = Depends(require_roles("admin", "pare
     if not consent["privacy_accepted"] or not consent["analytics_processing"]:
         return []
     with connect() as db:
-        rows = db.execute("SELECT * FROM aac_phrase_history WHERE child_id=? ORDER BY id DESC LIMIT 12", (child_id,)).fetchall()
         language = "kk" if LOCALE.get() == "kk-KZ" else "ru"
-        result = []
-        for row in rows:
-            ids = json.loads(row["card_ids"])
-            if not ids: continue
-            marks = ",".join("?" for _ in ids)
-            languages = {item["language"] for item in db.execute(f"SELECT language FROM aac_cards WHERE id IN ({marks})", tuple(ids)).fetchall()}
-            if languages == {language}: result.append({**dict(row), "card_ids": ids})
-    return result
+        rows = db.execute("SELECT * FROM aac_phrase_history WHERE child_id=? AND language=? ORDER BY id DESC LIMIT 12", (child_id,language)).fetchall()
+    return [{**dict(row), "card_ids":json.loads(row["card_ids"])} for row in rows]
 
 
 def saved_attempt_response(row, *, replayed: bool = False) -> dict:
@@ -2830,3 +2833,27 @@ def public_demo_speech(language: Literal["ru", "kk"], phrase_key: Literal["water
         "Cache-Control": "public, max-age=3600", "X-Soyle-TTS": "azure",
         "Content-Language": "kk-KZ" if language == "kk" else "ru-RU",
     })
+
+
+from .aac_localization import Edit as AACTranslationEdit, Review as AACTranslationReview
+
+@app.get("/api/admin/aac-translations")
+def aac_translation_queue(_: dict = Depends(require_roles("admin", "specialist"))):
+    with connect() as db:
+        return [dict(row) for row in db.execute("""SELECT t.source_card_id,c.label title,t.status,t.revision FROM aac_card_translations t
+            JOIN aac_cards c ON c.id=t.source_card_id ORDER BY c.id""").fetchall()]
+
+@app.get("/api/admin/aac-translations/{card_id}")
+def aac_translation_detail(card_id:int, _:dict=Depends(require_roles("admin","specialist"))):
+    from .aac_localization import detail
+    with connect() as db:return detail(db,card_id)
+
+@app.put("/api/admin/aac-translations/{card_id}")
+def aac_translation_edit(card_id:int,payload:AACTranslationEdit,user:dict=Depends(require_roles("admin"))):
+    from .aac_localization import edit
+    with connect() as db:return edit(db,card_id,payload,user['id'])
+
+@app.post("/api/admin/aac-translations/{card_id}/approve")
+def aac_translation_approve(card_id:int,payload:AACTranslationReview,user:dict=Depends(require_roles("specialist"))):
+    from .aac_localization import approve
+    with connect() as db:return approve(db,card_id,payload,user['id'])

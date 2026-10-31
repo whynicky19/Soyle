@@ -79,6 +79,12 @@ def catalogue() -> dict[tuple[str, str], str]:
         result[("kk", text)] = text
     for text in PET_PHRASES["kk"]:
         result[("kk", text)] = text
+    for text in json.loads((Path(__file__).parent/"locales/kk-KZ-education.json").read_text()).values():
+        if 0 < len(text) <= 300: result[("kk", text)] = text
+    from .aac_localization import library
+    from .aac_kazakh import editorial_phrases
+    for text in {card["speech"] for card in library()} | editorial_phrases():
+        result[("kk", text)] = text
     from .story_localization import story_adaptation
     for story_key, version in (("toy", 1), ("toy", 2), ("toy", 3), ("picnic", 1)):
         for original, text in story_adaptation(story_key, version)["texts"].items():
@@ -201,6 +207,9 @@ def synthesize(text: str, language: str, mode: str, phrase_type: str | None = No
         from .localization import approved_speech
         with connect() as db:
             if approved_speech(db, normalize_tts_text(text)): spoken = normalize_tts_text(text)
+            if not spoken:
+                from .aac_localization import approved_speech as approved_aac_speech
+                if approved_aac_speech(db, normalize_tts_text(text)): spoken = normalize_tts_text(text)
     key = os.getenv("AZURE_SPEECH_KEY", "")
     region = os.getenv("AZURE_SPEECH_REGION", "")
     if not enabled() or not spoken or not key or not re.fullmatch(r"[a-z0-9-]{2,40}", region):

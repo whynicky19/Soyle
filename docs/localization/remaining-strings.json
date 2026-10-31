@@ -7825,2887 +7825,2899 @@
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 1888,
+    "line": 1832,
     "text": "Помоги",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 1888,
-    "text": "Перерыв",
-    "kind": "StringLiteral"
-  },
-  {
-    "file": "frontend/components/SoyleApp.tsx",
-    "line": 1888,
-    "text": "Стоп",
-    "kind": "StringLiteral"
-  },
-  {
-    "file": "frontend/components/SoyleApp.tsx",
-    "line": 1888,
-    "text": "Не хочу",
-    "kind": "StringLiteral"
-  },
-  {
-    "file": "frontend/components/SoyleApp.tsx",
-    "line": 1923,
-    "text": "Эту комбинацию пока нельзя озвучить как готовую фразу.",
-    "kind": "StringLiteral"
-  },
-  {
-    "file": "frontend/components/SoyleApp.tsx",
-    "line": 1938,
-    "text": "Не хочу",
-    "kind": "StringLiteral"
-  },
-  {
-    "file": "frontend/components/SoyleApp.tsx",
-    "line": 1938,
-    "text": "Стоп",
-    "kind": "StringLiteral"
-  },
-  {
-    "file": "frontend/components/SoyleApp.tsx",
-    "line": 1938,
-    "text": "Нет",
-    "kind": "StringLiteral"
-  },
-  {
-    "file": "frontend/components/SoyleApp.tsx",
-    "line": 1939,
-    "text": "Перерыв",
-    "kind": "StringLiteral"
-  },
-  {
-    "file": "frontend/components/SoyleApp.tsx",
-    "line": 1962,
-    "text": "Перерыв",
-    "kind": "StringLiteral"
-  },
-  {
-    "file": "frontend/components/SoyleApp.tsx",
-    "line": 1964,
-    "text": "Перерыв",
-    "kind": "StringLiteral"
-  },
-  {
-    "file": "frontend/components/SoyleApp.tsx",
-    "line": 1994,
-    "text": "Помоги",
-    "kind": "StringLiteral"
-  },
-  {
-    "file": "frontend/components/SoyleApp.tsx",
-    "line": 1994,
+    "line": 1832,
     "text": "Больно",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 1994,
+    "line": 1832,
+    "text": "Перерыв",
+    "kind": "StringLiteral"
+  },
+  {
+    "file": "frontend/components/SoyleApp.tsx",
+    "line": 1832,
     "text": "Стоп",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 1994,
-    "text": "Перерыв",
-    "kind": "StringLiteral"
-  },
-  {
-    "file": "frontend/components/SoyleApp.tsx",
-    "line": 1994,
+    "line": 1832,
     "text": "Не хочу",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 1994,
+    "line": 1832,
     "text": "Да",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 1996,
-    "text": "Учебное AAC-задание",
+    "line": 1832,
+    "text": "Нет",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 1997,
+    "line": 1890,
+    "text": "Помоги",
+    "kind": "StringLiteral"
+  },
+  {
+    "file": "frontend/components/SoyleApp.tsx",
+    "line": 1890,
+    "text": "Перерыв",
+    "kind": "StringLiteral"
+  },
+  {
+    "file": "frontend/components/SoyleApp.tsx",
+    "line": 1890,
+    "text": "Стоп",
+    "kind": "StringLiteral"
+  },
+  {
+    "file": "frontend/components/SoyleApp.tsx",
+    "line": 1890,
+    "text": "Не хочу",
+    "kind": "StringLiteral"
+  },
+  {
+    "file": "frontend/components/SoyleApp.tsx",
+    "line": 1942,
+    "text": "Не хочу",
+    "kind": "StringLiteral"
+  },
+  {
+    "file": "frontend/components/SoyleApp.tsx",
+    "line": 1942,
+    "text": "Стоп",
+    "kind": "StringLiteral"
+  },
+  {
+    "file": "frontend/components/SoyleApp.tsx",
+    "line": 1942,
+    "text": "Нет",
+    "kind": "StringLiteral"
+  },
+  {
+    "file": "frontend/components/SoyleApp.tsx",
+    "line": 1943,
+    "text": "Перерыв",
+    "kind": "StringLiteral"
+  },
+  {
+    "file": "frontend/components/SoyleApp.tsx",
+    "line": 1966,
+    "text": "Перерыв",
+    "kind": "StringLiteral"
+  },
+  {
+    "file": "frontend/components/SoyleApp.tsx",
+    "line": 1966,
+    "text": "Нет",
+    "kind": "StringLiteral"
+  },
+  {
+    "file": "frontend/components/SoyleApp.tsx",
+    "line": 1966,
+    "text": "Стоп",
+    "kind": "StringLiteral"
+  },
+  {
+    "file": "frontend/components/SoyleApp.tsx",
+    "line": 1966,
+    "text": "Не хочу",
+    "kind": "StringLiteral"
+  },
+  {
+    "file": "frontend/components/SoyleApp.tsx",
+    "line": 1967,
+    "text": "Перерыв",
+    "kind": "StringLiteral"
+  },
+  {
+    "file": "frontend/components/SoyleApp.tsx",
+    "line": 1967,
+    "text": "Стоп",
+    "kind": "StringLiteral"
+  },
+  {
+    "file": "frontend/components/SoyleApp.tsx",
+    "line": 1967,
+    "text": "Не хочу",
+    "kind": "StringLiteral"
+  },
+  {
+    "file": "frontend/components/SoyleApp.tsx",
+    "line": 1968,
     "text": "Перерыв",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
     "line": 1998,
-    "text": "Собери сообщение",
+    "text": "Помоги",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
     "line": 1998,
-    "text": "Задание завершится после понятного сообщения.",
+    "text": "Больно",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 1999,
-    "text": "Ответ пока не выбран",
+    "line": 1998,
+    "text": "Стоп",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 1999,
-    "text": "Убрать карточку",
-    "kind": "TemplateHead"
-  },
-  {
-    "file": "frontend/components/SoyleApp.tsx",
-    "line": 2000,
+    "line": 1998,
     "text": "Перерыв",
+    "kind": "StringLiteral"
+  },
+  {
+    "file": "frontend/components/SoyleApp.tsx",
+    "line": 1998,
+    "text": "Не хочу",
+    "kind": "StringLiteral"
+  },
+  {
+    "file": "frontend/components/SoyleApp.tsx",
+    "line": 1998,
+    "text": "Да",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
     "line": 2002,
-    "text": "Карточки для задания",
+    "text": "Перерыв",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2010,
-    "text": "Убрать",
-    "kind": "TemplateHead"
+    "line": 2005,
+    "text": "Перерыв",
+    "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2010,
-    "text": "из избранного",
-    "kind": "LastTemplateToken"
-  },
-  {
-    "file": "frontend/components/SoyleApp.tsx",
-    "line": 2010,
-    "text": "Добавить",
-    "kind": "TemplateHead"
-  },
-  {
-    "file": "frontend/components/SoyleApp.tsx",
-    "line": 2010,
-    "text": "в избранное",
-    "kind": "LastTemplateToken"
-  },
-  {
-    "file": "frontend/components/SoyleApp.tsx",
-    "line": 2025,
+    "line": 2030,
     "text": "Не удалось загрузить историю практики",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2035,
+    "line": 2040,
     "text": "Загружаем историю практики…",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2036,
+    "line": 2041,
     "text": "ИСТОРИЯ ПРАКТИКИ",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2036,
+    "line": 2041,
     "text": "Занятия",
     "kind": "TemplateHead"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2036,
+    "line": 2041,
     "text": "ребёнка",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2036,
+    "line": 2041,
     "text": "Здесь появятся наблюдения после первых сохранённых занятий.",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2036,
+    "line": 2041,
     "text": "Пока недостаточно наблюдений",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2036,
+    "line": 2041,
     "text": "Начните с одного короткого занятия. Söyle покажет участие и использованную помощь без диагноза и сравнения с другими детьми.",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2036,
+    "line": 2041,
     "text": "Выбрать занятие",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2039,
+    "line": 2044,
     "text": "Повторить",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2040,
+    "line": 2045,
     "text": "ИСТОРИЯ ПРАКТИКИ",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2040,
+    "line": 2045,
     "text": "Занятия",
     "kind": "TemplateHead"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2040,
+    "line": 2045,
     "text": "ребёнка",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2040,
+    "line": 2045,
     "text": "Процент справа означает только охват доступных заданий. Результаты игр, участие и помощь показываются отдельно и не оценивают развитие речи.",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2040,
+    "line": 2045,
     "text": "охват заданий попытками",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2041,
+    "line": 2046,
     "text": "охват доступных заданий",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2041,
+    "line": 2046,
     "text": "минут практики",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2041,
+    "line": 2046,
     "text": "звёзд за игры",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2041,
+    "line": 2046,
     "text": "игровых попыток",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2043,
+    "line": 2048,
     "text": "ИГРОВЫЕ ПОПЫТКИ",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2043,
+    "line": 2048,
     "text": "Ответы в заданиях на слух за 7 дней",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2043,
+    "line": 2048,
     "text": "График ответов в заданиях на слух",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2043,
+    "line": 2048,
     "text": "Пока есть результаты за",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2043,
+    "line": 2048,
     "text": "один день",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2043,
+    "line": 2048,
     "text": "два дня",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2043,
+    "line": 2048,
     "text": ". Это история конкретной игры, а не оценка понимания речи.",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2043,
+    "line": 2048,
     "text": "Завершите задание на слух - здесь появится история ответов",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2043,
+    "line": 2048,
     "text": "Доля правильных выборов в игре",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2044,
+    "line": 2049,
     "text": "ПРАКТИКА ПО НАПРАВЛЕНИЯМ",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2044,
+    "line": 2049,
     "text": "Игровые ответы и участие",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2044,
+    "line": 2049,
     "text": "среднее по",
     "kind": "TemplateHead"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2044,
+    "line": 2049,
     "text": "игровым попыткам",
     "kind": "LastTemplateToken"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2044,
+    "line": 2049,
     "text": "отмечено участие без оценки правильности",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2044,
+    "line": 2049,
     "text": "ещё нет попыток",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2044,
+    "line": 2049,
     "text": "% в игре",
     "kind": "LastTemplateToken"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2044,
+    "line": 2049,
     "text": "участий",
     "kind": "LastTemplateToken"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2044,
+    "line": 2049,
     "text": "Завершите первое игровое задание - здесь появится история.",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2044,
+    "line": 2049,
     "text": "Локальный анализ учитывает последние результаты с повышенным весом свежих ответов, но не оценивает развитие речи и не ставит диагноз.",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2047,
+    "line": 2052,
     "text": "ДОСТИЖЕНИЯ",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2047,
+    "line": 2052,
     "text": "Значки за практику",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2047,
+    "line": 2052,
     "text": "Первая пятёрка",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2047,
+    "line": 2052,
     "text": "5 игровых попыток",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2047,
+    "line": 2052,
     "text": "Чуткое ушко",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2047,
+    "line": 2052,
     "text": "5 заданий на понимание",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2047,
+    "line": 2052,
     "text": "Мастер фраз",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2047,
+    "line": 2052,
     "text": "5 игр с фразами",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2047,
+    "line": 2052,
     "text": "Неделя практики",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2047,
+    "line": 2052,
     "text": "7 дней с практикой",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2053,
+    "line": 2058,
     "text": "Получено",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2063,
+    "line": 2068,
     "text": "Мягко начать занятие",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2063,
+    "line": 2068,
     "text": "Как мягко начать короткое занятие без давления?",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2064,
+    "line": 2069,
     "text": "Ребёнок отказывается",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2064,
+    "line": 2069,
     "text": "Что делать, если ребёнок отказывается от занятия?",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2065,
+    "line": 2070,
     "text": "AAC дома",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2065,
+    "line": 2070,
     "text": "Как использовать AAC-карточки в обычных домашних ситуациях?",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2074,
+    "line": 2079,
     "text": "Не удалось получить ответ",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2090,
+    "line": 2095,
     "text": "ЛОКАЛЬНЫЙ ПОМОЩНИК · ПРАВИЛА",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2090,
+    "line": 2095,
     "text": "Спокойно разберём ситуацию",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2090,
+    "line": 2095,
     "text": "Короткие подсказки выбираются внутри Söyle по прозрачным правилам, без внешней AI API. Решение всегда остаётся за вами.",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2091,
+    "line": 2096,
     "text": "Работает локально",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2095,
+    "line": 2100,
     "text": "Готовые вопросы",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2096,
+    "line": 2101,
     "text": "С ЧЕГО НАЧАТЬ",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2096,
+    "line": 2101,
     "text": "Готовые вопросы",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2096,
+    "line": 2101,
     "text": "Выберите тему - вопрос появится в поле, и его можно изменить перед отправкой.",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2098,
+    "line": 2103,
     "text": "Без внешней отправки данных",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2098,
+    "line": 2103,
     "text": "Вопрос обрабатывается локальными правилами приложения и не передаётся поставщику модели.",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2099,
+    "line": 2104,
     "text": "Что умеет помощник",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2099,
+    "line": 2104,
     "text": "Объясняет результаты простыми словами",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2099,
+    "line": 2104,
     "text": "Предлагает короткие безопасные шаги",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2099,
+    "line": 2104,
     "text": "Помогает использовать AAC дома",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2099,
+    "line": 2104,
     "text": "Не ставит диагноз и не заменяет специалиста.",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2102,
+    "line": 2107,
     "text": "Диалог с локальным помощником Söyle",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2103,
+    "line": 2108,
     "text": "Локальный помощник",
-    "kind": "JsxText"
-  },
-  {
-    "file": "frontend/components/SoyleApp.tsx",
-    "line": 2103,
-    "text": "Ответы основаны на заранее заданных безопасных правилах",
-    "kind": "JsxText"
-  },
-  {
-    "file": "frontend/components/SoyleApp.tsx",
-    "line": 2103,
-    "text": "Новый вопрос",
-    "kind": "JsxText"
-  },
-  {
-    "file": "frontend/components/SoyleApp.tsx",
-    "line": 2106,
-    "text": "Чем помочь сегодня?",
-    "kind": "JsxText"
-  },
-  {
-    "file": "frontend/components/SoyleApp.tsx",
-    "line": 2106,
-    "text": "Опишите одну конкретную ситуацию. Чем проще вопрос, тем понятнее будет ответ.",
-    "kind": "JsxText"
-  },
-  {
-    "file": "frontend/components/SoyleApp.tsx",
-    "line": 2106,
-    "text": "Ответ не является медицинской рекомендацией",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
     "line": 2108,
+    "text": "Ответы основаны на заранее заданных безопасных правилах",
+    "kind": "JsxText"
+  },
+  {
+    "file": "frontend/components/SoyleApp.tsx",
+    "line": 2108,
+    "text": "Новый вопрос",
+    "kind": "JsxText"
+  },
+  {
+    "file": "frontend/components/SoyleApp.tsx",
+    "line": 2111,
+    "text": "Чем помочь сегодня?",
+    "kind": "JsxText"
+  },
+  {
+    "file": "frontend/components/SoyleApp.tsx",
+    "line": 2111,
+    "text": "Опишите одну конкретную ситуацию. Чем проще вопрос, тем понятнее будет ответ.",
+    "kind": "JsxText"
+  },
+  {
+    "file": "frontend/components/SoyleApp.tsx",
+    "line": 2111,
+    "text": "Ответ не является медицинской рекомендацией",
+    "kind": "JsxText"
+  },
+  {
+    "file": "frontend/components/SoyleApp.tsx",
+    "line": 2113,
     "text": "Вы",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2110,
+    "line": 2115,
     "text": "Локальный помощник",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2110,
+    "line": 2115,
     "text": "Подбираю подходящее правило…",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2113,
+    "line": 2118,
     "text": "Локальный помощник",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2113,
+    "line": 2118,
     "text": "Ответ по проверяемым правилам · без внешней API",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2116,
+    "line": 2121,
     "text": "Что можно попробовать",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2119,
+    "line": 2124,
     "text": "Получить другой ответ",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2119,
+    "line": 2124,
     "text": "Спросить ещё",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2125,
+    "line": 2130,
     "text": "Вопрос для локального помощника Söyle",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2126,
+    "line": 2131,
     "text": "Опишите ситуацию или задайте вопрос…",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2127,
+    "line": 2132,
     "text": "/600 · Не указывайте личные данные",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2127,
+    "line": 2132,
     "text": "Отправить вопрос",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2127,
+    "line": 2132,
     "text": "Отправить",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2136,
+    "line": 2141,
     "text": "Мой мир",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2136,
+    "line": 2141,
     "text": "Знакомые фотографии и вещи",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2137,
+    "line": 2142,
     "text": "Навыки",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2137,
+    "line": 2142,
     "text": "Мои сохранённые шаги",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2138,
+    "line": 2143,
     "text": "Достижения",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2138,
+    "line": 2143,
     "text": "Истории, задания и звёзды",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2139,
+    "line": 2144,
     "text": "Настройки",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2139,
+    "line": 2144,
     "text": "Звук и спокойный режим",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2141,
+    "line": 2146,
     "text": "ТВОИ РАЗДЕЛЫ",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2141,
+    "line": 2146,
     "text": "Ещё",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2141,
+    "line": 2146,
     "text": "Твои фотографии, навыки и достижения — всё в одном месте.",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2146,
+    "line": 2151,
     "text": "Цели и занятия",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2146,
+    "line": 2151,
     "text": "Индивидуальные цели, предпочтения и короткие планы",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2147,
+    "line": 2152,
     "text": "Локальный помощник",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2147,
+    "line": 2152,
     "text": "Безопасные подсказки по прозрачным правилам",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2148,
+    "line": 2153,
     "text": "Профиль ребёнка и данные",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2148,
+    "line": 2153,
     "text": "Детский вход, согласия, экспорт и удаление",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2149,
+    "line": 2154,
     "text": "Настройки",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2149,
+    "line": 2154,
     "text": "Камера, звук, язык и оформление",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2150,
+    "line": 2155,
     "text": "Мой аккаунт",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2150,
+    "line": 2155,
     "text": "Информация о текущем профиле",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2152,
+    "line": 2157,
     "text": "ЕЩЁ",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2152,
+    "line": 2157,
     "text": "Управление и поддержка",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2152,
+    "line": 2157,
     "text": "Разделы, которые нужны не каждый день.",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2155,
+    "line": 2160,
     "text": "Обзор",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2155,
+    "line": 2160,
     "text": "Практика",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2155,
+    "line": 2160,
     "text": "Специалист",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2155,
+    "line": 2160,
     "text": "Материалы",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2155,
+    "line": 2160,
     "text": "Доступ и данные",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2173,
+    "line": 2178,
     "text": "Не удалось загрузить разрешения:",
     "kind": "TemplateHead"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2173,
+    "line": 2178,
     "text": "Не удалось загрузить разрешения",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2177,
+    "line": 2182,
     "text": "Не удалось загрузить детский вход:",
     "kind": "TemplateHead"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2177,
+    "line": 2182,
     "text": "Не удалось загрузить детский вход",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2186,
+    "line": 2191,
     "text": "Логин и PIN сохранены",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2187,
+    "line": 2192,
     "text": "Не удалось сохранить",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2200,
+    "line": 2205,
     "text": "Настройки приватности сохранены",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2201,
+    "line": 2206,
     "text": "Не удалось сохранить настройки",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2207,
+    "line": 2212,
     "text": "Не удалось удалить данные",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2210,
+    "line": 2215,
     "text": "Практика перед зеркалом",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2210,
+    "line": 2215,
     "text": "Слушай и находи",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2210,
+    "line": 2215,
     "text": "Собери фразу",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2212,
+    "line": 2217,
     "text": "КАБИНЕТ РОДИТЕЛЯ",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2212,
+    "line": 2217,
     "text": "Кабинет родителя",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2212,
+    "line": 2217,
     "text": "Практика, материалы и поддержка семьи — всё по разделам.",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2214,
+    "line": 2219,
     "text": "Профиль ребёнка",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2216,
+    "line": 2221,
     "text": "Материалы ребёнка",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2216,
+    "line": 2221,
     "text": "Фотографии ребёнка",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2216,
+    "line": 2221,
     "text": "Карточки AAC",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2216,
+    "line": 2221,
     "text": "История практики",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2216,
+    "line": 2221,
     "text": "Цели и план",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2217,
+    "line": 2222,
     "text": "КОМИКС · DRAFT",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2217,
+    "line": 2222,
     "text": "Пикник для мишки",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2217,
+    "line": 2222,
     "text": "12 сцен: выберем игрушку, попросим помощь, устроим пикник. Выборы сохраняются; можно читать частями.",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2217,
+    "line": 2222,
     "text": "Открыть комикс",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2218,
+    "line": 2223,
     "text": "МАСТЕРСКАЯ ИСТОРИЙ · DRAFT",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2218,
+    "line": 2223,
     "text": "Любимая игрушка",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2218,
+    "line": 2223,
     "text": "Интерактивная книга: найди мишку, попроси помощь и запусти поезд. Шесть цельных иллюстрированных страниц с маленькими играми.",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2218,
+    "line": 2223,
     "text": "Открыть книгу с играми",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2221,
+    "line": 2226,
     "text": "ВСЁ ПОД РУКОЙ",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2221,
+    "line": 2226,
     "text": "С чего начнём сегодня?",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2221,
+    "line": 2226,
     "text": "Продолжите практику или пригласите специалиста, чтобы вместе поддерживать ребёнка.",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2221,
+    "line": 2226,
     "text": "Открыть цели и план",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2221,
+    "line": 2226,
     "text": "Пригласить специалиста",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2223,
+    "line": 2228,
     "text": "Р",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2223,
+    "line": 2228,
     "text": "ПРОФИЛЬ РЕБЁНКА",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2223,
+    "line": 2228,
     "text": "Ребёнок",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2223,
+    "line": 2228,
     "text": "лет",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2223,
+    "line": 2228,
     "text": "игровых попыток ·",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2223,
+    "line": 2228,
     "text": "минут практики",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2224,
+    "line": 2229,
     "text": "Охват доступных заданий",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2224,
+    "line": 2229,
     "text": "Есть попытки по",
     "kind": "TemplateHead"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2224,
+    "line": 2229,
     "text": "% доступных заданий",
     "kind": "LastTemplateToken"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2224,
+    "line": 2229,
     "text": "занятий за неделю",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2226,
+    "line": 2231,
     "text": "заданий сегодня",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2226,
+    "line": 2231,
     "text": "заданий за неделю",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2226,
+    "line": 2231,
     "text": "мин",
     "kind": "LastTemplateToken"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2226,
+    "line": 2231,
     "text": "практики за неделю",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2226,
+    "line": 2231,
     "text": "Локально",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2226,
+    "line": 2231,
     "text": "адаптивный анализ",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2229,
+    "line": 2234,
     "text": "Практика в обычной жизни",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2229,
+    "line": 2234,
     "text": "Замечайте конкретные действия ребёнка. Бытовые наблюдения хранятся отдельно от результатов игр.",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2229,
+    "line": 2234,
     "text": "Перейти к целям и плану",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2230,
+    "line": 2235,
     "text": "КАК БЫТЬ РЯДОМ",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2230,
+    "line": 2235,
     "text": "Короткая памятка для занятия",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2230,
+    "line": 2235,
     "text": "Цель - дать ребёнку понятный способ ответить, а не добиться ответа любой ценой.",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2230,
+    "line": 2235,
     "text": "Подготовьте",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2230,
+    "line": 2235,
     "text": "Проверьте звук, уберите лишние раздражители и предложите выбрать длительность.",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2230,
+    "line": 2235,
     "text": "Подождите",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2230,
+    "line": 2235,
     "text": "После инструкции оставьте не меньше пяти спокойных секунд на ответ.",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2230,
+    "line": 2235,
     "text": "Помогайте по одному шагу",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2230,
+    "line": 2235,
     "text": "Сначала повторите, затем сократите выбор. Не ведите руку ребёнка без согласия.",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2230,
+    "line": 2235,
     "text": "Остановитесь сразу",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2230,
+    "line": 2235,
     "text": "«Нет», «не хочу», «перерыв», боль, усталость или заметный дискомфорт - достаточная причина завершить действие без ошибки и уговоров.",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2234,
+    "line": 2239,
     "text": "Как работает подбор заданий",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2235,
+    "line": 2240,
     "text": "ЛОКАЛЬНЫЙ АНАЛИЗ",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2235,
+    "line": 2240,
     "text": "Подсказки для родителя",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2235,
+    "line": 2240,
     "text": "Алгоритм собирает короткий план по последним ответам и проверенным правилам, не отправляя данные во внешнюю AI API.",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2235,
+    "line": 2240,
     "text": "Учитывает 8 последних результатов",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2235,
+    "line": 2240,
     "text": "Не повторяет задания до ротации",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2235,
+    "line": 2240,
     "text": "Уважает отказ и AAC-ответ",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2240,
+    "line": 2245,
     "text": "ПОСЛЕДНИЕ ПОПЫТКИ",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2240,
+    "line": 2245,
     "text": "История игровых заданий",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2240,
+    "line": 2245,
     "text": "из",
     "kind": "TemplateMiddle"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2240,
+    "line": 2245,
     "text": "Техническая ошибка",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2240,
+    "line": 2245,
     "text": "Участие отмечено",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2240,
+    "line": 2245,
     "text": "Отказ",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2240,
+    "line": 2245,
     "text": "Перерыв",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2240,
+    "line": 2245,
     "text": "% в игре",
     "kind": "LastTemplateToken"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2240,
+    "line": 2245,
     "text": "Игровых попыток пока нет.",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2244,
+    "line": 2249,
     "text": "Доступ и данные ребёнка",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2244,
+    "line": 2249,
     "text": "Управляйте детским входом, разрешениями и сохранённой историей.",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2246,
+    "line": 2251,
     "text": "ДОСТУП РЕБЁНКА",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2246,
+    "line": 2251,
     "text": "Изменить ученический вход",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2246,
+    "line": 2251,
     "text": "Создать вход для ученика",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2246,
+    "line": 2251,
     "text": "Отдельный безопасный вход без электронной почты.",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2246,
+    "line": 2251,
     "text": "Только логин и PIN",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2246,
+    "line": 2251,
     "text": "Логин ученика",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2246,
+    "line": 2251,
     "text": "Например, alikhan",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2246,
+    "line": 2251,
     "text": "Новый PIN",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2246,
+    "line": 2251,
     "text": "4-12 цифр",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2246,
+    "line": 2251,
     "text": "Сохранить доступ",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2247,
+    "line": 2252,
     "text": "ПРИВАТНОСТЬ И ДАННЫЕ",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2247,
+    "line": 2252,
     "text": "Разрешения семьи",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2247,
+    "line": 2252,
     "text": "Каждое необязательное разрешение включается отдельно и может быть отозвано. Адаптивный анализ работает внутри платформы и не отправляет ответы во внешнюю AI API.",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2247,
+    "line": 2252,
     "text": "Сохранение программы и результатов",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2247,
+    "line": 2252,
     "text": "Нужно для занятий и истории игровых попыток.",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2247,
+    "line": 2252,
     "text": "Локальная проверка движения камерой",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2247,
+    "line": 2252,
     "text": "Кадры анализируются только в этом браузере для проверки движения. Они не записываются, не отправляются и не используются для распознавания личности.",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2247,
+    "line": 2252,
     "text": "Описательная история и AAC",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2247,
+    "line": 2252,
     "text": "Сохраняет AAC-фразы и участие без клинических выводов.",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2247,
+    "line": 2252,
     "text": "Доступ выбранного специалиста",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2247,
+    "line": 2252,
     "text": "Только после отдельного добавления по логину. Отзыв разрешения закрывает все связи со специалистами.",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2247,
+    "line": 2252,
     "text": "Сохранить разрешения",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2247,
+    "line": 2252,
     "text": "Изменено",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2250,
+    "line": 2255,
     "text": "Данные ребёнка принадлежат семье",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2250,
+    "line": 2255,
     "text": "Экспорт включает профиль, занятия, истории, фотографии «Моего мира», AAC-карточки, избранное и историю практики.",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2250,
+    "line": 2255,
     "text": "Скачать данные",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2250,
+    "line": 2255,
     "text": "Удалить данные",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2250,
+    "line": 2255,
     "text": "Удалить профиль и все связанные данные?",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2250,
+    "line": 2255,
     "text": "Действие необратимо. Введите пароль родительского аккаунта для подтверждения.",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2250,
+    "line": 2255,
     "text": "Пароль",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2250,
+    "line": 2255,
     "text": "Удалить навсегда",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2253,
+    "line": 2258,
     "text": "Söyle - помощник, а не врач",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2253,
+    "line": 2258,
     "text": "Платформа не ставит диагноз и не заменяет занятия с логопедом или консультацию специалиста.",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2306,
+    "line": 2311,
     "text": "Часть данных не загрузилась. Проверьте соединение и повторите запрос.",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2318,
+    "line": 2323,
     "text": "Не удалось загрузить расход токенов",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2323,
+    "line": 2328,
     "text": "Не удалось изменить роль",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2324,
+    "line": 2329,
     "text": "Не удалось изменить статус",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2339,
+    "line": 2344,
     "text": "понимание предметов",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2339,
+    "line": 2344,
     "text": "словарное понимание",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2340,
+    "line": 2345,
     "text": "Дети, которым нужна практика понимания знакомых слов",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2341,
+    "line": 2346,
     "text": "Целевая группа описана через наблюдаемый навык, а не диагноз.",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2342,
+    "line": 2347,
     "text": "Может рассмотреть два изображения",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2342,
+    "line": 2347,
     "text": "Может ответить касанием или доступным альтернативным способом",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2343,
+    "line": 2348,
     "text": "Структурированные изображения; ответ — одно нажатие после аудиоинструкции.",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2345,
+    "line": 2350,
     "text": "Дать не меньше пяти секунд",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2345,
+    "line": 2350,
     "text": "Не требовать речевого ответа",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2345,
+    "line": 2350,
     "text": "Отмечать использованную подсказку",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2346,
+    "line": 2351,
     "text": "Самостоятельное нажатие",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2346,
+    "line": 2351,
     "text": "Нажатие с отмеченной подсказкой",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2346,
+    "line": 2351,
     "text": "Отказ, перерыв или просьба о помощи",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2347,
+    "line": 2352,
     "text": "Два варианта",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2347,
+    "line": 2352,
     "text": "Три варианта",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2347,
+    "line": 2352,
     "text": "Четыре варианта",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2348,
+    "line": 2353,
     "text": "Повтор аудио",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2348,
+    "line": 2353,
     "text": "Смысловая подсказка",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2348,
+    "line": 2353,
     "text": "Сокращение выбора",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2348,
+    "line": 2353,
     "text": "Модель ответа",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2349,
+    "line": 2354,
     "text": "Однозначность изображений и отвлекающих вариантов требует ручной проверки",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2350,
+    "line": 2355,
     "text": "Отказ",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2350,
+    "line": 2355,
     "text": "Перерыв",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2350,
+    "line": 2355,
     "text": "Дискомфорт",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2350,
+    "line": 2355,
     "text": "Техническая ошибка",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2351,
+    "line": 2356,
     "text": "Разделять самостоятельный ответ, подсказку, отказ, перерыв и техническую ошибку",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2352,
+    "line": 2357,
     "text": "Проверить перенос со знакомыми безопасными предметами дома",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2354,
+    "line": 2359,
     "text": "Источники не заявлены; материал требует независимой русскоязычной методической проверки.",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2358,
+    "line": 2363,
     "text": "Черновик сохранён. Просмотрите его и опубликуйте, если всё подходит.",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2358,
+    "line": 2363,
     "text": "Черновик сохранён, но требует исправлений:",
     "kind": "TemplateHead"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2361,
+    "line": 2366,
     "text": "Не удалось сохранить черновик",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2367,
+    "line": 2372,
     "text": "Не удалось открыть проверку",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2400,
+    "line": 2405,
     "text": "Не удалось архивировать задание",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2401,
+    "line": 2406,
     "text": "План занятия",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2401,
+    "line": 2406,
     "text": "Ответ родителю",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2402,
+    "line": 2407,
     "text": "родитель",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2402,
+    "line": 2407,
     "text": "ученик",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2402,
+    "line": 2407,
     "text": "администратор",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2402,
+    "line": 2407,
     "text": "специалист",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2402,
+    "line": 2407,
     "text": "аккаунт удалён",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2409,
+    "line": 2414,
     "text": "УПРАВЛЕНИЕ ПЛАТФОРМОЙ",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2409,
+    "line": 2414,
     "text": "Админ-панель",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2409,
+    "line": 2414,
     "text": "Проверка заданий, управление доступом и история решений.",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2409,
+    "line": 2414,
     "text": "Проверяем API",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2409,
+    "line": 2414,
     "text": "API доступен",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2409,
+    "line": 2414,
     "text": "API недоступен",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2410,
+    "line": 2415,
     "text": "Повторить",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2411,
+    "line": 2416,
     "text": "аккаунтов",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2411,
+    "line": 2416,
     "text": "профилей детей",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2411,
+    "line": 2416,
     "text": "сохранённых попыток",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2411,
+    "line": 2416,
     "text": "активных заданий",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2412,
+    "line": 2417,
     "text": "Разделы админ-панели",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2412,
+    "line": 2417,
     "text": "Пользователи",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2412,
+    "line": 2417,
     "text": "Задания",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2412,
+    "line": 2417,
     "text": "Архив API",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2412,
+    "line": 2417,
     "text": "Журнал",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2413,
+    "line": 2418,
     "text": "ДОСТУП И РОЛИ",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2413,
+    "line": 2418,
     "text": "Взрослые аккаунты",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2413,
+    "line": 2418,
     "text": "Роль определяет доступ к семейным и административным разделам.",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2413,
+    "line": 2418,
     "text": "Взрослые аккаунты и их права доступа",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2413,
+    "line": 2418,
     "text": "Пользователь",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2413,
+    "line": 2418,
     "text": "Роль",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2413,
+    "line": 2418,
     "text": "Статус",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2413,
+    "line": 2418,
     "text": "Действие",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2413,
+    "line": 2418,
     "text": "Пользователь",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2413,
+    "line": 2418,
     "text": "Роль",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2413,
+    "line": 2418,
     "text": "Роль пользователя",
     "kind": "TemplateHead"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2413,
+    "line": 2418,
     "text": "Родитель",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2413,
+    "line": 2418,
     "text": "Специалист",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2413,
+    "line": 2418,
     "text": "Администратор",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2413,
+    "line": 2418,
     "text": "Статус",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2413,
+    "line": 2418,
     "text": "Активен",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2413,
+    "line": 2418,
     "text": "Отключён",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2413,
+    "line": 2418,
     "text": "Действие",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2413,
+    "line": 2418,
     "text": "Отключить",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2413,
+    "line": 2418,
     "text": "Включить",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2413,
+    "line": 2418,
     "text": "УЧЕНИЧЕСКИЕ АККАУНТЫ",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2413,
+    "line": 2418,
     "text": "всего",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2413,
+    "line": 2418,
     "text": "Логин:",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2413,
+    "line": 2418,
     "text": "Родитель:",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2413,
+    "line": 2418,
     "text": "Ученик",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2415,
+    "line": 2420,
     "text": "ВЕРСИОНИРУЕМЫЙ КОНТЕНТ",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2415,
+    "line": 2420,
     "text": "Задания и проверка",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2415,
+    "line": 2420,
     "text": "Черновики, материалы на проверке и доступная библиотека.",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2415,
+    "line": 2420,
     "text": "Закрыть форму",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2415,
+    "line": 2420,
     "text": "+ Новый черновик",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2416,
+    "line": 2421,
     "text": "Название",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2416,
+    "line": 2421,
     "text": "Например, Предметы на кухне",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2416,
+    "line": 2421,
     "text": "Наблюдаемый навык",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2416,
+    "line": 2421,
     "text": "Сопоставляет услышанное слово с изображением",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2416,
+    "line": 2421,
     "text": "Инструкция",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2416,
+    "line": 2421,
     "text": "Послушай и выбери картинку",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2416,
+    "line": 2421,
     "text": "Уровень",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2416,
+    "line": 2421,
     "text": "1 — начальный",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2416,
+    "line": 2421,
     "text": "2 — средний",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2416,
+    "line": 2421,
     "text": "3 — сложный",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2416,
+    "line": 2421,
     "text": "Стимулы",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2416,
+    "line": 2421,
     "text": "cup | Чашка | Чашка | /learning-core/words/cup-a.webp\nspoon | Ложка | Ложка | /learning-core/words/spoon-a.webp\nbook | Книга | Книга | /learning-core/words/book-a.webp\nchair | Стул | Стул | /learning-cards/chair.png",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2416,
+    "line": 2421,
     "text": "Одна строка: стабильный key | подпись | озвучка | локальный путь. После создания заполненная методическая карточка откроется в рабочем пространстве проверки.",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2416,
+    "line": 2421,
     "text": "Сохранить черновик",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2416,
+    "line": 2421,
     "text": "Создаётся только DRAFT. Автопроверка не является утверждением.",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2422,
+    "line": 2427,
     "text": "ВНЕШНЯЯ API ОТКЛЮЧЕНА",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2422,
+    "line": 2427,
     "text": "Архив прежних запросов",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2422,
+    "line": 2427,
     "text": "Новые планы и подсказки работают локально. Здесь остаётся только исторический технический журнал.",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2423,
+    "line": 2428,
     "text": "Период отчёта",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2423,
+    "line": 2428,
     "text": "дней",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2425,
+    "line": 2430,
     "text": "Загрузка статистики токенов",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2425,
+    "line": 2430,
     "text": "Не удалось загрузить статистику",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2425,
+    "line": 2430,
     "text": "Повторить",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2427,
+    "line": 2432,
     "text": "старых внешних запросов",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2428,
+    "line": 2433,
     "text": "токенов всего",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2429,
+    "line": 2434,
     "text": "входных токенов",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2430,
+    "line": 2435,
     "text": "выходных токенов",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2431,
+    "line": 2436,
     "text": "примерная стоимость",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2435,
+    "line": 2440,
     "text": "КОГДА ТРАТИЛИСЬ ТОКЕНЫ",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2435,
+    "line": 2440,
     "text": "Расход по дням",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2435,
+    "line": 2440,
     "text": "дней",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2436,
+    "line": 2441,
     "text": "Расход токенов по дням. Максимум за день:",
     "kind": "TemplateHead"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2440,
+    "line": 2445,
     "text": "токенов,",
     "kind": "TemplateMiddle"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2440,
+    "line": 2445,
     "text": "запросов",
     "kind": "LastTemplateToken"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2442,
+    "line": 2447,
     "text": "Высота столбца - общее число входных и выходных токенов за день.",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2443,
+    "line": 2448,
     "text": "Внешних запросов нет",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2443,
+    "line": 2448,
     "text": "Локальный анализ не расходует токены и не обращается к поставщику модели.",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2446,
+    "line": 2451,
     "text": "НА ЧТО УШЛИ ТОКЕНЫ",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2446,
+    "line": 2451,
     "text": "По функциям",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2447,
+    "line": 2452,
     "text": "Функция и модель",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2447,
+    "line": 2452,
     "text": "Запросы",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2447,
+    "line": 2452,
     "text": "Токены",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2447,
+    "line": 2452,
     "text": "Стоимость",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2447,
+    "line": 2452,
     "text": "Нет данных для разбивки",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2451,
+    "line": 2456,
     "text": "ИСТОРИЧЕСКИЕ ДАННЫЕ",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2451,
+    "line": 2456,
     "text": "Прежние внешние запросы",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2451,
+    "line": 2456,
     "text": "Показаны последние",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2451,
+    "line": 2456,
     "text": "сохранённых событий за выбранный период.",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2451,
+    "line": 2456,
     "text": "Обновить архив",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2451,
+    "line": 2456,
     "text": "Обновить",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2452,
+    "line": 2457,
     "text": "Архив прежних внешних запросов по пользователям и времени",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2452,
+    "line": 2457,
     "text": "Когда",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2452,
+    "line": 2457,
     "text": "Кто запустил",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2452,
+    "line": 2457,
     "text": "Профиль ребёнка",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2452,
+    "line": 2457,
     "text": "Функция",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2452,
+    "line": 2457,
     "text": "Токены",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2452,
+    "line": 2457,
     "text": "Стоимость",
-    "kind": "JsxText"
-  },
-  {
-    "file": "frontend/components/SoyleApp.tsx",
-    "line": 2453,
-    "text": "Когда",
-    "kind": "StringLiteral"
-  },
-  {
-    "file": "frontend/components/SoyleApp.tsx",
-    "line": 2454,
-    "text": "Кто запустил",
-    "kind": "StringLiteral"
-  },
-  {
-    "file": "frontend/components/SoyleApp.tsx",
-    "line": 2455,
-    "text": "Профиль ребёнка",
-    "kind": "StringLiteral"
-  },
-  {
-    "file": "frontend/components/SoyleApp.tsx",
-    "line": 2455,
-    "text": "Профиль удалён",
-    "kind": "StringLiteral"
-  },
-  {
-    "file": "frontend/components/SoyleApp.tsx",
-    "line": 2456,
-    "text": "Функция",
-    "kind": "StringLiteral"
-  },
-  {
-    "file": "frontend/components/SoyleApp.tsx",
-    "line": 2457,
-    "text": "Токены",
-    "kind": "StringLiteral"
-  },
-  {
-    "file": "frontend/components/SoyleApp.tsx",
-    "line": 2457,
-    "text": "вход ·",
-    "kind": "JsxText"
-  },
-  {
-    "file": "frontend/components/SoyleApp.tsx",
-    "line": 2457,
-    "text": "выход",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
     "line": 2458,
+    "text": "Когда",
+    "kind": "StringLiteral"
+  },
+  {
+    "file": "frontend/components/SoyleApp.tsx",
+    "line": 2459,
+    "text": "Кто запустил",
+    "kind": "StringLiteral"
+  },
+  {
+    "file": "frontend/components/SoyleApp.tsx",
+    "line": 2460,
+    "text": "Профиль ребёнка",
+    "kind": "StringLiteral"
+  },
+  {
+    "file": "frontend/components/SoyleApp.tsx",
+    "line": 2460,
+    "text": "Профиль удалён",
+    "kind": "StringLiteral"
+  },
+  {
+    "file": "frontend/components/SoyleApp.tsx",
+    "line": 2461,
+    "text": "Функция",
+    "kind": "StringLiteral"
+  },
+  {
+    "file": "frontend/components/SoyleApp.tsx",
+    "line": 2462,
+    "text": "Токены",
+    "kind": "StringLiteral"
+  },
+  {
+    "file": "frontend/components/SoyleApp.tsx",
+    "line": 2462,
+    "text": "вход ·",
+    "kind": "JsxText"
+  },
+  {
+    "file": "frontend/components/SoyleApp.tsx",
+    "line": 2462,
+    "text": "выход",
+    "kind": "JsxText"
+  },
+  {
+    "file": "frontend/components/SoyleApp.tsx",
+    "line": 2463,
     "text": "Стоимость",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2459,
+    "line": 2464,
     "text": "История пока пуста",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2459,
+    "line": 2464,
     "text": "Локальные резервные ответы сюда не попадают и ничего не стоят.",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2464,
+    "line": 2469,
     "text": "БЕЗОПАСНОСТЬ",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2464,
+    "line": 2469,
     "text": "Журнал критичных действий",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2464,
+    "line": 2469,
     "text": "Последние 100 записей",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2464,
+    "line": 2469,
     "text": "Действие",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2464,
+    "line": 2469,
     "text": "Объект",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2464,
+    "line": 2469,
     "text": "Автор",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2464,
+    "line": 2469,
     "text": "Время",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2464,
+    "line": 2469,
     "text": "Без дополнительных данных",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2464,
+    "line": 2469,
     "text": "Критичных действий пока не было.",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2472,
+    "line": 2477,
     "text": "Қазақша",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2473,
+    "line": 2478,
     "text": "Высокий контраст",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2477,
+    "line": 2482,
     "text": "МОЙ КАБИНЕТ",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2477,
+    "line": 2482,
     "text": "Привет,",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2477,
+    "line": 2482,
     "text": "Твои истории, маленькие победы и любимые вещи — здесь.",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2477,
+    "line": 2482,
     "text": "Посмотреть достижения",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2479,
+    "line": 2484,
     "text": "Мои сохранённые результаты",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2480,
+    "line": 2485,
     "text": "звёзд за игры",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2481,
+    "line": 2486,
     "text": "сохранённых занятий",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2482,
+    "line": 2487,
     "text": "минут практики",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2484,
+    "line": 2489,
     "text": "ЧТО ПОСМОТРЕТЬ",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2484,
+    "line": 2489,
     "text": "Моё пространство",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2484,
+    "line": 2489,
     "text": "Читать и выбирать",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2484,
+    "line": 2489,
     "text": "Знакомые фотографии",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2484,
+    "line": 2489,
     "text": "Сказать, что нужно",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2484,
+    "line": 2489,
     "text": "Звук и оформление",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2485,
+    "line": 2490,
     "text": "МОИ ДАННЫЕ",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2485,
+    "line": 2490,
     "text": "Об аккаунте",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2485,
+    "line": 2490,
     "text": "Имя:",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2485,
+    "line": 2490,
     "text": "· Логин:",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2485,
+    "line": 2490,
     "text": "· Возраст:",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2485,
+    "line": 2490,
     "text": "лет",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2485,
+    "line": 2490,
     "text": "Язык:",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2485,
+    "line": 2490,
     "text": "· Оформление:",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2488,
+    "line": 2493,
     "text": "ПРОФИЛЬ",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2488,
+    "line": 2493,
     "text": "Личный кабинет",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2488,
+    "line": 2493,
     "text": "Информация об аккаунте, ребёнке и текущих настройках.",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2495,
+    "line": 2500,
     "text": "Основная информация",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2495,
+    "line": 2500,
     "text": "Оформление",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2496,
+    "line": 2501,
     "text": "ПРОФИЛЬ РЕБЁНКА",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2496,
+    "line": 2501,
     "text": "Возраст",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2496,
+    "line": 2501,
     "text": "лет",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2496,
+    "line": 2501,
     "text": "Основное направление",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2496,
+    "line": 2501,
     "text": "Всего занятий",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2496,
+    "line": 2501,
     "text": "Минут практики",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2496,
+    "line": 2501,
     "text": "Звёзд",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2496,
+    "line": 2501,
     "text": "Открыть кабинет родителя",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2498,
+    "line": 2503,
     "text": "Дополнительные возможности",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2499,
+    "line": 2504,
     "text": "Цели и занятия",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2499,
+    "line": 2504,
     "text": "Индивидуальные цели и короткие планы",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2500,
+    "line": 2505,
     "text": "Локальный помощник",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2500,
+    "line": 2505,
     "text": "Подсказки по прозрачным безопасным правилам",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2501,
+    "line": 2506,
     "text": "Данные ребёнка",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2501,
+    "line": 2506,
     "text": "Доступ, согласия, экспорт и приватность",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2502,
+    "line": 2507,
     "text": "Звук, спокойный режим и оформление",
     "kind": "JsxText"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2516,
+    "line": 2521,
     "text": "ҚАЗ",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2516,
+    "line": 2521,
     "text": "Қазақша",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2537,
+    "line": 2542,
     "text": "Қазақша",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2571,
+    "line": 2576,
     "text": "включено",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/components/SoyleApp.tsx",
-    "line": 2571,
+    "line": 2576,
     "text": "выключено",
     "kind": "StringLiteral"
   },
@@ -10827,396 +10839,6 @@
     "file": "frontend/components/StarReward.tsx",
     "line": 37,
     "text": "В твоей копилке:",
-    "kind": "JsxText"
-  },
-  {
-    "file": "frontend/components/VariedExerciseRunner.tsx",
-    "line": 18,
-    "text": "Выбери группу для предмета. Предметы будут собираться в группах.",
-    "kind": "StringLiteral"
-  },
-  {
-    "file": "frontend/components/VariedExerciseRunner.tsx",
-    "line": 19,
-    "text": "Послушай историю. Нажимай на картинки по порядку. Одну картинку оставь. Можно отменить выбор, затем нажать «Проверить порядок».",
-    "kind": "StringLiteral"
-  },
-  {
-    "file": "frontend/components/VariedExerciseRunner.tsx",
-    "line": 20,
-    "text": "Нажми на предмет, затем на подходящее действие. Собери все пары.",
-    "kind": "StringLiteral"
-  },
-  {
-    "file": "frontend/components/VariedExerciseRunner.tsx",
-    "line": 35,
-    "text": "Звук выключен. Для этого задания нужна озвучка.",
-    "kind": "StringLiteral"
-  },
-  {
-    "file": "frontend/components/VariedExerciseRunner.tsx",
-    "line": 52,
-    "text": "Картинка не загрузилась. Продолжить без неё нельзя.",
-    "kind": "StringLiteral"
-  },
-  {
-    "file": "frontend/components/VariedExerciseRunner.tsx",
-    "line": 58,
-    "text": "Озвучка не сработала. Попробуйте позже.",
-    "kind": "StringLiteral"
-  },
-  {
-    "file": "frontend/components/VariedExerciseRunner.tsx",
-    "line": 59,
-    "text": "Озвучка не сработала. Попробуйте позже.",
-    "kind": "StringLiteral"
-  },
-  {
-    "file": "frontend/components/VariedExerciseRunner.tsx",
-    "line": 71,
-    "text": "Смотрим образец вместе. Самостоятельный ответ не засчитывается.",
-    "kind": "StringLiteral"
-  },
-  {
-    "file": "frontend/components/VariedExerciseRunner.tsx",
-    "line": 71,
-    "text": "Получилось самостоятельно!",
-    "kind": "StringLiteral"
-  },
-  {
-    "file": "frontend/components/VariedExerciseRunner.tsx",
-    "line": 71,
-    "text": "Получилось с помощью или исправлением.",
-    "kind": "StringLiteral"
-  },
-  {
-    "file": "frontend/components/VariedExerciseRunner.tsx",
-    "line": 84,
-    "text": "Послушай ещё раз или измени порядок картинок.",
-    "kind": "StringLiteral"
-  },
-  {
-    "file": "frontend/components/VariedExerciseRunner.tsx",
-    "line": 84,
-    "text": "Эта связь не подходит к картинкам задания. Попробуй ещё раз.",
-    "kind": "StringLiteral"
-  },
-  {
-    "file": "frontend/components/VariedExerciseRunner.tsx",
-    "line": 98,
-    "text": "Сначала выбери предмет.",
-    "kind": "StringLiteral"
-  },
-  {
-    "file": "frontend/components/VariedExerciseRunner.tsx",
-    "line": 102,
-    "text": "Пара найдена. Соедини остальные.",
-    "kind": "StringLiteral"
-  },
-  {
-    "file": "frontend/components/VariedExerciseRunner.tsx",
-    "line": 127,
-    "text": "Результат не сохранён. Повторите сохранение.",
-    "kind": "StringLiteral"
-  },
-  {
-    "file": "frontend/components/VariedExerciseRunner.tsx",
-    "line": 128,
-    "text": "Результат не сохранён. Повторите сохранение.",
-    "kind": "StringLiteral"
-  },
-  {
-    "file": "frontend/components/VariedExerciseRunner.tsx",
-    "line": 144,
-    "text": "В задании нет карточек.",
-    "kind": "JsxText"
-  },
-  {
-    "file": "frontend/components/VariedExerciseRunner.tsx",
-    "line": 144,
-    "text": "Назад",
-    "kind": "JsxText"
-  },
-  {
-    "file": "frontend/components/VariedExerciseRunner.tsx",
-    "line": 145,
-    "text": "Серия завершена",
-    "kind": "JsxText"
-  },
-  {
-    "file": "frontend/components/VariedExerciseRunner.tsx",
-    "line": 145,
-    "text": "Выполнено наборов:",
-    "kind": "JsxText"
-  },
-  {
-    "file": "frontend/components/VariedExerciseRunner.tsx",
-    "line": 145,
-    "text": "Назад",
-    "kind": "JsxText"
-  },
-  {
-    "file": "frontend/components/VariedExerciseRunner.tsx",
-    "line": 146,
-    "text": "Сортировка по группам",
-    "kind": "StringLiteral"
-  },
-  {
-    "file": "frontend/components/VariedExerciseRunner.tsx",
-    "line": 146,
-    "text": "Порядок действий",
-    "kind": "StringLiteral"
-  },
-  {
-    "file": "frontend/components/VariedExerciseRunner.tsx",
-    "line": 146,
-    "text": "Соединение пар",
-    "kind": "StringLiteral"
-  },
-  {
-    "file": "frontend/components/VariedExerciseRunner.tsx",
-    "line": 147,
-    "text": "ИЗ",
-    "kind": "JsxText"
-  },
-  {
-    "file": "frontend/components/VariedExerciseRunner.tsx",
-    "line": 147,
-    "text": "К какой группе относится предмет?",
-    "kind": "StringLiteral"
-  },
-  {
-    "file": "frontend/components/VariedExerciseRunner.tsx",
-    "line": 147,
-    "text": "Что сначала, что потом?",
-    "kind": "StringLiteral"
-  },
-  {
-    "file": "frontend/components/VariedExerciseRunner.tsx",
-    "line": 147,
-    "text": "Что для чего нужно?",
-    "kind": "StringLiteral"
-  },
-  {
-    "file": "frontend/components/VariedExerciseRunner.tsx",
-    "line": 147,
-    "text": "Повторить",
-    "kind": "JsxText"
-  },
-  {
-    "file": "frontend/components/VariedExerciseRunner.tsx",
-    "line": 148,
-    "text": "Сейчас задание недоступно",
-    "kind": "JsxText"
-  },
-  {
-    "file": "frontend/components/VariedExerciseRunner.tsx",
-    "line": 148,
-    "text": "Вернуться без оценки",
-    "kind": "JsxText"
-  },
-  {
-    "file": "frontend/components/VariedExerciseRunner.tsx",
-    "line": 148,
-    "text": "предметов",
-    "kind": "StringLiteral"
-  },
-  {
-    "file": "frontend/components/VariedExerciseRunner.tsx",
-    "line": 148,
-    "text": "наборов",
-    "kind": "StringLiteral"
-  },
-  {
-    "file": "frontend/components/VariedExerciseRunner.tsx",
-    "line": 148,
-    "text": "Послушать и начать",
-    "kind": "JsxText"
-  },
-  {
-    "file": "frontend/components/VariedExerciseRunner.tsx",
-    "line": 149,
-    "text": "Нажми на подходящую группу.",
-    "kind": "StringLiteral"
-  },
-  {
-    "file": "frontend/components/VariedExerciseRunner.tsx",
-    "line": 149,
-    "text": "Выбери",
-    "kind": "TemplateHead"
-  },
-  {
-    "file": "frontend/components/VariedExerciseRunner.tsx",
-    "line": 149,
-    "text": "картинки по порядку. Одна картинка лишняя.",
-    "kind": "LastTemplateToken"
-  },
-  {
-    "file": "frontend/components/VariedExerciseRunner.tsx",
-    "line": 149,
-    "text": "Теперь выбери подходящее действие.",
-    "kind": "StringLiteral"
-  },
-  {
-    "file": "frontend/components/VariedExerciseRunner.tsx",
-    "line": 149,
-    "text": "Выбери предмет, затем подходящее действие.",
-    "kind": "StringLiteral"
-  },
-  {
-    "file": "frontend/components/VariedExerciseRunner.tsx",
-    "line": 150,
-    "text": "Слушаем…",
-    "kind": "JsxText"
-  },
-  {
-    "file": "frontend/components/VariedExerciseRunner.tsx",
-    "line": 151,
-    "text": "Выбери группу",
-    "kind": "StringLiteral"
-  },
-  {
-    "file": "frontend/components/VariedExerciseRunner.tsx",
-    "line": 153,
-    "text": "Собрано:",
-    "kind": "JsxText"
-  },
-  {
-    "file": "frontend/components/VariedExerciseRunner.tsx",
-    "line": 155,
-    "text": "Твой порядок",
-    "kind": "StringLiteral"
-  },
-  {
-    "file": "frontend/components/VariedExerciseRunner.tsx",
-    "line": 155,
-    "text": "Убрать начиная с шага",
-    "kind": "TemplateHead"
-  },
-  {
-    "file": "frontend/components/VariedExerciseRunner.tsx",
-    "line": 155,
-    "text": "Сначала",
-    "kind": "StringLiteral"
-  },
-  {
-    "file": "frontend/components/VariedExerciseRunner.tsx",
-    "line": 155,
-    "text": "Потом",
-    "kind": "StringLiteral"
-  },
-  {
-    "file": "frontend/components/VariedExerciseRunner.tsx",
-    "line": 155,
-    "text": "В конце",
-    "kind": "StringLiteral"
-  },
-  {
-    "file": "frontend/components/VariedExerciseRunner.tsx",
-    "line": 156,
-    "text": "Картинки истории",
-    "kind": "StringLiteral"
-  },
-  {
-    "file": "frontend/components/VariedExerciseRunner.tsx",
-    "line": 156,
-    "text": "В порядке",
-    "kind": "JsxText"
-  },
-  {
-    "file": "frontend/components/VariedExerciseRunner.tsx",
-    "line": 157,
-    "text": "Отменить последний",
-    "kind": "JsxText"
-  },
-  {
-    "file": "frontend/components/VariedExerciseRunner.tsx",
-    "line": 157,
-    "text": "Проверить порядок",
-    "kind": "JsxText"
-  },
-  {
-    "file": "frontend/components/VariedExerciseRunner.tsx",
-    "line": 158,
-    "text": "Предметы",
-    "kind": "JsxText"
-  },
-  {
-    "file": "frontend/components/VariedExerciseRunner.tsx",
-    "line": 158,
-    "text": "Предмет:",
-    "kind": "TemplateHead"
-  },
-  {
-    "file": "frontend/components/VariedExerciseRunner.tsx",
-    "line": 158,
-    "text": "Пара найдена",
-    "kind": "JsxText"
-  },
-  {
-    "file": "frontend/components/VariedExerciseRunner.tsx",
-    "line": 158,
-    "text": "Действия",
-    "kind": "JsxText"
-  },
-  {
-    "file": "frontend/components/VariedExerciseRunner.tsx",
-    "line": 158,
-    "text": "Действие:",
-    "kind": "TemplateHead"
-  },
-  {
-    "file": "frontend/components/VariedExerciseRunner.tsx",
-    "line": 158,
-    "text": "Пара найдена",
-    "kind": "JsxText"
-  },
-  {
-    "file": "frontend/components/VariedExerciseRunner.tsx",
-    "line": 159,
-    "text": "Найденные пары",
-    "kind": "StringLiteral"
-  },
-  {
-    "file": "frontend/components/VariedExerciseRunner.tsx",
-    "line": 161,
-    "text": "Показать образец",
-    "kind": "JsxText"
-  },
-  {
-    "file": "frontend/components/VariedExerciseRunner.tsx",
-    "line": 162,
-    "text": "Продолжить с новыми заданиями",
-    "kind": "JsxText"
-  },
-  {
-    "file": "frontend/components/VariedExerciseRunner.tsx",
-    "line": 162,
-    "text": "Сохраняем…",
-    "kind": "StringLiteral"
-  },
-  {
-    "file": "frontend/components/VariedExerciseRunner.tsx",
-    "line": 162,
-    "text": "Завершить",
-    "kind": "StringLiteral"
-  },
-  {
-    "file": "frontend/components/VariedExerciseRunner.tsx",
-    "line": 162,
-    "text": "Дальше",
-    "kind": "StringLiteral"
-  },
-  {
-    "file": "frontend/components/VariedExerciseRunner.tsx",
-    "line": 165,
-    "text": "Перерыв",
-    "kind": "JsxText"
-  },
-  {
-    "file": "frontend/components/VariedExerciseRunner.tsx",
-    "line": 165,
-    "text": "Не хочу",
     "kind": "JsxText"
   },
   {
@@ -11977,147 +11599,207 @@
   },
   {
     "file": "frontend/lib/aacGrammar.ts",
-    "line": 10,
+    "line": 11,
     "text": "Мама",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/lib/aacGrammar.ts",
-    "line": 10,
+    "line": 11,
     "text": "маму",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/lib/aacGrammar.ts",
-    "line": 11,
+    "line": 12,
     "text": "Папа",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/lib/aacGrammar.ts",
-    "line": 11,
+    "line": 12,
     "text": "папу",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/lib/aacGrammar.ts",
-    "line": 12,
+    "line": 13,
     "text": "Бабушка",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/lib/aacGrammar.ts",
-    "line": 12,
+    "line": 13,
     "text": "бабушку",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/lib/aacGrammar.ts",
-    "line": 13,
+    "line": 14,
     "text": "Дедушка",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/lib/aacGrammar.ts",
-    "line": 13,
+    "line": 14,
     "text": "дедушку",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/lib/aacGrammar.ts",
-    "line": 14,
+    "line": 15,
     "text": "Брат",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/lib/aacGrammar.ts",
-    "line": 14,
+    "line": 15,
     "text": "брата",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/lib/aacGrammar.ts",
-    "line": 15,
+    "line": 16,
     "text": "Сестра",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/lib/aacGrammar.ts",
-    "line": 15,
+    "line": 16,
     "text": "сестру",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/lib/aacGrammar.ts",
-    "line": 16,
+    "line": 17,
     "text": "Кот",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/lib/aacGrammar.ts",
-    "line": 16,
+    "line": 17,
     "text": "кота",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/lib/aacGrammar.ts",
-    "line": 21,
+    "line": 22,
     "text": "Вижу",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/lib/aacGrammar.ts",
-    "line": 23,
+    "line": 24,
     "text": "Я",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/lib/aacGrammar.ts",
-    "line": 23,
+    "line": 24,
     "text": "Вижу",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/lib/aacGrammar.ts",
-    "line": 29,
+    "line": 30,
     "text": "Вижу",
     "kind": "TemplateHead"
   },
   {
     "file": "frontend/lib/aacGrammar.ts",
-    "line": 29,
+    "line": 30,
     "text": "Я вижу",
     "kind": "TemplateHead"
   },
   {
     "file": "frontend/lib/aacGrammar.ts",
-    "line": 33,
+    "line": 34,
     "text": "Выберите хотя бы одну карточку",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/lib/aacGrammar.ts",
-    "line": 35,
+    "line": 36,
     "text": "Карточки разных языков нельзя объединить",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/lib/aacGrammar.ts",
-    "line": 41,
+    "line": 46,
     "text": "У карточек нет текста для озвучивания",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/lib/aacGrammar.ts",
-    "line": 46,
+    "line": 48,
+    "text": "Бұл карточкалар ретіне әзірге қолдау көрсетілмейді.",
+    "kind": "StringLiteral"
+  },
+  {
+    "file": "frontend/lib/aacGrammar.ts",
+    "line": 52,
     "text": "Готовое важное сообщение используется отдельно",
     "kind": "StringLiteral"
   },
   {
     "file": "frontend/lib/aacGrammar.ts",
-    "line": 48,
+    "line": 54,
     "text": "Эта последовательность пока не входит в проверенные шаблоны",
     "kind": "StringLiteral"
+  },
+  {
+    "file": "frontend/lib/aacGrammar.ts",
+    "line": 64,
+    "text": "Выберите хотя бы одну карточку",
+    "kind": "StringLiteral"
+  },
+  {
+    "file": "frontend/lib/aacGrammar.ts",
+    "line": 64,
+    "text": "Кемінде бір карточканы таңдаңыз.",
+    "kind": "StringLiteral"
+  },
+  {
+    "file": "frontend/lib/aacGrammar.ts",
+    "line": 65,
+    "text": "Карточки разных языков нельзя объединить",
+    "kind": "StringLiteral"
+  },
+  {
+    "file": "frontend/lib/aacGrammar.ts",
+    "line": 65,
+    "text": "Әртүрлі тілдегі карточкаларды біріктіруге болмайды.",
+    "kind": "StringLiteral"
+  },
+  {
+    "file": "frontend/lib/aacGrammar.ts",
+    "line": 66,
+    "text": "У карточек нет текста для озвучивания",
+    "kind": "StringLiteral"
+  },
+  {
+    "file": "frontend/lib/aacGrammar.ts",
+    "line": 66,
+    "text": "Карточкаларда дыбысталатын мәтін жоқ.",
+    "kind": "StringLiteral"
+  },
+  {
+    "file": "frontend/lib/aacGrammar.ts",
+    "line": 67,
+    "text": "Готовое важное сообщение используется отдельно",
+    "kind": "StringLiteral"
+  },
+  {
+    "file": "frontend/lib/aacGrammar.ts",
+    "line": 67,
+    "text": "Дайын маңызды хабарлама бөлек қолданылады.",
+    "kind": "StringLiteral"
+  },
+  {
+    "file": "frontend/lib/aacKazakh.ts",
+    "line": 15,
+    "text": "керек.",
+    "kind": "LastTemplateToken"
   },
   {
     "file": "frontend/lib/aacScenarioRuntime.ts",

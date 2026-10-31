@@ -83,7 +83,7 @@ def approve_translation(db, version_id, review, user_id):
     if current["revision"] != review.revision or current["status"] != "needs_review": raise HTTPException(409, "translation.conflict")
     source = db.execute("SELECT mechanic FROM exercise_versions WHERE id=?", (version_id,)).fetchone()
     # Other mechanics include label-based grammar/scoring and need dedicated adapters.
-    if source["mechanic"] not in {"auditory_choice", "action_choice"}:
+    if source["mechanic"] not in {"auditory_choice", "action_choice", "category_sort", "action_sequence", "object_match"}:
         raise HTTPException(422, "translation.mechanic_needs_adaptation")
     validate_translation(current["source"], current["payload"])
     require_complete_translation(current["source"], current["payload"])
@@ -138,7 +138,7 @@ def seed_translation_drafts(db):
         if isinstance(value, str) and field in TEXT_FIELDS and value.strip(): return dictionary[value]
         return value
     count = 0
-    for row in db.execute("SELECT * FROM exercise_versions WHERE language='ru' AND mechanic IN ('auditory_choice','action_choice')").fetchall():
+    for row in db.execute("SELECT * FROM exercise_versions WHERE language='ru' AND mechanic IN ('auditory_choice','action_choice','category_sort','action_sequence','object_match')").fetchall():
         try: payload = adapt(source_payload(row))
         except KeyError: continue
         db.execute("""INSERT INTO exercise_translations(source_version_id,locale,revision,payload_json,status,updated_at)

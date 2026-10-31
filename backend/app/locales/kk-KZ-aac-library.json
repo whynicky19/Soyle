@@ -1,0 +1,425 @@
+{
+  "status": "needs_review",
+  "cards": [
+    {
+      "source_label": "Помоги",
+      "concept_key": "help",
+      "label": "Көмектесші",
+      "speech": "Маған көмектесші."
+    },
+    {
+      "source_label": "Больно",
+      "concept_key": "pain",
+      "label": "Ауырып тұр",
+      "speech": "Менің бір жерім ауырып тұр."
+    },
+    {
+      "source_label": "Перерыв",
+      "concept_key": "break",
+      "label": "Үзіліс",
+      "speech": "Маған үзіліс керек."
+    },
+    {
+      "source_label": "Стоп",
+      "concept_key": "stop",
+      "label": "Тоқта",
+      "speech": "Тоқта."
+    },
+    {
+      "source_label": "Не хочу",
+      "concept_key": "refuse",
+      "label": "Қаламаймын",
+      "speech": "Мен қаламаймын."
+    },
+    {
+      "source_label": "Ещё",
+      "concept_key": "more",
+      "label": "Тағы",
+      "speech": "Тағы берші."
+    },
+    {
+      "source_label": "Хочу",
+      "concept_key": "want",
+      "label": "Қалаймын",
+      "speech": "Қалаймын."
+    },
+    {
+      "source_label": "Пить",
+      "concept_key": "drink",
+      "label": "Ішу",
+      "speech": "Су ішкім келеді."
+    },
+    {
+      "source_label": "Есть",
+      "concept_key": "eat",
+      "label": "Жеу",
+      "speech": "Тамақ жегім келеді."
+    },
+    {
+      "source_label": "Туалет",
+      "concept_key": "toilet",
+      "label": "Дәретхана",
+      "speech": "Дәретханаға баруым керек."
+    },
+    {
+      "source_label": "Отдых",
+      "concept_key": "rest",
+      "label": "Демалу",
+      "speech": "Демалғым келеді."
+    },
+    {
+      "source_label": "Я",
+      "concept_key": "me",
+      "label": "Мен",
+      "speech": "Мен."
+    },
+    {
+      "source_label": "Мама",
+      "concept_key": "mother",
+      "label": "Ана",
+      "speech": "Ана."
+    },
+    {
+      "source_label": "Папа",
+      "concept_key": "father",
+      "label": "Әке",
+      "speech": "Әке."
+    },
+    {
+      "source_label": "Сок",
+      "concept_key": "juice",
+      "label": "Шырын",
+      "speech": "Шырын."
+    },
+    {
+      "source_label": "Яблоко",
+      "concept_key": "apple",
+      "label": "Алма",
+      "speech": "Алма."
+    },
+    {
+      "source_label": "Мяч",
+      "concept_key": "ball",
+      "label": "Доп",
+      "speech": "Доп."
+    },
+    {
+      "source_label": "Кот",
+      "concept_key": "cat",
+      "label": "Мысық",
+      "speech": "Мысық."
+    },
+    {
+      "source_label": "Люблю",
+      "concept_key": "love",
+      "label": "Жақсы көремін",
+      "speech": "Жақсы көремін."
+    },
+    {
+      "source_label": "Вижу",
+      "concept_key": "see",
+      "label": "Көріп тұрмын",
+      "speech": "Көріп тұрмын."
+    },
+    {
+      "source_label": "Да",
+      "concept_key": "yes",
+      "label": "Иә",
+      "speech": "Иә."
+    },
+    {
+      "source_label": "Нет",
+      "concept_key": "no",
+      "label": "Жоқ",
+      "speech": "Жоқ."
+    },
+    {
+      "source_label": "Весело",
+      "concept_key": "happy",
+      "label": "Көңілді",
+      "speech": "Көңілім көтеріңкі."
+    },
+    {
+      "source_label": "Грустно",
+      "concept_key": "sad",
+      "label": "Мұңды",
+      "speech": "Көңілім түсіп тұр."
+    },
+    {
+      "source_label": "Домой",
+      "concept_key": "home",
+      "label": "Үйге",
+      "speech": "Үйге барғым келеді."
+    },
+    {
+      "source_label": "Привет",
+      "concept_key": "hello",
+      "label": "Сәлем",
+      "speech": "Сәлем!"
+    },
+    {
+      "source_label": "Бабушка",
+      "concept_key": "grandmother",
+      "label": "Әже",
+      "speech": "Әже."
+    },
+    {
+      "source_label": "Вода",
+      "concept_key": "water",
+      "label": "Су",
+      "speech": "Су."
+    },
+    {
+      "source_label": "Банан",
+      "concept_key": "banana",
+      "label": "Банан",
+      "speech": "Банан."
+    },
+    {
+      "source_label": "Машинка",
+      "concept_key": "car",
+      "label": "Мәшине",
+      "speech": "Ойыншық мәшине."
+    },
+    {
+      "source_label": "Кукла",
+      "concept_key": "doll",
+      "label": "Қуыршақ",
+      "speech": "Қуыршақ."
+    },
+    {
+      "source_label": "Иду",
+      "concept_key": "go",
+      "label": "Бара жатырмын",
+      "speech": "Бара жатырмын."
+    },
+    {
+      "source_label": "Играю",
+      "concept_key": "play",
+      "label": "Ойнап жүрмін",
+      "speech": "Ойнап жүрмін."
+    },
+    {
+      "source_label": "Устал",
+      "concept_key": "tired",
+      "label": "Шаршадым",
+      "speech": "Мен шаршадым."
+    },
+    {
+      "source_label": "Спокойно",
+      "concept_key": "calm",
+      "label": "Тыныш",
+      "speech": "Көңілім тыныш."
+    },
+    {
+      "source_label": "Школа",
+      "concept_key": "school",
+      "label": "Мектеп",
+      "speech": "Мектепке барғым келеді."
+    },
+    {
+      "source_label": "Площадка",
+      "concept_key": "playground",
+      "label": "Ойын алаңы",
+      "speech": "Ойын алаңына барғым келеді."
+    },
+    {
+      "source_label": "Где?",
+      "concept_key": "where",
+      "label": "Қайда?",
+      "speech": "Қайда?"
+    },
+    {
+      "source_label": "На столе",
+      "concept_key": "on_table",
+      "label": "Үстелде",
+      "speech": "Үстелде."
+    },
+    {
+      "source_label": "В коробке",
+      "concept_key": "in_box",
+      "label": "Қорапта",
+      "speech": "Қорапта."
+    },
+    {
+      "source_label": "Под стулом",
+      "concept_key": "under_chair",
+      "label": "Орындықтың астында",
+      "speech": "Орындықтың астында."
+    },
+    {
+      "source_label": "Что это?",
+      "concept_key": "what",
+      "label": "Бұл не?",
+      "speech": "Бұл не?"
+    },
+    {
+      "source_label": "Вчера",
+      "concept_key": "yesterday",
+      "label": "Кеше",
+      "speech": "Кеше."
+    },
+    {
+      "source_label": "Играл",
+      "concept_key": "played",
+      "label": "Ойнадым",
+      "speech": "Ойнадым."
+    },
+    {
+      "source_label": "Гулял",
+      "concept_key": "walked",
+      "label": "Серуендедім",
+      "speech": "Серуендедім."
+    },
+    {
+      "source_label": "Хлеб",
+      "concept_key": "bread",
+      "label": "Нан",
+      "speech": "Нан."
+    },
+    {
+      "source_label": "Суп",
+      "concept_key": "soup",
+      "label": "Сорпа",
+      "speech": "Сорпа."
+    },
+    {
+      "source_label": "Каша",
+      "concept_key": "porridge",
+      "label": "Ботқа",
+      "speech": "Ботқа."
+    },
+    {
+      "source_label": "Чай",
+      "concept_key": "tea",
+      "label": "Шай",
+      "speech": "Шай."
+    },
+    {
+      "source_label": "Книга",
+      "concept_key": "book",
+      "label": "Кітап",
+      "speech": "Кітап."
+    },
+    {
+      "source_label": "Пазл",
+      "concept_key": "puzzle",
+      "label": "Құрастырмалы сурет",
+      "speech": "Құрастырмалы сурет."
+    },
+    {
+      "source_label": "Рисовать",
+      "concept_key": "draw",
+      "label": "Сурет салу",
+      "speech": "Сурет салғым келеді."
+    },
+    {
+      "source_label": "Читать",
+      "concept_key": "read",
+      "label": "Оқу",
+      "speech": "Оқығым келеді."
+    },
+    {
+      "source_label": "Спать",
+      "concept_key": "sleep",
+      "label": "Ұйықтау",
+      "speech": "Ұйықтағым келеді."
+    },
+    {
+      "source_label": "Гулять",
+      "concept_key": "walk",
+      "label": "Серуендеу",
+      "speech": "Серуендегім келеді."
+    },
+    {
+      "source_label": "Злюсь",
+      "concept_key": "angry",
+      "label": "Ашулымын",
+      "speech": "Мен ашулымын."
+    },
+    {
+      "source_label": "Страшно",
+      "concept_key": "afraid",
+      "label": "Қорқып тұрмын",
+      "speech": "Мен қорқып тұрмын."
+    },
+    {
+      "source_label": "Жарко",
+      "concept_key": "hot",
+      "label": "Ыстық",
+      "speech": "Маған ыстық."
+    },
+    {
+      "source_label": "Холодно",
+      "concept_key": "cold",
+      "label": "Суық",
+      "speech": "Маған суық."
+    },
+    {
+      "source_label": "Магазин",
+      "concept_key": "shop",
+      "label": "Дүкен",
+      "speech": "Дүкенге барғым келеді."
+    },
+    {
+      "source_label": "Детский сад",
+      "concept_key": "kindergarten",
+      "label": "Балабақша",
+      "speech": "Балабақшаға барғым келеді."
+    },
+    {
+      "source_label": "Дедушка",
+      "concept_key": "grandfather",
+      "label": "Ата",
+      "speech": "Ата."
+    },
+    {
+      "source_label": "Брат",
+      "concept_key": "brother",
+      "label": "Аға",
+      "speech": "Аға."
+    },
+    {
+      "source_label": "Сестра",
+      "concept_key": "sister",
+      "label": "Әпке",
+      "speech": "Әпке."
+    },
+    {
+      "source_label": "Чашка",
+      "concept_key": "cup",
+      "label": "Кесе",
+      "speech": "Кесе."
+    },
+    {
+      "source_label": "Ложка",
+      "concept_key": "spoon",
+      "label": "Қасық",
+      "speech": "Қасық."
+    },
+    {
+      "source_label": "Стул",
+      "concept_key": "chair",
+      "label": "Орындық",
+      "speech": "Орындық."
+    },
+    {
+      "source_label": "Кровать",
+      "concept_key": "bed",
+      "label": "Кереует",
+      "speech": "Кереует."
+    },
+    {
+      "source_label": "Лампа",
+      "concept_key": "lamp",
+      "label": "Шам",
+      "speech": "Шам."
+    },
+    {
+      "source_label": "Мыть руки",
+      "concept_key": "wash_hands",
+      "label": "Қол жуу",
+      "speech": "Қолымды жуғым келеді."
+    }
+  ]
+}

@@ -137,4 +137,18 @@ def test_kazakh_personal_aac_board_and_composition(client, parent_headers):
     mixed = client.post('/api/aac/compose',headers=kk,json={
         'child_id':child_id,'card_ids':[card['id'],russian[0]['id']],'language':'kk',
     })
-    assert mixed.status_code == 200 and mixed.json()['valid'] is False
+    assert mixed.status_code == 422
+
+
+def test_varied_translations_are_complete_pending_and_preserve_scoring_references(client):
+    from app.localization import validate_translation,get_translation
+    from app.azure_tts import catalogue
+    with connect() as db:
+        rows=db.execute("SELECT v.id,v.mechanic FROM exercise_versions v JOIN exercise_translations t ON t.source_version_id=v.id WHERE v.mechanic IN ('category_sort','action_sequence','object_match')").fetchall()
+        assert {row['mechanic'] for row in rows}=={'category_sort','action_sequence','object_match'}
+        for row in rows:
+            draft=get_translation(db,row['id'])
+            assert draft['status']=='needs_review' and draft['reviewed_by'] is None
+            validate_translation(draft['source'],draft['payload'])
+            assert draft['payload']['title'] != draft['source']['title']
+            assert ('kk',draft['payload']['instruction']) in catalogue()

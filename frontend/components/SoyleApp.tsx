@@ -1829,6 +1829,8 @@ function AACVisual({ card, compact = false }: { card: AACCard; compact?: boolean
   return <span className={`aac-visual aac-${card.category} ${!pictogram && relation ? `relation-${relation}` : ""} ${compact ? "compact" : ""}`} data-label={card.label} aria-hidden="true">{photo ? <Image className="aac-pictogram-image" src={photo} alt="" width={128} height={128} unoptimized/> : pictogram ? <Image className="aac-pictogram-image" src={`/aac-pictograms/${pictogram}.png`} alt="" width={128} height={128}/> : <><Icon strokeWidth={1.75}/>{relation && <i className="aac-relation-dot"/>}{past && <i className="aac-past-mark"/>}</>}</span>;
 }
 
+const aacSafetyConcepts: Record<string,string> = {"Помоги":"help","Больно":"pain","Перерыв":"break","Стоп":"stop","Не хочу":"refuse","Да":"yes","Нет":"no"};
+
 function PhraseGame({ childId, canManage, exercise, freeMode = false, soundEnabled, onBack, onComplete }: { childId?: number; canManage: boolean; exercise?: Exercise; freeMode?: boolean; soundEnabled: boolean; onBack: () => void; onComplete?: (score: number, phrase: string, exerciseId: number, measurement: GameMeasurement) => Promise<unknown> | void }) {
   const pet = useExercisePet();
   const aacLocale = useLocale();
@@ -1852,14 +1854,14 @@ function PhraseGame({ childId, canManage, exercise, freeMode = false, soundEnabl
   const savedRef = useRef(false);
   const speechLifetime = useRef(0);
   useEffect(() => () => { speechLifetime.current += 1; stopCurrentSpeech(); }, [childId]);
-  const composition = composeAACMessage(selected, freeMode ? "free" : "guided");
+  const composition = composeAACMessage(selected, freeMode ? "free" : "guided", languageOf(getLocale()));
   const sentence = composition.valid ? composition.phrase : selected.map((item) => item.label).join(" + ");
   const boardRequest = useRef(0);
   const loadBoard = useCallback(() => {
     const requestId = ++boardRequest.current;
     if (!childId) return;
     setSelected([]);
-    api<AACCard[]>(`/api/aac/cards/${childId}`).then(value => { if (requestId === boardRequest.current) setCards(value); }).catch((cause) => {
+    api<AACCard[]>(`/api/aac/cards/${childId}${canManage && freeMode ? "?preview=true" : ""}`).then(value => { if (requestId === boardRequest.current) setCards(value); }).catch((cause) => {
       if (requestId !== boardRequest.current) return;
       setCards([]);
       setAacNotice(cause instanceof Error ? t("common.withReason", {message:t("aac.copy080"), reason:cause.message}) : t("aac.copy080"));
@@ -1868,7 +1870,7 @@ function PhraseGame({ childId, canManage, exercise, freeMode = false, soundEnabl
       if (requestId !== boardRequest.current) return;
       setAacNotice(cause instanceof Error ? t("common.withReason", {message:t("aac.copy081"), reason:cause.message}) : t("aac.copy081"));
     });
-  }, [childId]);
+  }, [childId,canManage,freeMode]);
   useEffect(() => { const timer = window.setTimeout(loadBoard, 0); return () => { window.clearTimeout(timer); boardRequest.current += 1; }; }, [loadBoard, aacLocale]);
   const normalizedCardQuery = cardQuery.trim().toLocaleLowerCase(aacLocale);
   const scenario = !freeMode && exercise ? exercise.engine?.content : undefined;
@@ -1885,7 +1887,7 @@ function PhraseGame({ childId, canManage, exercise, freeMode = false, soundEnabl
       : scenarioEvaluation.hint;
   const availableCards = scenarioLabels ? cards.filter((card) => scenarioLabels.has(card.label)) : cards;
   const visibleCards = (freeMode ? (category === "favorites" ? availableCards.filter((card) => card.favorite || card.is_core) : availableCards.filter((card) => card.category === category)) : availableCards).filter((card) => !normalizedCardQuery || `${card.label} ${card.speech}`.toLocaleLowerCase(aacLocale).includes(normalizedCardQuery));
-  const safetyCards = ["Помоги", "Перерыв", "Стоп", "Не хочу"].flatMap((label) => scenarioLabels?.has(label) ? [] : cards.find((card) => card.label === label) || []);
+  const safetyCards = ["Помоги", "Перерыв", "Стоп", "Не хочу"].flatMap((label) => scenarioLabels?.has(label) ? [] : cards.find((card) => card.label === label || card.concept_key === aacSafetyConcepts[label]) || []);
   const addCard = (card: AACCard) => {
     if (selected.some((item) => item.id === card.id)) {
       setAacNotice(t("aac.alreadyAdded", {label:card.label}));
@@ -1918,25 +1920,27 @@ function PhraseGame({ childId, canManage, exercise, freeMode = false, soundEnabl
     setSpeechPending(true);
     const lifetime = ++speechLifetime.current;
     try {
-      const composed = await api<{ valid: boolean; phrase: string; reason: string }>("/api/aac/compose", { method: "POST", body: JSON.stringify({ child_id: childId, card_ids: selected.map((item) => item.id), language: selected[0].language || "ru", mode: freeMode ? "free" : "guided" }) });
+      const composed = await api<{ valid: boolean; phrase: string; reason: string }>("/api/aac/compose", { method: "POST", body: JSON.stringify({ child_id: childId, card_ids: selected.map((item) => item.id), language: selected[0].language || "ru", mode: freeMode ? "free" : "guided", preview_translations: canManage && freeMode }) });
       if (lifetime !== speechLifetime.current) return;
-      if (!composed.valid) { pet("incorrect"); setAacNotice(composed.reason || "Эту комбинацию пока нельзя озвучить как готовую фразу."); return; }
+      if (!composed.valid) { pet("incorrect"); setAacNotice(composed.reason || t("aac.copy004")); return; }
       setAacNotice("");
       const played = await speak(composed.phrase, 0.72, freeMode || soundEnabled, selected[0]?.language || "ru", "exercise", freeMode ? undefined : exercise?.engine?.version_id);
       if (lifetime !== speechLifetime.current) return;
       if (!played) { setAacNotice(t("aac.copy005")); return; }
       pet("correct");
       try {
+        if (!selected.some(card => card.translation_preview)) {
         const saved = await api<{ id: number; phrase: string }>("/api/aac/history", { method: "POST", body: JSON.stringify({ child_id: childId, card_ids: selected.map((item) => item.id), mode: freeMode ? "free" : "guided" }) });
         setHistory((items) => [saved, ...items.filter((item) => item.phrase !== saved.phrase)].slice(0, 12));
+        }
       } catch (cause) {
         setAacNotice(cause instanceof Error ? t("common.withReason", {message:t("aac.copy006"), reason:cause.message}) : t("aac.copy006"));
       }
       if (lifetime !== speechLifetime.current) return;
       if (!freeMode && !savedRef.current && exercise && onComplete) {
         const labels = selected.map((card) => card.label);
-        const refused = (labels.includes("Не хочу") || labels.includes("Стоп") || (exercise.target === "answer" && labels.includes("Нет"))) && exercise.target !== "refusal";
-        const paused = selected.some((card) => card.label === "Перерыв");
+        const refused = (selected.some(card => card.concept_key === "refuse" || card.concept_key === "stop" || (exercise.target === "answer" && card.concept_key === "no")) || labels.includes("Не хочу") || labels.includes("Стоп") || (exercise.target === "answer" && labels.includes("Нет"))) && exercise.target !== "refusal";
+        const paused = selected.some((card) => card.concept_key === "break" || card.label === "Перерыв");
         if (!scenarioEvaluation.complete && !refused && !paused) {
           pet("hint");
           setAacNotice(scenarioEvaluation.hint);
@@ -1959,9 +1963,9 @@ function PhraseGame({ childId, canManage, exercise, freeMode = false, soundEnabl
     try {
       const played = await speak(card.speech, 0.72, true, card.language || "ru", "exercise", freeMode ? undefined : exercise?.engine?.version_id);
       if (lifetime !== speechLifetime.current) return;
-      setAacNotice(!played ? t("aac.copy009") : card.label === "Перерыв" ? t("aac.copy010") : [t("common.no"), t("game.stop"), t("cinema.copy042")].includes(card.label) ? t("aac.copy011") : t("aac.copy012"));
-      if (!freeMode && !savedRef.current && exercise && onComplete && [t("specialist.copy006"), t("game.stop"), t("cinema.copy042")].includes(card.label)) {
-        const result = await onComplete(0, card.speech, exercise.id, { attempts_count: 0, correct_answers: 0, prompts_used: 0, attempt_status: card.label === "Перерыв" ? "break" : "refused", communication_initiatives: 0 });
+      setAacNotice(!played ? t("aac.copy009") : (card.concept_key === "break" || card.label === "Перерыв") ? t("aac.copy010") : (["no","stop","refuse"].includes(card.concept_key || "") || ["Нет","Стоп","Не хочу"].includes(card.label)) ? t("aac.copy011") : t("aac.copy012"));
+      if (!freeMode && !savedRef.current && exercise && onComplete && (["break","stop","refuse"].includes(card.concept_key || "") || ["Перерыв","Стоп","Не хочу"].includes(card.label))) {
+        const result = await onComplete(0, card.speech, exercise.id, { attempts_count: 0, correct_answers: 0, prompts_used: 0, attempt_status: (card.concept_key === "break" || card.label === "Перерыв") ? "break" : "refused", communication_initiatives: 0 });
         if (result) savedRef.current = true;
       }
     } catch (cause) {
@@ -1991,15 +1995,16 @@ function PhraseGame({ childId, canManage, exercise, freeMode = false, soundEnabl
     } finally { if (lifetime === speechLifetime.current) setSpeechPending(false); }
   };
   const activeCategory = aacCategories.find((item) => item.id === category) || aacCategories[0];
-  const quickCards = ["Помоги", "Больно", "Стоп", "Перерыв", "Не хочу", "Да"].flatMap((label) => cards.find((card) => card.label === label) || []);
+  const quickCards = ["Помоги", "Больно", "Стоп", "Перерыв", "Не хочу", "Да"].flatMap((label) => cards.find((card) => card.label === label || card.concept_key === aacSafetyConcepts[label]) || []);
   return <div className="page-enter game-page aac-page redesigned">
-    <GameHeader title={freeMode ? t("nav.words") : exercise?.title || "Учебное AAC-задание"} subtitle={freeMode ? t("aac.copy019") : t("aac.copy020")} step={freeMode ? t("aac.copy021") : scenarioEvaluation.stepLabel} onBack={onBack}/>
-    {freeMode && <section className="aac-quick" aria-label={t("aac.copy022")}><div className="aac-quick-head"><div><span className="kicker">{t("aac.copy023")}</span><strong>{t("aac.copy024")}</strong></div><ShieldCheck size={22}/></div><div>{quickCards.map((card) => <button key={card.id} onClick={() => sendQuickMessage(card)}><AACVisual card={card} compact/><span>{card.label}</span></button>)}</div>{aacNotice && <p role="status">{aacNotice}{selected[0]?.label === "Перерыв" && <button onClick={onBack}>{t("game.break")}</button>}</p>}</section>}
-    {!freeMode && <div className="aac-goal"><div><span className="kicker">{t("aac.copy025")}</span><strong>{scenario?.title || exercise?.instruction || "Собери сообщение"}</strong><p>{scenario?.instruction || exercise?.instruction}</p>{scenario?.steps?.length ? <ol className="aac-task-steps">{scenario.steps.map((step) => <li key={step}>{step}</li>)}</ol> : null}</div><Target size={22}/><p>{scenario?.criterion || "Задание завершится после понятного сообщения."}</p>{canManage && <div className="aac-prompt-level" aria-label={t("aac.copy028")}><span>{t("aac.copy029")}</span>{([['independent',t("specialist.copy002")],['minimal',t("aac.copy030")],['full',t("aac.copy031")]] as const).map(([value,label]) => <button key={value} className={promptLevel === value ? "active" : ""} aria-pressed={promptLevel === value} onClick={() => setPromptLevel(value)}>{label}</button>)}</div>}</div>}
-    <section className="aac-composer aac-composer-top"><div className="aac-composer-head"><div><span className="kicker">{freeMode ? t("aac.copy032") : t("aac.copy033")}</span><strong>{sentence || "Ответ пока не выбран"}</strong><small>{composerHint}</small></div><div className="aac-composer-actions"><button className="clear-button" disabled={!selected.length || speechPending} onClick={() => { setSelected([]); setAacNotice(""); savedRef.current = false; }}>{t("aac.copy035")}</button><button className="speak-button" disabled={speechPending || !selected.length || !composition.valid || (!freeMode && !scenarioEvaluation.complete)} onClick={sayPhrase}><Volume2 size={21}/>{speechPending ? t("aac.copy036") : freeMode ? t("aac.copy037") : scenarioEvaluation.actionLabel}</button></div></div><div className={`aac-sentence ${selected.length ? "filled" : ""}`}>{selected.length ? selected.map((card, index) => <button key={`${card.id}-${index}`} disabled={speechPending} aria-label={`Убрать карточку ${card.label}`} onClick={() => { savedRef.current = false; setSelected((items) => items.filter((_, itemIndex) => itemIndex !== index)); }}><span className="aac-card-order">{index + 1}</span><AACVisual card={card} compact/><span>{card.label}</span><X size={13}/></button>) : <div className="aac-empty-message"><MessageCircle size={24}/><div><strong>{freeMode ? t("aac.copy039") : scenarioEvaluation.hint}</strong><span>{freeMode ? t("aac.copy040") : t("aac.copy041")}</span></div></div>}</div>{selected.length > 0 && <p className="aac-remove-hint">{t("aac.copy042")}</p>}</section>
-    {aacNotice && !freeMode && <div className="aac-notice" role="status"><Volume2 size={18}/><span>{aacNotice}</span>{selected[0]?.label === "Перерыв" && <button className="small-button" onClick={onBack}>{t("game.break")}</button>}</div>}
+    {cards.some(card => card.translation_preview) && <p role="status">{t("aac.previewNote")}</p>}
+    <GameHeader title={freeMode ? t("nav.words") : exercise?.title || t("aac.copy018")} subtitle={freeMode ? t("aac.copy019") : t("aac.copy020")} step={freeMode ? t("aac.copy021") : scenarioEvaluation.stepLabel} onBack={onBack}/>
+    {freeMode && <section className="aac-quick" aria-label={t("aac.copy022")}><div className="aac-quick-head"><div><span className="kicker">{t("aac.copy023")}</span><strong>{t("aac.copy024")}</strong></div><ShieldCheck size={22}/></div><div>{quickCards.map((card) => <button key={card.id} onClick={() => sendQuickMessage(card)}><AACVisual card={card} compact/><span>{card.label}</span></button>)}</div>{aacNotice && <p role="status">{aacNotice}{(selected[0]?.concept_key === "break" || selected[0]?.label === "Перерыв") && <button onClick={onBack}>{t("game.break")}</button>}</p>}</section>}
+    {!freeMode && <div className="aac-goal"><div><span className="kicker">{t("aac.copy025")}</span><strong>{scenario?.title || exercise?.instruction || t("aac.copy026")}</strong><p>{scenario?.instruction || exercise?.instruction}</p>{scenario?.steps?.length ? <ol className="aac-task-steps">{scenario.steps.map((step) => <li key={step}>{step}</li>)}</ol> : null}</div><Target size={22}/><p>{scenario?.criterion || t("aac.copy027")}</p>{canManage && <div className="aac-prompt-level" aria-label={t("aac.copy028")}><span>{t("aac.copy029")}</span>{([['independent',t("specialist.copy002")],['minimal',t("aac.copy030")],['full',t("aac.copy031")]] as const).map(([value,label]) => <button key={value} className={promptLevel === value ? "active" : ""} aria-pressed={promptLevel === value} onClick={() => setPromptLevel(value)}>{label}</button>)}</div>}</div>}
+    <section className="aac-composer aac-composer-top"><div className="aac-composer-head"><div><span className="kicker">{freeMode ? t("aac.copy032") : t("aac.copy033")}</span><strong>{sentence || t("aac.copy034")}</strong><small>{composerHint}</small></div><div className="aac-composer-actions"><button className="clear-button" disabled={!selected.length || speechPending} onClick={() => { setSelected([]); setAacNotice(""); savedRef.current = false; }}>{t("aac.copy035")}</button><button className="speak-button" disabled={speechPending || !selected.length || !composition.valid || (!freeMode && !scenarioEvaluation.complete)} onClick={sayPhrase}><Volume2 size={21}/>{speechPending ? t("aac.copy036") : freeMode ? t("aac.copy037") : scenarioEvaluation.actionLabel}</button></div></div><div className={`aac-sentence ${selected.length ? "filled" : ""}`}>{selected.length ? selected.map((card, index) => <button key={`${card.id}-${index}`} disabled={speechPending} aria-label={t("aac.removeCard", {label:card.label})} onClick={() => { savedRef.current = false; setSelected((items) => items.filter((_, itemIndex) => itemIndex !== index)); }}><span className="aac-card-order">{index + 1}</span><AACVisual card={card} compact/><span>{card.label}</span><X size={13}/></button>) : <div className="aac-empty-message"><MessageCircle size={24}/><div><strong>{freeMode ? t("aac.copy039") : scenarioEvaluation.hint}</strong><span>{freeMode ? t("aac.copy040") : t("aac.copy041")}</span></div></div>}</div>{selected.length > 0 && <p className="aac-remove-hint">{t("aac.copy042")}</p>}</section>
+    {aacNotice && !freeMode && <div className="aac-notice" role="status"><Volume2 size={18}/><span>{aacNotice}</span>{(selected[0]?.concept_key === "break" || selected[0]?.label === "Перерыв") && <button className="small-button" onClick={onBack}>{t("game.break")}</button>}</div>}
     {!freeMode ? <div className="aac-guided-workspace">
-      <section className="aac-board guided"><div className="aac-toolbar"><div><span className="kicker">{scenarioEvaluation.complete ? t("aac.copy043") : t("aac.copy044")}</span><h3>{scenario?.title || "Карточки для задания"}</h3></div><small>{availableCards.length} {availableCards.length === 1 ? t("aac.copy046") : availableCards.length < 5 ? t("aac.copy047") : t("aac.copy048")}</small></div>
+      <section className="aac-board guided"><div className="aac-toolbar"><div><span className="kicker">{scenarioEvaluation.complete ? t("aac.copy043") : t("aac.copy044")}</span><h3>{scenario?.title || t("aac.copy045")}</h3></div><small>{availableCards.length} {availableCards.length === 1 ? t("aac.copy046") : availableCards.length < 5 ? t("aac.copy047") : t("aac.copy048")}</small></div>
         <div className="aac-card-grid guided">{visibleCards.map((card) => <div className={`aac-card aac-card-${card.category} ${card.is_core ? "core" : ""}`} key={card.id}><button className="aac-card-main" disabled={speechPending || selected.some((item) => item.id === card.id) || !canAddGuidedCard(card)} onClick={() => addCard(card)}><AACVisual card={card}/><strong>{card.label}</strong><small>{card.speech}</small></button></div>)}</div>
       </section>
       {safetyCards.length > 0 && <section className="aac-guided-safety" aria-label={t("aac.copy049")}><div><span className="kicker">{t("aac.copy050")}</span><strong>{t("aac.copy051")}</strong></div><div>{safetyCards.map((card) => <button key={card.id} onClick={() => sendQuickMessage(card)}><AACVisual card={card} compact/><span>{card.label}</span></button>)}</div></section>}
@@ -2007,7 +2012,7 @@ function PhraseGame({ childId, canManage, exercise, freeMode = false, soundEnabl
       <aside className="aac-category-panel"><div><span className="kicker">{t("aac.copy052")}</span><h3>{category === "favorites" ? t("aac.copy053") : activeCategory.label}</h3></div><nav className="aac-tabs primary-aac-tabs" aria-label={t("aac.copy054")}><button className={category === "favorites" ? "active" : ""} aria-pressed={category === "favorites"} onClick={() => { setCategory("favorites"); setCardQuery(""); }}><Star size={19}/><span>{t("aac.copy055")}</span><small>{availableCards.filter((card) => card.favorite || card.is_core).length}</small></button><button className={categoriesOpen ? "active" : ""} aria-expanded={categoriesOpen} aria-controls="more-aac-categories" onClick={() => setCategoriesOpen((value) => !value)}><Plus size={19}/><span>{t("nav.more")}</span><small>{aacCategories.length - 1}</small></button></nav>{categoriesOpen && <nav id="more-aac-categories" className="aac-tabs more-aac-tabs" aria-label={t("aac.copy056")}>{aacCategories.filter((item) => item.id !== "favorites").map((item) => { const Icon = item.icon; const count = availableCards.filter((card) => card.category === item.id).length; return <button key={item.id} className={category === item.id ? "active" : ""} aria-pressed={category === item.id} onClick={() => { setCategory(item.id); setCardQuery(""); }}><Icon size={18}/><span>{item.label}</span><small>{count}</small></button>; })}</nav>}{history.length > 0 && <div className="aac-history"><span className="kicker">{t("aac.copy057")}</span>{history.slice(0,3).map((item) => <button key={item.id} onClick={() => replayHistory(item.phrase)}><RotateCcw size={14}/><span>{item.phrase}</span></button>)}</div>}</aside>
       <section className="aac-board"><div className="aac-toolbar"><div><span className="kicker">{category === "favorites" ? t("aac.copy058") : t("aac.copy059")}</span><h3>{category === "favorites" ? t("aac.copy060") : activeCategory.label}</h3></div><div className="aac-tools">{(categoriesOpen || canManage) && <label className="aac-search"><Search size={16}/><input value={cardQuery} onChange={(event) => setCardQuery(event.target.value)} placeholder={t("aac.copy061")} aria-label={t("aac.copy061")}/></label>}<button className="small-button" onClick={() => document.querySelector<HTMLElement>(".aac-page")?.requestFullscreen?.()}><LayoutDashboard size={15}/> {t("aac.copy062")}</button>{canManage && freeMode && <button className="small-button" onClick={() => setCustomOpen((value) => !value)}><Plus size={15}/> {t("aac.copy063")}</button>}</div></div>
         {customOpen && <form className="aac-custom-form" onSubmit={createCustom}><label>{t("aac.copy064")}<input value={custom.label} onChange={(e) => setCustom({...custom,label:e.target.value})} placeholder={t("aac.copy065")} required/></label><label>{t("aac.copy066")}<input value={custom.speech} onChange={(e) => setCustom({...custom,speech:e.target.value})} placeholder={t("aac.copy067")} required/></label><label>{t("aac.copy068")}<select value={custom.category} onChange={(e) => setCustom({...custom,category:e.target.value})}>{aacCategories.filter((item) => item.id !== "favorites").map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select></label><label className="aac-custom-photo">{t("aac.copy069")}<input type="file" accept="image/png,image/jpeg,image/webp" required={!customImage} disabled={imageBusy} onChange={async (event) => { const file = event.target.files?.[0]; if (!file) return; setImageBusy(true); try { setCustomImage(await compressPhoto(file)); setAacNotice(""); } catch (cause) { setAacNotice(cause instanceof Error ? cause.message : t("aac.copy070")); } finally { setImageBusy(false); } }}/>{customImage && <Image src={customImage} alt={t("aac.copy071")} width={64} height={64} unoptimized/>}</label><button className="primary-button" disabled={imageBusy || !customImage}>{imageBusy ? t("aac.copy072") : t("aac.copy073")}</button></form>}
-        <div className="aac-card-grid">{visibleCards.map((card) => <div className={`aac-card aac-card-${card.category} ${card.is_core ? "core" : ""}`} key={card.id}><button className="aac-card-main" disabled={selected.some((item) => item.id === card.id)} onClick={() => addCard(card)}><AACVisual card={card}/><strong>{card.label}</strong><small>{card.speech}</small></button><button className={`aac-favorite ${card.favorite ? "active" : ""}`} onClick={() => toggleFavorite(card)} aria-label={card.favorite ? `Убрать ${card.label} из избранного` : `Добавить ${card.label} в избранное`}><Star size={15} fill={card.favorite ? "currentColor" : "none"}/></button></div>)}</div>
+        <div className="aac-card-grid">{visibleCards.map((card) => <div className={`aac-card aac-card-${card.category} ${card.is_core ? "core" : ""}`} key={card.id}><button className="aac-card-main" disabled={selected.some((item) => item.id === card.id)} onClick={() => addCard(card)}><AACVisual card={card}/><strong>{card.label}</strong><small>{card.speech}</small></button><button className={`aac-favorite ${card.favorite ? "active" : ""}`} onClick={() => toggleFavorite(card)} aria-label={card.favorite ? t("aac.removeFavorite", {label:card.label}) : t("aac.addFavorite", {label:card.label})}><Star size={15} fill={card.favorite ? "currentColor" : "none"}/></button></div>)}</div>
         {!visibleCards.length && <div className="aac-empty"><Search size={24}/><strong>{t("aac.copy078")}</strong><span>{t("aac.copy079")}</span></div>}
       </section>
     </div>}
@@ -2541,7 +2546,7 @@ function SettingsScreen({ petPreferences, role, settings, saving, onChange, onLo
         <small aria-live="polite">{saving ? <Timer size={15}/> : <CircleCheck size={15}/>} {saving ? t("settings.savingChanges") : t("settings.allSaved")}</small>
       </aside>
       <div className="settings-sections">
-        {(role === "admin" || role === "specialist") && <TranslationEditor specialist={role === "specialist"}/>}
+        {(role === "admin" || role === "specialist") && <><TranslationEditor specialist={role === "specialist"}/><TranslationEditor resource="aac" specialist={role === "specialist"}/></>}
         <section className="settings-section theme-setting">
           <div className="settings-section-heading"><div><span className="kicker">{t("settings.appearance")}</span><h3>{t("settings.color")}</h3><p>{t("settings.colorDescription")}</p></div></div>
           <div className="theme-options" role="group" aria-label={t("settings.color")}>{themes.map((item) => <button type="button" key={item.id} className={settings.theme === item.id ? "active" : ""} aria-pressed={settings.theme === item.id} onClick={() => update("theme", item.id as AppSettings["theme"])}><span className="theme-swatch">{item.colors.map((color) => <i key={color} style={{background:color}}/>)}</span><span className="theme-copy"><strong>{item.name}</strong><small>{item.description}</small></span>{settings.theme === item.id && <span className="theme-selected"><Check size={14}/> {t("common.selected")}</span>}</button>)}</div>

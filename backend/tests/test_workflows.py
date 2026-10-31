@@ -649,11 +649,11 @@ def test_aac_grammar_uses_safe_language_specific_templates(client, parent_header
     assert english == {"valid": True, "phrase": "I want juice", "reason": "", "pattern": "subject+action+object"}
 
     kazakh = compose_aac_phrase([
-        {"speech": "Мен", "language": "kk", "grammatical_role": "subject"},
-        {"speech": "шырын", "language": "kk", "grammatical_role": "object"},
-        {"speech": "қалаймын", "language": "kk", "grammatical_role": "action"},
+        {"speech": "Мен", "language": "kk", "grammatical_role": "subject", "concept_key":"me"},
+        {"speech": "шырын", "language": "kk", "grammatical_role": "object", "concept_key":"juice"},
+        {"speech": "қалаймын", "language": "kk", "grammatical_role": "action", "concept_key":"want"},
     ], "kk")
-    assert kazakh == {"valid": True, "phrase": "Мен шырын қалаймын", "reason": "", "pattern": "subject+object+action"}
+    assert kazakh == {"valid": True, "phrase": "Маған шырын керек.", "reason": "", "pattern": "kk.semantic"}
 
 
 def test_only_supported_aac_learning_scenarios_are_active(client, parent_headers):

@@ -365,6 +365,9 @@ export type LearningSession = {
 };
 
 export type AACCard = {
+  concept_key?: string;
+  translation_preview?: boolean;
+  translation_status?: "draft" | "needs_review" | "approved";
   id: number;
   child_id: number | null;
   label: string;
