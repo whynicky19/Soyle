@@ -22,6 +22,10 @@ from .database import connect
 from .tts_library import known_russian_tts_texts, normalize_tts_text
 
 VOICES = {"ru": "ru-RU-SvetlanaNeural", "kk": "kk-KZ-AigulNeural"}
+PUBLIC_DEMO_PHRASES = {
+    "ru": {"water": "Я хочу воду.", "apple": "Я хочу яблоко.", "play": "Я хочу играть."},
+    "kk": {"water": "Су ішкім келеді.", "apple": "Алма жегім келеді.", "play": "Ойнағым келеді."},
+}
 FORMAT = "audio-24khz-48kbitrate-mono-mp3"
 
 # Exact mascot lines only: never raise the pitch of a whole lesson containing one.
@@ -33,7 +37,7 @@ PET_PHRASES = {
         "Ура! Мы закончили!", "Здорово!", "Ты старался!", "Я здесь!", "Поиграем?",
         "Подумай ещё раз.", "Попробуй ещё раз.", "Давай попробуем ещё раз.",
     }),
-    "kk": frozenset({"Жарайсың!", "Тағы бір рет көр."}),
+    "kk": frozenset({"Сәлем!", "Кел, ойнайық!", "Бастаймыз ба?", "Жарайсың!", "Қолыңнан келді!", "Тамаша!", "Алақай!", "Тағы ойланып көр.", "Тағы бір рет көр.", "Кел, тағы байқап көрейік.", "Мен көмектесемін!", "Мұнда қара!", "Алақай! Біз аяқтадық!", "Керемет!", "Жақсы тырыстың!", "Мен осындамын!", "Ойнаймыз ба?"}),
 }
 PET_PITCH = "+22%"
 
@@ -73,6 +77,10 @@ def catalogue() -> dict[tuple[str, str], str]:
     # Generic vocabulary only. This does not translate or publish any exercise.
     for text in ("Доп", "Алма", "Су", "Мысық", "Ит", "Кітап", "Тыңда және көрсет", "Қайтала", "Жарайсың!", "Тағы бір рет көр.", "Екі суреттің бірін таңда."):
         result[("kk", text)] = text
+    for text in PET_PHRASES["kk"]:
+        result[("kk", text)] = text
+    for language, phrases in PUBLIC_DEMO_PHRASES.items():
+        for text in phrases.values(): result[(language, text)] = text
     # Version-controlled additions/overrides require a recorded human review.
     for entry in json.loads(Path(__file__).with_name("tts_editorial.json").read_text()):
         if entry.get("reviewed_by") and entry.get("reviewed_at") and entry.get("approved") is True:
@@ -180,11 +188,17 @@ def synthesize(text: str, language: str, mode: str, phrase_type: str | None = No
     if profile not in {"exercise", "pet"} or (profile == "pet" and normalize_tts_text(text) not in PET_PHRASES.get(language, ())):
         raise TTSUnavailable()
     spoken = catalogue().get((language, normalize_tts_text(text)))
+    if not spoken and language == "kk":
+        from .localization import approved_speech
+        with connect() as db:
+            if approved_speech(db, normalize_tts_text(text)): spoken = normalize_tts_text(text)
     key = os.getenv("AZURE_SPEECH_KEY", "")
     region = os.getenv("AZURE_SPEECH_REGION", "")
     if not enabled() or not spoken or not key or not re.fullmatch(r"[a-z0-9-]{2,40}", region):
         raise TTSUnavailable()
     voice = VOICES[language]
+    if language == "kk" and not voice_available(region, key, voice):
+        raise TTSUnavailable()
     ssml = speech_ssml(spoken, language, mode, phrase_type, profile)
     # Include the complete SSML so voice/intonation edits cannot replay stale audio.
     digest = hashlib.sha256(json.dumps([text, language, voice, mode, ssml, FORMAT, "v2", profile], ensure_ascii=False).encode()).hexdigest()
@@ -234,3 +248,22 @@ def synthesize(text: str, language: str, mode: str, phrase_type: str | None = No
             save_control(db, state)
             db.execute("DELETE FROM tts_cache WHERE cache_key=? AND token=?", (digest, token))
         raise TTSUnavailable(retry) from None
+
+
+# Region-specific discovery; bounded cache, failed discovery does not select a voice.
+_voice_discovery = {}
+
+def voice_available(region: str, key: str, voice: str) -> bool:
+    cache_key = (region, hashlib.sha256(key.encode()).hexdigest())
+    cached = _voice_discovery.get(cache_key)
+    if cached and cached[0] > time.monotonic(): return voice in cached[1]
+    try:
+        with httpx.Client(timeout=httpx.Timeout(8, connect=3), follow_redirects=False, trust_env=False) as client:
+            response = client.get(f"https://{region}.tts.speech.microsoft.com/cognitiveservices/voices/list", headers={"Ocp-Apim-Subscription-Key": key})
+        response.raise_for_status()
+        names = {item["ShortName"] for item in response.json() if isinstance(item, dict) and isinstance(item.get("ShortName"), str)}
+    except (httpx.HTTPError, ValueError, KeyError, TypeError):
+        return False
+    if len(_voice_discovery) > 8: _voice_discovery.clear()
+    _voice_discovery[cache_key] = (time.monotonic() + 3600, names)
+    return voice in names

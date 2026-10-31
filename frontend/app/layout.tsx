@@ -1,3 +1,4 @@
+import { LocaleBootstrap } from "@/components/LanguagePicker";
 import type { Metadata } from "next";
 import "./globals.css";
 import "./product.css";
@@ -17,7 +18,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="ru" data-scroll-behavior="smooth">
-      <body>{children}</body>
+      <body><LocaleBootstrap />{children}</body>
     </html>
   );
 }

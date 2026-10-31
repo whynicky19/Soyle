@@ -1362,3 +1362,17 @@ button,input,select,textarea,a,summary{scroll-margin-block:110px}
 
 .pet-button { position:relative; }
 .pet-button .pet-still { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; pointer-events:none; }
+
+/* Native language names stay readable at narrow widths. */
+.language-options { display: flex; flex-wrap: wrap; gap: 10px; }
+.language-options button { min-height: 44px; white-space: normal; overflow-wrap: anywhere; padding: 12px 18px; }
+.locale-welcome { position: fixed; inset: 0; z-index: 10000; display: grid; place-items: center; padding: 24px; background: rgba(25,45,70,.4); }
+.locale-welcome > div { background: white; color: #17324d; border-radius: 24px; padding: 28px; max-width: 100%; box-shadow: 0 12px 50px #17324d33; }
+html[lang="kk-KZ"] :is(button, .sidebar a, .settings-section h3) { overflow-wrap: anywhere; }
+dialog.locale-welcome { width: 100%; max-width: none; height: 100%; max-height: none; margin: 0; border: 0; }
+.locale-picker button { display: block; min-width: 120px; white-space: nowrap; overflow-wrap: normal !important; text-align: center; }
+.soyle-local-brand { display: inline-flex; align-items: center; gap: 8px; max-width: 100%; color: #163656; }
+.soyle-local-brand > img { width: 30%; height: auto; }
+.soyle-local-brand > span { font: 800 36px var(--font-display); line-height: 1.2; }
+.soyle-local-brand small { display: block; font: 700 8px var(--font-display); line-height: 1.4; letter-spacing: .04em; }
+.auth-card-brand > .soyle-local-brand { display: inline-flex; }

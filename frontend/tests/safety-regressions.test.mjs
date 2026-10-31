@@ -38,7 +38,7 @@ test("critical optimistic UI changes report failures and roll back", async () =>
   const settingsBlock = app.slice(app.indexOf("const changeSettings"), app.indexOf("if (user.role === \"parent\" && childrenLoading"));
   assert.doesNotMatch(notificationBlock, /\.catch\(\(\) => null\)/);
   assert.match(notificationBlock, /Уведомление не отмечено прочитанным/);
-  assert.match(settingsBlock, /setSettings\(previous\)/);
+  assert.match(settingsBlock, /setSettings\(persistedSettingsRef.current\)/);
   assert.match(settingsBlock, /Настройки не сохранены и возвращены к предыдущим/);
 });
 
@@ -94,12 +94,12 @@ test("camera movement check stays local and cannot be completed by a timer", asy
   assert.doesNotMatch(app, /storage\.googleapis|cdn\.jsdelivr|unpkg\.com/);
 });
 
-test("only the reviewed Russian interface is selectable", async () => {
+test("Russian and Kazakh use explicit dictionaries without DOM rewriting", async () => {
   const [i18n, landing] = await Promise.all([
     readProjectFile("lib/i18n.ts"),
     readProjectFile("components/LandingPage.tsx"),
   ]);
-  assert.match(i18n, /supportedInterfaceLanguages[^=]*=\s*\["ru"\]/);
+  assert.match(i18n, /supportedInterfaceLanguages[^=]*=\s*\["ru", "kk"\]/);
   assert.doesNotMatch(i18n, /MutationObserver|translateTree|createTreeWalker/);
   assert.doesNotMatch(landing, /nextLanguage|landing-language/);
 });

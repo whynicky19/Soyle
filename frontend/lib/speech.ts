@@ -1,3 +1,4 @@
+import { getLocale, languageOf } from "./locale";
 import { API_URL, getCsrfToken } from "./api";
 
 export type SpeechLanguage = "ru" | "kk" | "en";
@@ -112,7 +113,7 @@ export async function speak(text: string, rate = 0.78, enabled = true, language:
   try {
     const response = await fetch(`${API_URL}/api/tts`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", "X-CSRF-Token": getCsrfToken() },
+      headers: { "Content-Type": "application/json", "X-CSRF-Token": getCsrfToken(), "Accept-Language": language === "kk" ? "kk-KZ" : "ru-RU" },
       credentials: "include",
       body: JSON.stringify({ text: cleaned, rate, language, mode: rate < .75 ? "slow" : "normal", ...(profile === "pet" ? {profile} : {}), ...(versionId ? {version_id: versionId} : {}) }),
       signal: controller.signal,
@@ -182,7 +183,7 @@ export async function speak(text: string, rate = 0.78, enabled = true, language:
 // Exercise speech always preempts the pet. Pet speech never preempts or queues behind it.
 export function speakPet(text: string): Promise<boolean> {
   if (typeof window === "undefined" || speechController || currentSpeechAudio || window.speechSynthesis?.speaking || window.speechSynthesis?.pending) return Promise.resolve(false);
-  return speak(text, 0.78, true, "ru", "pet");
+  return speak(text, 0.70, true, languageOf(getLocale()), "pet");
 }
 export function stopPetSpeech() {
   if (speechOwner === "pet") stopCurrentSpeech();
@@ -220,3 +221,8 @@ export async function playSpeechClip(url: string): Promise<boolean> {
 
 /** Call synchronously from a review button before fetching a protected clip. */
 export function unlockSpeechPlayback() { stopCurrentSpeech(); prepareAudio(); }
+
+if (typeof window !== "undefined") window.addEventListener("soyle-locale-changing", () => {
+  stopCurrentSpeech();
+  lastSpeech = null;
+});

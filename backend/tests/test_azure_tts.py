@@ -25,6 +25,8 @@ def azure(client, monkeypatch):
             assert kwargs["timeout"].read == 8
         def __enter__(self): return self
         def __exit__(self, *args): pass
+        def get(self, url, **kwargs):
+            return httpx.Response(200, json=[{"ShortName": voice} for voice in tts.VOICES.values()], request=httpx.Request("GET", url))
         def post(self, url, **kwargs):
             calls.append((url, kwargs))
             return httpx.Response(200, content=b"ID3-test-audio")
@@ -248,3 +250,15 @@ def test_same_text_has_separate_pet_and_exercise_cache(azure, client, parent_hea
     assert 'pitch="+22%"' in azure[0][1]["content"].decode()
     assert 'pitch="+8%"' in azure[1][1]["content"].decode()
     assert client.post("/api/tts", headers=parent_headers, json={"text": "Мяч", "profile": "pet"}).status_code == 422
+
+
+def test_public_kazakh_demo_uses_azure_without_auth_or_arbitrary_text(azure, client):
+    response = client.get('/api/public/speech/kk/water')
+    assert response.status_code == 200
+    assert response.headers['content-language'] == 'kk-KZ'
+    assert response.headers['x-soyle-tts'] == 'azure'
+    ssml = azure[-1][1]['content'].decode()
+    assert 'Су ішкім келеді.' in ssml and 'kk-KZ-AigulNeural' in ssml
+    assert 'ru-RU' not in ssml
+    assert client.get('/api/public/speech/kk/private-user-text').status_code == 422
+    assert len(azure) == 1

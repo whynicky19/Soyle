@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { readFile } from "node:fs/promises";
 import ts from "typescript";
-const speech = (await readFile(new URL("../lib/speech.ts", import.meta.url), "utf8")).replace('import { API_URL, getCsrfToken } from "./api";', 'const API_URL = ""; const getCsrfToken = () => "";');
+const speech = (await readFile(new URL("../lib/speech.ts", import.meta.url), "utf8")).replace('import { getLocale, languageOf } from "./locale";', `import { getLocale, languageOf } from "${new URL("../lib/locale.ts", import.meta.url).href}";`).replace('import { API_URL, getCsrfToken } from "./api";', 'const API_URL = ""; const getCsrfToken = () => "";');
 const narration = (await readFile(new URL("../lib/storybook/cinematic/audio.ts", import.meta.url), "utf8")).replace(/^import .*;\n/, "");
 const compiled = ts.transpileModule(speech + narration, {compilerOptions: {target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ES2022}}).outputText;
 const {playNarration} = await import(`data:text/javascript;base64,${Buffer.from(compiled).toString("base64")}`);

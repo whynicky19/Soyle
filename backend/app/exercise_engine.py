@@ -506,7 +506,8 @@ def published_exercise_rows(db) -> list[dict]:
             },
         }
         result.append(item)
-    return result
+    from .localization import localize_exercises
+    return localize_exercises(db, result)
 
 
 def published_exercise(db, exercise_id: int) -> dict | None:

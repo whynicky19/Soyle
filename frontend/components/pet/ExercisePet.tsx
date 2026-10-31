@@ -1,4 +1,5 @@
 "use client";
+import { t, useLocale, languageOf, getLocale } from "@/lib/i18n";
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import Image from "next/image";
 import { usePetDrag } from "./usePetDrag";
@@ -17,6 +18,7 @@ export const useExercisePet = () => useContext(PetContext);
 export const ExercisePet = () => useContext(PetDisplayContext);
 
 export function ExercisePetProvider({ preferences, soundEnabled, calmMode, initialEvent = "greeting", presentation = "exercise", children }: { presentation?: "exercise" | "home"; preferences: PetPreferences; soundEnabled: boolean; calmMode: boolean; initialEvent?: PetEvent; children: ReactNode }) {
+  const locale = useLocale();
   const [reaction, setReaction] = useState<PetReaction | null>(null);
   const lastTap = useRef(0);
   const tapSequence = useRef(0);
@@ -32,18 +34,19 @@ export function ExercisePetProvider({ preferences, soundEnabled, calmMode, initi
     if (event === "tap") lastTap.current = Date.now();
     clearTimeout(timer.current); clearTimeout(speechTimer.current); stopPetSpeech();
     const spec = petReactions[event === "tap" ? tapReactions[tapSequence.current++ % tapReactions.length] : event];
-    const phrase = reactionOptions?.phrase ?? nextPetPhrase(event);
+    const phrase = reactionOptions?.phrase ?? nextPetPhrase(event, languageOf(getLocale()));
     setReaction({ event, phrase, id: ++sequence.current, mood: spec.mood, duration: spec.duration });
     timer.current = setTimeout(() => { setReaction(null); stopPetSpeech(); }, spec.duration);
     // Allow the same interaction's exercise narration to claim audio first. Never queue stale speech.
     if (preferences.voice && soundEnabled && !reactionOptions?.silent) speechTimer.current = setTimeout(() => { void speakPet(phrase); }, 200);
   }, []);
   useEffect(() => {
+    const reset = setTimeout(() => setReaction(null), 0);
     const start = setTimeout(() => react(initialEvent), 600);
-    return () => { clearTimeout(start); clearTimeout(timer.current); clearTimeout(speechTimer.current); stopPetSpeech(); };
-  }, [initialEvent, react, preferences.visible]);
+    return () => { clearTimeout(reset); clearTimeout(start); clearTimeout(timer.current); clearTimeout(speechTimer.current); stopPetSpeech(); };
+  }, [initialEvent, react, preferences.visible, locale]);
   const display = preferences.visible ? <PetCompanion showBubble={presentation !== "home"} reaction={reaction} motion={calmMode && preferences.motion !== "off" ? "reduced" : preferences.motion} onTap={() => react("tap")}/> : null;
-  return <PetContext.Provider value={react}><PetDisplayContext.Provider value={display}><PetMessageContext.Provider value={reaction?.phrase || "Поиграем?"}>{children}</PetMessageContext.Provider></PetDisplayContext.Provider></PetContext.Provider>;
+  return <PetContext.Provider value={react}><PetDisplayContext.Provider value={display}><PetMessageContext.Provider value={reaction?.phrase || t("pet.question")}>{children}</PetMessageContext.Provider></PetDisplayContext.Provider></PetContext.Provider>;
 }
 
 function PetCompanion({ reaction, motion, onTap, showBubble }: { showBubble: boolean; reaction: PetReaction | null; motion: PetPreferences["motion"]; onTap: () => void }) {

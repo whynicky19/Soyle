@@ -17,6 +17,7 @@ from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 
+from .localization import LOCALE, normalize_locale, TranslationUpdate, TranslationReview, get_translation, save_translation, approve_translation
 from .database import connect, init_db, now_iso
 from .data_lifecycle import delete_child_records, delete_parent_records
 from .privacy import privacy_profile
@@ -326,13 +327,14 @@ def settings_key(user: dict) -> str:
 
 def public_settings(row=None) -> dict:
     if not row:
-        return {"camera_enabled": False, "sound_enabled": True, "calm_mode": False, "theme": "peach", "language": "ru"}
+        return {"camera_enabled": False, "sound_enabled": True, "calm_mode": False, "theme": "peach", "language": "ru", "language_configured": False}
     return {
         "camera_enabled": bool(row["camera_enabled"]),
         "sound_enabled": bool(row["sound_enabled"]),
         "calm_mode": bool(row["calm_mode"]),
         "theme": row["theme"],
-        "language": row["language"] if "language" in row.keys() else "ru",
+        "language": "kk" if row["language"] in {"kk", "kk-KZ"} else "ru",
+        "language_configured": True,
     }
 
 
@@ -743,9 +745,9 @@ def aac_cards(child_id: int, user: dict = Depends(require_roles("admin", "parent
         rows = db.execute(
             """SELECT c.*,CASE WHEN f.card_id IS NULL THEN 0 ELSE 1 END favorite
                FROM aac_cards c LEFT JOIN aac_favorites f ON f.card_id=c.id AND f.child_id=?
-               WHERE c.is_active=1 AND c.language='ru' AND (c.child_id IS NULL OR c.child_id=?)
+               WHERE c.is_active=1 AND c.language=? AND (c.child_id IS NULL OR c.child_id=?)
                ORDER BY c.is_core DESC,c.category,c.id""",
-            (child_id, child_id),
+            (child_id, "kk" if LOCALE.get() == "kk-KZ" else "ru", child_id),
         ).fetchall()
     return [dict(row) for row in rows]
 
@@ -1146,7 +1148,7 @@ def favorite_aac_card(card_id: int, child_id: int, payload: AACFavoriteUpdate, u
     ensure_child_access(child_id, user)
     ensure_privacy_consent(child_id)
     with connect() as db:
-        card = db.execute("SELECT id FROM aac_cards WHERE id=? AND is_active=1 AND language='ru' AND (child_id IS NULL OR child_id=?)", (card_id, child_id)).fetchone()
+        card = db.execute("SELECT id FROM aac_cards WHERE id=? AND is_active=1 AND (child_id IS NULL OR child_id=?)", (card_id, child_id)).fetchone()
         if not card:
             raise HTTPException(404, "Карточка не найдена")
         if payload.favorite:
@@ -1165,7 +1167,7 @@ def compose_aac(payload: AACComposeRequest, user: dict = Depends(require_roles("
     placeholders = ",".join("?" for _ in unique_ids)
     with connect() as db:
         rows = db.execute(
-            f"SELECT id,label,speech,lemma,grammatical_role,language,pictogram FROM aac_cards WHERE is_active=1 AND language='ru' AND (child_id IS NULL OR child_id=?) AND id IN ({placeholders})",
+            f"SELECT id,label,speech,lemma,grammatical_role,language,pictogram FROM aac_cards WHERE is_active=1 AND (child_id IS NULL OR child_id=?) AND id IN ({placeholders})",
             (payload.child_id, *unique_ids),
         ).fetchall()
     by_id = {row["id"]: dict(row) for row in rows}
@@ -1184,7 +1186,7 @@ def save_aac_phrase(payload: AACPhraseCreate, user: dict = Depends(require_roles
     placeholders = ",".join("?" for _ in unique_ids)
     with connect() as db:
         cards = db.execute(
-            f"SELECT id,label,speech,lemma,grammatical_role,language,pictogram FROM aac_cards WHERE is_active=1 AND language='ru' AND (child_id IS NULL OR child_id=?) AND id IN ({placeholders})",
+            f"SELECT id,label,speech,lemma,grammatical_role,language,pictogram FROM aac_cards WHERE is_active=1 AND (child_id IS NULL OR child_id=?) AND id IN ({placeholders})",
             (payload.child_id, *unique_ids),
         ).fetchall()
         by_id = {row["id"]: dict(row) for row in cards}
@@ -1215,7 +1217,15 @@ def aac_history(child_id: int, user: dict = Depends(require_roles("admin", "pare
         return []
     with connect() as db:
         rows = db.execute("SELECT * FROM aac_phrase_history WHERE child_id=? ORDER BY id DESC LIMIT 12", (child_id,)).fetchall()
-    return [{**dict(row), "card_ids": json.loads(row["card_ids"])} for row in rows]
+        language = "kk" if LOCALE.get() == "kk-KZ" else "ru"
+        result = []
+        for row in rows:
+            ids = json.loads(row["card_ids"])
+            if not ids: continue
+            marks = ",".join("?" for _ in ids)
+            languages = {item["language"] for item in db.execute(f"SELECT language FROM aac_cards WHERE id IN ({marks})", tuple(ids)).fetchall()}
+            if languages == {language}: result.append({**dict(row), "card_ids": ids})
+    return result
 
 
 def saved_attempt_response(row, *, replayed: bool = False) -> dict:
@@ -2694,3 +2704,104 @@ app.include_router(invitation_router)
 
 from .exploration_routes import register_exploration_routes
 register_exploration_routes(app, ensure_child_access, ensure_privacy_consent)
+
+
+@app.middleware("http")
+async def locale_context(request: Request, call_next):
+    locale = normalize_locale(request.headers.get("Accept-Language"))
+    token = LOCALE.set(locale)
+    try:
+        response = await call_next(request)
+        if "Content-Language" not in response.headers:
+            response.headers["Content-Language"] = locale
+        response.headers["Vary"] = ", ".join(filter(None, [response.headers.get("Vary"), "Accept-Language"]))
+        return response
+    finally:
+        LOCALE.reset(token)
+
+
+@app.get("/api/admin/translations")
+def translation_queue(_: dict = Depends(require_roles("admin", "specialist"))):
+    with connect() as db:
+        return [dict(row) for row in db.execute("""SELECT v.id source_version_id,v.exercise_id,v.version,v.title,v.mechanic,
+            COALESCE(t.status,'missing') status,COALESCE(t.revision,0) revision
+            FROM exercise_versions v LEFT JOIN exercise_translations t ON t.source_version_id=v.id AND t.locale='kk-KZ'
+            ORDER BY v.exercise_id,v.version DESC""").fetchall()]
+
+
+@app.get("/api/admin/translations/{version_id}")
+def translation_detail(version_id: int, _: dict = Depends(require_roles("admin", "specialist"))):
+    with connect() as db: return get_translation(db, version_id)
+
+
+@app.put("/api/admin/translations/{version_id}")
+def translation_update(version_id: int, payload: TranslationUpdate, user: dict = Depends(require_roles("admin"))):
+    with connect() as db: return save_translation(db, version_id, payload, user["id"])
+
+
+@app.post("/api/admin/translations/{version_id}/approve")
+def translation_approve(version_id: int, payload: TranslationReview, user: dict = Depends(require_roles("specialist"))):
+    with connect() as db: return approve_translation(db, version_id, payload, user["id"])
+
+
+from starlette.exceptions import HTTPException as StarletteHTTPException
+from fastapi.exceptions import RequestValidationError
+from fastapi.exception_handlers import http_exception_handler, request_validation_exception_handler
+
+
+@app.exception_handler(StarletteHTTPException)
+async def localized_http_error(request: Request, exc: StarletteHTTPException):
+    if normalize_locale(request.headers.get("Accept-Language")) != "kk-KZ":
+        if isinstance(exc.detail, str) and exc.detail.startswith("translation."):
+            code = exc.detail.split(":", 1)[0]
+            messages = {
+                "translation.source_missing": "Исходная версия не найдена.",
+                "translation.conflict": "Перевод изменился. Откройте последнюю редакцию.",
+                "translation.mechanic_needs_adaptation": "Для этого задания нужна отдельная языковая адаптация.",
+                "translation.incomplete": "Не все поля переведены. Проверьте перевод перед одобрением.",
+                "translation.shape": "Структура перевода должна совпадать с исходной версией.",
+                "translation.text": "Заполните все текстовые поля перевода.",
+                "translation.immutable": "Нельзя изменять ключи ответов, изображения и параметры задания.",
+            }
+            return JSONResponse(status_code=exc.status_code, headers=exc.headers, content={"detail": messages.get(code, "Не удалось сохранить перевод."), "error_code": code})
+        return await http_exception_handler(request, exc)
+    messages = {
+        400: "Сұрауды тексеріп, қайталап көріңіз.",
+        401: "Аккаунтқа қайта кіріңіз.",
+        403: "Бұл әрекетке рұқсат жоқ.",
+        404: "Материал табылмады немесе бұл тілде қолжетімсіз.",
+        409: "Деректер өзгерді. Бетті жаңартып, қайталап көріңіз.",
+        422: "Енгізілген деректерді тексеріңіз.",
+        429: "Сұрау тым көп. Біраз күте тұрыңыз.",
+        503: "Қызмет уақытша қолжетімсіз. Кейінірек қайталап көріңіз.",
+    }
+    codes = {
+        "translation.conflict": "Аударма өзгерді. Соңғы нұсқасын ашыңыз.",
+        "translation.mechanic_needs_adaptation": "Бұл тапсырмаға бөлек тілдік бейімдеу қажет.",
+    }
+    code = exc.detail if isinstance(exc.detail, str) and exc.detail.startswith("translation.") else f"http.{exc.status_code}"
+    return JSONResponse(status_code=exc.status_code, headers=exc.headers,
+                        content={"detail": codes.get(code, messages.get(exc.status_code, "Сұрауды орындау мүмкін болмады.")), "error_code": code})
+
+
+@app.exception_handler(RequestValidationError)
+async def localized_validation_error(request: Request, exc: RequestValidationError):
+    if normalize_locale(request.headers.get("Accept-Language")) != "kk-KZ":
+        return await request_validation_exception_handler(request, exc)
+    return JSONResponse(status_code=422, content={"detail": "Енгізілген деректерді тексеріңіз.", "error_code": "validation.invalid",
+        "fields": [{"path": list(error["loc"]), "code": error["type"]} for error in exc.errors()]})
+
+
+@app.get("/api/public/speech/{language}/{phrase_key}")
+def public_demo_speech(language: Literal["ru", "kk"], phrase_key: Literal["water", "apple", "play"]):
+    """Six fixed editorial phrases; no user text, profile or arbitrary voice selection."""
+    from .azure_tts import PUBLIC_DEMO_PHRASES, TTSUnavailable, limit_user, synthesize
+    limit_user(-1)
+    try:
+        audio = synthesize(PUBLIC_DEMO_PHRASES[language][phrase_key], language, "slow")
+    except TTSUnavailable as exc:
+        raise HTTPException(503, "Озвучивание временно недоступно", headers={"Retry-After": str(exc.retry_after)}) from None
+    return Response(audio, media_type="audio/mpeg", headers={
+        "Cache-Control": "public, max-age=3600", "X-Soyle-TTS": "azure",
+        "Content-Language": "kk-KZ" if language == "kk" else "ru-RU",
+    })

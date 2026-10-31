@@ -1,4 +1,6 @@
 "use client";
+import { TranslationEditor } from "./TranslationEditor";
+import { LanguagePicker } from "./LanguagePicker";
 
 import { ExercisePetProvider, ExercisePet, useExercisePet } from "./pet/ExercisePet";
 import { usePetPreferences } from "./pet/usePetPreferences";
@@ -140,7 +142,7 @@ import { api, ApiError, AACCard, AIAnswer, type AdaptivePlan, AppSettings, Child
 import { compressPhoto } from "@/lib/imageUpload";
 import { composeAACMessage } from "@/lib/aacGrammar";
 import { canAddAACScenarioCard, evaluateAACScenario } from "@/lib/aacScenarioRuntime";
-import { supportedInterfaceLanguages, useInterfaceLanguage } from "@/lib/i18n";
+import { t, getLocale, languageOf, normalizeLocale, setLocale, supportedInterfaceLanguages, useLocale } from "@/lib/i18n";
 import { exerciseCountLabel, SESSION_EXERCISE_COUNTS } from "@/lib/homePractice";
 import { nextIncompleteExerciseIndex, reconcileActiveSession, summarizeSessionResults } from "@/lib/sessionRuntime";
 import { categoriesToScores, evaluateMotorMovement, mergeBaseline, targetForSequenceStep, type BlendshapeScores } from "@/lib/motorDetection";
@@ -325,6 +327,7 @@ function AuthenticatedApp({ user, onLogout, externalError, onDismissExternalErro
   const [childrenError, setChildrenError] = useState("");
   const [settings, setSettings] = useState<AppSettings>(defaultSettings);
   const settingsRef = useRef<AppSettings>(defaultSettings);
+  const persistedSettingsRef = useRef<AppSettings>(defaultSettings);
   const settingsSaveQueueRef = useRef<Promise<void>>(Promise.resolve());
   const settingsSaveVersionRef = useRef(0);
   const [settingsSaving, setSettingsSaving] = useState(false);
@@ -333,7 +336,7 @@ function AuthenticatedApp({ user, onLogout, externalError, onDismissExternalErro
   const [requestError, setRequestError] = useState("");
   const [parentPracticeMode, setParentPracticeMode] = useState<ParentPracticeMode>("adult_preview");
   const [focusStopping, setFocusStopping] = useState(false);
-  useInterfaceLanguage(settings.language);
+  const interfaceLocale = useLocale();
 
   useEffect(() => {
     if (user.role !== "student" || screen !== "more") return;
@@ -405,8 +408,20 @@ function AuthenticatedApp({ user, onLogout, externalError, onDismissExternalErro
     return () => window.clearTimeout(timer);
   }, [loadChildren]);
   useEffect(() => {
-    api<AppSettings>("/api/settings").then((value) => setSettings({ ...value, language: supportedInterfaceLanguages.includes(value.language) ? value.language : "ru" })).catch((cause) => {
-      setSettings(defaultSettings);
+    const requestVersion = settingsSaveVersionRef.current;
+    api<AppSettings>("/api/settings").then(async (value) => {
+      if (requestVersion !== settingsSaveVersionRef.current) return;
+      const language = value.language_configured === false ? languageOf(getLocale()) : (supportedInterfaceLanguages.includes(value.language) ? value.language : "ru");
+      const resolved = { ...value, language };
+      if (value.language_configured === false && localStorage.getItem("soyle-language")) await api<AppSettings>("/api/settings", { method: "PUT", body: JSON.stringify(resolved) });
+      if (requestVersion !== settingsSaveVersionRef.current) return;
+      settingsRef.current = resolved;
+      persistedSettingsRef.current = resolved;
+      setSettings(resolved);
+      setLocale(language, value.language_configured !== false || Boolean(localStorage.getItem("soyle-language")));
+      if (value.language_configured) window.dispatchEvent(new Event("soyle-profile-locale"));
+    }).catch((cause) => {
+      setSettings({ ...defaultSettings, language: languageOf(getLocale()) });
       setRequestError(cause instanceof Error ? `Не удалось загрузить настройки: ${cause.message}` : "Не удалось загрузить настройки");
     });
   }, []);
@@ -418,22 +433,23 @@ function AuthenticatedApp({ user, onLogout, externalError, onDismissExternalErro
   useEffect(loadNotifications, [loadNotifications]);
 
   const navigation: { id: Screen; label: string; icon: typeof Home }[] = user.role === "admin"
-    ? [{ id: "admin", label: "Админ-панель", icon: LayoutDashboard }, { id: "settings", label: "Настройки", icon: Settings }]
+    ? [{ id: "admin", label: t("nav.admin"), icon: LayoutDashboard }, { id: "settings", label: t("nav.settings"), icon: Settings }]
     : user.role === "student"
         ? [
-          { id: "home", label: "Главная", icon: Home },
-          { id: "stories", label: "Истории", icon: BookOpen },
-          { id: "games", label: "Занятия", icon: Gamepad2 },
-          { id: "aac", label: "Мои слова", icon: MessageCircle },
-          { id: "more", label: "Ещё", icon: CircleEllipsis },
-          { id: "world", label: "Мой мир", icon: ImageIcon },
+          { id: "home", label: t("nav.home"), icon: Home },
+          { id: "stories", label: t("nav.stories"), icon: BookOpen },
+          { id: "games", label: t("nav.lessons"), icon: Gamepad2 },
+          { id: "aac", label: t("nav.words"), icon: MessageCircle },
+          { id: "more", label: t("nav.more"), icon: CircleEllipsis },
+          { id: "world", label: t("nav.world"), icon: ImageIcon },
           { id: "skills", label: "Навыки", icon: BarChart3 },
-          { id: "achievements", label: "Достижения", icon: Trophy },
+          { id: "achievements", label: t("nav.achievements"), icon: Trophy },
+          { id: "settings", label: t("nav.settings"), icon: Settings },
         ]
       : [
-          { id: "home", label: "Главная", icon: Home },
-          { id: "parent", label: "Кабинет родителя", icon: UserRound },
-          { id: "guides", label: "Гайды", icon: BookOpen },
+          { id: "home", label: t("nav.home"), icon: Home },
+          { id: "parent", label: t("nav.parent"), icon: UserRound },
+          { id: "guides", label: t("nav.guides"), icon: BookOpen },
         ];
 
   const child = children.find((item) => item.id === selectedChildId) || children[0];
@@ -443,11 +459,14 @@ function AuthenticatedApp({ user, onLogout, externalError, onDismissExternalErro
     const path = ["parent", "student"].includes(user.role) && selectedChildId
       ? `/api/exercises?child_id=${selectedChildId}`
       : "/api/exercises";
-    api<Exercise[]>(path).then(setExercises).catch((cause) => {
+    let active = true;
+    api<Exercise[]>(path).then(value => { if (active) setExercises(value); }).catch((cause) => {
+      if (!active) return;
       setExercises([]);
       setRequestError(cause instanceof Error ? `Не удалось загрузить задания: ${cause.message}` : "Не удалось загрузить задания");
     });
-  }, [selectedChildId, user.role, catalogRevision]);
+    return () => { active = false; };
+  }, [selectedChildId, user.role, catalogRevision, interfaceLocale]);
 
   useEffect(() => {
     if (!child?.id || !["parent", "student"].includes(user.role)) {
@@ -709,23 +728,25 @@ function AuthenticatedApp({ user, onLogout, externalError, onDismissExternalErro
   };
 
   const changeSettings = (next: AppSettings) => {
-    const previous = settingsRef.current;
     const version = ++settingsSaveVersionRef.current;
     settingsRef.current = next;
     setSettings(next);
+    setLocale(next.language);
     setSettingsSaving(true);
     setRequestError("");
     settingsSaveQueueRef.current = settingsSaveQueueRef.current.then(async () => {
       try {
         const saved = await api<AppSettings>("/api/settings", { method: "PUT", body: JSON.stringify(next) });
+        persistedSettingsRef.current = saved;
         if (version === settingsSaveVersionRef.current) {
           settingsRef.current = saved;
           setSettings(saved);
         }
       } catch (cause) {
         if (version === settingsSaveVersionRef.current) {
-          settingsRef.current = previous;
-          setSettings(previous);
+          settingsRef.current = persistedSettingsRef.current;
+          setSettings(persistedSettingsRef.current);
+          setLocale(persistedSettingsRef.current.language);
           setRequestError(cause instanceof Error ? `Настройки не сохранены и возвращены к предыдущим: ${cause.message}` : "Настройки не сохранены и возвращены к предыдущим");
         }
       } finally {
@@ -733,6 +754,12 @@ function AuthenticatedApp({ user, onLogout, externalError, onDismissExternalErro
       }
     });
   };
+
+  useEffect(() => {
+    const selected = () => changeSettings({ ...settingsRef.current, language: languageOf(getLocale()) });
+    window.addEventListener("soyle-language-selected", selected);
+    return () => window.removeEventListener("soyle-language-selected", selected);
+  });
 
   if (user.role === "parent" && childrenLoading) return <div className="auth-loading"><div className="brand-mark"><BrandIcon /></div><span>Загружаем профиль ребёнка…</span></div>;
   if (["parent", "student"].includes(user.role) && childrenError) return <div className="auth-loading" role="alert"><ShieldAlert size={30}/><span>{childrenError}</span><button className="primary-button" onClick={loadChildren}>Повторить загрузку</button></div>;
@@ -814,10 +841,10 @@ function AuthenticatedApp({ user, onLogout, externalError, onDismissExternalErro
   const activeExerciseContent = <>
     {screen === "motor" && <MotorGame exercises={exercises.filter((item) => item.module === "motor")} initialExercise={selectedExercise} cameraConsentGranted={Boolean(consent?.privacy_accepted && consent?.camera_processing && settings.camera_enabled)} canManageConsent={user.role === "parent"} onOpenConsent={() => openScreen("parent")} onBack={exerciseBack} onComplete={(score, exerciseId, measurement, details) => saveSession(exerciseId, "motor", score, details || { source: "manual" }, measurement)} />}
     {screen === "sensory" && selectedExercise?.engine?.mechanic === "scene_search" && <ExplorationExercise key={`${selectedExercise.id}-${selectedExercise.engine.version_id}`} content={selectedExercise.engine.content} childId={child?.id} exerciseId={selectedExercise.id} previewVersionId={user.role==='parent'&&parentPracticeMode==='adult_preview'?selectedExercise.engine.version_id:undefined} learningSessionId={sessionExerciseActive?activeSession?.id:undefined} plannedLevel={selectedExercise.adaptive?.difficulty_params.difficulty_level} defaultRounds={selectedExercise.adaptive?.difficulty_params.round_count} soundEnabled={settings.sound_enabled} showStopControls={!(user.role==='student'||parentPracticeMode==='child_practice')} onSpeak={(text,rate)=>speak(text,rate,settings.sound_enabled,selectedExercise?.engine?.language || "ru", "exercise", selectedExercise?.engine?.version_id)} onBack={exerciseBack} onComplete={(measurement,details)=>saveSession(selectedExercise.id,'sensory',0,details,measurement)} stopRef={variedStopRef}/>}
-    {screen === "sensory" && selectedExercise?.engine && variedMechanics.includes(selectedExercise.engine.mechanic) && <div className="page-enter game-page"><GameHeader title={selectedExercise.title} subtitle={selectedExercise.instruction} step="Игра с картинками" onBack={exerciseBack}/><VariedExerciseRunner stopRef={variedStopRef} key={`${selectedExercise.id}-${selectedExercise.engine.version_id}`} mechanic={selectedExercise.engine.mechanic as VariedMechanic} content={selectedExercise.engine.content} defaultRounds={selectedExercise.adaptive?.difficulty_params.round_count} soundEnabled={settings.sound_enabled} onSpeak={(text, rate) => speak(text, rate, settings.sound_enabled, selectedExercise?.engine?.language || "ru", "exercise", selectedExercise?.engine?.version_id)} onBack={exerciseBack} onComplete={(measurement, details) => saveSession(selectedExercise.id, "sensory", 0, details, measurement)}/></div>}
-    {screen === "sensory" && selectedExercise?.engine?.mechanic === "tap_instruction" ? <div className="page-enter game-page"><GameHeader title={selectedExercise.title} subtitle="Выполни один шаг" step="Предмет → цель" onBack={exerciseBack}/><PublishedInstructionRunner scenarios={selectedExercise.engine.content.scenarios || []} roundChoices={selectedExercise.engine.content.round_choices} defaultRounds={selectedExercise.adaptive?.difficulty_params.round_count || selectedExercise.engine.content.default_rounds} soundEnabled={settings.sound_enabled} onSpeak={(text, rate) => speak(text, rate, settings.sound_enabled, selectedExercise?.engine?.language || "ru", "exercise", selectedExercise?.engine?.version_id)} onBack={exerciseBack} onComplete={(measurement, details) => saveSession(selectedExercise.id, "sensory", 0, details, measurement)}/></div> : null}
+    {screen === "sensory" && selectedExercise?.engine && variedMechanics.includes(selectedExercise.engine.mechanic) && <div className="page-enter game-page"><GameHeader title={selectedExercise.title} subtitle={selectedExercise.instruction} step={t("game.picture")} onBack={exerciseBack}/><VariedExerciseRunner stopRef={variedStopRef} key={`${selectedExercise.id}-${selectedExercise.engine.version_id}`} mechanic={selectedExercise.engine.mechanic as VariedMechanic} content={selectedExercise.engine.content} defaultRounds={selectedExercise.adaptive?.difficulty_params.round_count} soundEnabled={settings.sound_enabled} onSpeak={(text, rate) => speak(text, rate, settings.sound_enabled, selectedExercise?.engine?.language || "ru", "exercise", selectedExercise?.engine?.version_id)} onBack={exerciseBack} onComplete={(measurement, details) => saveSession(selectedExercise.id, "sensory", 0, details, measurement)}/></div>}
+    {screen === "sensory" && selectedExercise?.engine?.mechanic === "tap_instruction" ? <div className="page-enter game-page"><GameHeader title={selectedExercise.title} subtitle={t("game.oneStep")} step="Предмет → цель" onBack={exerciseBack}/><PublishedInstructionRunner scenarios={selectedExercise.engine.content.scenarios || []} roundChoices={selectedExercise.engine.content.round_choices} defaultRounds={selectedExercise.adaptive?.difficulty_params.round_count || selectedExercise.engine.content.default_rounds} soundEnabled={settings.sound_enabled} onSpeak={(text, rate) => speak(text, rate, settings.sound_enabled, selectedExercise?.engine?.language || "ru", "exercise", selectedExercise?.engine?.version_id)} onBack={exerciseBack} onComplete={(measurement, details) => saveSession(selectedExercise.id, "sensory", 0, details, measurement)}/></div> : null}
     {screen === "sensory" && selectedExercise?.engine?.mechanic !== "tap_instruction" && selectedExercise?.engine?.mechanic !== "scene_search" && !variedMechanics.includes(selectedExercise?.engine?.mechanic || "") && <SensoryGame key={selectedExercise?.id || "sensory"} exercise={selectedExercise?.module === "sensory" ? selectedExercise : exercises.find((item) => item.module === "sensory")} soundEnabled={settings.sound_enabled} onBack={exerciseBack} onComplete={(score, exerciseId, measurement, details) => saveSession(exerciseId, "sensory", score, details || {}, measurement)} />}
-    {screen === "mixed" && selectedExercise?.engine?.content.presentation === "picture_description" && <div className="page-enter game-page"><GameHeader title={selectedExercise.title} subtitle="Рассмотри и опиши одну картинку" step="Описание картинки" onBack={exerciseBack}/><ObservationExercise stopRef={variedStopRef} key={`${selectedExercise.id}-${selectedExercise.engine.version_id}`} content={selectedExercise.engine.content} defaultRounds={selectedExercise.adaptive?.difficulty_params.round_count} soundEnabled={settings.sound_enabled} onSpeak={(text, rate) => speak(text, rate, settings.sound_enabled, selectedExercise?.engine?.language || "ru", "exercise", selectedExercise?.engine?.version_id)} onBack={exerciseBack} onComplete={(measurement, details) => saveSession(selectedExercise.id, "mixed", 0, details, measurement)}/></div>}
+    {screen === "mixed" && selectedExercise?.engine?.content.presentation === "picture_description" && <div className="page-enter game-page"><GameHeader title={selectedExercise.title} subtitle={t("game.describe")} step={t("game.description")} onBack={exerciseBack}/><ObservationExercise stopRef={variedStopRef} key={`${selectedExercise.id}-${selectedExercise.engine.version_id}`} content={selectedExercise.engine.content} defaultRounds={selectedExercise.adaptive?.difficulty_params.round_count} soundEnabled={settings.sound_enabled} onSpeak={(text, rate) => speak(text, rate, settings.sound_enabled, selectedExercise?.engine?.language || "ru", "exercise", selectedExercise?.engine?.version_id)} onBack={exerciseBack} onComplete={(measurement, details) => saveSession(selectedExercise.id, "mixed", 0, details, measurement)}/></div>}
     {screen === "mixed" && selectedExercise?.engine?.content.presentation !== "picture_description" && <PhraseGame key={selectedExercise?.id || "mixed"} childId={child?.id} canManage={user.role === "parent"} exercise={selectedExercise?.module === "mixed" ? selectedExercise : exercises.find((item) => item.module === "mixed")} soundEnabled={settings.sound_enabled} onBack={exerciseBack} onComplete={(score, phrase, exerciseId, measurement) => saveSession(exerciseId, "mixed", score, { phrase }, measurement)} />}
   </>;
   const isChildExerciseFocus = ["motor", "sensory", "mixed"].includes(screen) && (user.role === "student" || (user.role === "parent" && parentPracticeMode === "child_practice"));
@@ -865,8 +892,8 @@ function AuthenticatedApp({ user, onLogout, externalError, onDismissExternalErro
       onRefuse={() => void stopFocusedExercise("refused")}
     >
       {!isOnline && <div className="offline-banner" role="status"><CircleAlert size={18}/><span><strong>Нет соединения.</strong> Результат не сохранится автоматически. Не закрывай страницу.</span></div>}
-      {externalError && <div className="game-error global-request-error" role="alert"><ShieldAlert size={18}/><span>{externalError}</span><button type="button" className="small-button" onClick={onDismissExternalError}>Закрыть</button></div>}
-      {requestError && <div className="game-error global-request-error" role="alert"><ShieldAlert size={18}/><span>{requestError}</span><button type="button" className="small-button" onClick={() => setRequestError("")}>Закрыть</button></div>}
+      {externalError && <div className="game-error global-request-error" role="alert"><ShieldAlert size={18}/><span>{externalError}</span><button type="button" className="small-button" onClick={onDismissExternalError}>{t("common.close")}</button></div>}
+      {requestError && <div className="game-error global-request-error" role="alert"><ShieldAlert size={18}/><span>{requestError}</span><button type="button" className="small-button" onClick={() => setRequestError("")}>{t("common.close")}</button></div>}
       {sessionError && <div className="game-error" role="alert"><ShieldAlert size={18}/><span>{sessionError}</span></div>}
       {activeExerciseContent}
     </ExerciseFocusShell></ExercisePetProvider>;
@@ -876,14 +903,14 @@ function AuthenticatedApp({ user, onLogout, externalError, onDismissExternalErro
 
   return (
     <AppRoleShell home={user.role === "student" && screen === "home"} navigationCollapsed={childNavigationCollapsed}>
-      {user.role === "student" && compactNavigation && navigationHidden && <button ref={menuButtonRef} type="button" className="child-menu-toggle" onClick={() => { setSidebarOpen(true); }} aria-label="Открыть меню" aria-expanded={false} aria-controls="primary-navigation"><Menu size={23}/><span>Меню</span></button>}
+      {user.role === "student" && compactNavigation && navigationHidden && <button ref={menuButtonRef} type="button" className="child-menu-toggle" onClick={() => { setSidebarOpen(true); }} aria-label={t("landing.copy046")} aria-expanded={false} aria-controls="primary-navigation"><Menu size={23}/><span>Меню</span></button>}
       <div className="ambient ambient-one" />
       <div className="ambient ambient-two" />
       <aside id="primary-navigation" className={`sidebar ${sidebarOpen ? "open" : ""}`} aria-label="Навигация" role={sidebarIsDialog && sidebarOpen ? "dialog" : undefined} aria-modal={sidebarIsDialog && sidebarOpen ? true : undefined} aria-hidden={navigationHidden ? true : undefined} inert={navigationHidden ? true : undefined}>
         <button ref={sidebarBrandRef} type="button" className="brand" onClick={() => childRail ? setChildNavigationCollapsed(false) : openScreen("home")} aria-label={childRail ? "Развернуть меню" : "Söyle - на главную"} title={childRail ? "Нажми на Söyle, чтобы развернуть меню" : undefined} aria-expanded={childRail ? false : undefined} aria-controls={childRail ? "primary-navigation" : undefined}>
           <BrandLogo variant={user.role === "student" && childNavigationCollapsed && !compactNavigation ? "vertical" : "compact"} width={user.role === "student" && childNavigationCollapsed && !compactNavigation ? 72 : 170} decorative />
         </button>
-        {!childRail && <button ref={sidebarCloseRef} type="button" className="sidebar-close" onClick={user.role === "student" && !compactNavigation ? () => { setChildNavigationCollapsed(true); window.requestAnimationFrame(() => sidebarBrandRef.current?.focus()); } : closeSidebar} aria-label={user.role === "student" && !compactNavigation ? "Свернуть меню" : "Закрыть меню"} aria-expanded={user.role === "student" && !compactNavigation ? true : undefined} aria-controls="primary-navigation">{user.role === "student" && !compactNavigation ? <PanelLeftClose/> : <X/>}</button>}
+        {!childRail && <button ref={sidebarCloseRef} type="button" className="sidebar-close" onClick={user.role === "student" && !compactNavigation ? () => { setChildNavigationCollapsed(true); window.requestAnimationFrame(() => sidebarBrandRef.current?.focus()); } : closeSidebar} aria-label={user.role === "student" && !compactNavigation ? "Свернуть меню" : t("landing.copy045")} aria-expanded={user.role === "student" && !compactNavigation ? true : undefined} aria-controls="primary-navigation">{user.role === "student" && !compactNavigation ? <PanelLeftClose/> : <X/>}</button>}
         <nav aria-label="Основное меню">
           {navigation.map((item) => {
             const active = screen === item.id || (item.id === "games" && ["session", "exercise-complete", "motor", "sensory", "mixed"].includes(screen));
@@ -897,29 +924,29 @@ function AuthenticatedApp({ user, onLogout, externalError, onDismissExternalErro
         </nav>
         <div className="sidebar-note">
           <span className="note-spark">{user.role === "student" ? "‖" : "✦"}</span>
-          <strong>{user.role === "student" ? "Твой спокойный темп" : "История практики"}</strong>
+          <strong>{user.role === "student" ? "Твой спокойный темп" : t("auth.history")}</strong>
           <span>{user.role === "student" ? "Можно сделать паузу в любой момент" : `${dashboard?.week_sessions || 0} занятий на этой неделе`}</span>
         </div>
-        <button type="button" className="sidebar-logout" onClick={onLogout}><LogOut size={20} aria-hidden="true"/><span>Выйти из аккаунта</span></button>
+        <button type="button" className="sidebar-logout" onClick={onLogout}><LogOut size={20} aria-hidden="true"/><span>{t("common.logoutAccount")}</span></button>
         <div className="profile-mini">
           <button className="avatar avatar-button" onClick={() => openScreen("profile")} aria-label="Открыть профиль">{user.full_name[0]}</button>
           <button className="profile-mini-info" onClick={() => openScreen("profile")}><strong>{user.full_name}</strong><span>{roleLabel(user.role)}</span></button>
-          <button className="logout-mini" onClick={onLogout} aria-label="Выйти"><LogOut size={17} /></button>
+          <button className="logout-mini" onClick={onLogout} aria-label={t("common.logout")}><LogOut size={17} /></button>
         </div>
       </aside>
 
-      {sidebarOpen && sidebarIsDialog && <button className="overlay" onClick={closeSidebar} aria-label="Закрыть меню" />}
+      {sidebarOpen && sidebarIsDialog && <button className="overlay" onClick={closeSidebar} aria-label={t("landing.copy045")} />}
 
       <main className="main" inert={sidebarIsDialog && sidebarOpen ? true : undefined}>
         <header className="topbar v2-topbar">
-          {user.role !== "student" && <button ref={menuButtonRef} className="menu-button" onClick={() => setSidebarOpen(true)} aria-label="Открыть меню" aria-expanded={sidebarOpen} aria-controls="primary-navigation"><Menu /></button>}
+          {user.role !== "student" && <button ref={menuButtonRef} className="menu-button" onClick={() => setSidebarOpen(true)} aria-label={t("landing.copy046")} aria-expanded={sidebarOpen} aria-controls="primary-navigation"><Menu /></button>}
           <div className="mobile-logo"><BrandLogo variant="compact" width={116} /></div>
           {user.role === "parent" && <form className="v2-global-search" role="search" onSubmit={submitGlobalSearch}><Search/><input value={globalSearch} onChange={(event) => setGlobalSearch(event.target.value)} placeholder="Поиск по занятиям, историям, гайдам…" aria-label="Поиск по Söyle"/><button aria-label="Найти"><ArrowRight/></button></form>}
           <div className="top-actions v2-top-actions">
             {user.role !== "student" && user.role !== "parent" && <button className="language" data-i18n-native onClick={() => openScreen("settings")} aria-label={{ ru: "Язык интерфейса: русский", en: "Interface language: English", kk: "Интерфейс тілі: қазақша" }[settings.language]}><Languages size={17} /> {{ ru: "RU", en: "EN", kk: "ҚАЗ" }[settings.language]}</button>}
             {user.role !== "student" && user.role !== "parent" && <div className="stars"><Star size={18} fill="currentColor" /> {dashboard?.stars || 0}</div>}
-            <button className="v2-icon-button" onClick={() => openScreen("settings")} aria-label="Настройки"><Settings size={21}/></button>
-            {user.role === "parent" && <div className="notification-wrap"><button className="notification-button" onClick={() => setNotificationsOpen((value) => !value)} aria-label="Уведомления"><Bell size={19}/>{notifications.unread > 0 && <i>{notifications.unread}</i>}</button>{notificationsOpen && <div className="notification-panel"><div className="notification-head"><div><span className="kicker">УВЕДОМЛЕНИЯ</span><strong>События программы</strong></div>{notifications.unread > 0 && <button onClick={markAllNotificationsRead}>Прочитать все</button>}</div><div className="notification-list">{notifications.items.length ? notifications.items.map((item) => <button key={item.id} className={item.is_read ? "read" : "unread"} onClick={() => markNotificationRead(item.id)}><span className="notification-symbol"><Trophy size={18}/></span><div><strong>{item.title}</strong><p>{item.message}</p><small>{new Date(item.created_at).toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}</small></div>{!item.is_read && <i/>}</button>) : <div className="notification-empty"><Bell size={24}/><strong>Пока всё спокойно</strong><span>Здесь появятся отметки о занятиях и новых шагах программы.</span></div>}</div></div>}</div>}
+            <button className="v2-icon-button" onClick={() => openScreen("settings")} aria-label={t("nav.settings")}><Settings size={21}/></button>
+            {user.role === "parent" && <div className="notification-wrap"><button className="notification-button" onClick={() => setNotificationsOpen((value) => !value)} aria-label={t("nav.notifications")}><Bell size={19}/>{notifications.unread > 0 && <i>{notifications.unread}</i>}</button>{notificationsOpen && <div className="notification-panel"><div className="notification-head"><div><span className="kicker">УВЕДОМЛЕНИЯ</span><strong>События программы</strong></div>{notifications.unread > 0 && <button onClick={markAllNotificationsRead}>Прочитать все</button>}</div><div className="notification-list">{notifications.items.length ? notifications.items.map((item) => <button key={item.id} className={item.is_read ? "read" : "unread"} onClick={() => markNotificationRead(item.id)}><span className="notification-symbol"><Trophy size={18}/></span><div><strong>{item.title}</strong><p>{item.message}</p><small>{new Date(item.created_at).toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}</small></div>{!item.is_read && <i/>}</button>) : <div className="notification-empty"><Bell size={24}/><strong>Пока всё спокойно</strong><span>Здесь появятся отметки о занятиях и новых шагах программы.</span></div>}</div></div>}</div>}
             {user.role === "parent" && <span className="v2-top-divider"/>}
             {user.role === "parent" && <button className="v2-user-greeting" onClick={() => openScreen("profile")}><span>Привет,</span><strong>{user.full_name.split(" ")[0]}!</strong></button>}
             {user.role === "student" && <StarVault total={dashboard?.stars || 0} onOpen={() => openScreen("achievements")}/>}
@@ -928,8 +955,8 @@ function AuthenticatedApp({ user, onLogout, externalError, onDismissExternalErro
         </header>
 
         {!isOnline && <div className="offline-banner" role="status"><CircleAlert size={18}/><span><strong>Нет соединения.</strong> Результат не сохранится автоматически и пропадёт при обновлении или закрытии страницы. Не обновляйте страницу; после восстановления связи повторите сохранение.</span></div>}
-        {externalError && <div className="game-error global-request-error" role="alert"><ShieldAlert size={18}/><span>{externalError}</span><button type="button" className="small-button" onClick={onDismissExternalError}>Закрыть</button></div>}
-        {requestError && <div className="game-error global-request-error" role="alert"><ShieldAlert size={18}/><span>{requestError}</span><button type="button" className="small-button" onClick={() => setRequestError("")}>Закрыть</button></div>}
+        {externalError && <div className="game-error global-request-error" role="alert"><ShieldAlert size={18}/><span>{externalError}</span><button type="button" className="small-button" onClick={onDismissExternalError}>{t("common.close")}</button></div>}
+        {requestError && <div className="game-error global-request-error" role="alert"><ShieldAlert size={18}/><span>{requestError}</span><button type="button" className="small-button" onClick={() => setRequestError("")}>{t("common.close")}</button></div>}
 
         <div className="page">
 
@@ -976,6 +1003,7 @@ function roleLabel(role: Role) {
 }
 
 function AuthScreen({ onAuthenticated }: { onAuthenticated: (user: User) => void }) {
+  useLocale();
   const [mode, setMode] = useState<"login" | "register" | "student">("login");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -995,7 +1023,7 @@ function AuthScreen({ onAuthenticated }: { onAuthenticated: (user: User) => void
       const currentUser = await api<User>("/api/auth/me");
       clearLegacyAuth(); onAuthenticated(currentUser);
     } catch (cause) {
-      const message = cause instanceof Error ? cause.message : "Ошибка авторизации";
+      const message = cause instanceof Error ? cause.message : t("errors.auth");
       setError(message === "Не удалось подтвердить авторизацию"
         ? "Вход не сохранился в браузере. Разрешите cookies или откройте Söyle в Safari/Chrome и попробуйте ещё раз."
         : message);
@@ -1003,25 +1031,25 @@ function AuthScreen({ onAuthenticated }: { onAuthenticated: (user: User) => void
     finally { setLoading(false); }
   };
 
-  const heading = mode === "student" ? "Вход для ребёнка" : mode === "login" ? "Вход в аккаунт" : "Регистрация родителя";
+  const heading = mode === "student" ? t("auth.child") : mode === "login" ? t("auth.login") : t("auth.register");
   const switchMode = (next: "login" | "register" | "student") => { setMode(next); setUsername(""); setPassword(""); setError(""); setShowPassword(false); };
   return <div className="auth-page">
     <div className="auth-visual">
       <div className="auth-brand"><BrandLogo variant="primary" width={270} priority /></div>
-      <div className="auth-copy"><span className="pill"><ShieldCheck size={15}/> Спокойная ежедневная практика</span><h1>Помогаем ребёнку<br/><em>понимать и общаться</em></h1><p>Короткие игровые задания на слуховое различение и поддерживаемую коммуникацию.</p><div className="auth-benefits"><span><Check/> Пошаговая программа</span><span><Check/> История практики</span><span><Check/> Отдельный вход ребёнка</span></div></div>
+      <div className="auth-copy"><span className="pill"><ShieldCheck size={15}/> {t("auth.calmPractice")}</span><h1>{t("auth.helpChild")}<br/><em>{t("auth.communicate")}</em></h1><p>{t("auth.description")}</p><div className="auth-benefits"><span><Check/> {t("auth.steps")}</span><span><Check/> {t("auth.history")}</span><span><Check/> {t("auth.separate")}</span></div></div>
       <div className="auth-orbs"><i><Bot/></i><i><ModuleGlyph module="sensory"/></i><i><ModuleGlyph module="mixed"/></i></div>
     </div>
-    <div className="auth-form-wrap"><Link href="/" className="auth-back-home"><ArrowLeft size={17}/> На главную</Link><form className="auth-card" autoComplete="off" onSubmit={submit}>
+    <div className="auth-form-wrap"><LanguagePicker /><Link href="/" className="auth-back-home"><ArrowLeft size={17}/> {t("nav.homeLink")}</Link><form className="auth-card" autoComplete="off" onSubmit={submit}>
       <div className="auth-card-brand"><BrandLogo variant="primary" width={230} priority /></div>
-      <div className="auth-role-tabs" aria-label="Тип входа"><button type="button" className={mode !== "student" ? "active" : ""} onClick={() => switchMode("login")}><UserRoundCheck size={18}/> Взрослый</button><button type="button" className={mode === "student" ? "active" : ""} onClick={() => switchMode("student")}><Backpack size={18}/> Ребёнок</button></div>
-      <span className="kicker">{mode === "register" ? "НОВЫЙ АККАУНТ" : "ДОБРО ПОЖАЛОВАТЬ"}</span><h2>{heading}</h2><p>{mode === "student" ? "Введите логин и цифровой PIN, которые выдал родитель." : mode === "login" ? "Продолжите занятия или посмотрите историю практики ребёнка." : "После регистрации вы создадите профиль ребёнка и выберете направление занятий."}</p>
-      {mode === "register" && <label>Ваше имя<input value={name} onChange={(e) => setName(e.target.value)} placeholder="Например, Айгерим" autoComplete="name" required minLength={2}/></label>}
-      <label>{mode === "student" ? "Логин ребёнка" : "Логин"}<span className="auth-input"><UserRound size={17}/><input type="text" autoComplete="off" autoCapitalize="none" spellCheck={false} data-1p-ignore data-lpignore="true" value={username} onChange={(e) => setUsername(e.target.value.replace(/[^A-Za-z0-9_.-]/g, ""))} placeholder={mode === "student" ? "Логин от родителя" : "Латинские буквы и цифры"} pattern={"[A-Za-z0-9_.\\-]+"} required minLength={3}/></span>{mode === "register" && <small>Не менее 3 символов: латинские буквы, цифры, точка, дефис или подчёркивание.</small>}</label>
-      <label>{mode === "student" ? "PIN-код" : "Пароль"}<span className="auth-input"><KeyRound size={17}/><input type={showPassword ? "text" : "password"} autoComplete="new-password" data-1p-ignore data-lpignore="true" inputMode={mode === "student" ? "numeric" : undefined} value={password} onChange={(e) => setPassword(mode === "student" ? e.target.value.replace(/\D/g, "") : e.target.value)} placeholder={mode === "student" ? "4-12 цифр" : "Введите пароль"} required minLength={mode === "register" ? 8 : mode === "student" ? 4 : 1} maxLength={mode === "student" ? 12 : undefined}/><button type="button" onClick={() => setShowPassword((value) => !value)} aria-label={showPassword ? "Скрыть пароль" : "Показать пароль"}>{showPassword ? <EyeOff size={17}/> : <Eye size={17}/>}</button></span>{mode === "register" && <small>Не менее 8 символов.</small>}</label>
+      <div className="auth-role-tabs" aria-label={t("auth.type")}><button type="button" className={mode !== "student" ? "active" : ""} onClick={() => switchMode("login")}><UserRoundCheck size={18}/> {t("auth.adult")}</button><button type="button" className={mode === "student" ? "active" : ""} onClick={() => switchMode("student")}><Backpack size={18}/> {t("auth.kid")}</button></div>
+      <span className="kicker">{mode === "register" ? t("auth.new") : t("auth.welcome")}</span><h2>{heading}</h2><p>{mode === "student" ? t("auth.childHelp") : mode === "login" ? t("auth.loginHelp") : t("auth.registerHelp")}</p>
+      {mode === "register" && <label>{t("auth.yourName")}<input value={name} onChange={(e) => setName(e.target.value)} placeholder={t("auth.exampleName")} autoComplete="name" required minLength={2}/></label>}
+      <label>{mode === "student" ? t("auth.childLogin") : t("common.login")}<span className="auth-input"><UserRound size={17}/><input type="text" autoComplete="off" autoCapitalize="none" spellCheck={false} data-1p-ignore data-lpignore="true" value={username} onChange={(e) => setUsername(e.target.value.replace(/[^A-Za-z0-9_.-]/g, ""))} placeholder={mode === "student" ? t("auth.parentLogin") : t("auth.latin")} pattern={"[A-Za-z0-9_.\\-]+"} required minLength={3}/></span>{mode === "register" && <small>{t("auth.loginRequirements")}</small>}</label>
+      <label>{mode === "student" ? t("auth.pin") : t("auth.password")}<span className="auth-input"><KeyRound size={17}/><input type={showPassword ? "text" : "password"} autoComplete="new-password" data-1p-ignore data-lpignore="true" inputMode={mode === "student" ? "numeric" : undefined} value={password} onChange={(e) => setPassword(mode === "student" ? e.target.value.replace(/\D/g, "") : e.target.value)} placeholder={mode === "student" ? t("auth.pinLength") : t("auth.enterPassword")} required minLength={mode === "register" ? 8 : mode === "student" ? 4 : 1} maxLength={mode === "student" ? 12 : undefined}/><button type="button" onClick={() => setShowPassword((value) => !value)} aria-label={showPassword ? t("auth.hidePassword") : t("auth.showPassword")}>{showPassword ? <EyeOff size={17}/> : <Eye size={17}/>}</button></span>{mode === "register" && <small>{t("auth.passwordLength")}</small>}</label>
       {error && <div className="auth-error" role="alert"><CircleHelp size={17}/><span>{error}</span></div>}
-      <button className="primary-button auth-submit" disabled={loading}>{loading ? "Подождите…" : mode === "register" ? "Создать аккаунт" : mode === "student" ? "Начать заниматься" : "Войти"}<ChevronRight size={18}/></button>
-      {mode !== "student" && <div className="auth-secondary">{mode === "login" ? "Впервые в Söyle?" : "Уже зарегистрированы?"}<button type="button" onClick={() => switchMode(mode === "login" ? "register" : "login")}>{mode === "login" ? "Создать аккаунт родителя" : "Войти"}</button></div>}
-      {mode === "student" && <div className="student-help"><ShieldCheck size={17}/><span>Логин и PIN ребёнка создаются в кабинете родителя. Электронная почта не нужна.</span></div>}
+      <button className="primary-button auth-submit" disabled={loading}>{loading ? t("common.wait") : mode === "register" ? t("auth.create") : mode === "student" ? t("auth.begin") : t("auth.signIn")}<ChevronRight size={18}/></button>
+      {mode !== "student" && <div className="auth-secondary">{mode === "login" ? t("auth.first") : t("auth.already")}<button type="button" onClick={() => switchMode(mode === "login" ? "register" : "login")}>{mode === "login" ? t("auth.createParent") : t("auth.signIn")}</button></div>}
+      {mode === "student" && <div className="student-help"><ShieldCheck size={17}/><span>{t("auth.pinHelp")}</span></div>}
     </form></div>
   </div>;
 }
@@ -1086,6 +1114,7 @@ function ModuleCard({ module, onClick, index, completed, total }: { module: type
 }
 
 function GamesScreen({ onOpen, onExercise, dashboard, exercises, childMode, parentPracticeMode, onParentPracticeModeChange }: { onOpen: (screen: Screen) => void; onExercise: (exercise: Exercise) => void; dashboard: Dashboard | null; exercises: Exercise[]; childMode: boolean; parentPracticeMode?: ParentPracticeMode; onParentPracticeModeChange?: (mode: ParentPracticeMode) => void }) {
+  useLocale();
   return (
     <div className={`page-enter stack-xl exercise-catalog-page ${childMode ? "child-games" : ""}`}>
       <section className="exercise-catalog-hero">
@@ -1096,7 +1125,8 @@ function GamesScreen({ onOpen, onExercise, dashboard, exercises, childMode, pare
       <button className="child-aac-entry" onClick={() => onOpen("aac")}><Image src="/app-illustrations/aac-help.webp" width={78} height={78} alt="Карточка помощи"/><div><strong>Сказать, что нужно</strong><small>Попросить помощь или перерыв</small></div><ChevronRight size={24}/></button>
       {parentPracticeMode && <section className="practice-mode-card" aria-labelledby="practice-mode-title"><div><Eye size={22}/><span><strong id="practice-mode-title">Кто сейчас выполняет задание?</strong><small>Предпросмотр взрослого никогда не попадает в историю и адаптивный подбор.</small></span></div><div className="practice-mode-options"><button type="button" className={parentPracticeMode === "adult_preview" ? "active" : ""} aria-pressed={parentPracticeMode === "adult_preview"} onClick={() => onParentPracticeModeChange?.("adult_preview")}><Eye size={17}/> Предпросмотр взрослого</button><button type="button" className={parentPracticeMode === "child_practice" ? "active" : ""} aria-pressed={parentPracticeMode === "child_practice"} onClick={() => onParentPracticeModeChange?.("child_practice")}><Baby size={17}/> Практика ребёнка</button></div></section>}
       {exercises.some(e=>e.engine?.mechanic==='scene_search')&&<section aria-label="Исследуй мир"><div className="section-heading"><div><span className="kicker">СЛУШАЙ И НАХОДИ</span><h2>Исследуй мир</h2></div></div><div className="explore-location-grid">{exercises.filter(e=>e.engine?.mechanic==='scene_search').map(e=><button className="explore-location" key={e.id} onClick={()=>onExercise(e)}><Image src={e.engine!.content.exploration!.image.media_ref} alt="" width={640} height={360}/><span><strong>{e.engine!.content.exploration!.title}</strong><small>12 предметов · короткая серия или продолжение</small></span></button>)}</div></section>}
-      {(!exercises.length||exercises.some(e=>e.engine?.mechanic!=='scene_search'))&&<ExerciseLibrary items={exercises.filter(e=>e.engine?.mechanic!=='scene_search')} completedIds={dashboard?.completed_exercise_ids || []} onExercise={onExercise} />}
+      {!exercises.length && <p role="status">{t("content.empty")}</p>}
+      {(exercises.some(e=>e.engine?.mechanic!=='scene_search'))&&<ExerciseLibrary items={exercises.filter(e=>e.engine?.mechanic!=='scene_search')} completedIds={dashboard?.completed_exercise_ids || []} onExercise={onExercise} />}
       {!childMode && <div className="tip-banner"><div className="tip-icon"><Sparkles/></div><div><strong>Подсказка для взрослых</strong><p>Короткую практику можно закончить в любой момент. Частоту, длительность и цели согласуйте со специалистом и состоянием ребёнка.</p></div></div>}
     </div>
   );
@@ -1726,11 +1756,11 @@ function SensoryGame({ exercise, soundEnabled, onBack, onComplete }: { exercise?
 }
 
 const aacCategories = [
-  { id: "favorites", label: "Главные", icon: Star }, { id: "help", label: "Помощь", icon: HandHelping },
-  { id: "wants", label: "Желания", icon: Heart }, { id: "needs", label: "Потребности", icon: Activity },
-  { id: "feelings", label: "Чувства", icon: Smile }, { id: "yes_no", label: "Да / Нет", icon: Check },
-  { id: "people", label: "Люди", icon: Users }, { id: "food", label: "Еда", icon: Apple },
-  { id: "play", label: "Игры", icon: Gamepad2 }, { id: "places", label: "Места", icon: MapPin }, { id: "actions", label: "Действия", icon: Play }, { id: "household", label: "Быт", icon: House },
+  { id: "favorites", get label() { return t("aac.category.favorites"); }, icon: Star }, { id: "help", get label() { return t("aac.category.help"); }, icon: HandHelping },
+  { id: "wants", get label() { return t("aac.category.wants"); }, icon: Heart }, { id: "needs", get label() { return t("aac.category.needs"); }, icon: Activity },
+  { id: "feelings", get label() { return t("aac.category.feelings"); }, icon: Smile }, { id: "yes_no", get label() { return t("aac.category.yes_no"); }, icon: Check },
+  { id: "people", get label() { return t("aac.category.people"); }, icon: Users }, { id: "food", get label() { return t("aac.category.food"); }, icon: Apple },
+  { id: "play", get label() { return t("aac.category.play"); }, icon: Gamepad2 }, { id: "places", get label() { return t("aac.category.places"); }, icon: MapPin }, { id: "actions", get label() { return t("aac.category.actions"); }, icon: Play }, { id: "household", get label() { return t("aac.category.household"); }, icon: House },
 ] as const;
 
 const aacIconByLabel: Record<string, LucideIcon> = {
@@ -1801,6 +1831,7 @@ function AACVisual({ card, compact = false }: { card: AACCard; compact?: boolean
 
 function PhraseGame({ childId, canManage, exercise, freeMode = false, soundEnabled, onBack, onComplete }: { childId?: number; canManage: boolean; exercise?: Exercise; freeMode?: boolean; soundEnabled: boolean; onBack: () => void; onComplete?: (score: number, phrase: string, exerciseId: number, measurement: GameMeasurement) => Promise<unknown> | void }) {
   const pet = useExercisePet();
+  const aacLocale = useLocale();
   const [cards, setCards] = useState<AACCard[]>([]);
   const [selected, setSelected] = useState<AACCard[]>([]);
   const [category, setCategory] = useState<string>(() => ({
@@ -1823,18 +1854,23 @@ function PhraseGame({ childId, canManage, exercise, freeMode = false, soundEnabl
   useEffect(() => () => { speechLifetime.current += 1; stopCurrentSpeech(); }, [childId]);
   const composition = composeAACMessage(selected, freeMode ? "free" : "guided");
   const sentence = composition.valid ? composition.phrase : selected.map((item) => item.label).join(" + ");
+  const boardRequest = useRef(0);
   const loadBoard = useCallback(() => {
+    const requestId = ++boardRequest.current;
     if (!childId) return;
-    api<AACCard[]>(`/api/aac/cards/${childId}`).then(setCards).catch((cause) => {
+    setSelected([]);
+    api<AACCard[]>(`/api/aac/cards/${childId}`).then(value => { if (requestId === boardRequest.current) setCards(value); }).catch((cause) => {
+      if (requestId !== boardRequest.current) return;
       setCards([]);
-      setAacNotice(cause instanceof Error ? `Не удалось загрузить карточки: ${cause.message}` : "Не удалось загрузить карточки");
+      setAacNotice(cause instanceof Error ? t("common.withReason", {message:t("aac.copy080"), reason:cause.message}) : t("aac.copy080"));
     });
-    api<Array<{ id: number; phrase: string }>>(`/api/aac/history/${childId}`).then(setHistory).catch((cause) => {
-      setAacNotice(cause instanceof Error ? `Не удалось загрузить недавние сообщения: ${cause.message}` : "Не удалось загрузить недавние сообщения");
+    api<Array<{ id: number; phrase: string }>>(`/api/aac/history/${childId}`).then(value => { if (requestId === boardRequest.current) setHistory(value); }).catch((cause) => {
+      if (requestId !== boardRequest.current) return;
+      setAacNotice(cause instanceof Error ? t("common.withReason", {message:t("aac.copy081"), reason:cause.message}) : t("aac.copy081"));
     });
   }, [childId]);
-  useEffect(loadBoard, [loadBoard]);
-  const normalizedCardQuery = cardQuery.trim().toLocaleLowerCase("ru");
+  useEffect(() => { const timer = window.setTimeout(loadBoard, 0); return () => { window.clearTimeout(timer); boardRequest.current += 1; }; }, [loadBoard, aacLocale]);
+  const normalizedCardQuery = cardQuery.trim().toLocaleLowerCase(aacLocale);
   const scenario = !freeMode && exercise ? exercise.engine?.content : undefined;
   const scenarioLabels = scenario?.labels?.length ? new Set(scenario.labels) : null;
   const selectedLabels = selected.map((card) => card.label);
@@ -1842,21 +1878,21 @@ function PhraseGame({ childId, canManage, exercise, freeMode = false, soundEnabl
   const canAddGuidedCard = (card: AACCard) => freeMode || canAddAACScenarioCard(scenario, selectedLabels, card.label);
   const composerHint = freeMode
     ? selected.length
-      ? composition.valid ? "Сообщение готово к озвучиванию" : composition.reason
-      : "Выбери одну или несколько карточек ниже"
+      ? composition.valid ? t("aac.copy000") : composition.reason
+      : t("aac.copy001")
     : selected.length && !composition.valid
       ? composition.reason
       : scenarioEvaluation.hint;
   const availableCards = scenarioLabels ? cards.filter((card) => scenarioLabels.has(card.label)) : cards;
-  const visibleCards = (freeMode ? (category === "favorites" ? availableCards.filter((card) => card.favorite || card.is_core) : availableCards.filter((card) => card.category === category)) : availableCards).filter((card) => !normalizedCardQuery || `${card.label} ${card.speech}`.toLocaleLowerCase("ru").includes(normalizedCardQuery));
+  const visibleCards = (freeMode ? (category === "favorites" ? availableCards.filter((card) => card.favorite || card.is_core) : availableCards.filter((card) => card.category === category)) : availableCards).filter((card) => !normalizedCardQuery || `${card.label} ${card.speech}`.toLocaleLowerCase(aacLocale).includes(normalizedCardQuery));
   const safetyCards = ["Помоги", "Перерыв", "Стоп", "Не хочу"].flatMap((label) => scenarioLabels?.has(label) ? [] : cards.find((card) => card.label === label) || []);
   const addCard = (card: AACCard) => {
     if (selected.some((item) => item.id === card.id)) {
-      setAacNotice(`Карточка «${card.label}» уже добавлена. Сначала убери её из сообщения.`);
+      setAacNotice(t("aac.alreadyAdded", {label:card.label}));
       return;
     }
     if (!canAddGuidedCard(card)) {
-      setAacNotice(scenarioEvaluation.complete ? scenarioEvaluation.hint : "Эта карточка не продолжает выбранное сообщение. Убери лишнюю карточку или выбери подходящий следующий шаг.");
+      setAacNotice(scenarioEvaluation.complete ? scenarioEvaluation.hint : t("aac.copy002"));
       return;
     }
     savedRef.current = false;
@@ -1869,7 +1905,7 @@ function PhraseGame({ childId, canManage, exercise, freeMode = false, soundEnabl
       await api(`/api/aac/cards/${card.id}/favorite?child_id=${childId}`, { method: "PATCH", body: JSON.stringify({ favorite: !card.favorite }) });
       setCards((items) => items.map((item) => item.id === card.id ? { ...item, favorite: !item.favorite } : item));
     } catch (cause) {
-      setAacNotice(cause instanceof Error ? `Избранное не изменено: ${cause.message}` : "Избранное не изменено");
+      setAacNotice(cause instanceof Error ? t("common.withReason", {message:t("aac.copy003"), reason:cause.message}) : t("aac.copy003"));
     }
   };
   const sayPhrase = async () => {
@@ -1888,13 +1924,13 @@ function PhraseGame({ childId, canManage, exercise, freeMode = false, soundEnabl
       setAacNotice("");
       const played = await speak(composed.phrase, 0.72, freeMode || soundEnabled, selected[0]?.language || "ru", "exercise", freeMode ? undefined : exercise?.engine?.version_id);
       if (lifetime !== speechLifetime.current) return;
-      if (!played) { setAacNotice("Не удалось озвучить сообщение. Попробуйте ещё раз. Результат не сохранён."); return; }
+      if (!played) { setAacNotice(t("aac.copy005")); return; }
       pet("correct");
       try {
         const saved = await api<{ id: number; phrase: string }>("/api/aac/history", { method: "POST", body: JSON.stringify({ child_id: childId, card_ids: selected.map((item) => item.id), mode: freeMode ? "free" : "guided" }) });
         setHistory((items) => [saved, ...items.filter((item) => item.phrase !== saved.phrase)].slice(0, 12));
       } catch (cause) {
-        setAacNotice(cause instanceof Error ? `Сообщение озвучено, но не добавлено в историю: ${cause.message}` : "Сообщение озвучено, но не добавлено в историю");
+        setAacNotice(cause instanceof Error ? t("common.withReason", {message:t("aac.copy006"), reason:cause.message}) : t("aac.copy006"));
       }
       if (lifetime !== speechLifetime.current) return;
       if (!freeMode && !savedRef.current && exercise && onComplete) {
@@ -1910,7 +1946,7 @@ function PhraseGame({ childId, canManage, exercise, freeMode = false, soundEnabl
         if (result) savedRef.current = true;
       }
     } catch (cause) {
-      if (lifetime === speechLifetime.current) setAacNotice(cause instanceof Error ? cause.message : "Не удалось проверить и озвучить сообщение");
+      if (lifetime === speechLifetime.current) setAacNotice(cause instanceof Error ? cause.message : t("aac.copy007"));
     } finally {
       if (lifetime === speechLifetime.current) setSpeechPending(false);
     }
@@ -1919,17 +1955,17 @@ function PhraseGame({ childId, canManage, exercise, freeMode = false, soundEnabl
     setSpeechPending(true);
     const lifetime = ++speechLifetime.current;
     setSelected([card]);
-    setAacNotice("Озвучиваем сообщение…");
+    setAacNotice(t("aac.copy008"));
     try {
       const played = await speak(card.speech, 0.72, true, card.language || "ru", "exercise", freeMode ? undefined : exercise?.engine?.version_id);
       if (lifetime !== speechLifetime.current) return;
-      setAacNotice(!played ? "Не удалось включить звук. Сообщение показано на экране. Отказ и перерыв нужно уважать." : card.label === "Перерыв" ? "Сообщение озвучено. Можно сделать паузу или вернуться на главную." : ["Нет", "Стоп", "Не хочу"].includes(card.label) ? "Сообщение озвучено. Продолжать действие не нужно." : "Сообщение озвучено.");
-      if (!freeMode && !savedRef.current && exercise && onComplete && ["Перерыв", "Стоп", "Не хочу"].includes(card.label)) {
+      setAacNotice(!played ? t("aac.copy009") : card.label === "Перерыв" ? t("aac.copy010") : [t("common.no"), t("game.stop"), "Не хочу"].includes(card.label) ? t("aac.copy011") : t("aac.copy012"));
+      if (!freeMode && !savedRef.current && exercise && onComplete && [t("specialist.copy006"), t("game.stop"), "Не хочу"].includes(card.label)) {
         const result = await onComplete(0, card.speech, exercise.id, { attempts_count: 0, correct_answers: 0, prompts_used: 0, attempt_status: card.label === "Перерыв" ? "break" : "refused", communication_initiatives: 0 });
         if (result) savedRef.current = true;
       }
     } catch (cause) {
-      if (lifetime === speechLifetime.current) setAacNotice(cause instanceof Error ? cause.message : "Не удалось сохранить перерыв или отказ. Можно вернуться на главную.");
+      if (lifetime === speechLifetime.current) setAacNotice(cause instanceof Error ? cause.message : t("aac.copy013"));
     } finally {
       if (lifetime === speechLifetime.current) setSpeechPending(false);
     }
@@ -1937,12 +1973,12 @@ function PhraseGame({ childId, canManage, exercise, freeMode = false, soundEnabl
   const createCustom = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!childId) return;
-    if (!customImage) { setAacNotice("Добавьте фотографию или рисунок для новой карточки."); return; }
+    if (!customImage) { setAacNotice(t("aac.copy014")); return; }
     try {
-      const card = await api<AACCard>("/api/aac/cards", { method: "POST", body: JSON.stringify({ child_id: childId, ...custom, image: customImage }) });
-      setCards((items) => [...items, card]); setCustom({ label: "", speech: "", category: "needs" }); setCustomImage(""); setCustomOpen(false); setCategory(card.category); setAacNotice("Карточка сохранена.");
+      const card = await api<AACCard>("/api/aac/cards", { method: "POST", body: JSON.stringify({ child_id: childId, ...custom, language: languageOf(getLocale()), image: customImage }) });
+      setCards((items) => [...items, card]); setCustom({ label: "", speech: "", category: "needs" }); setCustomImage(""); setCustomOpen(false); setCategory(card.category); setAacNotice(t("aac.copy015"));
     } catch (cause) {
-      setAacNotice(cause instanceof Error ? cause.message : "Не удалось добавить карточку");
+      setAacNotice(cause instanceof Error ? cause.message : t("aac.copy016"));
     }
   };
   const replayHistory = async (phrase: string) => {
@@ -1951,28 +1987,28 @@ function PhraseGame({ childId, canManage, exercise, freeMode = false, soundEnabl
     setSpeechPending(true);
     try {
       const played = await speak(phrase, 0.72, freeMode || soundEnabled);
-      if (lifetime === speechLifetime.current) setAacNotice(played ? "Сообщение озвучено." : "Не удалось озвучить сообщение. Попробуйте ещё раз.");
+      if (lifetime === speechLifetime.current) setAacNotice(played ? t("aac.copy012") : t("aac.copy017"));
     } finally { if (lifetime === speechLifetime.current) setSpeechPending(false); }
   };
   const activeCategory = aacCategories.find((item) => item.id === category) || aacCategories[0];
   const quickCards = ["Помоги", "Больно", "Стоп", "Перерыв", "Не хочу", "Да"].flatMap((label) => cards.find((card) => card.label === label) || []);
   return <div className="page-enter game-page aac-page redesigned">
-    <GameHeader title={freeMode ? "Мои слова" : exercise?.title || "Учебное AAC-задание"} subtitle={freeMode ? "Карточки, сообщения и любимые слова" : "Практика с карточками AAC"} step={freeMode ? "Всегда доступно" : scenarioEvaluation.stepLabel} onBack={onBack}/>
-    {freeMode && <section className="aac-quick" aria-label="Быстрые сообщения"><div className="aac-quick-head"><div><span className="kicker">СКАЗАТЬ СЕЙЧАС</span><strong>Важное сообщение - одним нажатием</strong></div><ShieldCheck size={22}/></div><div>{quickCards.map((card) => <button key={card.id} onClick={() => sendQuickMessage(card)}><AACVisual card={card} compact/><span>{card.label}</span></button>)}</div>{aacNotice && <p role="status">{aacNotice}{selected[0]?.label === "Перерыв" && <button onClick={onBack}>Сделать паузу</button>}</p>}</section>}
-    {!freeMode && <div className="aac-goal"><div><span className="kicker">ЧТО НУЖНО СДЕЛАТЬ</span><strong>{scenario?.title || exercise?.instruction || "Собери сообщение"}</strong><p>{scenario?.instruction || exercise?.instruction}</p>{scenario?.steps?.length ? <ol className="aac-task-steps">{scenario.steps.map((step) => <li key={step}>{step}</li>)}</ol> : null}</div><Target size={22}/><p>{scenario?.criterion || "Задание завершится после понятного сообщения."}</p>{canManage && <div className="aac-prompt-level" aria-label="Как выполнено"><span>Поддержка взрослого:</span>{([['independent','Самостоятельно'],['minimal','С подсказкой'],['full','Вместе']] as const).map(([value,label]) => <button key={value} className={promptLevel === value ? "active" : ""} aria-pressed={promptLevel === value} onClick={() => setPromptLevel(value)}>{label}</button>)}</div>}</div>}
-    <section className="aac-composer aac-composer-top"><div className="aac-composer-head"><div><span className="kicker">{freeMode ? "МОЁ СООБЩЕНИЕ" : "ТВОЙ ОТВЕТ"}</span><strong>{sentence || "Ответ пока не выбран"}</strong><small>{composerHint}</small></div><div className="aac-composer-actions"><button className="clear-button" disabled={!selected.length || speechPending} onClick={() => { setSelected([]); setAacNotice(""); savedRef.current = false; }}>Очистить всё</button><button className="speak-button" disabled={speechPending || !selected.length || !composition.valid || (!freeMode && !scenarioEvaluation.complete)} onClick={sayPhrase}><Volume2 size={21}/>{speechPending ? "Озвучиваем…" : freeMode ? "Озвучить сообщение" : scenarioEvaluation.actionLabel}</button></div></div><div className={`aac-sentence ${selected.length ? "filled" : ""}`}>{selected.length ? selected.map((card, index) => <button key={`${card.id}-${index}`} disabled={speechPending} aria-label={`Убрать карточку ${card.label}`} onClick={() => { savedRef.current = false; setSelected((items) => items.filter((_, itemIndex) => itemIndex !== index)); }}><span className="aac-card-order">{index + 1}</span><AACVisual card={card} compact/><span>{card.label}</span><X size={13}/></button>) : <div className="aac-empty-message"><MessageCircle size={24}/><div><strong>{freeMode ? "Выбери первую карточку" : scenarioEvaluation.hint}</strong><span>{freeMode ? "Короткое сообщение — полноценное сообщение" : "Выбранные карточки появятся здесь"}</span></div></div>}</div>{selected.length > 0 && <p className="aac-remove-hint">Чтобы убрать одну карточку, нажми на неё в строке сообщения.</p>}</section>
-    {aacNotice && !freeMode && <div className="aac-notice" role="status"><Volume2 size={18}/><span>{aacNotice}</span>{selected[0]?.label === "Перерыв" && <button className="small-button" onClick={onBack}>Сделать паузу</button>}</div>}
+    <GameHeader title={freeMode ? t("nav.words") : exercise?.title || "Учебное AAC-задание"} subtitle={freeMode ? t("aac.copy019") : t("aac.copy020")} step={freeMode ? t("aac.copy021") : scenarioEvaluation.stepLabel} onBack={onBack}/>
+    {freeMode && <section className="aac-quick" aria-label={t("aac.copy022")}><div className="aac-quick-head"><div><span className="kicker">{t("aac.copy023")}</span><strong>{t("aac.copy024")}</strong></div><ShieldCheck size={22}/></div><div>{quickCards.map((card) => <button key={card.id} onClick={() => sendQuickMessage(card)}><AACVisual card={card} compact/><span>{card.label}</span></button>)}</div>{aacNotice && <p role="status">{aacNotice}{selected[0]?.label === "Перерыв" && <button onClick={onBack}>{t("game.break")}</button>}</p>}</section>}
+    {!freeMode && <div className="aac-goal"><div><span className="kicker">{t("aac.copy025")}</span><strong>{scenario?.title || exercise?.instruction || "Собери сообщение"}</strong><p>{scenario?.instruction || exercise?.instruction}</p>{scenario?.steps?.length ? <ol className="aac-task-steps">{scenario.steps.map((step) => <li key={step}>{step}</li>)}</ol> : null}</div><Target size={22}/><p>{scenario?.criterion || "Задание завершится после понятного сообщения."}</p>{canManage && <div className="aac-prompt-level" aria-label={t("aac.copy028")}><span>{t("aac.copy029")}</span>{([['independent',t("specialist.copy002")],['minimal',t("aac.copy030")],['full',t("aac.copy031")]] as const).map(([value,label]) => <button key={value} className={promptLevel === value ? "active" : ""} aria-pressed={promptLevel === value} onClick={() => setPromptLevel(value)}>{label}</button>)}</div>}</div>}
+    <section className="aac-composer aac-composer-top"><div className="aac-composer-head"><div><span className="kicker">{freeMode ? t("aac.copy032") : t("aac.copy033")}</span><strong>{sentence || "Ответ пока не выбран"}</strong><small>{composerHint}</small></div><div className="aac-composer-actions"><button className="clear-button" disabled={!selected.length || speechPending} onClick={() => { setSelected([]); setAacNotice(""); savedRef.current = false; }}>{t("aac.copy035")}</button><button className="speak-button" disabled={speechPending || !selected.length || !composition.valid || (!freeMode && !scenarioEvaluation.complete)} onClick={sayPhrase}><Volume2 size={21}/>{speechPending ? t("aac.copy036") : freeMode ? t("aac.copy037") : scenarioEvaluation.actionLabel}</button></div></div><div className={`aac-sentence ${selected.length ? "filled" : ""}`}>{selected.length ? selected.map((card, index) => <button key={`${card.id}-${index}`} disabled={speechPending} aria-label={`Убрать карточку ${card.label}`} onClick={() => { savedRef.current = false; setSelected((items) => items.filter((_, itemIndex) => itemIndex !== index)); }}><span className="aac-card-order">{index + 1}</span><AACVisual card={card} compact/><span>{card.label}</span><X size={13}/></button>) : <div className="aac-empty-message"><MessageCircle size={24}/><div><strong>{freeMode ? t("aac.copy039") : scenarioEvaluation.hint}</strong><span>{freeMode ? t("aac.copy040") : t("aac.copy041")}</span></div></div>}</div>{selected.length > 0 && <p className="aac-remove-hint">{t("aac.copy042")}</p>}</section>
+    {aacNotice && !freeMode && <div className="aac-notice" role="status"><Volume2 size={18}/><span>{aacNotice}</span>{selected[0]?.label === "Перерыв" && <button className="small-button" onClick={onBack}>{t("game.break")}</button>}</div>}
     {!freeMode ? <div className="aac-guided-workspace">
-      <section className="aac-board guided"><div className="aac-toolbar"><div><span className="kicker">{scenarioEvaluation.complete ? "ШАГ 1 · ОТВЕТ ВЫБРАН" : "ШАГ 1 · ВЫБЕРИ КАРТОЧКУ"}</span><h3>{scenario?.title || "Карточки для задания"}</h3></div><small>{availableCards.length} {availableCards.length === 1 ? "вариант" : availableCards.length < 5 ? "варианта" : "вариантов"}</small></div>
+      <section className="aac-board guided"><div className="aac-toolbar"><div><span className="kicker">{scenarioEvaluation.complete ? t("aac.copy043") : t("aac.copy044")}</span><h3>{scenario?.title || "Карточки для задания"}</h3></div><small>{availableCards.length} {availableCards.length === 1 ? t("aac.copy046") : availableCards.length < 5 ? t("aac.copy047") : t("aac.copy048")}</small></div>
         <div className="aac-card-grid guided">{visibleCards.map((card) => <div className={`aac-card aac-card-${card.category} ${card.is_core ? "core" : ""}`} key={card.id}><button className="aac-card-main" disabled={speechPending || selected.some((item) => item.id === card.id) || !canAddGuidedCard(card)} onClick={() => addCard(card)}><AACVisual card={card}/><strong>{card.label}</strong><small>{card.speech}</small></button></div>)}</div>
       </section>
-      {safetyCards.length > 0 && <section className="aac-guided-safety" aria-label="Важные сообщения"><div><span className="kicker">МОЖНО СКАЗАТЬ В ЛЮБОЙ МОМЕНТ</span><strong>Помощь, перерыв или отказ</strong></div><div>{safetyCards.map((card) => <button key={card.id} onClick={() => sendQuickMessage(card)}><AACVisual card={card} compact/><span>{card.label}</span></button>)}</div></section>}
+      {safetyCards.length > 0 && <section className="aac-guided-safety" aria-label={t("aac.copy049")}><div><span className="kicker">{t("aac.copy050")}</span><strong>{t("aac.copy051")}</strong></div><div>{safetyCards.map((card) => <button key={card.id} onClick={() => sendQuickMessage(card)}><AACVisual card={card} compact/><span>{card.label}</span></button>)}</div></section>}
     </div> : <div className="aac-workspace">
-      <aside className="aac-category-panel"><div><span className="kicker">МОИ КАРТОЧКИ</span><h3>{category === "favorites" ? "Главные и любимые" : activeCategory.label}</h3></div><nav className="aac-tabs primary-aac-tabs" aria-label="Основные категории карточек"><button className={category === "favorites" ? "active" : ""} aria-pressed={category === "favorites"} onClick={() => { setCategory("favorites"); setCardQuery(""); }}><Star size={19}/><span>Главные</span><small>{availableCards.filter((card) => card.favorite || card.is_core).length}</small></button><button className={categoriesOpen ? "active" : ""} aria-expanded={categoriesOpen} aria-controls="more-aac-categories" onClick={() => setCategoriesOpen((value) => !value)}><Plus size={19}/><span>Ещё</span><small>{aacCategories.length - 1}</small></button></nav>{categoriesOpen && <nav id="more-aac-categories" className="aac-tabs more-aac-tabs" aria-label="Дополнительные категории">{aacCategories.filter((item) => item.id !== "favorites").map((item) => { const Icon = item.icon; const count = availableCards.filter((card) => card.category === item.id).length; return <button key={item.id} className={category === item.id ? "active" : ""} aria-pressed={category === item.id} onClick={() => { setCategory(item.id); setCardQuery(""); }}><Icon size={18}/><span>{item.label}</span><small>{count}</small></button>; })}</nav>}{history.length > 0 && <div className="aac-history"><span className="kicker">НЕДАВНИЕ</span>{history.slice(0,3).map((item) => <button key={item.id} onClick={() => replayHistory(item.phrase)}><RotateCcw size={14}/><span>{item.phrase}</span></button>)}</div>}</aside>
-      <section className="aac-board"><div className="aac-toolbar"><div><span className="kicker">{category === "favorites" ? "БЫСТРЫЙ ДОСТУП" : "КАТЕГОРИЯ"}</span><h3>{category === "favorites" ? "Выбери карточку" : activeCategory.label}</h3></div><div className="aac-tools">{(categoriesOpen || canManage) && <label className="aac-search"><Search size={16}/><input value={cardQuery} onChange={(event) => setCardQuery(event.target.value)} placeholder="Найти слово" aria-label="Найти слово"/></label>}<button className="small-button" onClick={() => document.querySelector<HTMLElement>(".aac-page")?.requestFullscreen?.()}><LayoutDashboard size={15}/> На весь экран</button>{canManage && freeMode && <button className="small-button" onClick={() => setCustomOpen((value) => !value)}><Plus size={15}/> Своя карточка</button>}</div></div>
-        {customOpen && <form className="aac-custom-form" onSubmit={createCustom}><label>Название<input value={custom.label} onChange={(e) => setCustom({...custom,label:e.target.value})} placeholder="Например, моя игрушка" required/></label><label>Что сказать<input value={custom.speech} onChange={(e) => setCustom({...custom,speech:e.target.value})} placeholder="Я хочу мою игрушку" required/></label><label>Категория<select value={custom.category} onChange={(e) => setCustom({...custom,category:e.target.value})}>{aacCategories.filter((item) => item.id !== "favorites").map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select></label><label className="aac-custom-photo">Картинка<input type="file" accept="image/png,image/jpeg,image/webp" required={!customImage} disabled={imageBusy} onChange={async (event) => { const file = event.target.files?.[0]; if (!file) return; setImageBusy(true); try { setCustomImage(await compressPhoto(file)); setAacNotice(""); } catch (cause) { setAacNotice(cause instanceof Error ? cause.message : "Не удалось обработать изображение"); } finally { setImageBusy(false); } }}/>{customImage && <Image src={customImage} alt="Предпросмотр карточки" width={64} height={64} unoptimized/>}</label><button className="primary-button" disabled={imageBusy || !customImage}>{imageBusy ? "Подготавливаем…" : "Сохранить карточку"}</button></form>}
+      <aside className="aac-category-panel"><div><span className="kicker">{t("aac.copy052")}</span><h3>{category === "favorites" ? t("aac.copy053") : activeCategory.label}</h3></div><nav className="aac-tabs primary-aac-tabs" aria-label={t("aac.copy054")}><button className={category === "favorites" ? "active" : ""} aria-pressed={category === "favorites"} onClick={() => { setCategory("favorites"); setCardQuery(""); }}><Star size={19}/><span>{t("aac.copy055")}</span><small>{availableCards.filter((card) => card.favorite || card.is_core).length}</small></button><button className={categoriesOpen ? "active" : ""} aria-expanded={categoriesOpen} aria-controls="more-aac-categories" onClick={() => setCategoriesOpen((value) => !value)}><Plus size={19}/><span>{t("nav.more")}</span><small>{aacCategories.length - 1}</small></button></nav>{categoriesOpen && <nav id="more-aac-categories" className="aac-tabs more-aac-tabs" aria-label={t("aac.copy056")}>{aacCategories.filter((item) => item.id !== "favorites").map((item) => { const Icon = item.icon; const count = availableCards.filter((card) => card.category === item.id).length; return <button key={item.id} className={category === item.id ? "active" : ""} aria-pressed={category === item.id} onClick={() => { setCategory(item.id); setCardQuery(""); }}><Icon size={18}/><span>{item.label}</span><small>{count}</small></button>; })}</nav>}{history.length > 0 && <div className="aac-history"><span className="kicker">{t("aac.copy057")}</span>{history.slice(0,3).map((item) => <button key={item.id} onClick={() => replayHistory(item.phrase)}><RotateCcw size={14}/><span>{item.phrase}</span></button>)}</div>}</aside>
+      <section className="aac-board"><div className="aac-toolbar"><div><span className="kicker">{category === "favorites" ? t("aac.copy058") : t("aac.copy059")}</span><h3>{category === "favorites" ? t("aac.copy060") : activeCategory.label}</h3></div><div className="aac-tools">{(categoriesOpen || canManage) && <label className="aac-search"><Search size={16}/><input value={cardQuery} onChange={(event) => setCardQuery(event.target.value)} placeholder={t("aac.copy061")} aria-label={t("aac.copy061")}/></label>}<button className="small-button" onClick={() => document.querySelector<HTMLElement>(".aac-page")?.requestFullscreen?.()}><LayoutDashboard size={15}/> {t("aac.copy062")}</button>{canManage && freeMode && <button className="small-button" onClick={() => setCustomOpen((value) => !value)}><Plus size={15}/> {t("aac.copy063")}</button>}</div></div>
+        {customOpen && <form className="aac-custom-form" onSubmit={createCustom}><label>{t("aac.copy064")}<input value={custom.label} onChange={(e) => setCustom({...custom,label:e.target.value})} placeholder={t("aac.copy065")} required/></label><label>{t("aac.copy066")}<input value={custom.speech} onChange={(e) => setCustom({...custom,speech:e.target.value})} placeholder={t("aac.copy067")} required/></label><label>{t("aac.copy068")}<select value={custom.category} onChange={(e) => setCustom({...custom,category:e.target.value})}>{aacCategories.filter((item) => item.id !== "favorites").map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select></label><label className="aac-custom-photo">{t("aac.copy069")}<input type="file" accept="image/png,image/jpeg,image/webp" required={!customImage} disabled={imageBusy} onChange={async (event) => { const file = event.target.files?.[0]; if (!file) return; setImageBusy(true); try { setCustomImage(await compressPhoto(file)); setAacNotice(""); } catch (cause) { setAacNotice(cause instanceof Error ? cause.message : t("aac.copy070")); } finally { setImageBusy(false); } }}/>{customImage && <Image src={customImage} alt={t("aac.copy071")} width={64} height={64} unoptimized/>}</label><button className="primary-button" disabled={imageBusy || !customImage}>{imageBusy ? t("aac.copy072") : t("aac.copy073")}</button></form>}
         <div className="aac-card-grid">{visibleCards.map((card) => <div className={`aac-card aac-card-${card.category} ${card.is_core ? "core" : ""}`} key={card.id}><button className="aac-card-main" disabled={selected.some((item) => item.id === card.id)} onClick={() => addCard(card)}><AACVisual card={card}/><strong>{card.label}</strong><small>{card.speech}</small></button><button className={`aac-favorite ${card.favorite ? "active" : ""}`} onClick={() => toggleFavorite(card)} aria-label={card.favorite ? `Убрать ${card.label} из избранного` : `Добавить ${card.label} в избранное`}><Star size={15} fill={card.favorite ? "currentColor" : "none"}/></button></div>)}</div>
-        {!visibleCards.length && <div className="aac-empty"><Search size={24}/><strong>Карточки не найдены</strong><span>Измените поиск или выберите другую категорию.</span></div>}
+        {!visibleCards.length && <div className="aac-empty"><Search size={24}/><strong>{t("aac.copy078")}</strong><span>{t("aac.copy079")}</span></div>}
       </section>
     </div>}
   </div>;
@@ -2430,10 +2466,11 @@ function AdminScreen() {
 }
 
 function ProfileScreen({ user, child, dashboard, settings, onOpen, onLogout }: { user: User; child?: Child; dashboard: Dashboard | null; settings: AppSettings; onOpen: (screen: Screen) => void; onLogout: () => void }) {
+  useLocale();
   const age = child ? Math.max(0, new Date().getFullYear() - new Date(child.birth_date).getFullYear() - (new Date() < new Date(new Date().getFullYear(), new Date(child.birth_date).getMonth(), new Date(child.birth_date).getDate()) ? 1 : 0)) : null;
   const primaryModule = child ? modules.find((item) => item.id === child.primary_module)?.title : null;
-  const languageName = { ru: "Русский", en: "English", kk: "Қазақша" }[settings.language];
-  const themeName = { peach: "Спокойная", ocean: "Океан", lavender: "Лаванда", contrast: "Высокий контраст" }[settings.theme];
+  const languageName = { ru: t("landing.copy146"), en: "English", kk: "Қазақша" }[settings.language];
+  const themeName = { peach: t("theme.calm"), ocean: t("theme.ocean"), lavender: t("theme.lavender"), contrast: "Высокий контраст" }[settings.theme];
   if (user.role === "student") return <div className="v2-screen v2-child-profile page-enter">
     <header className="v2-child-profile-hero">
       <Image src="/app-illustrations/profile-child-hero.webp" alt="" fill priority unoptimized sizes="(max-width: 760px) 100vw, 75vw"/>
@@ -2444,83 +2481,86 @@ function ProfileScreen({ user, child, dashboard, settings, onOpen, onLogout }: {
       <article><span><Gamepad2/></span><strong>{dashboard?.total_sessions || 0}</strong><small>сохранённых занятий</small></article>
       <article><span><Clock3/></span><strong>{dashboard?.total_minutes || 0}</strong><small>минут практики</small></article>
     </section>
-    <section className="v2-child-profile-destinations"><div><span className="v2-kicker">ЧТО ПОСМОТРЕТЬ</span><h2>Моё пространство</h2></div><div className="v2-child-profile-links"><button type="button" onClick={() => onOpen("stories")}><BookOpen/><span><strong>Истории</strong><small>Читать и выбирать</small></span><ChevronRight/></button><button type="button" onClick={() => onOpen("world")}><ImageIcon/><span><strong>Мой мир</strong><small>Знакомые фотографии</small></span><ChevronRight/></button><button type="button" onClick={() => onOpen("aac")}><MessageCircle/><span><strong>Мои слова</strong><small>Сказать, что нужно</small></span><ChevronRight/></button><button type="button" onClick={() => onOpen("settings")}><Settings/><span><strong>Настройки</strong><small>Звук и оформление</small></span><ChevronRight/></button></div></section>
-    <section className="v2-child-profile-account"><div><span className="v2-kicker">МОИ ДАННЫЕ</span><h2>Об аккаунте</h2><p>Имя: <strong>{user.full_name}</strong> · Логин: <strong>{user.username}</strong>{age !== null ? <> · Возраст: <strong>{age} лет</strong></> : null}</p><p>Язык: <strong>{languageName}</strong> · Оформление: <strong>{themeName}</strong></p></div><button type="button" onClick={onLogout}><LogOut/> Выйти из аккаунта</button></section>
+    <section className="v2-child-profile-destinations"><div><span className="v2-kicker">ЧТО ПОСМОТРЕТЬ</span><h2>Моё пространство</h2></div><div className="v2-child-profile-links"><button type="button" onClick={() => onOpen("stories")}><BookOpen/><span><strong>{t("nav.stories")}</strong><small>Читать и выбирать</small></span><ChevronRight/></button><button type="button" onClick={() => onOpen("world")}><ImageIcon/><span><strong>{t("nav.world")}</strong><small>Знакомые фотографии</small></span><ChevronRight/></button><button type="button" onClick={() => onOpen("aac")}><MessageCircle/><span><strong>{t("nav.words")}</strong><small>Сказать, что нужно</small></span><ChevronRight/></button><button type="button" onClick={() => onOpen("settings")}><Settings/><span><strong>{t("nav.settings")}</strong><small>Звук и оформление</small></span><ChevronRight/></button></div></section>
+    <section className="v2-child-profile-account"><div><span className="v2-kicker">МОИ ДАННЫЕ</span><h2>Об аккаунте</h2><p>Имя: <strong>{user.full_name}</strong> · Логин: <strong>{user.username}</strong>{age !== null ? <> · Возраст: <strong>{age} лет</strong></> : null}</p><p>Язык: <strong>{languageName}</strong> · Оформление: <strong>{themeName}</strong></p></div><button type="button" onClick={onLogout}><LogOut/> {t("common.logoutAccount")}</button></section>
   </div>;
   return <div className="page-enter profile-page">
     <PageTitle eyebrow="ПРОФИЛЬ" title="Личный кабинет" subtitle="Информация об аккаунте, ребёнке и текущих настройках."/>
     <section className="profile-hero-card">
       <div className="profile-avatar-large">{user.full_name[0]}</div>
       <div><span className="kicker">{roleLabel(user.role)}</span><h2>{user.full_name}</h2><p>@{user.username}</p></div>
-      <button className="small-button" onClick={() => onOpen("settings")}><Settings size={16}/> Настройки</button>
+      <button className="small-button" onClick={() => onOpen("settings")}><Settings size={16}/> {t("nav.settings")}</button>
     </section>
     <div className="profile-grid">
-      <section className="profile-info-card"><div className="profile-card-title"><UserRound size={20}/><div><span className="kicker">АККАУНТ</span><h3>Основная информация</h3></div></div><dl><div><dt>Имя</dt><dd>{user.full_name}</dd></div><div><dt>Логин</dt><dd>{user.username}</dd></div><div><dt>Роль</dt><dd>{roleLabel(user.role)}</dd></div><div><dt>Язык</dt><dd>{languageName}</dd></div><div><dt>Оформление</dt><dd>{themeName}</dd></div></dl></section>
+      <section className="profile-info-card"><div className="profile-card-title"><UserRound size={20}/><div><span className="kicker">{t("settings.account")}</span><h3>Основная информация</h3></div></div><dl><div><dt>{t("common.name")}</dt><dd>{user.full_name}</dd></div><div><dt>{t("common.login")}</dt><dd>{user.username}</dd></div><div><dt>{t("common.role")}</dt><dd>{roleLabel(user.role)}</dd></div><div><dt>{t("settings.language")}</dt><dd>{languageName}</dd></div><div><dt>Оформление</dt><dd>{themeName}</dd></div></dl></section>
       {child && <section className="profile-info-card child-profile-card"><div className="profile-card-title"><Baby size={20}/><div><span className="kicker">ПРОФИЛЬ РЕБЁНКА</span><h3>{child.name}</h3></div></div><dl><div><dt>Возраст</dt><dd>{age} лет</dd></div><div><dt>Основное направление</dt><dd>{primaryModule}</dd></div><div><dt>Всего занятий</dt><dd>{dashboard?.total_sessions || 0}</dd></div><div><dt>Минут практики</dt><dd>{dashboard?.total_minutes || 0}</dd></div><div><dt>Звёзд</dt><dd>{dashboard?.stars || 0}</dd></div></dl>{user.role === "parent" && <button className="secondary-button wide" onClick={() => onOpen("parent")}>Открыть кабинет родителя <ChevronRight size={16}/></button>}</section>}
     </div>
     {user.role === "parent" && <section className="parent-more-grid profile-quick-links" aria-label="Дополнительные возможности">
       <button onClick={() => onOpen("goals")}><span><Target/></span><div><strong>Цели и занятия</strong><small>Индивидуальные цели и короткие планы</small></div><ChevronRight/></button>
       <button onClick={() => onOpen("ai")}><span><Bot/></span><div><strong>Локальный помощник</strong><small>Подсказки по прозрачным безопасным правилам</small></div><ChevronRight/></button>
       <button onClick={() => onOpen("parent")}><span><ShieldCheck/></span><div><strong>Данные ребёнка</strong><small>Доступ, согласия, экспорт и приватность</small></div><ChevronRight/></button>
-      <button onClick={() => onOpen("settings")}><span><Settings/></span><div><strong>Настройки</strong><small>Звук, спокойный режим и оформление</small></div><ChevronRight/></button>
+      <button onClick={() => onOpen("settings")}><span><Settings/></span><div><strong>{t("nav.settings")}</strong><small>Звук, спокойный режим и оформление</small></div><ChevronRight/></button>
     </section>}
-    <button className="profile-logout" onClick={onLogout}><LogOut size={17}/> Выйти из аккаунта</button>
+    <button className="profile-logout" onClick={onLogout}><LogOut size={17}/> {t("common.logoutAccount")}</button>
   </div>;
 }
 
 function SettingsScreen({ petPreferences, role, settings, saving, onChange, onLogout, onOpenParent }: { petPreferences: ReturnType<typeof usePetPreferences>; role: Role; settings: AppSettings; saving: boolean; onChange: (settings: AppSettings) => void; onLogout: () => void; onOpenParent: () => void }) {
+  useLocale();
   const themes = [
-    { id: "peach", name: "Спокойная", description: "Нейтральный фон и синий акцент", colors: ["#1668c7", "#eaf3ff", "#ffffff"] },
-    { id: "ocean", name: "Океан", description: "Приглушённый бирюзовый акцент", colors: ["#2d7180", "#e5f2f4", "#ffffff"] },
-    { id: "lavender", name: "Лаванда", description: "Мягкий фиолетовый акцент", colors: ["#6759aa", "#f0eef8", "#ffffff"] },
-    { id: "contrast", name: "Контрастная", description: "Чёткие границы и более тёмный текст", colors: ["#164f91", "#dcecff", "#ffffff"] },
+    { id: "peach", name: t("theme.calm"), description: t("theme.calmDescription"), colors: ["#1668c7", "#eaf3ff", "#ffffff"] },
+    { id: "ocean", name: t("theme.ocean"), description: t("theme.oceanDescription"), colors: ["#2d7180", "#e5f2f4", "#ffffff"] },
+    { id: "lavender", name: t("theme.lavender"), description: t("theme.lavenderDescription"), colors: ["#6759aa", "#f0eef8", "#ffffff"] },
+    { id: "contrast", name: t("theme.contrast"), description: t("theme.contrastDescription"), colors: ["#164f91", "#dcecff", "#ffffff"] },
   ] as const;
-  const languages = [{id:"ru",short:"RU",name:"Русский - проверенная версия"}] as const;
+  const languages = [{id:"ru",short:"RU",name:t("landing.copy146")}, {id:"kk",short:"ҚАЗ",name:"Қазақша"}] as const;
   const update = <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => onChange({ ...settings, [key]: value });
   const activeTheme = themes.find((item) => item.id === settings.theme) || themes[0];
   if (role === "student") return <div className="page-enter child-settings-page">
-    <PageTitle eyebrow="МОИ НАСТРОЙКИ" title="Как тебе удобнее?" subtitle="Выбери звук, спокойный режим и поведение питомца."/>
+    <PageTitle eyebrow={t("settings.childHeading")} title={t("settings.childTitle")} subtitle={t("settings.childDescription")}/>
     <div className="child-settings-grid">
-      <section className="child-settings-section"><div className="settings-section-heading"><span className="kicker">ВО ВРЕМЯ ЗАНЯТИЯ</span><h2>Звук и движение</h2></div><ChildSettingToggle title="Звуковые подсказки" description="Слушать слова и сообщения" value={settings.sound_enabled} onChange={(value) => update("sound_enabled", value)}/><ChildSettingToggle title="Спокойный режим" description="Без звёзд и лишней анимации" value={settings.calm_mode} onChange={(value) => update("calm_mode", value)}/></section>
+      <section className="child-settings-section"><div className="settings-section-heading"><span className="kicker">{t("settings.during")}</span><h2>{t("settings.soundMotion")}</h2></div><ChildSettingToggle title={t("settings.soundHints")} description={t("settings.listen")} value={settings.sound_enabled} onChange={(value) => update("sound_enabled", value)}/><ChildSettingToggle title={t("settings.calm")} description={t("settings.lessMotion")} value={settings.calm_mode} onChange={(value) => update("calm_mode", value)}/></section>
+      <section className="child-settings-section"><LanguagePicker value={normalizeLocale(settings.language)} onChange={locale => update("language", languageOf(locale))}/></section>
       <PetSettings preferences={petPreferences}/>
     </div>
-    <div className="child-settings-footer"><span aria-live="polite">{saving ? "Сохраняем…" : "Настройки сохранены"}</span><button type="button" className="profile-logout" onClick={onLogout}><LogOut size={18}/> Выйти</button></div>
+    <div className="child-settings-footer"><span aria-live="polite">{saving ? t("common.saving") : t("common.saved")}</span><button type="button" className="profile-logout" onClick={onLogout}><LogOut size={18}/> {t("common.logout")}</button></div>
   </div>;
   return <div className="page-enter settings-page redesigned-settings">
-    <PageTitle eyebrow="НАСТРОЙКИ" title="Удобно для вашей семьи" subtitle="Оформление и параметры занятий применяются сразу и сохраняются в аккаунте."/>
+    <PageTitle eyebrow={t("settings.heading")} title={t("settings.family")} subtitle={t("settings.description")}/>
     <div className="settings-layout">
-      <aside className="settings-summary" aria-label="Текущие настройки">
+      <aside className="settings-summary" aria-label={t("settings.current")}>
         <span className="settings-summary-icon"><Paintbrush size={24}/></span>
-        <span className="kicker">СЕЙЧАС ВКЛЮЧЕНО</span>
+        <span className="kicker">{t("settings.enabledNow")}</span>
         <h2>{activeTheme.name}</h2>
         <p>{activeTheme.description}</p>
         <dl>
-          <div><dt>Язык</dt><dd>Русский</dd></div>
-          <div><dt>Звук</dt><dd>{settings.sound_enabled ? "Включён" : "Выключен"}</dd></div>
-          <div><dt>Анимация</dt><dd>{settings.calm_mode ? "Сокращена" : "Обычная"}</dd></div>
+          <div><dt>{t("settings.language")}</dt><dd>{settings.language === "kk" ? "Қазақша" : t("landing.copy146")}</dd></div>
+          <div><dt>{t("settings.sound")}</dt><dd>{settings.sound_enabled ? t("common.enabled") : t("common.disabled")}</dd></div>
+          <div><dt>{t("settings.animation")}</dt><dd>{settings.calm_mode ? t("settings.reduced") : t("settings.normal")}</dd></div>
         </dl>
-        <small aria-live="polite">{saving ? <Timer size={15}/> : <CircleCheck size={15}/>} {saving ? "Сохраняем изменения…" : "Все изменения сохранены"}</small>
+        <small aria-live="polite">{saving ? <Timer size={15}/> : <CircleCheck size={15}/>} {saving ? t("settings.savingChanges") : t("settings.allSaved")}</small>
       </aside>
       <div className="settings-sections">
+        {(role === "admin" || role === "specialist") && <TranslationEditor specialist={role === "specialist"}/>}
         <section className="settings-section theme-setting">
-          <div className="settings-section-heading"><div><span className="kicker">ОФОРМЛЕНИЕ</span><h3>Цветовая тема</h3><p>Меняется фон, акцентные кнопки и выбранные элементы. Цвета успеха и ошибок остаются привычными.</p></div></div>
-          <div className="theme-options" role="group" aria-label="Цветовая тема">{themes.map((item) => <button type="button" key={item.id} className={settings.theme === item.id ? "active" : ""} aria-pressed={settings.theme === item.id} onClick={() => update("theme", item.id as AppSettings["theme"])}><span className="theme-swatch">{item.colors.map((color) => <i key={color} style={{background:color}}/>)}</span><span className="theme-copy"><strong>{item.name}</strong><small>{item.description}</small></span>{settings.theme === item.id && <span className="theme-selected"><Check size={14}/> Выбрано</span>}</button>)}</div>
+          <div className="settings-section-heading"><div><span className="kicker">{t("settings.appearance")}</span><h3>{t("settings.color")}</h3><p>{t("settings.colorDescription")}</p></div></div>
+          <div className="theme-options" role="group" aria-label={t("settings.color")}>{themes.map((item) => <button type="button" key={item.id} className={settings.theme === item.id ? "active" : ""} aria-pressed={settings.theme === item.id} onClick={() => update("theme", item.id as AppSettings["theme"])}><span className="theme-swatch">{item.colors.map((color) => <i key={color} style={{background:color}}/>)}</span><span className="theme-copy"><strong>{item.name}</strong><small>{item.description}</small></span>{settings.theme === item.id && <span className="theme-selected"><Check size={14}/> {t("common.selected")}</span>}</button>)}</div>
         </section>
         <section className="settings-section preference-setting">
-          <div className="settings-section-heading"><span className="kicker">ЗАНЯТИЯ И ДОСТУПНОСТЬ</span><h3>Комфорт во время практики</h3></div>
-          <SettingRow icon={<Volume2/>} title="Звуковые подсказки" text="Голос и мягкие сигналы во время задания" value={settings.sound_enabled} onChange={(value) => update("sound_enabled", value)}/>
-          <SettingRow icon={<Camera/>} title="Разрешать запуск камеры" text="Отдельная настройка устройства; родительское согласие всё равно обязательно" value={settings.camera_enabled} onChange={(value) => update("camera_enabled", value)}/>
-          <SettingRow icon={<Sparkles/>} title="Спокойный режим" text="Меньше анимации и визуальных эффектов" value={settings.calm_mode} onChange={(value) => update("calm_mode", value)}/>
+          <div className="settings-section-heading"><span className="kicker">{t("settings.accessibility")}</span><h3>{t("settings.comfort")}</h3></div>
+          <SettingRow icon={<Volume2/>} title={t("settings.soundHints")} text={t("settings.soundDescription")} value={settings.sound_enabled} onChange={(value) => update("sound_enabled", value)}/>
+          <SettingRow icon={<Camera/>} title={t("settings.camera")} text={t("settings.cameraDescription")} value={settings.camera_enabled} onChange={(value) => update("camera_enabled", value)}/>
+          <SettingRow icon={<Sparkles/>} title={t("settings.calm")} text={t("settings.calmDescription")} value={settings.calm_mode} onChange={(value) => update("calm_mode", value)}/>
         </section>
         <section className="settings-section language-setting">
-          <div className="settings-section-heading"><span className="kicker">ЯЗЫК И КОНТЕНТ</span><h3>Проверенная версия интерфейса</h3><p>Другие языки появятся после проверки носителями языка и AAC-специалистом.</p></div>
+          <div className="settings-section-heading"><span className="kicker">{t("settings.content")}</span><h3>{t("settings.languageHeading")}</h3><p>{t("settings.languageHelp")}</p></div>
           <div className="language-options">{languages.map((item) => <button type="button" key={item.id} className={settings.language === item.id ? "active" : ""} aria-pressed={settings.language === item.id} onClick={() => update("language", item.id)}><b>{item.short}</b><span>{item.name}</span><Check size={16}/></button>)}</div>
         </section>
         <section className="settings-section account-setting">
-          <div className="settings-section-heading"><span className="kicker">АККАУНТ</span><h3>Данные и сеанс</h3></div>
-          <div className="setting-row"><div className="setting-icon"><LockKeyhole/></div><div><strong>Данные защищены</strong><span>Видео не сохраняется; результаты находятся в профиле ребёнка</span></div><span className="status active">Защищено</span></div>
-          {role === "parent" && <div className="setting-row"><div className="setting-icon"><ShieldCheck/></div><div><strong>Приватность и разрешения</strong><span>Согласие на сохранение, камера, экспорт и удаление данных</span></div><button type="button" className="small-button" onClick={onOpenParent}>Открыть</button></div>}
-          <div className="setting-row"><div className="setting-icon danger"><LogOut/></div><div><strong>Выйти из аккаунта</strong><span>На этом устройстве потребуется повторный вход</span></div><button type="button" className="small-button" onClick={onLogout}>Выйти</button></div>
+          <div className="settings-section-heading"><span className="kicker">{t("settings.account")}</span><h3>{t("settings.session")}</h3></div>
+          <div className="setting-row"><div className="setting-icon"><LockKeyhole/></div><div><strong>{t("settings.protected")}</strong><span>{t("settings.protectedDescription")}</span></div><span className="status active">{t("settings.secure")}</span></div>
+          {role === "parent" && <div className="setting-row"><div className="setting-icon"><ShieldCheck/></div><div><strong>{t("settings.privacy")}</strong><span>{t("settings.privacyDescription")}</span></div><button type="button" className="small-button" onClick={onOpenParent}>{t("common.open")}</button></div>}
+          <div className="setting-row"><div className="setting-icon danger"><LogOut/></div><div><strong>{t("common.logoutAccount")}</strong><span>{t("settings.logoutDescription")}</span></div><button type="button" className="small-button" onClick={onLogout}>{t("common.logout")}</button></div>
         </section>
       </div>
     </div>

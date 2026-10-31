@@ -11,6 +11,7 @@ export default defineConfig({
   use: {
     baseURL: process.env.SOYLE_TEST_URL || "http://localhost:3003",
     reducedMotion: "reduce",
+    storageState: { cookies: [], origins: [{ origin: process.env.SOYLE_TEST_URL || "http://localhost:3003", localStorage: [{name:"soyle-language",value:"ru-RU"}] }] },
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
   },

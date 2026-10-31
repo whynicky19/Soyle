@@ -1,3 +1,5 @@
+"use client";
+import { useLocale } from "@/lib/i18n";
 import Image from "next/image";
 
 const variants = {
@@ -42,10 +44,15 @@ export function BrandLogo({
   className = "",
   priority = false,
 }: BrandLogoProps) {
+  const locale = useLocale();
   const asset = variants[variant];
   const displayWidth = width ?? asset.display;
   const file =
     tone === "light" && variant === "primary" ? "soyle-logo-light" : asset.file;
+  if (locale === "kk-KZ" && variant !== "icon" && variant !== "small") return <span className={`soyle-local-brand ${className}`} style={{width:displayWidth}} aria-label={decorative ? undefined : "Söyle — қарым-қатынас пен жаттығу"} aria-hidden={decorative || undefined}>
+    <Image src="/branding/soyle-mascot.webp" width={80} height={80} alt="" {...(priority ? {preload:true} : {})}/>
+    <span>Söyle<small>ҚАРЫМ-ҚАТЫНАС ПЕН ЖАТТЫҒУ</small></span>
+  </span>;
   const image = (
     <Image
       src={`/branding/${file}.webp`}

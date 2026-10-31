@@ -1138,6 +1138,26 @@ def _migration_39_library_audio_snapshot(db) -> None:
     )""")
 
 
+def _migration_40_translations(db) -> None:
+    db.execute("""CREATE TABLE IF NOT EXISTS exercise_translations (
+        source_version_id BIGINT NOT NULL REFERENCES exercise_versions(id) ON DELETE CASCADE,
+        locale TEXT NOT NULL CHECK(locale='kk-KZ'),
+        revision INTEGER NOT NULL DEFAULT 1,
+        payload_json TEXT NOT NULL,
+        status TEXT NOT NULL CHECK(status IN ('draft','needs_review','approved')),
+        updated_by BIGINT REFERENCES users(id), updated_at TEXT NOT NULL,
+        reviewed_by BIGINT REFERENCES users(id), reviewed_at TEXT, review_comment TEXT,
+        PRIMARY KEY(source_version_id,locale)
+    )""")
+    db.execute("""CREATE TABLE IF NOT EXISTS exercise_translation_history (
+        source_version_id BIGINT NOT NULL REFERENCES exercise_versions(id) ON DELETE CASCADE,
+        locale TEXT NOT NULL, revision INTEGER NOT NULL, snapshot_json TEXT NOT NULL,
+        recorded_at TEXT NOT NULL, PRIMARY KEY(source_version_id,locale,revision)
+    )""")
+    from .localization import seed_translation_drafts
+    seed_translation_drafts(db)
+
+
 MIGRATIONS = (
     (9, _migration_9_exercise_engine),
     (10, _migration_10_content_contracts),
@@ -1170,6 +1190,7 @@ MIGRATIONS = (
     (37, _migration_37_azure_tts),
     (38, _migration_38_audio_review),
     (39, _migration_39_library_audio_snapshot),
+    (40, _migration_40_translations),
 )
 LATEST_SCHEMA_VERSION = MIGRATIONS[-1][0]
 

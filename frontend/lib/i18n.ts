@@ -1,19 +1,11 @@
 "use client";
 
-import { useEffect } from "react";
-
-export type Language = "ru" | "en" | "kk";
-
-// Only Russian copy has completed the current content and safety review.
-// Other language identifiers remain in persisted settings for backward
-// compatibility, but the interface normalizes them to Russian.
-export const supportedInterfaceLanguages: readonly Language[] = ["ru"];
-
-export function useInterfaceLanguage(language: Language) {
-  useEffect(() => {
-    const reviewedLanguage: Language = supportedInterfaceLanguages.includes(language) ? language : "ru";
-    document.documentElement.lang = reviewedLanguage;
-    document.title = "Söyle - общение и практика";
-    localStorage.setItem("soyle-language", reviewedLanguage);
-  }, [language]);
+import { useEffect, useSyncExternalStore } from "react";
+import { getLocale, getServerLocale, subscribeLocale, setLocale, type Language } from "./locale";
+export { t, setLocale, getLocale, normalizeLocale, languageOf, formatDate, plural } from "./locale";
+export type { Language, Locale } from "./locale";
+export const supportedInterfaceLanguages: readonly Language[] = ["ru", "kk"];
+export function useLocale() { return useSyncExternalStore(subscribeLocale, getLocale, getServerLocale); }
+export function useInterfaceLanguage(language: Language | "en") {
+  useEffect(() => { setLocale(language); }, [language]);
 }

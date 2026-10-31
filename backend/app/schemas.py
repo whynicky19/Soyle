@@ -313,7 +313,7 @@ class UserSettingsUpdate(BaseModel):
     sound_enabled: bool
     calm_mode: bool
     theme: Literal["peach", "ocean", "lavender", "contrast"]
-    language: Literal["ru"] = "ru"
+    language: Literal["ru", "kk"] = "ru"
 
 class TTSRequest(BaseModel):
     profile: Literal["exercise", "pet"] = "exercise"
@@ -331,7 +331,7 @@ class AACCardCreate(BaseModel):
     image: str = Field(default="/soyle-icon.png", min_length=1, max_length=1_050_000)
     lemma: str | None = Field(default=None, max_length=80)
     grammatical_role: Literal["subject", "action", "object", "ready_message"] = "ready_message"
-    language: Literal["ru"] = "ru"
+    language: Literal["ru", "kk"] = "ru"
     pictogram: str | None = Field(default=None, max_length=200)
 
 class WorldPhotoRename(BaseModel):
@@ -358,7 +358,7 @@ class AACComposeRequest(BaseModel):
     mode: Literal["guided", "free"] = "guided"
     child_id: int
     card_ids: list[int] = Field(min_length=1, max_length=8)
-    language: Literal["ru"] = "ru"
+    language: Literal["ru", "kk"] = "ru"
 
 class ChildGoalCreate(BaseModel):
     child_id: int

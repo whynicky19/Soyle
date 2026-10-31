@@ -1,4 +1,7 @@
 "use client";
+import { API_URL } from "@/lib/api";
+import { t, useLocale } from "@/lib/i18n";
+import { LanguagePicker } from "./LanguagePicker";
 
 import Image from "next/image";
 import { BrandLogo } from "@/components/BrandLogo";
@@ -24,93 +27,93 @@ import {
 import "@/app/landing.css";
 
 const art = "/images/landing/";
-const games = [
+const games = () => [
   {
-    title: "Первые слова",
-    text: "Знакомимся с миром через звуки, слова и яркие картинки.",
+    title: t("landing.copy000"),
+    text: t("landing.copy001"),
     image: "game-first-words",
-    tag: "СЛУШАЕМ И УЗНАЁМ",
+    tag: t("landing.copy002"),
     tone: "peach",
-    alt: "Птичка Söyle рядом с планшетом с картинкой собаки",
+    alt: t("landing.copy003"),
   },
   {
-    title: "Собираем фразы",
-    text: "Учимся соединять слова и выражать свои мысли.",
+    title: t("landing.copy004"),
+    text: t("landing.copy005"),
     image: "game-sentences",
-    tag: "СОЕДИНЯЕМ СЛОВА",
+    tag: t("landing.copy006"),
     tone: "sky",
-    alt: "Солнце и карточки для фразы на игровом планшете",
+    alt: t("landing.copy007"),
   },
   {
-    title: "Интерактивные истории",
-    text: "Развиваем общение через увлекательные игровые истории.",
+    title: t("landing.copy008"),
+    text: t("landing.copy009"),
     image: "game-stories",
-    tag: "ИГРАЕМ ВМЕСТЕ",
+    tag: t("landing.copy010"),
     tone: "sage",
-    alt: "Сказочная история с мальчиком и медвежонком на планшете",
+    alt: t("landing.copy011"),
   },
 ];
-const forms = [
+const forms = () => [
   {
-    title: "Сенсорная алалия",
-    text: "Ребёнку трудно понимать обращённую речь.",
+    title: t("landing.copy012"),
+    text: t("landing.copy013"),
     image: "alalia-sensory",
     tone: "rose",
     icon: Volume2,
   },
   {
-    title: "Моторная алалия",
-    text: "Ребёнку трудно формировать и произносить слова, даже когда понимание речи относительно сохранно.",
+    title: t("landing.copy014"),
+    text: t("landing.copy015"),
     image: "alalia-motor",
     tone: "sky",
     icon: MessageCircle,
   },
   {
-    title: "Смешанная форма",
-    text: "Трудности затрагивают и понимание речи, и её самостоятельное формирование.",
+    title: t("landing.copy016"),
+    text: t("landing.copy017"),
     image: "alalia-mixed",
     tone: "sage",
     icon: Puzzle,
   },
 ];
-const benefits = [
+const benefits = () => [
   [
     "benefit-play",
-    "Игровой подход",
-    "Знакомые сюжеты и маленькие открытия помогают вовлечь ребёнка в занятие.",
+    t("landing.copy018"),
+    t("landing.copy019"),
   ],
   [
     "benefit-personalization",
-    "В своём темпе",
-    "Короткая практика с учётом предпочтений. Всегда можно сделать паузу.",
+    t("landing.copy020"),
+    t("landing.copy021"),
   ],
   [
     "benefit-progress",
-    "Понятно родителям",
-    "История заданий и ваши наблюдения помогают замечать маленькие шаги.",
+    t("landing.copy022"),
+    t("landing.copy023"),
   ],
   [
     "benefit-family",
-    "Удобно заниматься дома",
-    "Выбирайте 3, 5 или 10 минут практики и занимайтесь рядом с ребёнком.",
+    t("landing.copy024"),
+    t("landing.copy025"),
   ],
 ];
-const questions = [
+const questions = () => [
   [
-    "С чего начать?",
-    "Откройте Söyle, создайте аккаунт родителя и профиль ребёнка. Выберите направление и удобную длительность практики: 3, 5 или 10 минут. Начните рядом с ребёнком, без спешки.",
+    t("landing.copy026"),
+    t("landing.copy027"),
   ],
   [
-    "Söyle заменяет логопеда?",
-    "Нет. Söyle помогает организовать игровые занятия и домашнюю практику. Платформа не ставит диагноз и не заменяет диагностику и работу с квалифицированными специалистами.",
+    t("landing.copy028"),
+    t("landing.copy029"),
   ],
   [
-    "Нужна ли камера?",
-    "Для большинства занятий камера не нужна. Для отдельных упражнений она включается с отдельного согласия. Обработка происходит в браузере, кадры не отправляются на сервер.",
+    t("landing.copy030"),
+    t("landing.copy031"),
   ],
   [
-    "Что я увижу в кабинете родителя?",
-    "Историю занятий, результаты упражнений, цели и план домашней практики. Вы также можете сохранять собственные наблюдения. Игровые результаты не являются оценкой речевого развития.",
+    t("landing.copy032"),
+    t("landing.copy033"),
   ],
 ];
 
@@ -212,7 +215,7 @@ function OrganicWave({
 function Action({
   secondary = false,
   href = "/app",
-  children = "Попробовать Söyle",
+  children = t("landing.copy034"),
 }: {
   secondary?: boolean;
   href?: string;
@@ -230,6 +233,7 @@ function Action({
 }
 
 export function LandingPage() {
+  const locale = useLocale();
   const [menuOpen, setMenuOpen] = useState(false);
   const [selected, setSelected] = useState("water");
   const [speaking, setSpeaking] = useState(false);
@@ -266,15 +270,22 @@ export function LandingPage() {
       window.removeEventListener("keydown", escape);
     };
   }, []);
+  useEffect(() => {
+    const player = audio.current;
+    const stop = () => { player?.pause(); window.speechSynthesis?.cancel(); setSpeaking(false); };
+    window.addEventListener("soyle-locale-changing", stop);
+    return () => { window.removeEventListener("soyle-locale-changing", stop); player?.pause(); window.speechSynthesis?.cancel(); };
+  }, []);
   const close = () => setMenuOpen(false);
   const speak = () => {
     if (!audio.current) return;
     if (speaking) {
       audio.current.pause();
+      window.speechSynthesis?.cancel();
       setSpeaking(false);
       return;
     }
-    audio.current.src = `/audio/landing/${selected}.wav`;
+    audio.current.src = `${API_URL}/api/public/speech/${locale === "kk-KZ" ? "kk" : "ru"}/${selected}`;
     setAudioError(false);
     setSpeaking(true);
     void audio.current.play().catch(() => {
@@ -286,47 +297,40 @@ export function LandingPage() {
   return (
     <div className="sl-page" ref={root}>
       <a className="sl-skip" href="#main-content">
-        Перейти к содержанию
-      </a>
+        {t("landing.copy035")}</a>
       <header className="sl-header">
         <div className="sl-container sl-nav">
-          <Link href="/" aria-label="Söyle — главная">
+          <Link href="/" aria-label={t("landing.copy036")}>
             <Logo />
           </Link>
           <nav
             id="sl-navigation"
             className={menuOpen ? "sl-open" : ""}
-            aria-label="Основная навигация"
+            aria-label={t("landing.copy037")}
           >
             <a href="#about" onClick={close}>
-              О продукте
-            </a>
+              {t("landing.copy038")}</a>
             <a href="#family" onClick={close}>
-              Для кого
-            </a>
+              {t("landing.copy039")}</a>
             <a href="#journey" onClick={close}>
-              Как это работает
-            </a>
+              {t("landing.copy040")}</a>
             <a href="#benefits" onClick={close}>
-              Преимущества
-            </a>
+              {t("landing.copy041")}</a>
             <a href="#questions" onClick={close}>
-              Вопросы
-            </a>
+              {t("landing.copy042")}</a>
             <Link className="sl-mobile-login" href="/app">
-              Войти в Söyle <ArrowRight size={16} />
+              {t("landing.copy043")}<ArrowRight size={16} />
             </Link>
           </nav>
-          <div className="sl-nav-actions">
+          <div className="sl-nav-actions"><LanguagePicker compact/>
             <Link href="/app" className="sl-login">
-              Войти
-            </Link>
+              {t("landing.copy044")}</Link>
             <Action />
           </div>
           <button
             type="button"
             className="sl-menu"
-            aria-label={menuOpen ? "Закрыть меню" : "Открыть меню"}
+            aria-label={menuOpen ? t("landing.copy045") : t("landing.copy046")}
             aria-expanded={menuOpen}
             aria-controls="sl-navigation"
             onClick={() => setMenuOpen(!menuOpen)}
@@ -343,58 +347,46 @@ export function LandingPage() {
             <Illustration
               name="hero-room"
               priority
-              alt="Мальчик и птичка Söyle вместе играют с планшетом в уютной солнечной комнате"
+              alt={t("landing.copy047")}
               sizes="100vw"
             />
           </div>
           <div className="sl-container sl-hero-inner">
             <div className="sl-hero-copy">
               <span className="sl-eyebrow">
-                <Star size={13} fill="currentColor" /> Развитие речи через игру
-              </span>
+                <Star size={13} fill="currentColor" /> {t("landing.copy048")}</span>
               <h1>
-                <span>Каждое слово —</span>
-                <span>маленькое открытие.</span>
+                <span>{t("landing.copy049")}</span>
+                <span>{t("landing.copy050")}</span>
               </h1>
               <p>
-                Игровые занятия, которые помогают детям развивать речь,
-                понимание и общение в естественной и радостной форме.
-              </p>
+                {t("landing.copy051")}</p>
               <div className="sl-actions">
                 <Action />
                 <Action secondary href="#games">
-                  Узнать больше
-                </Action>
+                  {t("landing.copy052")}</Action>
               </div>
               <div className="sl-trust">
                 <div>
                   <span className="sl-icon rose">
                     <Heart fill="currentColor" />
                   </span>
-                  Короткие занятия
-                  <br />в своём темпе
-                </div>
+                  {t("landing.copy053")}<br />{t("landing.copy054")}</div>
                 <div>
                   <span className="sl-icon sky">
                     <MessageCircle fill="currentColor" />
                   </span>
-                  Для ребёнка
-                  <br />и родителей
-                </div>
+                  {t("landing.copy055")}<br />{t("landing.copy056")}</div>
                 <div>
                   <span className="sl-icon yellow">
                     <ShieldCheck />
                   </span>
-                  Без рекламы
-                  <br />и лишнего шума
-                </div>
+                  {t("landing.copy057")}<br />{t("landing.copy058")}</div>
               </div>
             </div>
             <div className="sl-speech-bubble" aria-hidden="true">
-              Новые слова!
-              <br />
-              Новые открытия!
-              <Sparkles size={20} />
+              {t("landing.copy059")}<br />
+              {t("landing.copy060")}<Sparkles size={20} />
             </div>
           </div>
           <OrganicWave />
@@ -404,23 +396,19 @@ export function LandingPage() {
           <div className="sl-section-heading" data-reveal>
             <div>
               <h2>
-                Игры, которые говорят сами за себя{" "}
+                {t("landing.copy061")}{" "}
                 <span className="sl-heading-spark" aria-hidden="true">
                   ✦
                 </span>
               </h2>
               <p>
-                Разнообразные интерактивные занятия
-                <br className="sl-desktop-break" /> для развития речи и
-                коммуникации.
-              </p>
+                {t("landing.copy062")}<br className="sl-desktop-break" /> {t("landing.copy063")}</p>
             </div>
             <Action secondary href="/app">
-              Посмотреть занятия
-            </Action>
+              {t("landing.copy064")}</Action>
           </div>
           <div className="sl-game-grid">
-            {games.map((game, i) => (
+            {games().map((game, i) => (
               <Link
                 className={`sl-game ${game.tone}`}
                 href="/app"
@@ -457,21 +445,17 @@ export function LandingPage() {
               <div className="sl-thoughtful">
                 <Illustration
                   name="alalia-intro"
-                  alt="Задумчивый мальчик за столом"
+                  alt={t("landing.copy065")}
                   sizes="(max-width: 650px) 42vw, 20vw"
                 />
                 <span aria-hidden="true">?</span>
               </div>
               <div className="sl-alalia-copy">
-                <h2>Что такое алалия?</h2>
+                <h2>{t("landing.copy066")}</h2>
                 <p>
-                  Алалия — выраженное нарушение развития речи, связанное с
-                  трудностями формирования речевых функций.
-                </p>
+                  {t("landing.copy067")}</p>
                 <p>
-                  Проявления у детей могут различаться, поэтому занятия должны
-                  учитывать индивидуальные особенности ребёнка.
-                </p>
+                  {t("landing.copy068")}</p>
                 <a
                   className="sl-button sl-secondary"
                   href="#alalia-details"
@@ -481,12 +465,12 @@ export function LandingPage() {
                       details.open = true;
                   }}
                 >
-                  Узнать больше об алалии <ArrowRight size={16} />
+                  {t("landing.copy069")}<ArrowRight size={16} />
                 </a>
               </div>
             </div>
             <div className="sl-form-grid">
-              {forms.map((form, i) => (
+              {forms().map((form, i) => (
                 <article
                   className={`sl-form ${form.tone}`}
                   key={form.title}
@@ -511,18 +495,13 @@ export function LandingPage() {
           <div className="sl-container sl-alalia-note">
             <details id="alalia-details">
               <summary>
-                Каждому ребёнку — своя поддержка <ChevronDown size={16} />
+                {t("landing.copy070")}<ChevronDown size={16} />
               </summary>
               <p>
-                Эти описания упрощены для родителей и не подходят для
-                самостоятельной диагностики. При вопросах о развитии речи
-                обратитесь к квалифицированному специалисту.
-              </p>
+                {t("landing.copy071")}</p>
             </details>
             <p>
-              Söyle помогает организовать игровые занятия и домашнюю практику.
-              Платформа не заменяет диагностику и работу со специалистами.
-            </p>
+              {t("landing.copy072")}</p>
           </div>
           <OrganicWave alternate />
         </section>
@@ -531,26 +510,22 @@ export function LandingPage() {
           <article className="sl-child-panel" data-reveal>
             <Illustration
               name="child-experience"
-              alt="Мальчик занимается с планшетом рядом с птичкой Söyle"
+              alt={t("landing.copy073")}
               sizes="(max-width: 800px) 100vw, 50vw"
             />
             <div className="sl-child-copy">
-              <span className="sl-tag sl-peach-tag">Для ребёнка</span>
+              <span className="sl-tag sl-peach-tag">{t("landing.copy055")}</span>
               <h2>
-                Играй. Исследуй.
-                <br />
-                Говори!
-              </h2>
+                {t("landing.copy074")}<br />
+                {t("landing.copy075")}</h2>
               <p>
-                Любимые герои и знакомые сюжеты превращают занятия в маленькое
-                приключение.
-              </p>
+                {t("landing.copy076")}</p>
               <ul>
                 {[
-                  "Интерактивные занятия",
-                  "Знакомые игровые сценарии",
-                  "Поддержка общения",
-                  "Комфортный темп",
+                  t("landing.copy077"),
+                  t("landing.copy078"),
+                  t("landing.copy079"),
+                  t("landing.copy080"),
                 ].map((text) => (
                   <li key={text}>
                     <Check size={15} />
@@ -562,75 +537,64 @@ export function LandingPage() {
           </article>
           <article className="sl-parent-panel" data-reveal>
             <div className="sl-parent-copy">
-              <span className="sl-tag">Для родителей</span>
+              <span className="sl-tag">{t("landing.copy081")}</span>
               <h2>
-                Наблюдайте
-                <br />
-                за прогрессом
-              </h2>
+                {t("landing.copy082")}<br />
+                {t("landing.copy083")}</h2>
               <p>
-                Замечайте маленькие шаги и поддерживайте ребёнка в повседневной
-                жизни.
-              </p>
+                {t("landing.copy084")}</p>
               <ul>
                 <li>
                   <History />
-                  История занятий
-                </li>
+                  {t("landing.copy085")}</li>
                 <li>
                   <Target />
-                  Результаты упражнений
-                </li>
+                  {t("landing.copy086")}</li>
                 <li>
                   <BookOpen />
-                  План домашней практики
-                </li>
+                  {t("landing.copy087")}</li>
                 <li>
                   <Heart />
-                  Наблюдения родителей
-                </li>
+                  {t("landing.copy088")}</li>
               </ul>
             </div>
             <div className="sl-parent-preview">
               <div className="sl-preview-head">
                 <Logo />
-                <span>Кабинет родителя</span>
+                <span>{t("landing.copy089")}</span>
               </div>
               <strong>
-                Каждый маленький
-                <br />
-                шаг важен
-              </strong>
+                {t("landing.copy090")}<br />
+                {t("landing.copy091")}</strong>
               <div className="sl-preview-stats">
                 <div>
                   <b>—</b>
-                  <span>занятий за неделю</span>
+                  <span>{t("landing.copy092")}</span>
                 </div>
                 <div>
                   <b>—</b>
-                  <span>заданий с попытками</span>
+                  <span>{t("landing.copy093")}</span>
                 </div>
               </div>
               <div className="sl-preview-row">
                 <History size={18} />
                 <div>
-                  <b>История практики</b>
-                  <small>Здесь появятся ваши занятия</small>
+                  <b>{t("landing.copy094")}</b>
+                  <small>{t("landing.copy095")}</small>
                 </div>
               </div>
               <div className="sl-preview-row">
                 <BookOpen size={18} />
                 <div>
-                  <b>Цели и план</b>
-                  <small>Практика в удобном темпе</small>
+                  <b>{t("landing.copy096")}</b>
+                  <small>{t("landing.copy097")}</small>
                 </div>
               </div>
               <Link href="/app">
-                Открыть кабинет <ArrowRight size={14} />
+                {t("landing.copy098")}<ArrowRight size={14} />
               </Link>
               <small className="sl-preview-caption">
-                Пример кабинета до начала занятий
-              </small>
+                {t("landing.copy099")}</small>
             </div>
           </article>
         </section>
@@ -641,21 +605,19 @@ export function LandingPage() {
             <Illustration
               name="speech-journey"
               mobileName="speech-journey-mobile"
-              alt="Сказочная долина с тропинкой, речкой, мостом и маленьким замком вдали"
+              alt={t("landing.copy100")}
               sizes="100vw"
             />
           </div>
           <div className="sl-container sl-journey-content">
             <h2 data-reveal>
-              Путь к большим разговорам
-              <br />с маленьких шагов
-            </h2>
+              {t("landing.copy101")}<br />{t("landing.copy102")}</h2>
             <ol>
               {[
-                "Знакомимся со звуками",
-                "Учим первые слова",
-                "Собираем фразы",
-                "Общаемся в разных ситуациях",
+                t("landing.copy103"),
+                t("landing.copy104"),
+                t("landing.copy004"),
+                t("landing.copy105"),
               ].map((step, i) => (
                 <li
                   data-reveal
@@ -667,7 +629,7 @@ export function LandingPage() {
                 </li>
               ))}
             </ol>
-            <p>Возможные направления занятий. У каждого ребёнка свой путь.</p>
+            <p>{t("landing.copy106")}</p>
           </div>
           <OrganicWave alternate />
         </section>
@@ -677,18 +639,17 @@ export function LandingPage() {
           <Foliage kind="garden" className="sl-benefits-leaves-right" />
           <div data-reveal>
             <h2>
-              Почему выбирают Söyle{" "}
+              {t("landing.copy107")}{" "}
               <span className="sl-heading-spark" aria-hidden="true">
                 ✦
               </span>
             </h2>
             <p>
-              Игровой формат, понятные шаги и забота —<br />
-              чтобы открывать мир общения вместе.
-            </p>
+              {t("landing.copy108")}<br />
+              {t("landing.copy109")}</p>
           </div>
           <div className="sl-benefit-grid">
-            {benefits.map(([name, title, text], i) => (
+            {benefits().map(([name, title, text], i) => (
               <article
                 key={name}
                 data-reveal
@@ -706,43 +667,40 @@ export function LandingPage() {
 
         <section className="sl-try sl-container" id="try" data-reveal>
           <div>
-            <span className="sl-tag">Маленькое знакомство</span>
+            <span className="sl-tag">{t("landing.copy110")}</span>
             <h2>
-              Иногда одна карточка
-              <br />
-              говорит о многом.
-            </h2>
+              {t("landing.copy111")}<br />
+              {t("landing.copy112")}</h2>
             <p>
-              Попробуйте выбрать, что хочется сказать.
-              <br />
-              Так работают визуальные карточки общения.
-            </p>
+              {t("landing.copy113")}<br />
+              {t("landing.copy114")}</p>
           </div>
           <div className="sl-aac">
             <span className="sl-aac-label">
-              Экран «Сказать» <span>Демо</span>
+              {t("landing.copy115")}<span>{t("landing.copy116")}</span>
             </span>
             <p aria-live="polite">
-              Я хочу{" "}
+              {locale === "kk-KZ" ? "" : t("landing.copy117")}{" "}
               <strong>
-                {selected === "water"
-                  ? "воду"
+                {locale === "kk-KZ" ? (selected === "water" ? t("landing.aac.water") : selected === "apple" ? t("landing.aac.apple") : t("landing.aac.play")) : selected === "water"
+                  ? t("landing.copy118")
                   : selected === "apple"
-                    ? "яблоко"
-                    : "играть"}
+                    ? t("landing.copy119")
+                    : t("landing.copy120")}
               </strong>
             </p>
             <div className="sl-aac-options">
               {[
-                { id: "water", label: "Воду", path: "food/water" },
-                { id: "apple", label: "Яблоко", path: "food/apple" },
-                { id: "play", label: "Играть", path: "toys/ball" },
+                { id: "water", label: t("landing.copy121"), path: "food/water" },
+                { id: "apple", label: t("landing.copy122"), path: "food/apple" },
+                { id: "play", label: t("landing.copy123"), path: "toys/ball" },
               ].map((item) => (
                 <button
                   key={item.id}
                   aria-pressed={selected === item.id}
                   onClick={() => {
                     audio.current?.pause();
+                    window.speechSynthesis?.cancel();
                     setSelected(item.id);
                     setSpeaking(false);
                     setAudioError(false);
@@ -761,7 +719,7 @@ export function LandingPage() {
             </div>
             <button className="sl-button sl-primary" onClick={speak}>
               <Volume2 size={18} />
-              {speaking ? "Остановить" : "Произнести"}
+              {speaking ? t("landing.copy124") : t("landing.copy125")}
             </button>
             <audio
               ref={audio}
@@ -773,22 +731,21 @@ export function LandingPage() {
               }}
             />
             {audioError && (
-              <small role="status">Звук недоступен. Попробуйте ещё раз.</small>
+              <small role="status">{t("landing.copy126")}</small>
             )}
           </div>
         </section>
 
         <section className="sl-faq sl-container" id="questions">
           <div data-reveal>
-            <span className="sl-tag">Родителям на заметку</span>
+            <span className="sl-tag">{t("landing.copy127")}</span>
             <h2>
-              О важном —<br />
-              простыми словами.
-            </h2>
-            <p>Вопросы перед первым занятием.</p>
+              {t("landing.copy128")}<br />
+              {t("landing.copy129")}</h2>
+            <p>{t("landing.copy130")}</p>
           </div>
           <div className="sl-faq-list">
-            {questions.map(([q, a]) => (
+            {questions().map(([q, a]) => (
               <details key={q} data-reveal>
                 <summary>
                   {q}
@@ -806,7 +763,7 @@ export function LandingPage() {
           <div className="sl-night-art">
             <Illustration
               name="final-night-scene"
-              alt="В уютной вечерней комнате мальчик и птичка Söyle вместе читают книгу под тёплой гирляндой"
+              alt={t("landing.copy131")}
               sizes="100vw"
             />
           </div>
@@ -819,19 +776,15 @@ export function LandingPage() {
           <div className="sl-container sl-night-inner">
             <div data-reveal>
               <h2>
-                Давайте вместе
-                <br />
-                <em>открывать мир слов</em>
+                {t("landing.copy132")}<br />
+                <em>{t("landing.copy133")}</em>
               </h2>
               <p>
-                Познакомьтесь с Söyle и откройте для ребёнка мир игровых
-                занятий, маленьких открытий и новых возможностей общения.
-              </p>
+                {t("landing.copy134")}</p>
               <div className="sl-actions">
                 <Action />
                 <Action secondary href="#games">
-                  Узнать больше
-                </Action>
+                  {t("landing.copy052")}</Action>
               </div>
             </div>
           </div>
@@ -841,37 +794,35 @@ export function LandingPage() {
       <footer className="sl-footer">
         <div className="sl-container sl-footer-grid">
           <div>
-            <Link href="/" aria-label="Söyle — главная">
+            <Link href="/" aria-label={t("landing.copy036")}>
               <Logo />
             </Link>
-            <p>Развиваем речь. Открываем мир.</p>
+            <p>{t("landing.copy135")}</p>
           </div>
           <div>
-            <b>Продукт</b>
-            <a href="#games">Занятия</a>
-            <a href="#family">Для семьи</a>
-            <a href="#journey">Как это работает</a>
+            <b>{t("landing.copy136")}</b>
+            <a href="#games">{t("landing.copy137")}</a>
+            <a href="#family">{t("landing.copy138")}</a>
+            <a href="#journey">{t("landing.copy040")}</a>
           </div>
           <div>
-            <b>Полезное</b>
-            <a href="#alalia">Об алалии</a>
-            <a href="#questions">Вопросы и ответы</a>
-            <Link href="/app">Кабинет родителя</Link>
+            <b>{t("landing.copy139")}</b>
+            <a href="#alalia">{t("landing.copy140")}</a>
+            <a href="#questions">{t("landing.copy141")}</a>
+            <Link href="/app">{t("landing.copy089")}</Link>
           </div>
           <div>
-            <b>Документы</b>
-            <Link href="/privacy">Конфиденциальность</Link>
-            <Link href="/terms">Пользовательское соглашение</Link>
+            <b>{t("landing.copy142")}</b>
+            <Link href="/privacy">{t("landing.copy143")}</Link>
+            <Link href="/terms">{t("landing.copy144")}</Link>
             <a href="mailto:hello@soyle.app">hello@soyle.app</a>
           </div>
         </div>
         <div className="sl-container sl-footer-bottom">
           <span>© 2026 Söyle</span>
           <p>
-            Домашняя практика и поддержка общения. Не заменяет консультацию
-            специалиста.
-          </p>
-          <span>Русский</span>
+            {t("landing.copy145")}</p>
+          <LanguagePicker/>
         </div>
       </footer>
     </div>

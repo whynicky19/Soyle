@@ -1,3 +1,4 @@
+import { getLocale, t } from "./locale.ts";
 import type { ExplorationContent } from "./explorationRuntime";
 import type { ObservationContent } from "./observationRuntime";
 import type { VariedContent, VariedMechanic } from "./variedRuntime";
@@ -62,7 +63,8 @@ export type AppSettings = {
   sound_enabled: boolean;
   calm_mode: boolean;
   theme: "peach" | "ocean" | "lavender" | "contrast";
-  language: "ru" | "en" | "kk";
+  language: "ru" | "kk";
+  language_configured?: boolean;
 };
 
 export type ChildConsent = {
@@ -447,6 +449,7 @@ export class ApiError extends Error {
 
 export async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
   const headers = new Headers(options.headers);
+  headers.set("Accept-Language", getLocale());
   if (!headers.has("Content-Type") && options.body) headers.set("Content-Type", "application/json");
   if (["POST", "PUT", "PATCH", "DELETE"].includes((options.method || "GET").toUpperCase())) {
     const csrfToken = getCsrfToken();
@@ -461,9 +464,9 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
     response = await fetch(`${API_URL}${path}`, { ...options, headers, credentials: "include", signal: controller.signal });
   } catch (cause) {
     if (cause instanceof DOMException && cause.name === "AbortError") {
-      throw new Error(path === "/api/tts" ? "Озвучивание не успело подготовиться. Попробуйте ещё раз." : "Сервер Söyle отвечает слишком долго. Попробуйте ещё раз через несколько секунд.");
+      throw new Error(path === "/api/tts" ? t("errors.ttsTimeout") : t("errors.timeout"));
     }
-    throw new Error("Сервер Söyle временно недоступен. Проверьте подключение и попробуйте ещё раз.");
+    throw new Error(t("errors.offline"));
   } finally {
     window.clearTimeout(timeout);
   }
@@ -472,7 +475,7 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
     return undefined as T;
   }
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new ApiError(data.detail || "Не удалось выполнить запрос", response.status);
+  if (!response.ok) throw new ApiError((typeof data.detail === "string" ? data.detail : t("errors.request")) || t("errors.request"), response.status);
   if (data && typeof data === "object" && "csrf_token" in data && typeof data.csrf_token === "string" && data.csrf_token) {
     csrfTokenMemory = data.csrf_token;
   }

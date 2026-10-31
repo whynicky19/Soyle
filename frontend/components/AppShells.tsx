@@ -1,4 +1,6 @@
 "use client";
+import { t, useLocale } from "@/lib/i18n";
+
 
 import { ArrowLeft, CircleX, Pause, Volume2, VolumeX } from "lucide-react";
 import { ExercisePet } from "./pet/ExercisePet";
@@ -41,21 +43,22 @@ export function ExerciseFocusShell({
   onRefuse: () => void;
   children: ReactNode;
 }) {
+  useLocale();
   return (
     <div className="exercise-focus-shell student-mode soyle-parent-v2 soyle-unified">
       <header className="exercise-focus-header">
         <button type="button" className="focus-back" onClick={onBack} aria-label="Вернуться к занятиям">
-          <ArrowLeft size={23}/><span>Назад</span>
+          <ArrowLeft size={23}/><span>{t("common.back")}</span>
         </button>
         <div className="focus-heading">
           <span>{progress}</span>
           <strong>{title}</strong>
         </div>
         <button type="button" className="focus-sound" onClick={onToggleSound} aria-pressed={soundEnabled} aria-label={soundEnabled ? "Выключить звук" : "Включить звук"}>
-          {soundEnabled ? <Volume2 size={23}/> : <VolumeX size={23}/>}<span>{soundEnabled ? "Звук" : "Без звука"}</span>
+          {soundEnabled ? <Volume2 size={23}/> : <VolumeX size={23}/>}<span>{soundEnabled ? t("settings.sound") : "Без звука"}</span>
         </button>
         <div className="focus-safety-actions" aria-label="Можно остановиться в любой момент">
-          <button type="button" disabled={stopping} onClick={onBreak}><Pause size={20}/><span>Перерыв</span></button>
+          <button type="button" disabled={stopping} onClick={onBreak}><Pause size={20}/><span>{t("specialist.copy006")}</span></button>
           <button type="button" disabled={stopping} onClick={onRefuse}><CircleX size={20}/><span>Не хочу</span></button>
         </div>
       </header>

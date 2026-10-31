@@ -4,7 +4,7 @@ import test from "node:test";
 import ts from "typescript";
 
 const source = (await readFile(new URL("../lib/speech.ts", import.meta.url), "utf8"))
-  .replace('import { API_URL, getCsrfToken } from "./api";', 'const API_URL = ""; const getCsrfToken = () => "csrf";');
+  .replace('import { getLocale, languageOf } from "./locale";', `import { getLocale, languageOf } from "${new URL("../lib/locale.ts", import.meta.url).href}";`).replace('import { API_URL, getCsrfToken } from "./api";', 'const API_URL = ""; const getCsrfToken = () => "csrf";');
 const compiled = ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ES2022 } }).outputText;
 const { speak, stopCurrentSpeech, speakPet, stopPetSpeech, repeatSpeech, getSpeechState } = await import(`data:text/javascript;base64,${Buffer.from(compiled).toString("base64")}`);
 

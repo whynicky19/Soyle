@@ -233,7 +233,10 @@ def runtime_recording(db, text, language, mode, version_id, user, profile="exerc
     if version_id is not None and profile == "exercise":
         from .exercise_engine import get_version, published_exercise
         version = get_version(db, version_id)
-        if version["language"] != language: raise HTTPException(422, "Язык не совпадает с заданием")
+        if version["language"] != language:
+            from .localization import approved_speech
+            if language != "kk" or not approved_speech(db, text, version_id):
+                raise HTTPException(422, "Язык не совпадает с заданием")
         if user["role"] != "admin":
             live = published_exercise(db, version["exercise_id"])
             if not live or live["engine"]["version_id"] != version_id: raise HTTPException(404, "Версия недоступна")

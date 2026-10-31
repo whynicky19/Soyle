@@ -16,8 +16,8 @@ export const petReactions: Record<PetEvent, { mood: number; duration: number; ph
 export function createPetPhraseSelector() {
   const cursors: Partial<Record<PetEvent, number>> = {};
   let lastPhrase = "";
-  return (event: PetEvent): string => {
-    const phrases = petReactions[event].phrases;
+  return (event: PetEvent, language: "ru" | "kk" = "ru"): string => {
+    const phrases = language === "kk" ? kazakhPetPhrases[event] : petReactions[event].phrases;
     let cursor = cursors[event] ?? 0;
     if (phrases.length > 1 && phrases[cursor % phrases.length] === lastPhrase) cursor++;
     const phrase = phrases[cursor % phrases.length];
@@ -27,3 +27,12 @@ export function createPetPhraseSelector() {
   };
 }
 export const nextPetPhrase = createPetPhraseSelector();
+
+export const kazakhPetPhrases: Record<PetEvent, readonly string[]> = {
+  greeting: ["Сәлем!", "Кел, ойнайық!", "Бастаймыз ба?"],
+  correct: ["Жарайсың!", "Қолыңнан келді!", "Тамаша!", "Алақай!"],
+  incorrect: ["Тағы ойланып көр.", "Тағы бір рет көр.", "Кел, тағы байқап көрейік."],
+  hint: ["Мен көмектесемін!", "Мұнда қара!"],
+  complete: ["Алақай! Біз аяқтадық!", "Керемет!", "Жақсы тырыстың!"],
+  tap: ["Мен осындамын!", "Сәлем!", "Ойнаймыз ба?"],
+};
