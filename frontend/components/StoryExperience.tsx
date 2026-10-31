@@ -27,16 +27,11 @@ export function StoryExperience({ childId, calmMode = false }: { childId?: numbe
       .then((items) => { if (current) setStories(items); })
       .catch((cause) => { if (current) setError(cause instanceof Error ? cause.message : "Не удалось открыть истории"); })
       .finally(() => { if (current) setLoading(false); });
-    return () => { current = false; window.speechSynthesis?.cancel(); };
+    return () => { current = false; stopCurrentSpeech(); };
   }, [childId, activeKey]);
 
-  const narrate = (text: string) => {
-    if (!("speechSynthesis" in window)) { setFeedback("Озвучивание недоступно в этом браузере"); return; }
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = "ru-RU";
-    utterance.rate = .85;
-    window.speechSynthesis.speak(utterance);
+  const narrate = async (text: string) => {
+    if (!await speak(text, .78, true, "ru")) setFeedback("Нажми «Послушать», чтобы повторить озвучивание");
   };
 
   const selectAnswer = async (answerKey: string) => {
@@ -50,7 +45,7 @@ export function StoryExperience({ childId, calmMode = false }: { childId?: numbe
         { method: "POST", body: JSON.stringify({ scene_index: active.scene_index, answer_key: answerKey }) },
       );
       if (!result.correct) { setFeedback(result.hint); return; }
-      window.speechSynthesis?.cancel();
+      stopCurrentSpeech();
       setStories((items) => items.map((story) => story.key === active.key
         ? { ...story, scene_index: result.scene_index, completed_at: result.completed ? story.completed_at || new Date().toISOString() : story.completed_at }
         : story));
@@ -83,7 +78,7 @@ export function StoryExperience({ childId, calmMode = false }: { childId?: numbe
   if (active) {
     const scene = active.scenes[active.scene_index];
     return <div className="v2-screen v2-story-player page-enter">
-      <header className="v2-story-player-header"><button onClick={() => { window.speechSynthesis?.cancel(); setActiveKey(null); setFeedback(""); }}><ArrowLeft/> Все истории</button><div><span>ИСТОРИЯ</span><h1>{active.title}</h1></div><strong>{Math.min(active.scene_index + 1, active.scene_count)} / {active.scene_count}</strong></header>
+      <header className="v2-story-player-header"><button onClick={() => { stopCurrentSpeech(); setActiveKey(null); setFeedback(""); }}><ArrowLeft/> Все истории</button><div><span>ИСТОРИЯ</span><h1>{active.title}</h1></div><strong>{Math.min(active.scene_index + 1, active.scene_count)} / {active.scene_count}</strong></header>
       {error && <p className="v2-inline-alert" role="alert">{error}</p>}
       {scene ? <>
         <div className="v2-story-scene" key={`${active.key}-${active.scene_index}`}><Image src={scene.image} alt={scene.alt} fill priority sizes="(max-width: 760px) 100vw, 75vw"/></div>

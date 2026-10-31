@@ -1,12 +1,19 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { playNarration } from "../lib/storybook/cinematic/audio.ts";
+import { readFile } from "node:fs/promises";
+import ts from "typescript";
+const speech = (await readFile(new URL("../lib/speech.ts", import.meta.url), "utf8")).replace('import { API_URL, getCsrfToken } from "./api";', 'const API_URL = ""; const getCsrfToken = () => "";');
+const narration = (await readFile(new URL("../lib/storybook/cinematic/audio.ts", import.meta.url), "utf8")).replace(/^import .*;\n/, "");
+const compiled = ts.transpileModule(speech + narration, {compilerOptions: {target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ES2022}}).outputText;
+const {playNarration} = await import(`data:text/javascript;base64,${Buffer.from(compiled).toString("base64")}`);
 
 test("story narration distinguishes ended, failed, unavailable and cancelled speech", async () => {
-  const previous = { window: globalThis.window, speechSynthesis: globalThis.speechSynthesis, SpeechSynthesisUtterance: globalThis.SpeechSynthesisUtterance };
+  const previous = { Audio: globalThis.Audio, fetch: globalThis.fetch, window: globalThis.window, speechSynthesis: globalThis.speechSynthesis, SpeechSynthesisUtterance: globalThis.SpeechSynthesisUtterance };
+  globalThis.Audio = class { play() {return Promise.resolve();} pause() {} };
+  globalThis.fetch = async () => ({ok:false,status:503});
   class Voice { constructor(text) { this.text = text; } }
   globalThis.SpeechSynthesisUtterance = Voice;
-  const voice = { cancel() {}, speak(value) { queueMicrotask(() => value.onend()); } };
+  const voice = { getVoices: () => [{lang:"ru-RU",localService:true}], cancel() {}, speak(value) { queueMicrotask(() => value.onend()); } };
   globalThis.speechSynthesis = voice;
   globalThis.window = { speechSynthesis: voice, setTimeout, clearTimeout };
   try {

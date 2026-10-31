@@ -815,7 +815,7 @@ def test_aac_stop_is_core_and_duplicate_custom_card_is_rejected(client, parent_h
 
 
 def test_tts_rejects_unknown_language_before_audio_generation(client, parent_headers):
-    for language in ("de", "en", "kk"):
+    for language in ("de", "en"):
         response = client.post("/api/tts", headers=parent_headers, json={
             "text": "test", "rate": 0.8, "language": language,
         })

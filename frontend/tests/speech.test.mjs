@@ -6,7 +6,7 @@ import ts from "typescript";
 const source = (await readFile(new URL("../lib/speech.ts", import.meta.url), "utf8"))
   .replace('import { API_URL, getCsrfToken } from "./api";', 'const API_URL = ""; const getCsrfToken = () => "csrf";');
 const compiled = ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ES2022 } }).outputText;
-const { speak, stopCurrentSpeech, speakPet, stopPetSpeech } = await import(`data:text/javascript;base64,${Buffer.from(compiled).toString("base64")}`);
+const { speak, stopCurrentSpeech, speakPet, stopPetSpeech, repeatSpeech, getSpeechState } = await import(`data:text/javascript;base64,${Buffer.from(compiled).toString("base64")}`);
 
 test("speech settles, cancels safely and retries the server after failures", async (t) => {
   const originals = Object.fromEntries(["window", "Audio", "SpeechSynthesisUtterance", "fetch", "setTimeout"].map(key => [key, globalThis[key]]));
@@ -14,9 +14,9 @@ test("speech settles, cancels safely and retries the server after failures", asy
   const createURL = URL.createObjectURL, revokeURL = URL.revokeObjectURL;
   URL.createObjectURL = () => `blob:test-${audios.length}`;
   URL.revokeObjectURL = url => revoked.push(url);
-  globalThis.Audio = class { constructor() { audios.push(this); } pause() { this.paused = true; } play() { return Promise.resolve(); } };
+  globalThis.Audio = class { constructor() { audios.push(this); } pause() { this.paused = true; } play() { this.paused = false; return Promise.resolve(); } };
   globalThis.SpeechSynthesisUtterance = class {};
-  globalThis.window = { speechSynthesis: { getVoices: () => [], speak: value => voices.push(value), cancel() {} } };
+  globalThis.window = { speechSynthesis: { getVoices: () => [{lang:"ru-RU",localService:true}], speak: value => voices.push(value), cancel() {} } };
   const ok = () => Promise.resolve({ ok: true, blob: async () => new Blob(["sound"]) });
   const tick = () => new Promise(resolve => originals.setTimeout(resolve, 0));
   t.after(() => { stopCurrentSpeech(); Object.assign(globalThis, originals); URL.createObjectURL = createURL; URL.revokeObjectURL = revokeURL; });
@@ -36,7 +36,7 @@ test("speech settles, cancels safely and retries the server after failures", asy
     const result = speak("Помоги"); await tick(); voices.at(-1).onend(); assert.equal(await result, true);
     globalThis.fetch = ok;
     const next = speak("Помоги"); await tick(); audios.at(-1).onerror(); assert.equal(await next, false);
-    assert.equal(audios.length, 2);
+    assert.equal(audios.length, 1);
   });
   await t.test("expired authentication does not speak through a local fallback", async () => {
     globalThis.fetch = async () => ({ ok: false, status: 401 });
@@ -66,9 +66,31 @@ test("speech settles, cancels safely and retries the server after failures", asy
     exerciseAudio.onended(); assert.equal(await narration, true);
     const pet = speakPet("Молодец!"); await tick(); const petAudio = audios.at(-1);
     const next = speak("Найди кота"); await tick();
-    assert.equal(await pet, false); assert.equal(petAudio.paused, true);
+    assert.equal(await pet, false); assert.equal(petAudio, audios.at(-1)); // One gesture-unlocked element is reused.
     stopPetSpeech(); assert.notEqual(audios.at(-1).paused, true);
     audios.at(-1).onended(); assert.equal(await next, true);
   });
 
+  await t.test("Azure mode, repeat and loading state use the same player", async () => {
+    const requests = [];
+    globalThis.fetch = async (_, options) => { requests.push(JSON.parse(options.body)); return {ok:true, headers:new Headers({"X-Soyle-TTS":"azure"}),blob:async()=>new Blob(["audio"])}; };
+    const result = speak("Доп", .65, true, "kk");
+    assert.equal(getSpeechState().isLoading, true);
+    await tick();
+    assert.equal(audios.at(-1).playbackRate, 1);
+    assert.equal(getSpeechState().isSpeaking, true);
+    audios.at(-1).onended(); assert.equal(await result, true);
+    const repeated = repeatSpeech(); await tick(); audios.at(-1).onended(); await repeated;
+    assert.deepEqual(requests[0], {text:"Доп", rate:.65, language:"kk", mode:"slow"});
+    assert.deepEqual(requests[0], requests[1]);
+    assert.deepEqual(getSpeechState(), {isSpeaking:false, isLoading:false});
+  });
+  await t.test("private fallback never uses a remote or wrong-language voice", async () => {
+    globalThis.fetch = async () => ({ok:false,status:503});
+    globalThis.window.speechSynthesis.getVoices = () => [{lang:"kk-KZ",localService:false},{lang:"ru-RU",localService:true}];
+    const count = voices.length;
+    assert.equal(await speak("Жеке мәтін", .78, true, "kk"), false);
+    assert.equal(voices.length, count);
+    assert.deepEqual(getSpeechState(), {isSpeaking:false, isLoading:false});
+  });
 });

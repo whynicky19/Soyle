@@ -18,7 +18,7 @@ test('existing penguin: live states, layout, reduced motion and child settings',
   await page.addInitScript(() => {
     class Voice { text: string; onend: (() => void) | null = null; constructor(text: string) { this.text = text; } }
     Object.defineProperty(window, 'SpeechSynthesisUtterance', { value: Voice, configurable: true });
-    Object.defineProperty(window, 'speechSynthesis', { value: { cancel() {}, getVoices: () => [], speak: (v: Voice) => setTimeout(() => v.onend?.(), 50) }, configurable: true });
+    Object.defineProperty(window, 'speechSynthesis', { value: { cancel() {}, getVoices: () => [{lang:"ru-RU",localService:true}], speak: (v: Voice) => setTimeout(() => v.onend?.(), 50) }, configurable: true });
   });
   await page.request.post(`${API}/api/auth/login`, { data: { username: 'admin', password: 'Admin123!' } });
   const drafts = await (await page.request.get(`${API}/api/admin/exercise-drafts`)).json();

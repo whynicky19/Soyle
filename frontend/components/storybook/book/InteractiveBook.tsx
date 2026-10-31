@@ -50,7 +50,7 @@ export function InteractiveBook({childId,storyKey='toy',onExit,calmMode=false,em
   const narrate=useCallback(async(text:string)=>{
     stopVoice();if(!sound)return;
     const abort=new AbortController();voice.current=abort;setNarrating(true);
-    if(!('speechSynthesis' in window)&&!clips[text])setAudioNote('Звук недоступен. Все действия доступны по картинкам и подписям.');
+
     try{await playNarration(text,abort.signal,clips);}catch{if(!abort.signal.aborted)setAudioNote('Не удалось включить звук. Можно продолжать по картинкам.');}
     finally{if(live.current&&voice.current===abort){setNarrating(false);voice.current=null;}}
   },[sound,clips,stopVoice]);

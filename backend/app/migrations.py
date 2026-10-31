@@ -1098,6 +1098,39 @@ def _migration_36_child_pet_settings(db) -> None:
     )""")
 
 
+def _migration_37_azure_tts(db) -> None:
+    db.execute("""CREATE TABLE IF NOT EXISTS tts_control (
+        id INTEGER PRIMARY KEY, state_json TEXT NOT NULL
+    )""")
+    db.execute("INSERT INTO tts_control(id,state_json) VALUES(1,'{}') ON CONFLICT(id) DO NOTHING")
+    db.execute("""CREATE TABLE IF NOT EXISTS tts_cache (
+        cache_key TEXT PRIMARY KEY, audio_base64 TEXT NOT NULL,
+        lease_until DOUBLE PRECISION NOT NULL, token TEXT NOT NULL
+    )""")
+    db.execute("""CREATE TABLE IF NOT EXISTS tts_user_limits (
+        user_id BIGINT PRIMARY KEY, started DOUBLE PRECISION NOT NULL, count INTEGER NOT NULL
+    )""")
+
+
+def _migration_38_audio_review(db) -> None:
+    db.execute("""CREATE TABLE speech_recordings (
+        scope_id BIGINT NOT NULL, phrase_key TEXT NOT NULL, mode TEXT NOT NULL,
+        text TEXT NOT NULL, language TEXT NOT NULL, phrase_type TEXT NOT NULL,
+        audio_base64 TEXT NOT NULL, mime TEXT NOT NULL, digest TEXT NOT NULL, source TEXT NOT NULL,
+        prepared_by BIGINT NOT NULL REFERENCES users(id), approved_by BIGINT REFERENCES users(id), approved_at TEXT,
+        PRIMARY KEY(scope_id,phrase_key,mode)
+    )""")
+    db.execute("""CREATE TABLE speech_listens (
+        scope_id BIGINT NOT NULL, phrase_key TEXT NOT NULL, mode TEXT NOT NULL,
+        reviewer_id BIGINT NOT NULL REFERENCES users(id), digest TEXT NOT NULL,
+        PRIMARY KEY(scope_id,phrase_key,mode,reviewer_id)
+    )""")
+    db.execute("""CREATE TABLE speech_review_events (
+        scope_id BIGINT NOT NULL, phrase_key TEXT NOT NULL, mode TEXT NOT NULL,
+        digest TEXT NOT NULL, action TEXT NOT NULL, reviewer_id BIGINT NOT NULL REFERENCES users(id), created_at TEXT NOT NULL
+    )""")
+
+
 MIGRATIONS = (
     (9, _migration_9_exercise_engine),
     (10, _migration_10_content_contracts),
@@ -1127,6 +1160,8 @@ MIGRATIONS = (
     (34, _migration_34_explore_world),
     (35, _migration_35_scene_word_reinforcement),
     (36, _migration_36_child_pet_settings),
+    (37, _migration_37_azure_tts),
+    (38, _migration_38_audio_review),
 )
 LATEST_SCHEMA_VERSION = MIGRATIONS[-1][0]
 

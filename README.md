@@ -352,3 +352,192 @@ backend/.venv/bin/python scripts/check_learning_core.py
 [takacs]: https://pubmed.ncbi.nlm.nih.gov/26640299/
 [asha-language]: https://www.asha.org/practice-portal/clinical-topics/spoken-language-disorders/
 [asha-aac]: https://www.asha.org/practice-portal/professional-issues/augmentative-and-alternative-communication/
+
+## Azure Speech TTS
+
+The checked-in frontend is Next.js/React (not Nuxt); all existing speech buttons
+use `frontend/lib/speech.ts`. `frontend/hooks/useSpeech.ts` exposes
+`speak(text, language)`, `stop()`, `repeat()`, `isSpeaking`, `isLoading`, and
+`mode`/`setMode('normal' | 'slow')`. Exercise language comes from
+`exercise.engine.language`, independently of interface language. Current published
+exercises are Russian; adding Azure Kazakh support does **not** translate or publish
+Kazakh exercises. The vocabulary catalogue contains a small nonpersonal Kazakh set;
+add the exact Kazakh teaching texts through the editorial file before publication.
+
+Backend-only environment (set in the deployment secret manager):
+
+```dotenv
+AZURE_TTS_ENABLED=true
+AZURE_SPEECH_KEY=<Speech resource key>
+AZURE_SPEECH_REGION=westeurope
+```
+
+For local development, `./start.sh` loads these three Azure variables from
+`backend/.env.local`, falling back to the root `.env.local`; explicit shell variables
+have priority. Other settings (database/authentication) are not changed by this loader.
+Restart `./start.sh` after editing `.env.local` — Python source hot reload does not
+reload environment files. The local launcher is `python -m app.local_server` from
+`backend/`; production continues to use environment variables supplied by hosting.
+
+Set `AZURE_TTS_ENABLED=false` to use existing bundled audio and local device voices.
+Never place the key in `NEXT_PUBLIC_*`, client configuration, screenshots, or Git.
+Install `backend/requirements.txt`, then run the existing controlled migration before
+starting the new backend:
+
+```sh
+cd backend
+python -m app.migrations upgrade
+python -m app.migrations check
+```
+
+Migration 37 creates the shared audio cache, synthesis leases, quota state, and
+per-user counters in the existing PostgreSQL database (SQLite remains supported for
+local development). All replicas and pre-generation jobs using one Speech resource
+must use **the same database**. Do not share that Azure resource with unmetered apps:
+our 20 requests per rolling minute and conservative 500,000-character UTC monthly
+budget only cover calls made through Söyle. Failed calls reserve budget too. Monitor
+Azure's own metrics and budget alerts. Do not reset `tts_control` during deployments.
+Expired in-flight leases recover after 20 seconds; network calls are outside DB
+transactions. Audio is stored as base64 MP3, keyed by text/language/voice/mode/manual
+pronunciation/version. Replays use this persistent cache, including after restart.
+Old catalogue revisions may be deleted from `tts_cache` during maintenance; deleting
+cache entries costs synthesis quota on subsequent playback. Include cache storage
+in database capacity and backup planning.
+
+`POST /api/tts` retains cookie/bearer authorization and CSRF protection, accepts at
+most 300 characters, `language: ru | kk`, and `mode: normal | slow`. The old `rate`
+parameter remains compatible (`rate < .75` selects slow). The voices are
+`ru-RU-SvetlanaNeural` and `kk-KZ-AigulNeural`; slow mode uses SSML `rate="-15%"`,
+with the same voice pitch as normal mode. Following voice feedback, both modes use
+a gentle SSML pitch lift of +5%; the browser does not shift pitch or speed. Sentence
+boundaries are marked explicitly and editorial punctuation is retained. Azure MP3
+always plays at playbackRate 1. The endpoint
+limits each authenticated account to 60 requests/minute, including cache hits;
+provider failures open a shared cooldown, respect numeric Retry-After, and do not
+trigger automatic paid retries. The frontend's request timeout is 12 seconds.
+
+Only exact matches in the **server-owned static catalogue** reach Azure. No child
+name, diagnosis, account metadata, custom AAC card, uploaded-photo caption, or free
+text is sent to Azure. Fictional story-character names come from static story content.
+Published database edits are not automatically trusted as cloud-safe: add reviewed
+nonpersonal text to `backend/app/tts_editorial.json`. Existing bundled recordings
+remain the first fallback; otherwise the browser may use only an installed local
+voice (`localService=true`) matching the requested language. If unavailable, the
+player returns false so the existing visual/retry flow remains available. The former
+macOS `say` subprocess path is no longer run on arbitrary endpoint input; the local
+asset-generation script remains available. HTTP bodies/provider errors are not logged
+by the TTS service; ensure production APM/reverse proxies also redact request bodies
+and subscription-key headers.
+
+### Manual pronunciation review
+
+Do not automatically rewrite exercise text. To add a safe text or override its
+spoken pronunciation, add an entry to `backend/app/tts_editorial.json` after review:
+
+```json
+[
+  {
+    "language": "ru",
+    "text": "Замок",
+    "spoken_text": "За́мок",
+    "approved": true,
+    "reviewed_by": "<actual reviewer identifier>",
+    "reviewed_at": "<actual review date>"
+  }
+]
+```
+
+The example is not an approval and is not installed by default. A logopedist should
+listen to both modes with the intended pictures/context, then record the real review.
+Only entries with `approved`, `reviewed_by`, and `reviewed_at` are loaded. SSML tags
+in `spoken_text` are escaped: arbitrary markup is not executed. Redeploy/restart
+workers after editorial changes. A correction changes the cache key automatically;
+visible exercise text remains unchanged. Review/publish exercise content using the
+existing content-review workspace as before. Baseline Azure outputs are not claimed
+to have undergone a clinical review.
+
+### Usage rights and pre-generation
+
+Technical F0 support does not imply production/output redistribution rights.
+[Microsoft Product Terms](https://www.microsoft.com/licensing/terms/en-US/product/MicrosoftAzure/all)
+explicitly describe prebuilt TTS output-use rights for **paid-tier customers**.
+Before production caching, distribution, or pre-generation, confirm rights under your
+subscription/agreement; use S0 where required. F0 can be used for permitted evaluation,
+with the same conservative limits. No credentials or billing tier are changed by this
+integration. Standard neural voice support and current quotas are documented in
+[language support](https://learn.microsoft.com/azure/ai-services/speech-service/language-support?tabs=tts),
+[REST synthesis](https://learn.microsoft.com/azure/ai-services/speech-service/rest-text-to-speech),
+and [quotas](https://learn.microsoft.com/azure/ai-services/speech-service/speech-services-quotas-and-limits).
+
+Once rights are established, warm the same shared cache (no separate public audio
+library and no bypass of quotas):
+
+```sh
+cd backend
+python scripts/generate_tts_assets.py --azure --confirm-output-rights --language ru --mode both --limit 20
+python scripts/generate_tts_assets.py --azure --confirm-output-rights --language kk --mode both --limit 9
+```
+
+The command assumes migrated DB and exported server environment, stops on quota/error,
+and can be rerun safely. Without `--azure` it retains the existing macOS local library
+workflow. On Safari/iOS playback must start from a user gesture: the shared media
+element is unlocked in that gesture and reused after the server response. Autoplay
+refusal is reported as unsuccessful playback, never as a completed listening task.
+Test on an actual iPhone/iPad with installed RU/KK local voices and disabled network
+before production; automated WebKit checks cannot certify device audio or pronunciation.
+
+Automated checks (no Azure credentials or billable calls):
+
+```sh
+cd backend
+python -m pytest -q
+# Optional isolated local PostgreSQL: SOYLE_TEST_DATABASE_URL=postgresql://127.0.0.1:PORT/soyle_test_NAME
+cd ../frontend
+npm test
+npx tsc --noEmit
+npm run lint
+npx playwright install webkit
+npx playwright test --config playwright.speech.config.ts
+```
+
+The media tests use a valid short audio fixture and exercise the real browser player;
+provider tests stub Azure responses. They do not certify the acoustic quality of
+Svetlana/Aigul or availability of voices in a particular Azure region. Perform a
+production-key smoke test with only generic catalogue phrases, then have a logopedist
+approve the pronunciation in both modes. Update public privacy/operator information
+and document the selected Azure region before launch.
+
+Validation on 2026-10-31: 204 backend tests and 81 frontend tests passed; the 19
+Azure-specific tests also passed on a fresh isolated PostgreSQL instance. Twelve
+media-player tests passed across Chromium desktop/mobile and WebKit (RU/KK, both
+modes); two additional tests passed on the actual child screen (desktop/mobile).
+TypeScript, ESLint and the production build passed. Five tests in the older
+`soyle-core-content.spec.ts` mobile suite failed on catalogue/feedback/selector
+expectations; that broader suite is not reported as passing. Its fixtures, like the
+other speech mocks, now explicitly declare installed local voices. No live Azure
+request, actual iOS hardware verification, or clinical pronunciation approval was
+performed.
+
+Local smoke test on 2026-10-31 after fixing environment-file loading: the authenticated
+endpoint returned `X-Soyle-TTS: azure` for «Мяч» in normal and slow modes; a repeated
+normal request returned the cached audio (about 0.01 s versus about 2 s initially).
+This confirms actual Azure connectivity, not clinical pronunciation approval.
+
+Russian question intonation: every explicitly punctuated question now receives a
+sentence-level SSML contour. Yes/no invitations (including «Поиграем?» and «Начнём?»)
+use a later rise; question-word sentences («Кто пьёт?», «Где мяч?») use an earlier
+peak. Statements are unchanged, punctuation is not inferred, and these Russian
+profiles are not applied to Kazakh. SSML changes invalidate the synthesis cache.
+Azure treats prosody as a hint and documents limitations for single words/short
+phrases; listen to the generated outputs before editorial approval. Live samples
+for the three phrases returned Azure audio after the change; the 30 focused TTS
+tests passed. No clinical approval is implied.
+
+Additional listener feedback on «Поиграем?» led to an exact-phrase contour override:
+the rise now peaks earlier, around the stressed part of this invitation, then falls
+softly. This timing is not copied to other words. Svetlana, the visible/spoken text,
+and the base +5% pitch remain unchanged; both playback modes synthesize the contour
+natively in Azure, with no syllable splicing or audio pitch post-processing. Native
+Dariya and a widened-range Svetlana sample were also generated for evaluation; neither
+replaces the site's voice. The revised normal/slow samples still require perceptual
+approval; automated tests only establish the synthesis and routing behavior.

@@ -1,4 +1,5 @@
 "use client";
+import { stopCurrentSpeech } from "@/lib/speech";
 
 import Image from "next/image";
 import { ArrowRight, Camera, Check, ImageIcon, MessageCircle, Plus, Trash2, Volume2 } from "lucide-react";
@@ -34,7 +35,7 @@ export function WorldExperience({ childId, canManage, onWords, onSpeak }: { chil
       .then((items) => { if (current) setPhotos(items); })
       .catch((cause) => { if (current) setError(cause instanceof Error ? cause.message : "Не удалось загрузить фотографии"); })
       .finally(() => { if (current) setLoading(false); });
-    return () => { current = false; window.speechSynthesis?.cancel(); };
+    return () => { current = false; stopCurrentSpeech(); };
   }, [childId]);
 
   useEffect(() => {

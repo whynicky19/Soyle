@@ -60,7 +60,7 @@ test("a family accepts a goal-linked recommendation and its result returns to th
       onerror: (() => void) | null = null;
     }
     Object.defineProperty(window, "SpeechSynthesisUtterance", {value: Voice, configurable: true});
-    Object.defineProperty(window, "speechSynthesis", {value: {cancel() {}, getVoices: () => [], speak: (voice: Voice) => setTimeout(() => voice.onend?.(), 0)}, configurable: true});
+    Object.defineProperty(window, "speechSynthesis", {value: {cancel() {}, getVoices: () => [{lang:"ru-RU",localService:true}], speak: (voice: Voice) => setTimeout(() => voice.onend?.(), 0)}, configurable: true});
   });
   await page.route("http://localhost:8010/api/tts", route => route.fulfill({status: 503, body: "{}"}));
   await page.getByRole("button", {name: /Начать с разминки|Начать первое задание/}).click();

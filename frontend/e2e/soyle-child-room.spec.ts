@@ -24,7 +24,7 @@ test('room navigation, phone layout, saved stars, retry, replay, calm and reduce
   await page.addInitScript(()=>{
     class Voice{text:string;onend:(()=>void)|null=null;constructor(text:string){this.text=text;}}
     Object.defineProperty(window,'SpeechSynthesisUtterance',{value:Voice,configurable:true});
-    Object.defineProperty(window,'speechSynthesis',{value:{cancel(){},getVoices:()=>[],speak:(voice:Voice)=>setTimeout(()=>voice.onend?.(),0)},configurable:true});
+    Object.defineProperty(window,'speechSynthesis',{value:{cancel(){},getVoices:()=>[{lang:"ru-RU",localService:true}],speak:(voice:Voice)=>setTimeout(()=>voice.onend?.(),0)},configurable:true});
   });
   await page.request.post(`${API}/api/auth/login`,{data:{username:'admin',password:'Admin123!'}});
   const drafts=await(await page.request.get(`${API}/api/admin/exercise-drafts`)).json();

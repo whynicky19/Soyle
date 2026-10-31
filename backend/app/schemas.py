@@ -318,7 +318,8 @@ class UserSettingsUpdate(BaseModel):
 class TTSRequest(BaseModel):
     text: str = Field(min_length=1, max_length=300)
     rate: float = Field(default=0.78, ge=0.6, le=1.1)
-    language: Literal["ru"] = "ru"
+    language: Literal["ru", "kk"] = "ru"
+    mode: Literal["normal", "slow"] | None = None
 
 class AACCardCreate(BaseModel):
     child_id: int

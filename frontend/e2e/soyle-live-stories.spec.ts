@@ -5,7 +5,7 @@ async function enter(page:Page,key:string){
   await page.addInitScript(()=>{
     class Voice{text:string;onend:(()=>void)|null=null;constructor(text:string){this.text=text;}}
     Object.defineProperty(window,'SpeechSynthesisUtterance',{value:Voice,configurable:true});
-    Object.defineProperty(window,'speechSynthesis',{value:{cancel(){},getVoices:()=>[],speak:(voice:Voice)=>setTimeout(()=>voice.onend?.(),0)},configurable:true});
+    Object.defineProperty(window,'speechSynthesis',{value:{cancel(){},getVoices:()=>[{lang:"ru-RU",localService:true}],speak:(voice:Voice)=>setTimeout(()=>voice.onend?.(),0)},configurable:true});
   });
   await page.route('http://localhost:8010/**',route=>new URL(route.request().url()).pathname==='/api/tts'?route.fulfill({status:503,body:'{}'}):route.continue({url:route.request().url().replace(':8010',':8011')}));
   await page.goto('/app');await page.getByRole('button',{name:'Ребёнок',exact:true}).click();await page.getByLabel('Логин ребёнка',{exact:true}).fill('alikhan');await page.getByLabel('PIN-код',{exact:true}).fill('1234');await page.getByRole('button',{name:'Начать заниматься',exact:true}).click();

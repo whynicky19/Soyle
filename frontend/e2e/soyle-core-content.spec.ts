@@ -21,7 +21,7 @@ async function prepareSpeech(page: Page) {
     Object.defineProperty(window, "speechSynthesis", {
       value: {
         cancel() {},
-        getVoices() { return []; },
+        getVoices() { return [{lang:"ru-RU",localService:true}]; },
         speak(utterance: TestUtterance) {
           if (speechState.__soyleHoldSpeech) {
             speechState.__soyleFinishSpeech = () => {

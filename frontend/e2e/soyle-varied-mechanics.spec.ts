@@ -9,7 +9,7 @@ test.beforeEach(async({page})=>{
   await page.addInitScript(()=>{
     class Voice {text:string;onend:(()=>void)|null=null;onerror:(()=>void)|null=null;constructor(text:string){this.text=text;}}
     Object.defineProperty(window,'SpeechSynthesisUtterance',{value:Voice,configurable:true});
-    Object.defineProperty(window,'speechSynthesis',{value:{cancel(){},getVoices:()=>[],speak:(voice:Voice)=>{
+    Object.defineProperty(window,'speechSynthesis',{value:{cancel(){},getVoices:()=>[{lang:"ru-RU",localService:true}],speak:(voice:Voice)=>{
       const state=window as typeof window & {__lastTask?:string;__failVoice?:boolean};state.__lastTask=voice.text;
       setTimeout(()=>state.__failVoice ? voice.onerror?.() : voice.onend?.(),0);
     }},configurable:true});

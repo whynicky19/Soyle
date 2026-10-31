@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 import json
+import argparse
+import time
 import shutil
 import subprocess
 import sys
@@ -56,6 +58,35 @@ def generate(text: str) -> dict[str, str]:
 
 
 def main() -> int:
+    parser = argparse.ArgumentParser(description="Generate the existing local library or warm the shared Azure cache")
+    parser.add_argument("--azure", action="store_true")
+    parser.add_argument("--confirm-output-rights", action="store_true", help="Operator has checked applicable Microsoft output-use rights")
+    parser.add_argument("--language", choices=("ru", "kk"), default="ru")
+    parser.add_argument("--mode", choices=("normal", "slow", "both"), default="both")
+    parser.add_argument("--limit", type=int, default=20, help="Maximum catalogue texts per run")
+    args = parser.parse_args()
+    if args.azure:
+        from app.azure_tts import TTSUnavailable, catalogue, enabled, synthesize
+        if not args.confirm_output_rights or not enabled() or args.limit < 1:
+            print("Enable Azure and confirm output-use rights; limit must be positive", file=sys.stderr)
+            return 1
+        modes = ("normal", "slow") if args.mode == "both" else (args.mode,)
+        completed = 0
+        for language, text in sorted(catalogue()):
+            if language != args.language:
+                continue
+            for mode in modes:
+                try:
+                    synthesize(text, language, mode)
+                except TTSUnavailable:
+                    print("Stopped: Azure unavailable or budget exhausted; cached clips are retained", file=sys.stderr)
+                    return 1
+                time.sleep(3.1)  # Same global limiter/cache as the live endpoint.
+            completed += 1
+            if completed >= args.limit:
+                break
+        print(f"Prepared {completed} catalogue entries ({len(modes)} modes)")
+        return 0
     if not shutil.which("say") or not shutil.which("ffmpeg"):
         print("The macOS say command and ffmpeg are required", file=sys.stderr)
         return 1

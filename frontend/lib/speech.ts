@@ -1,5 +1,29 @@
 import { API_URL, getCsrfToken } from "./api";
 
+export type SpeechLanguage = "ru" | "kk" | "en";
+export type SpeechMode = "normal" | "slow";
+const idleState = { isSpeaking: false, isLoading: false };
+let speechState = idleState;
+const listeners = new Set<() => void>();
+export const getSpeechState = () => speechState;
+export const getServerSpeechState = () => idleState;
+export function subscribeSpeech(listener: () => void) { listeners.add(listener); return () => { listeners.delete(listener); }; }
+function setSpeechState(isSpeaking: boolean, isLoading: boolean) {
+  speechState = { isSpeaking, isLoading }; listeners.forEach(listener => listener());
+}
+let lastSpeech: { text: string; rate: number; language: SpeechLanguage } | null = null;
+export function repeatSpeech() { return lastSpeech ? speak(lastSpeech.text, lastSpeech.rate, true, lastSpeech.language) : Promise.resolve(false); }
+// Reuse the same media element: iOS grants playback permission to the element.
+let reusableAudio: HTMLAudioElement | null = null;
+const silentWav = "/audio/tts-unlock.wav";
+function prepareAudio() {
+  reusableAudio ??= new Audio();
+  reusableAudio.src = silentWav;
+  // Called synchronously in the button gesture, before fetching the audio.
+  try { void reusableAudio.play().catch(() => {}); } catch { /* Retry on the next gesture. */ }
+  return reusableAudio;
+}
+
 let currentSpeechAudio: HTMLAudioElement | null = null;
 let currentSpeechUrl = "";
 let speechOwner: "exercise" | "pet" = "exercise";
@@ -21,24 +45,30 @@ export function stopCurrentSpeech() {
   if (currentSpeechUrl) URL.revokeObjectURL(currentSpeechUrl);
   currentSpeechAudio = null;
   currentSpeechUrl = "";
+  setSpeechState(false, false);
 }
 
 function speakWithBrowserVoice(text: string, rate: number, language: "ru" | "kk" | "en", controller: AbortController): Promise<boolean> {
   if (controller.signal.aborted) return Promise.resolve(false);
   if (!("speechSynthesis" in window) || typeof SpeechSynthesisUtterance === "undefined") {
-    if (speechController === controller) speechController = null;
+    if (speechController === controller) { speechController = null; setSpeechState(false, false); }
     return Promise.resolve(false);
   }
   const locale = { ru: "ru-RU", kk: "kk-KZ", en: "en-US" }[language];
   const utterance = new SpeechSynthesisUtterance(text);
   utterance.lang = locale;
-  utterance.rate = Math.max(0.6, Math.min(1.1, rate));
+  utterance.rate = rate < .75 ? .85 : 1;
   utterance.pitch = 1;
   utterance.volume = 0.92;
-  const voices = window.speechSynthesis.getVoices();
+  const voices = window.speechSynthesis.getVoices().filter(voice => voice.localService);
   utterance.voice = voices.find((voice) => voice.lang.toLowerCase() === locale.toLowerCase())
     || voices.find((voice) => voice.lang.toLowerCase().startsWith(language))
     || null;
+  if (!utterance.voice) {
+    if (speechController === controller) { speechController = null; setSpeechState(false, false); }
+    return Promise.resolve(false);
+  }
+  setSpeechState(true, false);
   return new Promise((resolve) => {
     let settled = false;
     const finish = (played: boolean) => {
@@ -49,7 +79,7 @@ function speakWithBrowserVoice(text: string, rate: number, language: "ru" | "kk"
       utterance.onend = null;
       utterance.onerror = null;
       if (currentSpeechCompletion === finish) currentSpeechCompletion = null;
-      if (speechController === controller) speechController = null;
+      if (speechController === controller) { speechController = null; setSpeechState(false, false); }
       resolve(played);
     };
     const abort = () => finish(false);
@@ -71,6 +101,9 @@ export async function speak(text: string, rate = 0.78, enabled = true, language:
   const cleaned = text.replace(/\s+/g, " ").trim();
   if (!cleaned) return false;
   stopCurrentSpeech();
+  const preparedAudio = prepareAudio();
+  lastSpeech = { text: cleaned, rate, language };
+  setSpeechState(false, true);
   speechOwner = owner;
   const controller = new AbortController();
   speechController = controller;
@@ -81,7 +114,7 @@ export async function speak(text: string, rate = 0.78, enabled = true, language:
       method: "POST",
       headers: { "Content-Type": "application/json", "X-CSRF-Token": getCsrfToken() },
       credentials: "include",
-      body: JSON.stringify({ text: cleaned, rate, language }),
+      body: JSON.stringify({ text: cleaned, rate, language, mode: rate < .75 ? "slow" : "normal" }),
       signal: controller.signal,
     });
     if (!response.ok) {
@@ -94,10 +127,12 @@ export async function speak(text: string, rate = 0.78, enabled = true, language:
     if (controller.signal.aborted || speechController !== controller) return false;
     const objectUrl = URL.createObjectURL(blob);
     currentSpeechUrl = objectUrl;
-    const audio = new Audio(objectUrl);
+    const audio = preparedAudio;
+    audio.src = objectUrl;
     currentSpeechAudio = audio;
     audio.volume = 0.92;
-    audio.playbackRate = Math.max(0.75, Math.min(1.35, rate / 0.78));
+    // Azure applies speed in SSML; never slow it a second time.
+    audio.playbackRate = response.headers?.get("X-Soyle-TTS") === "azure" ? 1 : (rate < .75 ? .85 : 1);
     audio.preservesPitch = true;
     return await new Promise<boolean>((resolve) => {
       let settled = false;
@@ -112,7 +147,7 @@ export async function speak(text: string, rate = 0.78, enabled = true, language:
         if (currentSpeechCompletion === finish) currentSpeechCompletion = null;
         if (currentSpeechAudio === audio) currentSpeechAudio = null;
         if (currentSpeechUrl === objectUrl) currentSpeechUrl = "";
-        if (speechController === controller) speechController = null;
+        if (speechController === controller) { speechController = null; setSpeechState(false, false); }
         URL.revokeObjectURL(objectUrl);
         resolve(played);
       };
@@ -122,6 +157,7 @@ export async function speak(text: string, rate = 0.78, enabled = true, language:
       currentSpeechCompletion = finish;
       audio.onended = () => finish(true);
       audio.onerror = () => finish(false);
+      setSpeechState(true, false);
       try { audio.play().catch(() => finish(false)); } catch { finish(false); }
     });
   } catch {
@@ -139,7 +175,7 @@ export async function speak(text: string, rate = 0.78, enabled = true, language:
     return await speakWithBrowserVoice(cleaned, rate, language, controller);
   } finally {
     clearTimeout(requestTimeout);
-    if (speechController === controller) speechController = null;
+    if (speechController === controller) { speechController = null; setSpeechState(false, false); }
   }
 }
 
@@ -150,4 +186,34 @@ export function speakPet(text: string): Promise<boolean> {
 }
 export function stopPetSpeech() {
   if (speechOwner === "pet") stopCurrentSpeech();
+}
+
+export async function playSpeechClip(url: string): Promise<boolean> {
+  stopCurrentSpeech();
+  const audio = prepareAudio();
+  currentSpeechAudio = audio;
+  speechOwner = "exercise";
+  const controller = new AbortController();
+  speechController = controller;
+  audio.src = url;
+  audio.playbackRate = 1;
+  setSpeechState(true, false);
+  return new Promise(resolve => {
+    let settled = false;
+    const finish = (ok: boolean) => {
+      if (settled) return;
+      settled = true; clearTimeout(timer);
+      audio.onended = null; audio.onerror = null; audio.pause();
+      controller.signal.removeEventListener("abort", abort);
+      if (speechController === controller) { speechController = null; currentSpeechAudio = null; setSpeechState(false, false); }
+      if (currentSpeechCompletion === finish) currentSpeechCompletion = null;
+      resolve(ok);
+    };
+    const abort = () => finish(false);
+    const timer = setTimeout(() => finish(false), 60_000);
+    currentSpeechCompletion = finish;
+    controller.signal.addEventListener("abort", abort, { once: true });
+    audio.onended = () => finish(true); audio.onerror = () => finish(false);
+    try { void audio.play().catch(() => finish(false)); } catch { finish(false); }
+  });
 }

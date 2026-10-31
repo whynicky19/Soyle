@@ -1,4 +1,5 @@
 'use client';
+import { stopCurrentSpeech } from '@/lib/speech';
 import { ArrowLeft, Pause, Play, Volume2, VolumeX, RotateCcw, CircleHelp, Heart, ArrowRight } from 'lucide-react';
 import NextImage from 'next/image';
 import { useEffect, useRef, useState } from 'react';
@@ -56,7 +57,7 @@ export function CinematicStorybookExperience({childId,onExit,calmMode=false,embe
     const renderer=new RigRenderer(svg.current,reduced);rig.current=renderer;if(current.current?.state.paused)renderer.setPaused(true);
     void createTimelineController({setPose:(actor,pose)=>renderer.setPose(actor,pose),attachTeddy:holder=>renderer.attachTeddy(holder),onPhase:checkpoint,narrate:async(text,signal)=>{
       if(!soundRef.current)return;
-      if(!('speechSynthesis' in window)&&!current.current?.definition.audio.clips[text])setVoiceNote('Озвучка недоступна. Подписи и все действия работают.');
+
       extraAudio.current?.abort();const audio=new AbortController();activeAudio.current?.abort();activeAudio.current=audio;
       const abort=()=>audio.abort();signal.addEventListener('abort',abort,{once:true});
       try{await playNarration(text,audio.signal,current.current?.definition.audio.clips);}finally{signal.removeEventListener('abort',abort);if(activeAudio.current===audio)activeAudio.current=null;}
@@ -91,7 +92,7 @@ export function CinematicStorybookExperience({childId,onExit,calmMode=false,embe
   const restart=()=>void act('restart',()=>{setPaused(false);rig.current?.setPaused(false);controller.current?.resume();void controller.current?.replay();});
   const backLabel=snapshot?.preview?'В кабинет':'К историям';
   return <Container aria-label="Живая история" className="cinema-player">
-    <header className="cinema-top"><button aria-label={backLabel} onClick={()=>void exit()}><ArrowLeft/><span>{backLabel}</span></button><div><span className="cinema-eyebrow">SÖYLE STORIES · СЦЕНА 1 / 1</span><h1>Миша просит помощь</h1></div><div className="cinema-top-actions"><button aria-label={sound?'Выключить звук':'Включить звук'} aria-pressed={sound} onClick={()=>{setSound(!sound);extraAudio.current?.abort();if('speechSynthesis' in window)speechSynthesis.cancel();}}>{sound?<Volume2/>:<VolumeX/>}</button>{started&&<button aria-label="Пауза" onClick={()=>pause()} disabled={paused||busy}><Pause/></button>}</div></header>
+    <header className="cinema-top"><button aria-label={backLabel} onClick={()=>void exit()}><ArrowLeft/><span>{backLabel}</span></button><div><span className="cinema-eyebrow">SÖYLE STORIES · СЦЕНА 1 / 1</span><h1>Миша просит помощь</h1></div><div className="cinema-top-actions"><button aria-label={sound?'Выключить звук':'Включить звук'} aria-pressed={sound} onClick={()=>{setSound(!sound);extraAudio.current?.abort();stopCurrentSpeech();}}>{sound?<Volume2/>:<VolumeX/>}</button>{started&&<button aria-label="Пауза" onClick={()=>pause()} disabled={paused||busy}><Pause/></button>}</div></header>
     {error&&<aside className="cinema-error" role="alert">{error}<button onClick={()=>void exit()}>{backLabel}</button><p>Открой историю снова, чтобы восстановить сохранённый этап.</p></aside>}
     {!manifest?<section className="cinema-loading"><h2>Готовим уютную комнату…</h2></section>:<>
     <section className={`cinema-stage-wrap ${hint?'cinema-hinted':''}`}><CinematicStage ref={svg} manifest={manifest} phase={phase} hint={hint} paused={paused||!started} onTeddy={teddy}/>

@@ -11,7 +11,7 @@ async function openBook(page:Page){
   await page.addInitScript(()=>{
     class Voice{text:string;onend?:()=>void;constructor(text:string){this.text=text;}}
     Object.defineProperty(window,'SpeechSynthesisUtterance',{value:Voice,configurable:true});
-    Object.defineProperty(window,'speechSynthesis',{value:{cancel(){},speak(voice:Voice){setTimeout(()=>voice.onend?.(),10);}},configurable:true});
+    Object.defineProperty(window,'speechSynthesis',{value:{cancel(){},getVoices:()=>[{lang:"ru-RU",localService:true}],speak(voice:Voice){setTimeout(()=>voice.onend?.(),10);}},configurable:true});
   });
   await page.route('http://localhost:8010/**',route=>route.continue({url:route.request().url().replace(':8010',':8011')}));
   await page.goto('/app');

@@ -16,7 +16,7 @@ test('stable results become three real choices and the next plan keeps the measu
   await page.addInitScript(()=>{
     class Voice {onend:(()=>void)|null=null;}
     Object.defineProperty(window,'SpeechSynthesisUtterance',{value:Voice,configurable:true});
-    Object.defineProperty(window,'speechSynthesis',{value:{cancel(){},getVoices:()=>[],speak:(voice:Voice)=>setTimeout(()=>voice.onend?.(),0)},configurable:true});
+    Object.defineProperty(window,'speechSynthesis',{value:{cancel(){},getVoices:()=>[{lang:"ru-RU",localService:true}],speak:(voice:Voice)=>setTimeout(()=>voice.onend?.(),0)},configurable:true});
   });
   await page.route('http://localhost:8010/**',route=>new URL(route.request().url()).pathname==='/api/tts'?route.fulfill({status:503,body:'{}'}):route.continue({url:route.request().url().replace(':8010',':8011')}));
   const authReady=page.waitForResponse(r=>new URL(r.url()).pathname==='/api/auth/me');

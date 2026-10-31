@@ -131,7 +131,7 @@ export type Exercise = {
     version_id: number;
     version: number;
     mechanic: "auditory_choice" | "action_choice" | "tap_instruction" | "guided_aac" | "scene_search" | VariedMechanic;
-    language: "ru";
+    language: "ru" | "kk";
     objective: string;
     response_mode: "single_tap" | "tap_sequence" | "aac_card_sequence";
     prompt_policy: Record<string, unknown>;

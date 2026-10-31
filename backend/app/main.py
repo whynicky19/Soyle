@@ -4,9 +4,6 @@ import binascii
 import os
 import hashlib
 import secrets
-import shutil
-import subprocess
-import tempfile
 import logging
 from collections import defaultdict
 from contextlib import asynccontextmanager
@@ -70,6 +67,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["X-Soyle-TTS", "X-Soyle-TTS-Mode", "Retry-After"],
 )
 
 UNSAFE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
@@ -600,43 +598,27 @@ def update_child_pet_settings(child_id: int, payload: ChildPetSettingsUpdate, us
 
 
 @app.post("/api/tts")
-def text_to_speech(payload: TTSRequest, _: dict = Depends(require_roles("admin", "parent", "student"))) -> FileResponse:
+def text_to_speech(payload: TTSRequest, user: dict = Depends(require_roles("admin", "parent", "student"))) -> Response:
+    from .azure_tts import TTSUnavailable, limit_user, synthesize
     text = " ".join(payload.text.split()).strip()
+    if not text or any(ord(c) < 32 for c in text):
+        raise HTTPException(422, "Некорректный текст озвучивания")
+    limit_user(user["id"])
+    mode = payload.mode or ("slow" if payload.rate < .75 else "normal")
+    retry = 60
+    try:
+        audio = synthesize(text, payload.language, mode)
+        return Response(audio, media_type="audio/mpeg", headers={
+            "Cache-Control": "no-store", "X-Soyle-TTS": "azure", "X-Soyle-TTS-Mode": mode,
+        })
+    except TTSUnavailable as exc:
+        retry = exc.retry_after
     bundled_path = bundled_tts_path(text, payload.language)
     if bundled_path.exists():
-        return FileResponse(
-            bundled_path,
-            media_type="audio/wav",
-            filename="soyle-speech.wav",
-            headers={"Cache-Control": "no-store", "X-Soyle-TTS": "bundled"},
-        )
-    cache_dir = Path(tempfile.gettempdir()) / "soyle-tts-v1"
-    cache_dir.mkdir(parents=True, exist_ok=True)
-    cache_key = hashlib.sha256(f"{payload.language}|{text}|{payload.rate:.2f}".encode("utf-8")).hexdigest()
-    output_path = cache_dir / f"{cache_key}.wav"
-    if not output_path.exists():
-        source_path = cache_dir / f"{cache_key}.aiff"
-        say_path = shutil.which("say")
-        ffmpeg_path = shutil.which("ffmpeg")
-        if not say_path or not ffmpeg_path:
-            raise HTTPException(503, "Локальный голосовой движок недоступен")
-        words_per_minute = max(125, min(215, round(190 * payload.rate)))
-        default_voices = {"ru": "Milena", "kk": "Aigerim", "en": "Samantha"}
-        voice = os.getenv(f"SOYLE_TTS_VOICE_{payload.language.upper()}", os.getenv("SOYLE_TTS_VOICE", default_voices[payload.language]))
-        command = [say_path, "-v", voice, "-r", str(words_per_minute), "-o", str(source_path), text]
-        generated = subprocess.run(command, capture_output=True, timeout=20, check=False)
-        if generated.returncode != 0 or not source_path.exists():
-            raise HTTPException(503, f"Голос для языка {payload.language} недоступен")
-        filtered = subprocess.run([
-            ffmpeg_path, "-loglevel", "error", "-y", "-i", str(source_path),
-            "-af", "highpass=f=60,lowpass=f=10500,areverse,afade=t=in:st=0:d=0.12,areverse,apad=pad_dur=0.08",
-            "-ar", "24000", "-ac", "1", str(output_path),
-        ], capture_output=True, timeout=20, check=False)
-        source_path.unlink(missing_ok=True)
-        if filtered.returncode != 0 or not output_path.exists():
-            output_path.unlink(missing_ok=True)
-            raise HTTPException(503, "Не удалось обработать озвучивание")
-    return FileResponse(output_path, media_type="audio/wav", filename="soyle-speech.wav", headers={"Cache-Control": "private, max-age=86400"})
+        return FileResponse(bundled_path, media_type="audio/wav", filename="soyle-speech.wav",
+                            headers={"Cache-Control": "no-store", "X-Soyle-TTS": "bundled"})
+    # Device voice handles private/custom text without sending it to Azure.
+    raise HTTPException(503, "Озвучивание временно недоступно", headers={"Retry-After": str(retry)})
 
 
 @app.get("/api/notifications")

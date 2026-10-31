@@ -62,7 +62,7 @@ env \
   SOYLE_SEED_DEMO_DATA="true" \
   SOYLE_ALLOWED_ORIGINS="$LOCAL_ALLOWED_ORIGINS" \
   SOYLE_COOKIE_SAMESITE="lax" \
-  "$VENV_PYTHON" -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8010 &
+  "$VENV_PYTHON" -m app.local_server &
 BACKEND_PID=$!
 BACKEND_READY=0
 for _ in {1..40}; do

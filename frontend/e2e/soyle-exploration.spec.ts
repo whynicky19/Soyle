@@ -15,7 +15,7 @@ async function setup(page:Page){
  await page.addInitScript(()=>{
   class Voice{onend:(()=>void)|null=null;onerror:(()=>void)|null=null;}
   Object.defineProperty(window,'SpeechSynthesisUtterance',{value:Voice,configurable:true});
-  Object.defineProperty(window,'speechSynthesis',{value:{cancel(){},getVoices:()=>[],speak:(v:Voice)=>setTimeout(()=>{if((window as typeof window&{failSpeech?:boolean}).failSpeech)v.onerror?.();else v.onend?.();},0)},configurable:true});
+  Object.defineProperty(window,'speechSynthesis',{value:{cancel(){},getVoices:()=>[{lang:"ru-RU",localService:true}],speak:(v:Voice)=>setTimeout(()=>{if((window as typeof window&{failSpeech?:boolean}).failSpeech)v.onerror?.();else v.onend?.();},0)},configurable:true});
  });
  const admin=await page.request.post(`${API}/api/auth/login`,{data:{username:'admin',password:'Admin123!'}});expect(admin.ok()).toBe(true);
  const drafts=await(await page.request.get(`${API}/api/admin/exercise-drafts`)).json();
@@ -44,7 +44,7 @@ function eventResponse(page:Page,action:string){return page.waitForResponse(r=>r
 test('administrator sees all scene maps and preview leaves child history unchanged',async({page},info)=>{
  test.skip(info.project.name!=='desktop','The same immutable map is inspected once; child interactions run at every viewport.');
  await page.route('http://localhost:8010/**',route=>new URL(route.request().url()).pathname==='/api/tts'?route.fulfill({status:503,body:'{}'}):route.continue({url:route.request().url().replace(':8010',':8011')}));
- await page.addInitScript(()=>{class Voice{onend:(()=>void)|null=null;}Object.defineProperty(window,'SpeechSynthesisUtterance',{value:Voice,configurable:true});Object.defineProperty(window,'speechSynthesis',{value:{cancel(){},getVoices:()=>[],speak:(v:Voice)=>setTimeout(()=>v.onend?.(),0)},configurable:true});});
+ await page.addInitScript(()=>{class Voice{onend:(()=>void)|null=null;}Object.defineProperty(window,'SpeechSynthesisUtterance',{value:Voice,configurable:true});Object.defineProperty(window,'speechSynthesis',{value:{cancel(){},getVoices:()=>[{lang:"ru-RU",localService:true}],speak:(v:Voice)=>setTimeout(()=>v.onend?.(),0)},configurable:true});});
  expect((await page.request.post(`${API}/api/auth/login`,{data:{username:'admin',password:'Admin123!'}})).ok()).toBe(true);
  const drafts=await(await page.request.get(`${API}/api/admin/exercise-drafts`)).json();
  const scenes=drafts.filter((d:{version:{mechanic:string}})=>d.version.mechanic==='scene_search') as {version:{id:number;title:string;content:{exploration:{key:string}}}}[];expect(scenes).toHaveLength(4);

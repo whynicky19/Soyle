@@ -18,7 +18,8 @@ def privacy_profile() -> dict:
             'operator_configured': not missing, 'legal_review_verified': False,
             'processing': {
                 'camera': 'browser_only_no_frames_uploaded', 'microphone_recording': False,
-                'external_ai': False, 'account_lifetime': 'until_parent_deletes_account',
+                'external_ai': False,
+                'external_tts': 'azure_static_catalogue_only' if os.getenv('AZURE_TTS_ENABLED', 'false').lower() == 'true' else False, 'account_lifetime': 'until_parent_deletes_account',
                 'deletion': 'active_database_immediate_after_password_confirmation',
                 'backups': 'operator_policy_required',
             }}

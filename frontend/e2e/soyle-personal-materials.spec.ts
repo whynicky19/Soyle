@@ -8,7 +8,7 @@ async function prepare(page: Page) {
     class Utterance { text: string; onend?: () => void; constructor(text: string) { this.text = text; } }
     Object.defineProperty(window, "SpeechSynthesisUtterance", { value: Utterance, configurable: true });
     Object.defineProperty(window, "speechSynthesis", { configurable: true, value: {
-      cancel() {}, getVoices() { return []; },
+      cancel() {}, getVoices() { return [{lang:"ru-RU",localService:true}]; },
       speak(utterance: Utterance) { state.__spoken?.push(utterance.text); setTimeout(() => utterance.onend?.(), 0); },
     } });
   });
